@@ -1,4 +1,5 @@
 import type { DashboardStats, ServiceItem } from './types'
+import { serviceDefinitions } from './service-forms'
 import {
   Building2,
   BriefcaseBusiness,
@@ -29,48 +30,16 @@ export const categoryIcons = {
   'الرعاية والعمل': HeartPulse,
 }
 
-export const services: ServiceItem[] = [
-  {
-    key: 'store-license',
-    title: 'إجازة فتح محل',
-    department: 'بلدية الناصرية',
-    category: 'المحلات والأعمال',
-    description: 'تقديم طلب إجازة لمحل تجاري جديد ومتابعة التدقيق وإصدار الوثيقة رقمياً.',
-    estimatedTime: '3–5 أيام عمل',
-    fee: 75000,
-    requirements: ['عقد إيجار أو إثبات ملكية', 'صورة واجهة المحل', 'تحديد الموقع على الخريطة'],
-  },
-  {
-    key: 'building-permit',
-    title: 'إجازة بناء',
-    department: 'مديرية بلديات ذي قار',
-    category: 'البناء والبلديات',
-    description: 'طلب إجازة بناء مع المخططات والكشف الموقعي وسلسلة الموافقات.',
-    estimatedTime: '10–15 يوم عمل',
-    fee: 150000,
-    requirements: ['سند العقار', 'المخططات الهندسية', 'براءة ذمة'],
-  },
-  {
-    key: 'water-complaint',
-    title: 'بلاغ ماء أو مجارٍ',
-    department: 'مديرية ماء ومجاري ذي قار',
-    category: 'الماء والمجاري',
-    description: 'إرسال بلاغ موقعي مصحوب بصورة وتحويله تلقائياً إلى الفريق المختص.',
-    estimatedTime: '24–72 ساعة',
-    fee: 0,
-    requirements: ['الموقع', 'وصف المشكلة', 'صورة اختيارية'],
-  },
-  {
-    key: 'land-request',
-    title: 'متابعة طلب قطعة أرض',
-    department: 'قسم الأملاك والأراضي',
-    category: 'السكن والأراضي',
-    description: 'الاستعلام عن الاستحقاق وتحديث مستندات طلبات تخصيص الأراضي.',
-    estimatedTime: 'بحسب البرنامج',
-    fee: 0,
-    requirements: ['الملف العائلي', 'تأييد السكن', 'وثائق الاستحقاق'],
-  },
-]
+export const services: ServiceItem[] = serviceDefinitions.map(service => ({
+  key: service.key,
+  title: service.title,
+  department: service.department,
+  category: service.category,
+  description: service.description,
+  estimatedTime: service.estimatedTime,
+  fee: service.fee,
+  requirements: service.requirements,
+}))
 
 export const defaultStats: DashboardStats = {
   todayApplications: 0,

@@ -1,7 +1,8 @@
-import type { Citizen, DashboardStats, GovernmentApplication } from './types'
+import type { Citizen, CitizenNotification, CitizenServiceRequest, DashboardStats, GovernmentApplication } from './types'
 
 const request = async <T>(path: string, options?: RequestInit): Promise<T> => {
   const response = await fetch(path, {
+    credentials: 'include',
     headers: { 'Content-Type': 'application/json', ...(options?.headers || {}) },
     ...options,
   })
@@ -13,7 +14,16 @@ const request = async <T>(path: string, options?: RequestInit): Promise<T> => {
 }
 
 export const api = {
+  getSession: () => request<{ authenticated: true; role: 'CITIZEN' | 'EMPLOYEE' | 'IDENTITY_REVIEWER'; subject: string; expiresAt: string }>('/api/auth/session'),
+  loginEmployee: (accessCode: string) => request<{ authenticated: true; role: 'EMPLOYEE'; expiresInSeconds: number }>('/api/auth/employee', { method: 'POST', body: JSON.stringify({ accessCode }) }),
+  logout: () => request<{ success: boolean }>('/api/auth/logout', { method: 'POST' }),
   getDemoCitizen: () => request<Citizen>('/api/citizen/demo'),
+  listCitizenApplications: () => request<GovernmentApplication[]>('/api/citizen/applications'),
+  listCitizenServiceRequests: () => request<CitizenServiceRequest[]>('/api/citizen/service-requests'),
+  createServiceRequest: (serviceKey: string, data: Record<string, string>) => request<{ id: number; reference: string; serviceKey: string; serviceName: string; department: string; status: string; currentAction: string; appointment: { id: string; preferredDate: string; preferredTime: string; status: string } | null; createdAt: string }>('/api/service-requests', { method: 'POST', body: JSON.stringify({ serviceKey, data }) }),
+  getNotifications: () => request<{ unread: number; items: CitizenNotification[] }>('/api/citizen/notifications'),
+  markNotificationRead: (id: string) => request<{ unread: number; items: CitizenNotification[] }>(`/api/citizen/notifications/${id}/read`, { method: 'PATCH' }),
+  markAllNotificationsRead: () => request<{ unread: number; items: CitizenNotification[] }>('/api/citizen/notifications/read-all', { method: 'POST' }),
   requestOtp: (phone: string) =>
     request<{ challengeId: string; phoneMasked: string; expiresInSeconds: number; deliveryStatus: string }>('/api/onboarding/request-otp', {
       method: 'POST',
@@ -37,17 +47,17 @@ export const api = {
     form.append('idFront', payload.idFront)
     form.append('idBack', payload.idBack)
     form.append('faceVideo', payload.faceVideo)
-    const response = await fetch('/api/onboarding/identity-review', { method: 'POST', body: form })
+    const response = await fetch('/api/onboarding/identity-review', { method: 'POST', body: form, credentials: 'include' })
     if (!response.ok) {
       const body = await response.json().catch(() => ({ message: 'تعذر رفع وسائط الهوية.' }))
       throw new Error(body.message || 'تعذر رفع وسائط الهوية.')
     }
-    return response.json() as Promise<{ id: string; status: string; retentionUntil: string; files: Array<{ id: string; purpose: string; sizeBytes: number }> }>
+    return response.json() as Promise<{ id: string; status: string; retentionUntil: string; files: Array<{ id: string; purpose: string; sizeBytes: number }>; screening: { qualityStatus: string; qualityScore: number; qualityChecks: Array<{ key: string; label: string; passed: boolean; detail: string }>; faceMatchStatus: string; faceMatchScore: number | null; faceMatchProvider: string | null } }>
   },
-  getLatestIdentityReview: () => request<{ id: string; status: string; national_id_masked: string; submitted_at: string; reviewed_at: string | null; review_notes: string | null; retention_until: string } | null>('/api/onboarding/identity-review/latest'),
-  listIdentityReviews: (reviewAccessCode: string) => request<Array<{ id: string; status: string; citizenName: string; phoneMasked: string; nationalIdMasked: string; consentAt: string; submittedAt: string; reviewedAt: string | null; reviewedBy: string | null; notes: string | null; retentionUntil: string; media: Array<{ id: string; label: string; mimeType: string; sizeBytes: number }> }>>('/api/admin/identity-reviews', { headers: { 'x-review-access-code': reviewAccessCode } }),
+  getLatestIdentityReview: () => request<{ id: string; status: string; national_id_masked: string; submitted_at: string; reviewed_at: string | null; review_notes: string | null; retention_until: string; quality_status: string; quality_score: number | null; quality_checks: string | null; face_match_status: string; face_match_score: number | null; face_match_provider: string | null } | null>('/api/onboarding/identity-review/latest'),
+  listIdentityReviews: (reviewAccessCode: string) => request<Array<{ id: string; status: string; citizenName: string; phoneMasked: string; nationalIdMasked: string; consentAt: string; submittedAt: string; reviewedAt: string | null; reviewedBy: string | null; notes: string | null; retentionUntil: string; screening: { qualityStatus: string; qualityScore: number | null; qualityChecks: Array<{ key: string; label: string; passed: boolean; detail: string }>; faceMatchStatus: string; faceMatchScore: number | null; faceMatchProvider: string | null }; media: Array<{ id: string; label: string; mimeType: string; sizeBytes: number }> }>>('/api/admin/identity-reviews', { headers: { 'x-review-access-code': reviewAccessCode } }),
   loadReviewMedia: async (mediaId: string, reviewAccessCode: string) => {
-    const response = await fetch(`/api/admin/media/${mediaId}`, { headers: { 'x-review-access-code': reviewAccessCode } })
+    const response = await fetch(`/api/admin/media/${mediaId}`, { credentials: 'include', headers: { 'x-review-access-code': reviewAccessCode } })
     if (!response.ok) { const body = await response.json().catch(() => ({ message: 'تعذر فتح الوسيط.' })); throw new Error(body.message || 'تعذر فتح الوسيط.') }
     const blob = await response.blob()
     return { url: URL.createObjectURL(blob), mimeType: blob.type }
@@ -69,7 +79,7 @@ export const api = {
     form.append('coordinates', JSON.stringify(payload.coordinates))
     if (payload.propertyDocument) form.append('propertyDocument', payload.propertyDocument)
     if (payload.storefrontPhoto) form.append('storefrontPhoto', payload.storefrontPhoto)
-    const response = await fetch('/api/applications', { method: 'POST', body: form })
+    const response = await fetch('/api/applications', { method: 'POST', body: form, credentials: 'include' })
     if (!response.ok) { const body = await response.json().catch(() => ({ message: 'تعذر إرسال المعاملة.' })); throw new Error(body.message || 'تعذر إرسال المعاملة.') }
     return response.json() as Promise<GovernmentApplication>
   },
@@ -82,7 +92,7 @@ export const api = {
     const form = new FormData()
     form.append('documentName', documentName)
     form.append('document', document)
-    const response = await fetch(`/api/applications/${reference}/upload-document`, { method: 'POST', body: form })
+    const response = await fetch(`/api/applications/${reference}/upload-document`, { method: 'POST', body: form, credentials: 'include' })
     if (!response.ok) { const body = await response.json().catch(() => ({ message: 'تعذر رفع المستند.' })); throw new Error(body.message || 'تعذر رفع المستند.') }
     return response.json() as Promise<GovernmentApplication>
   },
@@ -91,5 +101,4 @@ export const api = {
   getStats: () => request<DashboardStats>('/api/dashboard/stats'),
   verifyDocument: (verificationId: string) =>
     request<GovernmentApplication>(`/api/verify/${verificationId}`),
-  resetDemo: () => request<{ success: boolean }>('/api/demo/reset', { method: 'POST' }),
 }

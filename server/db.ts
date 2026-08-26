@@ -1,4 +1,5 @@
 import { DatabaseSync } from 'node:sqlite'
+import { randomUUID } from 'node:crypto'
 import { mkdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -74,6 +75,18 @@ db.exec(`
     FOREIGN KEY (application_id) REFERENCES applications(id)
   );
 
+  CREATE TABLE IF NOT EXISTS notifications (
+    id TEXT PRIMARY KEY,
+    citizen_id INTEGER NOT NULL,
+    type TEXT NOT NULL,
+    title TEXT NOT NULL,
+    message TEXT NOT NULL,
+    link TEXT,
+    read_at TEXT,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (citizen_id) REFERENCES citizens(id) ON DELETE CASCADE
+  );
+
   CREATE TABLE IF NOT EXISTS audit_logs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     actor TEXT NOT NULL,
@@ -136,6 +149,12 @@ db.exec(`
     id_front_media_id TEXT,
     id_back_media_id TEXT,
     face_video_media_id TEXT,
+    quality_status TEXT NOT NULL DEFAULT 'PENDING',
+    quality_score INTEGER,
+    quality_checks TEXT,
+    face_match_status TEXT NOT NULL DEFAULT 'NOT_CONFIGURED',
+    face_match_score REAL,
+    face_match_provider TEXT,
     consent_at TEXT NOT NULL,
     submitted_at TEXT,
     reviewed_at TEXT,
@@ -206,6 +225,23 @@ db.exec(`
     FOREIGN KEY (identity_review_id) REFERENCES identity_reviews(id)
   );
 
+  CREATE TABLE IF NOT EXISTS appointments (
+    id TEXT PRIMARY KEY,
+    reference TEXT NOT NULL UNIQUE,
+    citizen_id INTEGER NOT NULL,
+    service_request_id INTEGER NOT NULL,
+    department TEXT NOT NULL,
+    purpose TEXT NOT NULL,
+    preferred_date TEXT NOT NULL,
+    preferred_time TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'REQUESTED',
+    confirmation_note TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    FOREIGN KEY (citizen_id) REFERENCES citizens(id),
+    FOREIGN KEY (service_request_id) REFERENCES service_requests(id) ON DELETE CASCADE
+  );
+
   CREATE TABLE IF NOT EXISTS payment_intents (
     id TEXT PRIMARY KEY,
     reference TEXT NOT NULL UNIQUE,
@@ -265,14 +301,28 @@ db.exec(`
     FOREIGN KEY (department_id) REFERENCES departments(id)
   );
 
+  CREATE INDEX IF NOT EXISTS idx_notifications_citizen ON notifications(citizen_id, read_at, created_at DESC);
   CREATE INDEX IF NOT EXISTS idx_otp_phone_hash ON otp_challenges(phone_hash, created_at);
   CREATE INDEX IF NOT EXISTS idx_media_citizen ON media_objects(citizen_id, created_at);
   CREATE INDEX IF NOT EXISTS idx_application_media_application ON application_media(application_id, created_at);
   CREATE INDEX IF NOT EXISTS idx_identity_status ON identity_reviews(status, submitted_at);
   CREATE INDEX IF NOT EXISTS idx_service_requests_citizen ON service_requests(citizen_id, created_at);
   CREATE INDEX IF NOT EXISTS idx_service_requests_department ON service_requests(department_id, status);
+  CREATE INDEX IF NOT EXISTS idx_appointments_citizen ON appointments(citizen_id, status, preferred_date);
   CREATE INDEX IF NOT EXISTS idx_news_published ON news_articles(published_at DESC);
 `)
+
+const ensureColumn = (table: string, column: string, definition: string) => {
+  const columns = db.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>
+  if (!columns.some(item => item.name === column)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`)
+}
+
+ensureColumn('identity_reviews', 'quality_status', "TEXT NOT NULL DEFAULT 'PENDING'")
+ensureColumn('identity_reviews', 'quality_score', 'INTEGER')
+ensureColumn('identity_reviews', 'quality_checks', 'TEXT')
+ensureColumn('identity_reviews', 'face_match_status', "TEXT NOT NULL DEFAULT 'NOT_CONFIGURED'")
+ensureColumn('identity_reviews', 'face_match_score', 'REAL')
+ensureColumn('identity_reviews', 'face_match_provider', 'TEXT')
 
 const now = () => new Date().toISOString()
 
@@ -320,6 +370,29 @@ export function addEvent(applicationId: number, input: { type: string; title: st
   `).run(applicationId, input.type, input.title, input.description, input.actor, now())
 }
 
+export function createNotification(input: { citizenId: number; type: string; title: string; message: string; link?: string }) {
+  const id = `ntf_${randomUUID().replaceAll('-', '')}`
+  db.prepare(`INSERT INTO notifications (id, citizen_id, type, title, message, link, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)`)
+    .run(id, input.citizenId, input.type, input.title, input.message, input.link || null, now())
+  return id
+}
+
+export function getCitizenNotifications(citizenId: number, limit = 50) {
+  const rows = db.prepare(`SELECT id, type, title, message, link, read_at, created_at FROM notifications WHERE citizen_id = ? ORDER BY created_at DESC LIMIT ?`).all(citizenId, limit) as Array<Record<string, unknown>>
+  const unread = (db.prepare('SELECT COUNT(*) AS total FROM notifications WHERE citizen_id = ? AND read_at IS NULL').get(citizenId) as { total: number }).total
+  return { unread, items: rows.map(row => ({ id: row.id, type: row.type, title: row.title, message: row.message, link: row.link, readAt: row.read_at, createdAt: row.created_at })) }
+}
+
+export function markNotificationRead(citizenId: number, notificationId: string) {
+  const result = db.prepare('UPDATE notifications SET read_at = COALESCE(read_at, ?) WHERE id = ? AND citizen_id = ?').run(now(), notificationId, citizenId)
+  return result.changes > 0
+}
+
+export function markAllNotificationsRead(citizenId: number) {
+  const result = db.prepare('UPDATE notifications SET read_at = COALESCE(read_at, ?) WHERE citizen_id = ?').run(now(), citizenId)
+  return Number(result.changes)
+}
+
 export function getCitizen() {
   ensureDemoCitizen()
   const row = db.prepare('SELECT * FROM citizens LIMIT 1').get() as Record<string, unknown>
@@ -336,6 +409,11 @@ export function getCitizen() {
 
 export function getApplications() {
   const rows = db.prepare('SELECT * FROM applications ORDER BY id DESC').all() as Array<Record<string, unknown>>
+  return rows.map(mapApplication)
+}
+
+export function getApplicationsForCitizen(citizenId: number) {
+  const rows = db.prepare('SELECT * FROM applications WHERE citizen_id = ? ORDER BY id DESC').all(citizenId) as Array<Record<string, unknown>>
   return rows.map(mapApplication)
 }
 
@@ -394,7 +472,7 @@ function mapApplication(row: Record<string, unknown>) {
 export function resetDemo() {
   db.exec('BEGIN')
   try {
-    db.exec('DELETE FROM payments; DELETE FROM application_events; DELETE FROM applications; DELETE FROM audit_logs;')
+    db.exec('DELETE FROM payments; DELETE FROM notifications; DELETE FROM application_events; DELETE FROM applications; DELETE FROM audit_logs;')
     db.exec('COMMIT')
   } catch (error) {
     db.exec('ROLLBACK')

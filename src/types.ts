@@ -9,7 +9,10 @@ export type ApplicationStatus =
 export type VerificationStatus =
   | 'PENDING_VERIFICATION'
   | 'VERIFIED'
+  | 'VERIFIED_MANUAL'
   | 'MANUAL_REVIEW'
+  | 'NEEDS_RESUBMISSION'
+  | 'REJECTED'
   | 'FAILED'
 
 export interface Citizen {
@@ -28,6 +31,16 @@ export interface ApplicationEvent {
   title: string
   description: string
   actor: string
+  createdAt: string
+}
+
+export interface CitizenNotification {
+  id: string
+  type: string
+  title: string
+  message: string
+  link?: string | null
+  readAt?: string | null
   createdAt: string
 }
 
@@ -56,6 +69,19 @@ export interface GovernmentApplication {
   createdAt: string
   updatedAt: string
   events: ApplicationEvent[]
+}
+
+export interface CitizenServiceRequest {
+  id: number
+  reference: string
+  serviceKey: string
+  departmentId: string
+  status: string
+  formData: Record<string, string>
+  currentAction: string
+  createdAt: string
+  updatedAt: string
+  appointment?: { id: string; preferredDate: string; preferredTime: string; status: string; note?: string | null } | null
 }
 
 export interface DashboardStats {
