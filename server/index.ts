@@ -19,6 +19,7 @@ import {
 } from './db.js'
 import { createOtpChallenge, processOtpDeliveryWebhook, verifyOtpChallenge } from './otp.js'
 import { deleteEncryptedMedia, readDecryptedMedia, storeEncryptedMedia } from './media.js'
+import { departmentRegistry, registrySummary } from './department-registry.js'
 
 const app = express()
 const upload = multer({
@@ -402,14 +403,24 @@ app.get('/api/verify/:verificationId', (req, res) => {
   res.json(item)
 })
 
-const departments = [
-  { id: 1, name: 'ديوان محافظة ذي قار', type: 'حكومة محلية', district: 'الناصرية', lat: 31.0439, lng: 46.2573, status: 'ONLINE', transactions: 1240, automation: 92 },
-  { id: 2, name: 'بلدية الناصرية', type: 'بلدية', district: 'الناصرية', lat: 31.0471, lng: 46.2621, status: 'ONLINE', transactions: 2860, automation: 86 },
-  { id: 3, name: 'مديرية ماء ذي قار', type: 'خدمات', district: 'الناصرية', lat: 31.0398, lng: 46.2515, status: 'ONLINE', transactions: 1350, automation: 71 },
-  { id: 4, name: 'بلدية الشطرة', type: 'بلدية', district: 'الشطرة', lat: 31.4091, lng: 46.1727, status: 'ONLINE', transactions: 875, automation: 68 },
-  { id: 5, name: 'بلدية سوق الشيوخ', type: 'بلدية', district: 'سوق الشيوخ', lat: 30.8907, lng: 46.4549, status: 'DEGRADED', transactions: 634, automation: 59 },
-  { id: 6, name: 'بلدية الرفاعي', type: 'بلدية', district: 'الرفاعي', lat: 31.7094, lng: 46.1053, status: 'ONLINE', transactions: 510, automation: 64 },
-] as const
+function getRegistryDepartments() {
+  const activityRows = db.prepare('SELECT department, COUNT(*) AS transactions FROM applications GROUP BY department').all() as Array<{ department: string; transactions: number }>
+  const activityByDepartment = new Map(activityRows.map(row => [row.department, row.transactions]))
+  return departmentRegistry.map(item => ({
+    id: item.id,
+    name: item.name,
+    type: item.category,
+    district: item.district,
+    lat: item.lat,
+    lng: item.lng,
+    status: item.gisStatus === 'COORDINATES_VERIFIED' ? 'ONLINE' : 'UNKNOWN',
+    transactions: activityByDepartment.get(item.name) || 0,
+    automation: 0,
+    sourceUrl: item.sourceUrl,
+    dataStatus: item.dataStatus,
+    gisStatus: item.gisStatus,
+  }))
+}
 
 app.get('/api/dashboard/stats', (_req, res) => {
   const dynamic = db.prepare(`SELECT COUNT(*) AS total, SUM(CASE WHEN status = 'APPROVED' THEN 1 ELSE 0 END) AS completed FROM applications`).get() as { total: number; completed: number | null }
@@ -420,11 +431,11 @@ app.get('/api/dashboard/stats', (_req, res) => {
     overdue: 42,
     activeCitizens: 128540,
     activeEmployees: 1842,
-    departmentsOnline: 31,
-    financialCollection: 128750000 + payments.collected,
-    complaints: 264,
-    avgProcessingHours: 31.4,
-    automationRate: 78,
+    departmentsOnline: registrySummary.verified,
+    financialCollection: payments.collected,
+    complaints: 0,
+    avgProcessingHours: 0,
+    automationRate: 0,
     series: [
       { day: 'السبت', applications: 820, completed: 690 },
       { day: 'الأحد', applications: 1140, completed: 915 },
@@ -433,7 +444,8 @@ app.get('/api/dashboard/stats', (_req, res) => {
       { day: 'الأربعاء', applications: 1380, completed: 1040 },
       { day: 'الخميس', applications: 1247 + dynamic.total, completed: 986 + (dynamic.completed || 0) },
     ],
-    departments,
+    departments: getRegistryDepartments(),
+    registry: registrySummary,
   })
 })
 

@@ -70,16 +70,20 @@ export interface DashboardStats {
   automationRate: number
   series: Array<{ day: string; applications: number; completed: number }>
   departments: Array<{
-    id: number
+    id: string | number
     name: string
     type: string
     district: string
-    lat: number
-    lng: number
-    status: 'ONLINE' | 'DEGRADED' | 'OFFLINE'
+    lat: number | null
+    lng: number | null
+    status: 'ONLINE' | 'DEGRADED' | 'OFFLINE' | 'UNKNOWN'
     transactions: number
     automation: number
+    sourceUrl?: string
+    dataStatus?: 'VERIFIED_SOURCE' | 'NEEDS_VERIFICATION'
+    gisStatus?: 'AWAITING_OFFICIAL_COORDINATES' | 'COORDINATES_VERIFIED'
   }>
+  registry?: { verified: number; awaitingCoordinates: number }
 }
 
 export interface ServiceItem {
