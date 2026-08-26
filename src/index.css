@@ -1,0 +1,19 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=Noto+Kufi+Arabic:wght@400;500;600;700;800;900&display=swap');
+
+:root {
+  font-family: 'IBM Plex Sans Arabic', system-ui, sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color: #10221a;
+  background: #f5f8f6;
+  direction: rtl;
+}
+
+html, body, #root { width: 100%; min-width: 320px; min-height: 100%; }
+body { min-height: 100vh; }
+h1, h2, h3, h4, strong, button { font-family: 'Noto Kufi Arabic', 'IBM Plex Sans Arabic', system-ui, sans-serif; }
+button, a, input, select { outline-color: #14a85b; }
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible { outline: 3px solid rgba(20, 168, 91, .28); outline-offset: 2px; }
+::selection { color: white; background: #08783f; }

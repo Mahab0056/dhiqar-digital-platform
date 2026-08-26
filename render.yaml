@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: dhiqar-digital-platform
+    runtime: node
+    plan: starter
+    region: frankfurt
+    branch: main
+    autoDeployTrigger: commit
+    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm build
+    startCommand: pnpm start
+    healthCheckPath: /api/health
+    maxShutdownDelaySeconds: 30
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_PATH
+        value: /var/data/dhiqar-demo.sqlite
+    disk:
+      name: dhiqar-digital-data
+      mountPath: /var/data
+      sizeGB: 1
