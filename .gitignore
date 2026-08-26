@@ -31,3 +31,7 @@ data/*.db-*
 *.njsproj
 *.sln
 *.sw?
+
+# Local runtime data, encrypted media, and QA captures
+data/
+qa-screens/
