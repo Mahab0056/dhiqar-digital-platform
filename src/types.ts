@@ -51,6 +51,7 @@ export interface GovernmentApplication {
   requiredDocument?: string | null
   documentNumber?: string | null
   verificationId?: string | null
+  attachments: Array<{ id: string; mediaId: string; label: string; originalName: string; mimeType: string; sizeBytes: number; available: boolean }>
   createdAt: string
   updatedAt: string
   events: ApplicationEvent[]

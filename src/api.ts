@@ -60,16 +60,32 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(payload),
     }),
+  createApplicationWithFiles: async (payload: Record<string, unknown> & { coordinates: { lat: number; lng: number }; propertyDocument?: File | null; storefrontPhoto?: File | null }) => {
+    const form = new FormData()
+    Object.entries(payload).forEach(([key, value]) => {
+      if (key === 'propertyDocument' || key === 'storefrontPhoto' || key === 'coordinates') return
+      form.append(key, String(value))
+    })
+    form.append('coordinates', JSON.stringify(payload.coordinates))
+    if (payload.propertyDocument) form.append('propertyDocument', payload.propertyDocument)
+    if (payload.storefrontPhoto) form.append('storefrontPhoto', payload.storefrontPhoto)
+    const response = await fetch('/api/applications', { method: 'POST', body: form })
+    if (!response.ok) { const body = await response.json().catch(() => ({ message: 'تعذر إرسال المعاملة.' })); throw new Error(body.message || 'تعذر إرسال المعاملة.') }
+    return response.json() as Promise<GovernmentApplication>
+  },
   requestDocument: (reference: string, documentName: string) =>
     request<GovernmentApplication>(`/api/applications/${reference}/request-document`, {
       method: 'POST',
       body: JSON.stringify({ documentName }),
     }),
-  uploadMissingDocument: (reference: string, documentName: string) =>
-    request<GovernmentApplication>(`/api/applications/${reference}/upload-document`, {
-      method: 'POST',
-      body: JSON.stringify({ documentName }),
-    }),
+  uploadMissingDocument: async (reference: string, documentName: string, document: File) => {
+    const form = new FormData()
+    form.append('documentName', documentName)
+    form.append('document', document)
+    const response = await fetch(`/api/applications/${reference}/upload-document`, { method: 'POST', body: form })
+    if (!response.ok) { const body = await response.json().catch(() => ({ message: 'تعذر رفع المستند.' })); throw new Error(body.message || 'تعذر رفع المستند.') }
+    return response.json() as Promise<GovernmentApplication>
+  },
   approveApplication: (reference: string) =>
     request<GovernmentApplication>(`/api/applications/${reference}/approve`, { method: 'POST' }),
   getStats: () => request<DashboardStats>('/api/dashboard/stats'),

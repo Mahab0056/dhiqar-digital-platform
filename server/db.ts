@@ -118,6 +118,16 @@ db.exec(`
     FOREIGN KEY (citizen_id) REFERENCES citizens(id)
   );
 
+  CREATE TABLE IF NOT EXISTS application_media (
+    id TEXT PRIMARY KEY,
+    application_id INTEGER NOT NULL,
+    media_id TEXT NOT NULL,
+    label TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (application_id) REFERENCES applications(id) ON DELETE CASCADE,
+    FOREIGN KEY (media_id) REFERENCES media_objects(id)
+  );
+
   CREATE TABLE IF NOT EXISTS identity_reviews (
     id TEXT PRIMARY KEY,
     citizen_id INTEGER NOT NULL,
@@ -257,6 +267,7 @@ db.exec(`
 
   CREATE INDEX IF NOT EXISTS idx_otp_phone_hash ON otp_challenges(phone_hash, created_at);
   CREATE INDEX IF NOT EXISTS idx_media_citizen ON media_objects(citizen_id, created_at);
+  CREATE INDEX IF NOT EXISTS idx_application_media_application ON application_media(application_id, created_at);
   CREATE INDEX IF NOT EXISTS idx_identity_status ON identity_reviews(status, submitted_at);
   CREATE INDEX IF NOT EXISTS idx_service_requests_citizen ON service_requests(citizen_id, created_at);
   CREATE INDEX IF NOT EXISTS idx_service_requests_department ON service_requests(department_id, status);
@@ -340,6 +351,11 @@ export function getApplicationByVerificationId(verificationId: string) {
 
 function mapApplication(row: Record<string, unknown>) {
   const events = db.prepare('SELECT * FROM application_events WHERE application_id = ? ORDER BY id ASC').all(row.id) as Array<Record<string, unknown>>
+  const attachments = db.prepare(`
+    SELECT am.id, am.label, mo.id AS media_id, mo.original_name, mo.mime_type, mo.size_bytes, mo.deleted_at
+    FROM application_media am JOIN media_objects mo ON mo.id = am.media_id
+    WHERE am.application_id = ? ORDER BY am.created_at ASC
+  `).all(row.id) as Array<Record<string, unknown>>
   return {
     id: row.id,
     reference: row.reference,
@@ -361,6 +377,7 @@ function mapApplication(row: Record<string, unknown>) {
     requiredDocument: row.required_document,
     documentNumber: row.document_number,
     verificationId: row.verification_id,
+    attachments: attachments.map(item => ({ id: item.id, mediaId: item.media_id, label: item.label, originalName: item.original_name, mimeType: item.mime_type, sizeBytes: item.size_bytes, available: !item.deleted_at })),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     events: events.map(event => ({

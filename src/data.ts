@@ -110,4 +110,4 @@ export const statusLabels = {
 } as const
 
 export const formatIQD = (amount: number) =>
-  new Intl.NumberFormat('ar-IQ', { maximumFractionDigits: 0 }).format(amount) + ' د.ع'
+  new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(amount) + ' د.ع'

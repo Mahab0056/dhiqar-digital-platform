@@ -25,7 +25,7 @@ const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 20 * 1024 * 1024, files: 3 },
   fileFilter: (_req, file, callback) => {
-    const permitted = new Set(['image/jpeg', 'image/png', 'image/webp', 'video/webm', 'video/mp4', 'video/quicktime'])
+    const permitted = new Set(['image/jpeg', 'image/png', 'image/webp', 'video/webm', 'video/mp4', 'video/quicktime', 'application/pdf'])
     if (!permitted.has(file.mimetype)) return callback(new Error('صيغة الملف غير مدعومة.'))
     callback(null, true)
   },
@@ -282,7 +282,7 @@ app.get('/api/applications/:reference', (req, res) => {
   res.json(item)
 })
 
-app.post('/api/applications', (req, res) => {
+app.post('/api/applications', upload.fields([{ name: 'propertyDocument', maxCount: 1 }, { name: 'storefrontPhoto', maxCount: 1 }]), (req, res) => {
   const payload = z.object({
     serviceKey: z.string().min(2),
     serviceName: z.string().min(2),
@@ -292,11 +292,15 @@ app.post('/api/applications', (req, res) => {
     address: z.string().min(4),
     district: z.string().min(2),
     ownershipType: z.enum(['rent', 'owned']),
-    coordinates: z.object({ lat: z.number(), lng: z.number() }),
-    fee: z.number().nonnegative(),
+    coordinates: z.preprocess(value => {
+      if (typeof value !== 'string') return value
+      try { return JSON.parse(value) } catch { return value }
+    }, z.object({ lat: z.coerce.number(), lng: z.coerce.number() })),
+    fee: z.coerce.number().nonnegative(),
     attachments: z.array(z.string()).default([]),
   }).parse(req.body)
-  const citizen = getCitizen() as { id: number; fullName: string }
+  const citizen = getCitizen() as { id: number; fullName: string; verificationStatus: string }
+  if (!['VERIFIED', 'VERIFIED_MANUAL'].includes(citizen.verificationStatus)) return res.status(409).json({ message: 'أكمل مراجعة الهوية أولاً قبل تقديم خدمة جديدة.' })
   const timestamp = new Date().toISOString()
   const serial = String((db.prepare('SELECT COUNT(*) AS count FROM applications').get() as { count: number }).count + 1).padStart(4, '0')
   const reference = `TQD-2026-${serial}`
@@ -314,9 +318,25 @@ app.post('/api/applications', (req, res) => {
     payload.fee > 0 ? 'PENDING' : 'NOT_REQUIRED', timestamp, timestamp,
   )
   const applicationId = Number(result.lastInsertRowid)
-  addEvent(applicationId, { type: 'APPLICATION_CREATED', title: 'تم التقديم', description: 'استلمت المنصة طلبك وحفظت البيانات والمرفقات التجريبية.', actor: 'المواطن' })
+  const files = req.files as Record<string, Express.Multer.File[]> | undefined
+  const propertyDocument = files?.propertyDocument?.[0]
+  const storefrontPhoto = files?.storefrontPhoto?.[0]
+  const requiredPropertyDocument = payload.ownershipType === 'rent' ? 'عقد الإيجار' : 'سند الملكية'
+  if (payload.serviceKey === 'store-license' && (!propertyDocument || !storefrontPhoto)) {
+    db.prepare('DELETE FROM applications WHERE id = ?').run(applicationId)
+    return res.status(400).json({ message: `يرجى تصوير أو رفع ${requiredPropertyDocument} وصورة واجهة المحل قبل إرسال الطلب.` })
+  }
+  const protectedFiles: Array<{ file: Express.Multer.File; purpose: 'APPLICATION_DOCUMENT' | 'STOREFRONT_PHOTO'; label: string }> = []
+  if (propertyDocument) protectedFiles.push({ file: propertyDocument, purpose: 'APPLICATION_DOCUMENT', label: requiredPropertyDocument })
+  if (storefrontPhoto) protectedFiles.push({ file: storefrontPhoto, purpose: 'STOREFRONT_PHOTO', label: 'صورة واجهة المحل' })
+  for (const item of protectedFiles) {
+    const media = storeEncryptedMedia({ citizenId: citizen.id, purpose: item.purpose, originalName: item.file.originalname || item.label, mimeType: item.file.mimetype, buffer: item.file.buffer, retentionHours: 24 * 30 })
+    db.prepare('INSERT INTO application_media (id, application_id, media_id, label, created_at) VALUES (?, ?, ?, ?, ?)')
+      .run(`appmedia_${randomUUID().replaceAll('-', '')}`, applicationId, media.id, item.label, timestamp)
+  }
+  addEvent(applicationId, { type: 'APPLICATION_CREATED', title: 'تم التقديم', description: 'استلمت المنصة الطلب والمرفقات المشفرة وسجلته للتدقيق.', actor: 'المواطن' })
   addEvent(applicationId, { type: 'ROUTED', title: 'تم التوجيه إلى الدائرة', description: `تم توجيه الطلب آلياً إلى ${payload.department}.`, actor: 'محرك سير العمل' })
-  addAudit({ actor: citizen.fullName, role: 'CITIZEN', action: 'APPLICATION_CREATED', entityType: 'Application', entityId: reference, newValue: { service: payload.serviceKey, district: payload.district }, metadata: { attachments: payload.attachments, demo: true } })
+  addAudit({ actor: citizen.fullName, role: 'CITIZEN', action: 'APPLICATION_CREATED', entityType: 'Application', entityId: reference, newValue: { service: payload.serviceKey, district: payload.district }, metadata: { protectedAttachments: protectedFiles.map(file => file.label), retentionDays: 30 } })
   res.status(201).json(getApplicationByReference(reference))
 })
 
@@ -332,15 +352,19 @@ app.post('/api/applications/:reference/request-document', (req, res) => {
   res.json(getApplicationByReference(req.params.reference))
 })
 
-app.post('/api/applications/:reference/upload-document', (req, res) => {
+app.post('/api/applications/:reference/upload-document', upload.single('document'), (req, res) => {
   const payload = z.object({ documentName: z.string().min(2) }).parse(req.body)
   const item = getApplicationByReference(req.params.reference)
   if (!item) return res.status(404).json({ message: 'المعاملة غير موجودة.' })
+  if (!req.file) return res.status(400).json({ message: `صوّر أو ارفع ${payload.documentName} قبل الإرسال.` })
   const timestamp = new Date().toISOString()
+  const media = storeEncryptedMedia({ citizenId: Number(item.citizenId), purpose: 'APPLICATION_DOCUMENT', originalName: req.file.originalname || payload.documentName, mimeType: req.file.mimetype, buffer: req.file.buffer, retentionHours: 24 * 30 })
+  db.prepare('INSERT INTO application_media (id, application_id, media_id, label, created_at) VALUES (?, ?, ?, ?, ?)')
+    .run(`appmedia_${randomUUID().replaceAll('-', '')}`, item.id, media.id, payload.documentName, timestamp)
   db.prepare(`UPDATE applications SET status = 'UNDER_REVIEW', current_action = 'لا يوجد إجراء مطلوب منك. تم استلام المستند وأعيدت المعاملة للموظف المختص.', required_document = NULL, updated_at = ? WHERE reference = ?`)
     .run(timestamp, req.params.reference)
-  addEvent(item.id as number, { type: 'DOCUMENT_UPLOADED', title: 'تم استكمال المعلومات', description: `رفع المواطن ${payload.documentName} وأعيدت المعاملة إلى التدقيق.`, actor: 'المواطن' })
-  addAudit({ actor: item.citizenName as string, role: 'CITIZEN', action: 'MISSING_DOCUMENT_UPLOADED', entityType: 'Application', entityId: req.params.reference, previousValue: { status: item.status }, newValue: { status: 'UNDER_REVIEW', document: payload.documentName }, metadata: { malwareScan: 'PASSED_DEMO' } })
+  addEvent(item.id as number, { type: 'DOCUMENT_UPLOADED', title: 'تم استكمال المعلومات', description: `رفع المواطن ${payload.documentName} بشكل مشفر وأعيدت المعاملة إلى التدقيق.`, actor: 'المواطن' })
+  addAudit({ actor: item.citizenName as string, role: 'CITIZEN', action: 'MISSING_DOCUMENT_UPLOADED', entityType: 'Application', entityId: req.params.reference, previousValue: { status: item.status }, newValue: { status: 'UNDER_REVIEW', document: payload.documentName }, metadata: { protectedMediaId: media.id, retentionDays: 30 } })
   res.json(getApplicationByReference(req.params.reference))
 })
 

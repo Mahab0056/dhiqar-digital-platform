@@ -13,11 +13,11 @@ mkdirSync(mediaRoot, { recursive: true })
 
 function encryptionKey() {
   const secret = process.env.MEDIA_ENCRYPTION_KEY?.trim()
-  if (!secret) throw new Error('MEDIA_ENCRYPTION_KEY is required for identity media uploads.')
+  if (!secret) throw new Error('MEDIA_ENCRYPTION_KEY is required for protected media uploads.')
   return createHash('sha256').update(secret, 'utf8').digest()
 }
 
-export type MediaPurpose = 'NATIONAL_ID_FRONT' | 'NATIONAL_ID_BACK' | 'FACE_VIDEO'
+export type MediaPurpose = 'NATIONAL_ID_FRONT' | 'NATIONAL_ID_BACK' | 'FACE_VIDEO' | 'APPLICATION_DOCUMENT' | 'STOREFRONT_PHOTO'
 
 export function storeEncryptedMedia(input: {
   citizenId: number
