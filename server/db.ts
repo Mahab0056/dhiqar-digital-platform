@@ -86,6 +86,181 @@ db.exec(`
     metadata TEXT,
     created_at TEXT NOT NULL
   );
+
+  CREATE TABLE IF NOT EXISTS otp_challenges (
+    id TEXT PRIMARY KEY,
+    phone_hash TEXT NOT NULL,
+    phone_masked TEXT NOT NULL,
+    code_hash TEXT NOT NULL,
+    sms_id TEXT,
+    delivery_status TEXT NOT NULL DEFAULT 'PENDING',
+    attempts INTEGER NOT NULL DEFAULT 0,
+    max_attempts INTEGER NOT NULL DEFAULT 5,
+    expires_at TEXT NOT NULL,
+    verified_at TEXT,
+    created_ip_hash TEXT,
+    created_at TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS media_objects (
+    id TEXT PRIMARY KEY,
+    citizen_id INTEGER NOT NULL,
+    purpose TEXT NOT NULL,
+    storage_path TEXT NOT NULL,
+    original_name TEXT NOT NULL,
+    mime_type TEXT NOT NULL,
+    size_bytes INTEGER NOT NULL,
+    sha256 TEXT NOT NULL,
+    encrypted INTEGER NOT NULL DEFAULT 1,
+    expires_at TEXT NOT NULL,
+    deleted_at TEXT,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (citizen_id) REFERENCES citizens(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS identity_reviews (
+    id TEXT PRIMARY KEY,
+    citizen_id INTEGER NOT NULL,
+    status TEXT NOT NULL DEFAULT 'DRAFT',
+    national_id_masked TEXT,
+    id_front_media_id TEXT,
+    id_back_media_id TEXT,
+    face_video_media_id TEXT,
+    consent_at TEXT NOT NULL,
+    submitted_at TEXT,
+    reviewed_at TEXT,
+    reviewed_by TEXT,
+    review_notes TEXT,
+    retention_until TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    FOREIGN KEY (citizen_id) REFERENCES citizens(id),
+    FOREIGN KEY (id_front_media_id) REFERENCES media_objects(id),
+    FOREIGN KEY (id_back_media_id) REFERENCES media_objects(id),
+    FOREIGN KEY (face_video_media_id) REFERENCES media_objects(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS departments (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    category TEXT NOT NULL,
+    district TEXT NOT NULL,
+    address TEXT,
+    phone TEXT,
+    website TEXT,
+    lat REAL,
+    lng REAL,
+    operational_status TEXT NOT NULL DEFAULT 'UNKNOWN',
+    data_status TEXT NOT NULL DEFAULT 'NEEDS_VERIFICATION',
+    source_url TEXT,
+    active INTEGER NOT NULL DEFAULT 1,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS service_catalog (
+    id TEXT PRIMARY KEY,
+    department_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    category TEXT NOT NULL,
+    description TEXT NOT NULL,
+    fee_iqd INTEGER NOT NULL DEFAULT 0,
+    fee_status TEXT NOT NULL DEFAULT 'UNVERIFIED',
+    estimated_duration TEXT,
+    form_schema TEXT NOT NULL,
+    required_documents TEXT NOT NULL,
+    payment_mode TEXT NOT NULL DEFAULT 'SANDBOX',
+    active INTEGER NOT NULL DEFAULT 1,
+    source_url TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    FOREIGN KEY (department_id) REFERENCES departments(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS service_requests (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    reference TEXT NOT NULL UNIQUE,
+    citizen_id INTEGER NOT NULL,
+    service_id TEXT NOT NULL,
+    department_id TEXT NOT NULL,
+    status TEXT NOT NULL,
+    form_data TEXT NOT NULL,
+    identity_review_id TEXT,
+    payment_intent_id TEXT,
+    current_action TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    FOREIGN KEY (citizen_id) REFERENCES citizens(id),
+    FOREIGN KEY (service_id) REFERENCES service_catalog(id),
+    FOREIGN KEY (department_id) REFERENCES departments(id),
+    FOREIGN KEY (identity_review_id) REFERENCES identity_reviews(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS payment_intents (
+    id TEXT PRIMARY KEY,
+    reference TEXT NOT NULL UNIQUE,
+    citizen_id INTEGER NOT NULL,
+    service_id TEXT NOT NULL,
+    department_id TEXT NOT NULL,
+    amount_iqd INTEGER NOT NULL,
+    status TEXT NOT NULL DEFAULT 'CREATED',
+    mode TEXT NOT NULL DEFAULT 'SANDBOX',
+    provider TEXT,
+    provider_reference TEXT,
+    receipt_number TEXT,
+    paid_at TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    FOREIGN KEY (citizen_id) REFERENCES citizens(id),
+    FOREIGN KEY (service_id) REFERENCES service_catalog(id),
+    FOREIGN KEY (department_id) REFERENCES departments(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS news_articles (
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    summary TEXT NOT NULL,
+    image_url TEXT NOT NULL,
+    source_name TEXT NOT NULL,
+    source_url TEXT NOT NULL UNIQUE,
+    published_at TEXT NOT NULL,
+    image_credit TEXT,
+    created_at TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS public_notices (
+    id TEXT PRIMARY KEY,
+    notice_type TEXT NOT NULL,
+    title TEXT NOT NULL,
+    department_id TEXT,
+    description TEXT NOT NULL,
+    reference_number TEXT,
+    publish_at TEXT NOT NULL,
+    close_at TEXT,
+    document_url TEXT,
+    source_url TEXT,
+    data_status TEXT NOT NULL DEFAULT 'NEEDS_VERIFICATION',
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (department_id) REFERENCES departments(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS department_revenue (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    department_id TEXT NOT NULL,
+    amount_iqd INTEGER NOT NULL,
+    source_type TEXT NOT NULL,
+    source_reference TEXT,
+    recorded_at TEXT NOT NULL,
+    is_synthetic INTEGER NOT NULL DEFAULT 1,
+    FOREIGN KEY (department_id) REFERENCES departments(id)
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_otp_phone_hash ON otp_challenges(phone_hash, created_at);
+  CREATE INDEX IF NOT EXISTS idx_media_citizen ON media_objects(citizen_id, created_at);
+  CREATE INDEX IF NOT EXISTS idx_identity_status ON identity_reviews(status, submitted_at);
+  CREATE INDEX IF NOT EXISTS idx_service_requests_citizen ON service_requests(citizen_id, created_at);
+  CREATE INDEX IF NOT EXISTS idx_service_requests_department ON service_requests(department_id, status);
+  CREATE INDEX IF NOT EXISTS idx_news_published ON news_articles(published_at DESC);
 `)
 
 const now = () => new Date().toISOString()

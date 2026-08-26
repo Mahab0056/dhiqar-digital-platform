@@ -14,10 +14,15 @@ const request = async <T>(path: string, options?: RequestInit): Promise<T> => {
 
 export const api = {
   getDemoCitizen: () => request<Citizen>('/api/citizen/demo'),
-  verifyPhone: (phone: string, otp: string) =>
-    request<{ success: boolean; phoneMasked: string }>('/api/onboarding/verify-phone', {
+  requestOtp: (phone: string) =>
+    request<{ challengeId: string; phoneMasked: string; expiresInSeconds: number; deliveryStatus: string }>('/api/onboarding/request-otp', {
       method: 'POST',
-      body: JSON.stringify({ phone, otp }),
+      body: JSON.stringify({ phone }),
+    }),
+  verifyPhone: (phone: string, challengeId: string, otp: string) =>
+    request<{ success: boolean; phoneMasked: string; verifiedAt: string }>('/api/onboarding/verify-phone', {
+      method: 'POST',
+      body: JSON.stringify({ phone, challengeId, otp }),
     }),
   completeIdentity: (payload: { fullName: string; consent: boolean; livenessPassed: boolean }) =>
     request<Citizen>('/api/onboarding/complete-identity', {

@@ -16,6 +16,7 @@ import {
   getCitizen,
   resetDemo,
 } from './db.js'
+import { createOtpChallenge, processOtpDeliveryWebhook, verifyOtpChallenge } from './otp.js'
 
 const app = express()
 const port = Number(process.env.PORT || 8787)
@@ -24,6 +25,7 @@ const projectRoot = join(currentDir, '..')
 const distDir = join(projectRoot, 'dist')
 
 app.disable('x-powered-by')
+app.set('trust proxy', 1)
 app.use(cors({ origin: true, credentials: false }))
 app.use(express.json({ limit: '1mb' }))
 
@@ -36,11 +38,58 @@ app.get('/api/citizen/demo', (_req, res) => {
   res.json(getCitizen())
 })
 
+app.post('/api/onboarding/request-otp', async (req, res) => {
+  try {
+    const payload = z.object({ phone: z.string().min(10).max(20) }).parse(req.body)
+    const challenge = await createOtpChallenge({ phone: payload.phone, requesterIp: req.ip || req.socket.remoteAddress || 'unknown' })
+    addAudit({
+      actor: 'مواطن',
+      role: 'CITIZEN',
+      action: 'PHONE_OTP_REQUESTED',
+      entityType: 'PhoneVerification',
+      entityId: challenge.challengeId,
+      metadata: { phoneMasked: challenge.phoneMasked, provider: 'OTPIQ' },
+    })
+    res.status(201).json(challenge)
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'تعذر إرسال رمز التحقق.'
+    res.status(400).json({ message })
+  }
+})
+
 app.post('/api/onboarding/verify-phone', (req, res) => {
-  const payload = z.object({ phone: z.string().min(10), otp: z.string().length(6) }).parse(req.body)
-  if (payload.otp !== '246810') return res.status(400).json({ message: 'رمز التحقق التجريبي غير صحيح. استخدم 246810.' })
-  addAudit({ actor: 'مواطن تجريبي', role: 'CITIZEN', action: 'PHONE_OTP_VERIFIED', entityType: 'Phone', entityId: payload.phone.slice(-4), metadata: { demo: true } })
-  res.json({ success: true, phoneMasked: `${payload.phone.slice(0, 4)}***${payload.phone.slice(-4)}` })
+  try {
+    const payload = z.object({
+      phone: z.string().min(10).max(20),
+      challengeId: z.string().startsWith('otp_'),
+      otp: z.string().regex(/^\d{6}$/),
+    }).parse(req.body)
+    const result = verifyOtpChallenge(payload)
+    addAudit({
+      actor: 'مواطن',
+      role: 'CITIZEN',
+      action: 'PHONE_OTP_VERIFIED',
+      entityType: 'PhoneVerification',
+      entityId: payload.challengeId,
+      metadata: { phoneMasked: result.phoneMasked, provider: 'OTPIQ' },
+    })
+    res.json(result)
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'تعذر التحقق من الرمز.'
+    res.status(400).json({ message })
+  }
+})
+
+app.post('/api/webhooks/otpiq', (req, res) => {
+  try {
+    const result = processOtpDeliveryWebhook({
+      secret: req.header('x-otpiq-webhook-secret'),
+      payload: req.body,
+    })
+    res.json(result)
+  } catch {
+    res.status(401).json({ message: 'Webhook غير مصرح.' })
+  }
 })
 
 app.post('/api/onboarding/complete-identity', (req, res) => {

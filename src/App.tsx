@@ -30,7 +30,7 @@ const reveal = {
 }
 
 function DemoRibbon() {
-  return <div className="demo-ribbon"><span className="demo-dot" />نسخة تجريبية آمنة — جميع الأسماء والهويات والمدفوعات والقرارات بيانات صناعية وليست ربطاً حكومياً فعلياً</div>
+  return <div className="demo-ribbon"><span className="demo-dot" />إصدار تشغيلي مرحلي — لا تعتمد أي وثيقة أو دفعة أو تحقق هوية قانونياً قبل اعتماد الجهة المختصة وربطها الرسمي</div>
 }
 
 function Brand({ compact = false }: { compact?: boolean }) {
@@ -43,7 +43,7 @@ function PublicHeader() {
 }
 
 function Footer() {
-  return <footer className="footer"><div className="container footer-grid"><div><Brand /><p>حضارة عمرها آلاف السنين، بحكومة رقمية للمستقبل.</p></div><div><strong>الوصول السريع</strong><Link href="/citizen">بوابة المواطن</Link><Link href="/employee">بوابة الموظف</Link><Link href="/operations">غرفة العمليات</Link></div><div><strong>الثقة والأمان</strong><span>الخصوصية حسب الغرض</span><span>تدقيق كامل للإجراءات</span><span>ذكاء اصطناعي مساعد لا يقرر منفرداً</span></div></div><div className="container footer-bottom"><span>© 2026 ذي قار الرقمية — نسخة عرض وظيفية</span><span>العربية • RTL • Mobile First</span></div></footer>
+  return <footer className="footer"><div className="container footer-grid"><div><Brand /><p>حضارة عمرها آلاف السنين، بحكومة رقمية للمستقبل.</p></div><div><strong>الوصول السريع</strong><Link href="/citizen">بوابة المواطن</Link><Link href="/employee">بوابة الموظف</Link><Link href="/operations">غرفة العمليات</Link></div><div><strong>الثقة والأمان</strong><span>الخصوصية حسب الغرض</span><span>تدقيق كامل للإجراءات</span><span>ذكاء اصطناعي مساعد لا يقرر منفرداً</span></div></div><div className="container footer-bottom"><span>© 2026 ذي قار الرقمية — بوابة خدمات تشغيلية</span><span>العربية • RTL • Mobile First</span></div></footer>
 }
 
 function LandingPage() {
@@ -77,21 +77,24 @@ function LoginPage() {
 function OnboardingPage() {
   const [, navigate] = useLocation()
   const [step, setStep] = useState(1)
-  const [phone, setPhone] = useState('07801234567')
-  const [otp, setOtp] = useState('246810')
+  const [phone, setPhone] = useState('')
+  const [otp, setOtp] = useState('')
+  const [challengeId, setChallengeId] = useState('')
   const [consent, setConsent] = useState(false)
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
-  const nextPhone = async () => { setBusy(true); setMessage(''); try { await api.verifyPhone(phone, otp); setStep(2) } catch (e) { setMessage((e as Error).message) } finally { setBusy(false) } }
-  const finish = async () => { if (!consent) return setMessage('يجب الموافقة الصريحة على استخدام صورة الوجه للتحقق التجريبي.'); setBusy(true); setMessage(''); try { await api.completeIdentity({ fullName: 'مهاب علي ياسين', consent, livenessPassed: true }); setStep(5) } catch (e) { setMessage((e as Error).message) } finally { setBusy(false) } }
+  const [notice, setNotice] = useState('')
+  const requestOtp = async () => { setBusy(true); setMessage(''); setNotice(''); try { const challenge = await api.requestOtp(phone); setChallengeId(challenge.challengeId); setOtp(''); setNotice(`تم إرسال رمز لمرة واحدة إلى ${challenge.phoneMasked}. صالح لمدة 5 دقائق.`) } catch (e) { setMessage((e as Error).message) } finally { setBusy(false) } }
+  const nextPhone = async () => { if (!challengeId) return setMessage('اطلب رمز التحقق أولاً.'); setBusy(true); setMessage(''); try { await api.verifyPhone(phone, challengeId, otp); setNotice(''); setStep(2) } catch (e) { setMessage((e as Error).message) } finally { setBusy(false) } }
+  const finish = async () => { if (!consent) return setMessage('يجب الموافقة الصريحة على استخدام صورة الوجه للتحقق والمراجعة.'); setBusy(true); setMessage(''); try { await api.completeIdentity({ fullName: 'مهاب علي ياسين', consent, livenessPassed: false }); setStep(5) } catch (e) { setMessage((e as Error).message) } finally { setBusy(false) } }
   const titles = ['الهاتف', 'البطاقة', 'مراجعة البيانات', 'الوجه', 'تم']
   return <div className="onboarding-page"><DemoRibbon /><header className="onboarding-header container"><Brand /><span>إنشاء الهوية الرقمية</span><Link href="/login"><X /></Link></header><main className="container onboarding-layout"><aside className="onboarding-aside"><span className="section-kicker">DIGITAL CITIZEN ONBOARDING</span><h1>حسابك الحكومي يبدأ من هوية موثوقة.</h1><p>رحلة تحقق تدريجية ومفهومة، مع أقل قدر مطلوب من البيانات ومراجعة يدوية للحالات غير المؤكدة.</p><div className="privacy-card"><ShieldCheck /><div><strong>خصوصيتك جزء من التصميم</strong><span>الفيديو البيومتري لا يُخزن دائماً في هذا العرض، ولا يوجد ربط بقاعدة هوية حكومية.</span></div></div></aside><section className="onboarding-panel"><div className="stepper">{titles.map((title, index) => <div className={step > index + 1 ? 'done' : step === index + 1 ? 'active' : ''} key={title}><span>{step > index + 1 ? <Check /> : index + 1}</span><small>{title}</small></div>)}</div>
-  {step === 1 && <div className="form-stage"><span className="stage-icon"><Phone /></span><h2>تأكيد رقم الهاتف</h2><p>سنرسل رمزاً لمرة واحدة. في العرض التجريبي استخدم الرمز <b>246810</b>.</p><label>رقم الهاتف<input value={phone} onChange={e => setPhone(e.target.value)} inputMode="tel" /></label><label>رمز التحقق<input value={otp} onChange={e => setOtp(e.target.value)} inputMode="numeric" /></label><button className="button primary full" onClick={nextPhone} disabled={busy}>{busy ? 'جاري التحقق...' : 'تأكيد الهاتف'}</button></div>}
+  {step === 1 && <div className="form-stage"><span className="stage-icon"><Phone /></span><h2>تأكيد رقم الهاتف</h2><p>سنرسل رمزاً حقيقياً لمرة واحدة عبر WhatsApp أو Telegram أو SMS مع تحويل تلقائي حسب التوفر.</p><label>رقم الهاتف العراقي<input value={phone} onChange={e => { setPhone(e.target.value); setChallengeId(''); setOtp(''); setNotice('') }} inputMode="tel" autoComplete="tel" placeholder="07XXXXXXXXX" /></label>{!challengeId ? <button className="button primary full" onClick={requestOtp} disabled={busy || phone.length < 10}>{busy ? 'جاري الإرسال...' : 'إرسال رمز التحقق'}</button> : <><label>رمز التحقق<input value={otp} onChange={e => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))} inputMode="numeric" autoComplete="one-time-code" placeholder="6 digits" /></label><button className="button primary full" onClick={nextPhone} disabled={busy || otp.length !== 6}>{busy ? 'جاري التحقق...' : 'تأكيد الهاتف'}</button><button className="button ghost full" onClick={requestOtp} disabled={busy}>إعادة إرسال الرمز</button></>}</div>}
   {step === 2 && <div className="form-stage"><span className="stage-icon"><Camera /></span><h2>تصوير البطاقة الوطنية</h2><p>وجّه الهاتف إلى البطاقة. سنفحص الوضوح والقص والانعكاس قبل الاستخراج.</p><div className="capture-frame"><div className="national-card-demo"><span>جمهورية العراق</span><strong>البطاقة الوطنية الموحدة</strong><div><span className="fake-face" /><p>مواطن تجريبي<br />ID: DEMO-0001</p></div></div><span className="scan-line" /></div><div className="quality-row"><span><CheckCircle2 /> الصورة واضحة</span><span><CheckCircle2 /> لا يوجد انعكاس</span><span><CheckCircle2 /> الحواف مكتملة</span></div><button className="button primary full" onClick={() => setStep(3)}>استخراج البيانات التجريبية</button></div>}
   {step === 3 && <div className="form-stage"><span className="stage-icon"><FileCheck2 /></span><h2>راجع البيانات المستخرجة</h2><p>الثقة المنخفضة لا تُعتبر إثباتاً، وتتحول للمراجعة اليدوية.</p><div className="extracted-fields"><div><small>الاسم الكامل</small><strong>مهاب علي ياسين</strong><span>99%</span></div><div><small>الرقم الوطني</small><strong>********** 4821</strong><span>97%</span></div><div><small>تاريخ الميلاد</small><strong>1990/04/12</strong><span>98%</span></div><div><small>محل الولادة</small><strong>ذي قار</strong><span>96%</span></div></div><button className="button primary full" onClick={() => setStep(4)}>البيانات صحيحة</button></div>}
   {step === 4 && <div className="form-stage"><span className="stage-icon"><Fingerprint /></span><h2>تأكيد الوجه والحيوية</h2><p>هذا فحص تجريبي. لا يصدر قرار رفض نهائي، والحالات الحدودية تتحول إلى مراجعة بشرية.</p><div className="face-preview"><div className="face-ring"><UserRound /></div><span className="liveness-chip"><Activity /> الحركة طبيعية — ناجح</span></div><label className="consent-box"><input type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)} /><span>أوافق صراحة على استخدام صورة/فيديو وجهي للتحقق من الهوية وفق السياسة المعتمدة، وأفهم أن هذه النسخة تجريبية.</span></label><button className="button primary full" onClick={finish} disabled={busy}>{busy ? 'جاري إنشاء الحساب...' : 'إنشاء هويتي الرقمية'}</button></div>}
   {step === 5 && <div className="form-stage success-stage"><span className="success-seal"><BadgeCheck /></span><h2>تم تأكيد حسابك</h2><p>تم إنشاء حساب مواطن ذي قار الرقمي مع شارة تحقق تجريبية.</p><div className="citizen-id-card"><Brand compact /><div><small>المواطن</small><strong>مهاب علي ياسين</strong><span><BadgeCheck /> VERIFIED — DEMO</span></div><QrCode /></div><button className="button primary full" onClick={() => navigate('/citizen')}>الدخول إلى حسابي <ArrowLeft /></button></div>}
-  {message && <div className="form-error"><AlertTriangle /> {message}</div>}</section></main></div>
+  {notice && <div className="form-success"><CheckCircle2 /> {notice}</div>}{message && <div className="form-error"><AlertTriangle /> {message}</div>}</section></main></div>
 }
 
 const citizenNav = [
