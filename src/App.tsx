@@ -53,7 +53,7 @@ function LandingPage() {
     { icon: Search, title: 'تابع معاملة', href: '/citizen' },
     { icon: MessageSquareWarning, title: 'قدّم شكوى', href: '/service/water-complaint' },
     { icon: WalletCards, title: 'ادفع رسوم', href: '/citizen' },
-    { icon: QrCode, title: 'تحقق من وثيقة', href: '/verify/demo' },
+    { icon: QrCode, title: 'تحقق من وثيقة', href: '/verify' },
   ]
   return <div className="public-shell"><PublicHeader /><main>
     <section className="hero"><div className="hero-ambient hero-ambient-one" /><div className="hero-ambient hero-ambient-two" /><div className="container hero-grid"><motion.div className="hero-copy" {...reveal}><div className="eyebrow"><Sparkles size={16} /> منظومة تشغيل حكومي رقمية موحّدة</div><h1>حكومة ذي قار،<br /><em>أقرب إليك.</em></h1><p>حساب مواطن موحّد، خدمات واضحة، معاملات قابلة للمتابعة، وقرارات تشغيلية مبنية على بيانات مركزية ضمن منصة واحدة.</p><div className="smart-search"><div className="search-icon"><Sparkles size={21} /></div><div><small>شنو تحتاج اليوم؟</small><strong>اكتب مثلاً: أريد أفتح محل</strong></div><Link href="/service/store-license" className="search-submit"><ArrowLeft /></Link></div><div className="hero-trust"><span><ShieldCheck size={17} /> بياناتك محمية</span><span><BadgeCheck size={17} /> حساب قيد التحقق أو موثّق يدوياً</span><span><Eye size={17} /> تتبّع واضح</span></div></motion.div><motion.div className="hero-visual" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.65 }}><img src="/brand/ur-heritage-hero.jpg" alt="زقورة أور والهوية الحضارية لذي قار" /><div className="hero-glass-card"><span className="live-badge"><span /> النظام يعمل</span><strong>31 دائرة متصلة</strong><div className="mini-map"><span className="pulse p1" /><span className="pulse p2" /><span className="pulse p3" /></div><div className="hero-metric-row"><span>المعاملات اليوم <b>1,247</b></span><span>نسبة الإنجاز <b>89%</b></span></div></div><div className="civilization-line">أور القديمة <ArrowLeft size={15} /> ذي قار الرقمية</div></motion.div></div></section>
@@ -228,12 +228,18 @@ const citizenNav = [
 
 function PortalLayout({ children, role = 'citizen' }: { children: React.ReactNode; role?: 'citizen' | 'employee' }) {
   const [mobileNav, setMobileNav] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const searchResults = useMemo(() => {
+    const term = searchQuery.trim().toLowerCase()
+    if (!term) return []
+    return services.filter(service => `${service.title} ${service.department} ${service.category} ${service.description}`.toLowerCase().includes(term)).slice(0, 6)
+  }, [searchQuery])
   const nav = role === 'citizen' ? citizenNav : [
     { icon: Gauge, label: 'لوحة العمل', href: '/employee' }, { icon: FileText, label: 'المعاملات', href: '/employee' },
     { icon: CalendarDays, label: 'الكشوفات', href: '/employee' }, { icon: FileArchive, label: 'الأرشيف', href: '/employee' },
     { icon: Activity, label: 'سجل الإجراءات', href: '/employee' },
   ]
-  return <div className="portal-shell"><DemoRibbon /><aside className={mobileNav ? 'portal-sidebar open' : 'portal-sidebar'}><div className="sidebar-brand"><Brand /><button onClick={() => setMobileNav(false)}><X /></button></div><div className="role-chip">{role === 'citizen' ? <UserRound /> : <Building2 />} {role === 'citizen' ? 'بوابة المواطن' : 'بوابة الموظف'}</div><nav>{nav.map((item, index) => <Link href={item.href} className={index === 0 ? 'active' : ''} key={item.label}><item.icon /> {item.label}</Link>)}</nav><div className="sidebar-security"><ShieldCheck /><span>جلسة محمية</span><small>آخر نشاط: الآن</small></div><Link href="/login" className="sidebar-logout"><LogIn /> تبديل البوابة</Link></aside><div className="portal-main"><header className="portal-topbar"><button className="mobile-sidebar-button" onClick={() => setMobileNav(true)}><Menu /></button><div className="topbar-search"><Search /><span>ابحث داخل المنصة</span><kbd>⌘ K</kbd></div><div className="topbar-actions"><button><Bell /><i>1</i></button><div className="user-avatar">مي</div><div><strong>{role === 'citizen' ? 'مهاب علي ياسين' : 'سارة كاظم حسن'}</strong><small>{role === 'citizen' ? 'مواطن موثّق' : 'موظفة تدقيق — بلدية الناصرية'}</small></div></div></header><main className="portal-content">{children}</main></div></div>
+  return <div className="portal-shell"><DemoRibbon /><aside className={mobileNav ? 'portal-sidebar open' : 'portal-sidebar'}><div className="sidebar-brand"><Brand /><button onClick={() => setMobileNav(false)}><X /></button></div><div className="role-chip">{role === 'citizen' ? <UserRound /> : <Building2 />} {role === 'citizen' ? 'بوابة المواطن' : 'بوابة الموظف'}</div><nav>{nav.map((item, index) => <Link href={item.href} className={index === 0 ? 'active' : ''} key={item.label}><item.icon /> {item.label}</Link>)}</nav><div className="sidebar-security"><ShieldCheck /><span>جلسة محمية</span><small>آخر نشاط: الآن</small></div><Link href="/login" className="sidebar-logout"><LogIn /> تبديل البوابة</Link></aside><div className="portal-main"><header className="portal-topbar"><button className="mobile-sidebar-button" onClick={() => setMobileNav(true)}><Menu /></button><div className="topbar-search"><Search /><input value={searchQuery} onChange={event => setSearchQuery(event.target.value)} placeholder="ابحث عن خدمة أو دائرة" aria-label="ابحث داخل المنصة" />{!searchQuery && <kbd>⌘ K</kbd>}{searchResults.length > 0 && <div className="topbar-search-results">{searchResults.map(service => <Link href={`/service/${service.key}`} key={service.key} onClick={() => setSearchQuery('')}><span><BriefcaseBusiness /></span><div><strong>{service.title}</strong><small>{service.department} • {service.category}</small></div><ArrowLeft /></Link>)}</div>}</div><div className="topbar-actions"><button><Bell /><i>1</i></button><div className="user-avatar">مي</div><div><strong>{role === 'citizen' ? 'مهاب علي ياسين' : 'سارة كاظم حسن'}</strong><small>{role === 'citizen' ? 'مواطن موثّق' : 'موظفة تدقيق — بلدية الناصرية'}</small></div></div></header><main className="portal-content">{children}</main></div></div>
 }
 
 function CitizenDashboard() {
@@ -304,6 +310,51 @@ function GovernorDashboard() {
   return <OperationsShell active="governor"><header className="ops-header governor-header"><div><span><Landmark /> EXECUTIVE OVERVIEW</span><h1>لوحة المحافظ</h1><p>ملخص تنفيذي لأداء الحكومة المحلية دون إظهار البيانات الشخصية للمواطنين</p></div><div className="ops-header-actions"><button className="period-button">هذا الشهر <CalendarDays /></button><div className="user-avatar gold">مح</div></div></header><section className="executive-score"><div><span className="score-ring"><b>84</b><small>/100</small></span><div><small>مؤشر الأداء الحكومي</small><strong>أداء مستقر مع فرص تحسين</strong><p>تحسن 6 نقاط عن الشهر الماضي</p></div></div><div className="executive-mini"><span><small>الالتزام بالـSLA</small><strong>88%</strong><i style={{ width: '88%' }}/></span><span><small>رضا المواطنين</small><strong>81%</strong><i style={{ width: '81%' }}/></span><span><small>نسبة الأتمتة</small><strong>{stats.automationRate}%</strong><i style={{ width: `${stats.automationRate}%` }}/></span></div></section><section className="governor-grid"><div className="governor-map-card"><div className="panel-heading"><div><h2>خريطة أداء ذي قار</h2><p>الدوائر والمناطق التشغيلية</p></div><button>عرض GIS الكامل</button></div><DhiQarMap departments={stats.departments} /></div><div className="ranking-card"><div className="panel-heading"><div><h3>ترتيب الدوائر</h3><p>حسب الأتمتة والإنجاز</p></div><Gauge /></div>{ranked.map((dept, index) => <div className="ranking-row" key={dept.id}><b>{index + 1}</b><div><strong>{dept.name}</strong><small>{dept.district}</small></div><span>{dept.automation}%</span></div>)}</div><div className="governor-chart-card"><div className="panel-heading"><div><h3>المعاملات المكتملة</h3><p>الطلب مقابل الإنجاز</p></div></div><ResponsiveContainer width="100%" height={250}><BarChart data={stats.series}><CartesianGrid stroke="#153c2d" vertical={false}/><XAxis dataKey="day" tick={{ fill: '#8aa399', fontSize: 11 }} axisLine={false}/><YAxis hide/><Tooltip contentStyle={{ background: '#09291d', border: '1px solid #1c5d40', borderRadius: 12 }}/><Bar dataKey="applications" fill="#255a43" radius={[5,5,0,0]}/><Bar dataKey="completed" fill="#26d980" radius={[5,5,0,0]}/></BarChart></ResponsiveContainer></div><div className="executive-alerts"><h3>أولويات المتابعة</h3>{[['01','تسريع معالجة إجازات البناء','متوسط الزمن أعلى من الهدف بـ18%'],['02','رفع أتمتة بلدية سوق الشيوخ','الأقل ضمن الدوائر المرتبطة'],['03','إغلاق الشكاوى المتأخرة','42 شكوى تجاوزت SLA']].map(([n,t,s]) => <div key={n}><span className="priority-number">{n}</span><p><strong>{t}</strong><small>{s}</small></p><ArrowLeft /></div>)}</div></section></OperationsShell>
 }
 
+function VerifyScanner() {
+  const [, navigate] = useLocation()
+  const videoRef = useRef<HTMLVideoElement | null>(null)
+  const streamRef = useRef<MediaStream | null>(null)
+  const timerRef = useRef<number | null>(null)
+  const [value, setValue] = useState('')
+  const [cameraOpen, setCameraOpen] = useState(false)
+  const [error, setError] = useState('')
+
+  const parseAndOpen = (raw: string) => {
+    const normalized = raw.trim()
+    const identifier = normalized.includes('/verify/') ? normalized.split('/verify/').pop() || '' : normalized
+    if (!identifier) return setError('أدخل معرّف التحقق أو امسح رمز QR صالحاً.')
+    navigate(`/verify/${encodeURIComponent(identifier)}`)
+  }
+  const stopCamera = () => {
+    if (timerRef.current) window.clearInterval(timerRef.current)
+    timerRef.current = null
+    streamRef.current?.getTracks().forEach(track => track.stop())
+    streamRef.current = null
+    setCameraOpen(false)
+  }
+  useEffect(() => () => stopCamera(), [])
+  const startScanner = async () => {
+    setError('')
+    const Detector = (window as unknown as { BarcodeDetector?: new (options: { formats: string[] }) => { detect: (source: HTMLVideoElement) => Promise<Array<{ rawValue: string }>> } }).BarcodeDetector
+    if (!Detector) return setError('المسح المباشر غير مدعوم في هذا المتصفح. استخدم كاميرا الجهاز لفتح الرابط أو أدخل معرّف الوثيقة يدوياً.')
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false })
+      streamRef.current = stream
+      setCameraOpen(true)
+      window.setTimeout(() => { if (videoRef.current) videoRef.current.srcObject = stream }, 0)
+      const detector = new Detector({ formats: ['qr_code'] })
+      timerRef.current = window.setInterval(async () => {
+        if (!videoRef.current) return
+        const codes = await detector.detect(videoRef.current).catch(() => [])
+        if (codes[0]?.rawValue) { stopCamera(); parseAndOpen(codes[0].rawValue) }
+      }, 600)
+    } catch {
+      setError('تعذر فتح كاميرا الهاتف. امنح إذن الكاميرا أو أدخل معرّف الوثيقة يدوياً.')
+    }
+  }
+  return <div className="verify-page"><DemoRibbon /><header className="verify-header container"><Brand /><Link href="/"><ArrowRight /> الرئيسية</Link></header><main className="container scanner-content"><section className="scanner-card"><span className="scanner-icon"><QrCode /></span><span className="section-kicker">تحقق من وثيقة صادرة</span><h1>امسح رمز QR أو أدخل المعرّف</h1><p>يفتح المسح سجل التحقق العام ويعرض الحد الأدنى من بيانات الوثيقة. لا ترفع صورة QR إلى خادم المنصة.</p>{cameraOpen && <div className="scanner-camera"><video ref={videoRef} autoPlay playsInline muted /><button className="button ghost" onClick={stopCamera}>إيقاف الكاميرا</button></div>}<div className="scanner-actions"><button className="button primary" onClick={startScanner}><Camera /> مسح بالكاميرا</button><div className="scanner-divider"><span>أو</span></div><label>معرّف التحقق أو رابط QR<input value={value} onChange={event => setValue(event.target.value)} placeholder="TQD-..." autoComplete="off" /></label><button className="button outline" onClick={() => parseAndOpen(value)}>تحقق الآن <ArrowLeft /></button></div>{error && <div className="form-error"><AlertTriangle /> {error}</div>}</section></main></div>
+}
+
 function VerifyPage({ verificationId }: { verificationId: string }) {
   const [app, setApp] = useState<GovernmentApplication | null>(null); const [error, setError] = useState('')
   useEffect(() => { api.verifyDocument(verificationId).then(setApp).catch(() => setError('لم يتم العثور على وثيقة بهذا المعرّف.')) }, [verificationId])
@@ -313,7 +364,7 @@ function VerifyPage({ verificationId }: { verificationId: string }) {
 function NotFound() { return <div className="not-found"><Brand /><strong>404</strong><h1>الصفحة غير موجودة</h1><p>المسار الذي فتحته غير متاح في هذه النسخة التجريبية.</p><Link href="/" className="button primary">العودة للرئيسية</Link></div> }
 
 function App() {
-  return <Switch><Route path="/" component={LandingPage} /><Route path="/login" component={LoginPage} /><Route path="/onboarding" component={OnboardingPage} /><Route path="/citizen" component={CitizenDashboard} /><Route path="/service/:key">{params => <ServiceFormPage serviceKey={params.key} />}</Route><Route path="/citizen/application/:reference">{params => <ApplicationPage reference={params.reference} />}</Route><Route path="/employee" component={EmployeeDashboard} /><Route path="/operations" component={OperationsCenter} /><Route path="/governor" component={GovernorDashboard} /><Route path="/verify/:id">{params => <VerifyPage verificationId={params.id} />}</Route><Route component={NotFound} /></Switch>
+  return <Switch><Route path="/" component={LandingPage} /><Route path="/login" component={LoginPage} /><Route path="/onboarding" component={OnboardingPage} /><Route path="/citizen" component={CitizenDashboard} /><Route path="/service/:key">{params => <ServiceFormPage serviceKey={params.key} />}</Route><Route path="/citizen/application/:reference">{params => <ApplicationPage reference={params.reference} />}</Route><Route path="/employee" component={EmployeeDashboard} /><Route path="/operations" component={OperationsCenter} /><Route path="/governor" component={GovernorDashboard} /><Route path="/verify" component={VerifyScanner} /><Route path="/verify/:id">{params => <VerifyPage verificationId={params.id} />}</Route><Route component={NotFound} /></Switch>
 }
 
 export default App
