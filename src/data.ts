@@ -73,38 +73,26 @@ export const services: ServiceItem[] = [
 ]
 
 export const defaultStats: DashboardStats = {
-  todayApplications: 1247,
-  completed: 986,
-  overdue: 42,
-  activeCitizens: 128540,
-  activeEmployees: 1842,
-  departmentsOnline: 31,
-  financialCollection: 128750000,
-  complaints: 264,
-  avgProcessingHours: 31.4,
-  automationRate: 78,
-  series: [
-    { day: 'السبت', applications: 820, completed: 690 },
-    { day: 'الأحد', applications: 1140, completed: 915 },
-    { day: 'الاثنين', applications: 1280, completed: 980 },
-    { day: 'الثلاثاء', applications: 1050, completed: 940 },
-    { day: 'الأربعاء', applications: 1380, completed: 1040 },
-    { day: 'الخميس', applications: 1247, completed: 986 },
-  ],
-  departments: [
-    { id: 1, name: 'ديوان محافظة ذي قار', type: 'حكومة محلية', district: 'الناصرية', lat: 31.0439, lng: 46.2573, status: 'ONLINE', transactions: 1240, automation: 92 },
-    { id: 2, name: 'بلدية الناصرية', type: 'بلدية', district: 'الناصرية', lat: 31.0471, lng: 46.2621, status: 'ONLINE', transactions: 2860, automation: 86 },
-    { id: 3, name: 'مديرية ماء ذي قار', type: 'خدمات', district: 'الناصرية', lat: 31.0398, lng: 46.2515, status: 'ONLINE', transactions: 1350, automation: 71 },
-    { id: 4, name: 'بلدية الشطرة', type: 'بلدية', district: 'الشطرة', lat: 31.4091, lng: 46.1727, status: 'ONLINE', transactions: 875, automation: 68 },
-    { id: 5, name: 'بلدية سوق الشيوخ', type: 'بلدية', district: 'سوق الشيوخ', lat: 30.8907, lng: 46.4549, status: 'DEGRADED', transactions: 634, automation: 59 },
-    { id: 6, name: 'بلدية الرفاعي', type: 'بلدية', district: 'الرفاعي', lat: 31.7094, lng: 46.1053, status: 'ONLINE', transactions: 510, automation: 64 },
-  ],
+  todayApplications: 0,
+  completed: 0,
+  overdue: 0,
+  activeCitizens: 0,
+  activeEmployees: 0,
+  departmentsOnline: 0,
+  financialCollection: 0,
+  complaints: 0,
+  avgProcessingHours: 0,
+  automationRate: 0,
+  series: Array.from({ length: 7 }, (_, index) => ({ day: `-${6 - index}`, applications: 0, completed: 0 })),
+  departments: [],
+  registry: { verified: 0, awaitingCoordinates: 0 },
 }
 
 export const statusLabels = {
   SUBMITTED: 'تم التقديم',
   UNDER_REVIEW: 'قيد التدقيق',
   ACTION_REQUIRED: 'مطلوب إجراء',
+  PAYMENT_REQUIRED: 'بانتظار الدفع',
   APPROVED: 'مكتملة',
   REJECTED: 'مرفوضة',
 } as const

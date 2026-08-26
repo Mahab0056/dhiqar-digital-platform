@@ -2,6 +2,7 @@ export type ApplicationStatus =
   | 'SUBMITTED'
   | 'UNDER_REVIEW'
   | 'ACTION_REQUIRED'
+  | 'PAYMENT_REQUIRED'
   | 'APPROVED'
   | 'REJECTED'
 

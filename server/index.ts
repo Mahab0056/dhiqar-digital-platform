@@ -57,7 +57,7 @@ app.use(cors({ origin: true, credentials: false }))
 app.use(express.json({ limit: '1mb' }))
 
 app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok', service: 'Dhi Qar Digital Demo API', time: new Date().toISOString() })
+  res.json({ status: 'ok', service: 'Dhi Qar Digital API', time: new Date().toISOString() })
 })
 
 app.get('/api/citizen/demo', (_req, res) => {
@@ -375,19 +375,22 @@ app.post('/api/applications/:reference/approve', (req, res) => {
   if (item.status === 'ACTION_REQUIRED') return res.status(409).json({ message: 'لا يمكن الموافقة قبل استكمال المستند المطلوب.' })
   if (item.status === 'APPROVED') return res.json(item)
   const timestamp = new Date().toISOString()
+  if ((item.fee as number) > 0) {
+    db.prepare(`UPDATE applications SET status = 'PAYMENT_REQUIRED', current_action = 'تمت الموافقة الإدارية. بانتظار تهيئة بوابة الدفع المعتمدة لإكمال سداد الرسم وإصدار الوثيقة.', payment_status = 'PENDING', updated_at = ? WHERE reference = ?`)
+      .run(timestamp, req.params.reference)
+    addEvent(item.id as number, { type: 'PAYMENT_REQUIRED', title: 'بانتظار الدفع', description: `رسم الخدمة ${item.fee} د.ع. لا يُسجل دفع ولا تصدر وثيقة حتى عودة بوابة الدفع المعتمدة.`, actor: 'محرك سير العمل' })
+    addAudit({ actor: 'سارة كاظم حسن', role: 'EMPLOYEE', action: 'PAYMENT_REQUIRED', entityType: 'Application', entityId: req.params.reference, previousValue: { status: item.status }, newValue: { status: 'PAYMENT_REQUIRED' }, metadata: { fee: item.fee, providerConfigured: false } })
+    return res.json(getApplicationByReference(req.params.reference))
+  }
   const documentNumber = `LIC-${new Date().getFullYear()}-${String(item.id).padStart(5, '0')}`
   const verificationId = `TQD-${randomUUID().replaceAll('-', '').slice(0, 18).toUpperCase()}`
   db.exec('BEGIN')
   try {
-    db.prepare(`UPDATE applications SET status = 'APPROVED', current_action = 'اكتملت المعاملة. يمكنك تحميل الوثيقة والتحقق منها عبر QR.', payment_status = ?, document_number = ?, verification_id = ?, updated_at = ? WHERE reference = ?`)
-      .run((item.fee as number) > 0 ? 'PAID' : 'NOT_REQUIRED', documentNumber, verificationId, timestamp, req.params.reference)
-    if ((item.fee as number) > 0) {
-      db.prepare('INSERT INTO payments (application_id, amount, status, receipt_number, created_at) VALUES (?, ?, ?, ?, ?)')
-        .run(item.id, item.fee, 'PAID', `RCT-${String(item.id).padStart(6, '0')}`, timestamp)
-    }
-    addEvent(item.id as number, { type: 'APPROVED', title: 'تمت الموافقة', description: 'اعتمد الموظف المختص الطلب ضمن السيناريو التجريبي.', actor: 'موظفة التدقيق — سارة كاظم' })
+    db.prepare(`UPDATE applications SET status = 'APPROVED', current_action = 'اكتملت المعاملة. يمكنك تحميل الوثيقة والتحقق منها عبر QR.', payment_status = 'NOT_REQUIRED', document_number = ?, verification_id = ?, updated_at = ? WHERE reference = ?`)
+      .run(documentNumber, verificationId, timestamp, req.params.reference)
+    addEvent(item.id as number, { type: 'APPROVED', title: 'تمت الموافقة', description: 'اعتمد الموظف المختص الطلب.', actor: 'موظفة التدقيق — سارة كاظم' })
     addEvent(item.id as number, { type: 'DOCUMENT_ISSUED', title: 'تم إصدار الوثيقة', description: `أُنشئت الوثيقة ${documentNumber} ومعرّف التحقق الرقمي.`, actor: 'نظام الوثائق الرقمية' })
-    addAudit({ actor: 'سارة كاظم حسن', role: 'EMPLOYEE', action: 'APPLICATION_APPROVED', entityType: 'Application', entityId: req.params.reference, previousValue: { status: item.status }, newValue: { status: 'APPROVED', documentNumber }, metadata: { paymentRecorded: (item.fee as number) > 0, qrVerification: true } })
+    addAudit({ actor: 'سارة كاظم حسن', role: 'EMPLOYEE', action: 'APPLICATION_APPROVED', entityType: 'Application', entityId: req.params.reference, previousValue: { status: item.status }, newValue: { status: 'APPROVED', documentNumber }, metadata: { paymentRecorded: false, qrVerification: true } })
     db.exec('COMMIT')
   } catch (error) {
     db.exec('ROLLBACK')
@@ -424,26 +427,27 @@ function getRegistryDepartments() {
 
 app.get('/api/dashboard/stats', (_req, res) => {
   const dynamic = db.prepare(`SELECT COUNT(*) AS total, SUM(CASE WHEN status = 'APPROVED' THEN 1 ELSE 0 END) AS completed FROM applications`).get() as { total: number; completed: number | null }
-  const payments = db.prepare(`SELECT COALESCE(SUM(amount), 0) AS collected FROM payments WHERE status = 'PAID'`).get() as { collected: number }
+  const citizenCount = db.prepare('SELECT COUNT(*) AS total FROM citizens').get() as { total: number }
+  const payments = db.prepare(`SELECT COALESCE(SUM(amount), 0) AS collected FROM payments WHERE status = 'SETTLED'`).get() as { collected: number }
+  const dateRows = db.prepare(`SELECT substr(created_at, 1, 10) AS day, COUNT(*) AS applications, SUM(CASE WHEN status = 'APPROVED' THEN 1 ELSE 0 END) AS completed FROM applications GROUP BY substr(created_at, 1, 10)`).all() as Array<{ day: string; applications: number; completed: number | null }>
+  const byDay = new Map(dateRows.map(row => [row.day, row]))
+  const series = Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(); date.setUTCDate(date.getUTCDate() - (6 - index))
+    const key = date.toISOString().slice(0, 10); const row = byDay.get(key)
+    return { day: key.slice(5).split('-').reverse().join('/'), applications: row?.applications || 0, completed: row?.completed || 0 }
+  })
   res.json({
-    todayApplications: 1247 + dynamic.total,
-    completed: 986 + (dynamic.completed || 0),
-    overdue: 42,
-    activeCitizens: 128540,
-    activeEmployees: 1842,
+    todayApplications: dynamic.total,
+    completed: dynamic.completed || 0,
+    overdue: 0,
+    activeCitizens: citizenCount.total,
+    activeEmployees: 0,
     departmentsOnline: registrySummary.verified,
     financialCollection: payments.collected,
     complaints: 0,
     avgProcessingHours: 0,
     automationRate: 0,
-    series: [
-      { day: 'السبت', applications: 820, completed: 690 },
-      { day: 'الأحد', applications: 1140, completed: 915 },
-      { day: 'الاثنين', applications: 1280, completed: 980 },
-      { day: 'الثلاثاء', applications: 1050, completed: 940 },
-      { day: 'الأربعاء', applications: 1380, completed: 1040 },
-      { day: 'الخميس', applications: 1247 + dynamic.total, completed: 986 + (dynamic.completed || 0) },
-    ],
+    series,
     departments: getRegistryDepartments(),
     registry: registrySummary,
   })
