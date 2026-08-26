@@ -1,9 +1,10 @@
 import express from 'express'
 import cors from 'cors'
+import multer from 'multer'
 import { existsSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { randomUUID } from 'node:crypto'
+import { randomUUID, timingSafeEqual } from 'node:crypto'
 import { z } from 'zod'
 import {
   addAudit,
@@ -17,9 +18,34 @@ import {
   resetDemo,
 } from './db.js'
 import { createOtpChallenge, processOtpDeliveryWebhook, verifyOtpChallenge } from './otp.js'
+import { deleteEncryptedMedia, readDecryptedMedia, storeEncryptedMedia } from './media.js'
 
 const app = express()
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 20 * 1024 * 1024, files: 3 },
+  fileFilter: (_req, file, callback) => {
+    const permitted = new Set(['image/jpeg', 'image/png', 'image/webp', 'video/webm', 'video/mp4', 'video/quicktime'])
+    if (!permitted.has(file.mimetype)) return callback(new Error('صيغة الملف غير مدعومة.'))
+    callback(null, true)
+  },
+})
 const port = Number(process.env.PORT || 8787)
+
+function hasReviewAccess(req: express.Request) {
+  const expected = process.env.ADMIN_REVIEW_PASSWORD?.trim()
+  const received = req.header('x-review-access-code')?.trim()
+  if (!expected || !received) return false
+  const left = Buffer.from(expected)
+  const right = Buffer.from(received)
+  return left.length === right.length && timingSafeEqual(left, right)
+}
+
+function requireReviewAccess(req: express.Request, res: express.Response, next: express.NextFunction) {
+  if (!hasReviewAccess(req)) return res.status(401).json({ message: 'رمز دخول المراجعة غير صحيح أو غير مهيأ.' })
+  next()
+}
+
 const currentDir = dirname(fileURLToPath(import.meta.url))
 const projectRoot = join(currentDir, '..')
 const distDir = join(projectRoot, 'dist')
@@ -96,11 +122,155 @@ app.post('/api/onboarding/complete-identity', (req, res) => {
   const payload = z.object({ fullName: z.string().min(3), consent: z.literal(true), livenessPassed: z.boolean() }).parse(req.body)
   const citizenId = ensureDemoCitizen()
   const timestamp = new Date().toISOString()
-  const result = payload.livenessPassed ? 'VERIFIED' : 'MANUAL_REVIEW'
   db.prepare('UPDATE citizens SET full_name = ?, verification_status = ?, consent_at = ?, updated_at = ? WHERE id = ?')
-    .run(payload.fullName, result, timestamp, timestamp, citizenId)
-  addAudit({ actor: payload.fullName, role: 'CITIZEN', action: 'IDENTITY_VERIFICATION_COMPLETED', entityType: 'CitizenIdentity', entityId: String(citizenId), newValue: { status: result }, metadata: { demo: true, biometricMediaPersisted: false } })
+    .run(payload.fullName, 'MANUAL_REVIEW', timestamp, timestamp, citizenId)
+  addAudit({ actor: payload.fullName, role: 'CITIZEN', action: 'IDENTITY_REVIEW_REQUESTED', entityType: 'CitizenIdentity', entityId: String(citizenId), newValue: { status: 'MANUAL_REVIEW' }, metadata: { livenessClaimed: payload.livenessPassed, mediaPersisted: false } })
   res.json(getCitizen())
+})
+
+app.post('/api/onboarding/identity-review', upload.fields([
+  { name: 'idFront', maxCount: 1 },
+  { name: 'idBack', maxCount: 1 },
+  { name: 'faceVideo', maxCount: 1 },
+]), (req, res) => {
+  try {
+    const payload = z.object({
+      fullName: z.string().min(3).max(120),
+      nationalId: z.string().min(4).max(30),
+      consent: z.literal('true'),
+    }).parse(req.body)
+    const files = req.files as Record<string, Express.Multer.File[]> | undefined
+    const idFront = files?.idFront?.[0]
+    const idBack = files?.idBack?.[0]
+    const faceVideo = files?.faceVideo?.[0]
+    if (!idFront || !idBack || !faceVideo) return res.status(400).json({ message: 'صوّر الوجهين للهوية وفيديو الوجه القصير لإرسال طلب المراجعة.' })
+    if (!idFront.mimetype.startsWith('image/') || !idBack.mimetype.startsWith('image/') || !faceVideo.mimetype.startsWith('video/')) {
+      return res.status(400).json({ message: 'صيغة مرفقات الهوية أو الفيديو غير صحيحة.' })
+    }
+
+    const citizenId = ensureDemoCitizen()
+    const now = new Date()
+    const retentionUntil = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString()
+    const front = storeEncryptedMedia({ citizenId, purpose: 'NATIONAL_ID_FRONT', originalName: idFront.originalname || 'national-id-front', mimeType: idFront.mimetype, buffer: idFront.buffer, retentionHours: 168 })
+    const back = storeEncryptedMedia({ citizenId, purpose: 'NATIONAL_ID_BACK', originalName: idBack.originalname || 'national-id-back', mimeType: idBack.mimetype, buffer: idBack.buffer, retentionHours: 168 })
+    const video = storeEncryptedMedia({ citizenId, purpose: 'FACE_VIDEO', originalName: faceVideo.originalname || 'face-video', mimeType: faceVideo.mimetype, buffer: faceVideo.buffer, retentionHours: 168 })
+    const reviewId = `idv_${randomUUID().replaceAll('-', '')}`
+    const maskedNationalId = `********${payload.nationalId.replace(/\s/g, '').slice(-4)}`
+
+    db.prepare(`
+      INSERT INTO identity_reviews (
+        id, citizen_id, status, national_id_masked, id_front_media_id, id_back_media_id,
+        face_video_media_id, consent_at, submitted_at, retention_until, created_at, updated_at
+      ) VALUES (?, ?, 'PENDING_REVIEW', ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(reviewId, citizenId, maskedNationalId, front.id, back.id, video.id, now.toISOString(), now.toISOString(), retentionUntil, now.toISOString(), now.toISOString())
+    db.prepare('UPDATE citizens SET full_name = ?, national_id_masked = ?, verification_status = ?, consent_at = ?, updated_at = ? WHERE id = ?')
+      .run(payload.fullName, maskedNationalId, 'MANUAL_REVIEW', now.toISOString(), now.toISOString(), citizenId)
+    addAudit({
+      actor: payload.fullName,
+      role: 'CITIZEN',
+      action: 'IDENTITY_MEDIA_SUBMITTED',
+      entityType: 'IdentityReview',
+      entityId: reviewId,
+      newValue: { status: 'PENDING_REVIEW', media: [front.id, back.id, video.id] },
+      metadata: { consent: true, retentionUntil, rawNationalIdStored: false },
+    })
+    res.status(201).json({
+      id: reviewId,
+      status: 'PENDING_REVIEW',
+      retentionUntil,
+      files: [front, back, video].map(file => ({ id: file.id, purpose: file.purpose, sizeBytes: file.sizeBytes })),
+    })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'تعذر حفظ طلب مراجعة الهوية.'
+    res.status(400).json({ message })
+  }
+})
+
+app.get('/api/onboarding/identity-review/latest', (_req, res) => {
+  const citizenId = ensureDemoCitizen()
+  const review = db.prepare(`
+    SELECT id, status, national_id_masked, submitted_at, reviewed_at, review_notes, retention_until
+    FROM identity_reviews WHERE citizen_id = ? ORDER BY created_at DESC LIMIT 1
+  `).get(citizenId)
+  res.json(review || null)
+})
+
+app.get('/api/admin/identity-reviews', requireReviewAccess, (_req, res) => {
+  const rows = db.prepare(`
+    SELECT r.id, r.status, r.national_id_masked, r.consent_at, r.submitted_at, r.reviewed_at, r.reviewed_by, r.review_notes, r.retention_until,
+           c.full_name, c.phone_masked,
+           front.id AS front_id, front.mime_type AS front_mime, front.size_bytes AS front_size,
+           back.id AS back_id, back.mime_type AS back_mime, back.size_bytes AS back_size,
+           face.id AS face_id, face.mime_type AS face_mime, face.size_bytes AS face_size
+    FROM identity_reviews r
+    JOIN citizens c ON c.id = r.citizen_id
+    LEFT JOIN media_objects front ON front.id = r.id_front_media_id
+    LEFT JOIN media_objects back ON back.id = r.id_back_media_id
+    LEFT JOIN media_objects face ON face.id = r.face_video_media_id
+    ORDER BY CASE r.status WHEN 'PENDING_REVIEW' THEN 0 ELSE 1 END, r.submitted_at DESC
+  `).all() as Array<Record<string, unknown>>
+  addAudit({ actor: 'Identity Reviewer', role: 'IDENTITY_REVIEWER', action: 'IDENTITY_REVIEW_QUEUE_VIEWED', entityType: 'IdentityReviewQueue', entityId: 'all', metadata: { count: rows.length } })
+  res.json(rows.map(row => ({
+    id: row.id,
+    status: row.status,
+    citizenName: row.full_name,
+    phoneMasked: row.phone_masked,
+    nationalIdMasked: row.national_id_masked,
+    consentAt: row.consent_at,
+    submittedAt: row.submitted_at,
+    reviewedAt: row.reviewed_at,
+    reviewedBy: row.reviewed_by,
+    notes: row.review_notes,
+    retentionUntil: row.retention_until,
+    media: [
+      { id: row.front_id, label: 'وجه الهوية', mimeType: row.front_mime, sizeBytes: row.front_size },
+      { id: row.back_id, label: 'ظهر الهوية', mimeType: row.back_mime, sizeBytes: row.back_size },
+      { id: row.face_id, label: 'فيديو الوجه', mimeType: row.face_mime, sizeBytes: row.face_size },
+    ].filter(item => typeof item.id === 'string'),
+  })))
+})
+
+app.get('/api/admin/media/:id', requireReviewAccess, (req, res) => {
+  try {
+    const media = readDecryptedMedia(req.params.id)
+    if (!media) return res.status(404).json({ message: 'الوسيط غير متاح أو انتهت مدة الاحتفاظ.' })
+    addAudit({ actor: 'Identity Reviewer', role: 'IDENTITY_REVIEWER', action: 'IDENTITY_MEDIA_VIEWED', entityType: 'MediaObject', entityId: req.params.id, metadata: { purpose: 'identity-review' } })
+    res.setHeader('Content-Type', media.mimeType)
+    res.setHeader('Content-Disposition', 'inline')
+    res.setHeader('Cache-Control', 'private, no-store')
+    res.send(media.buffer)
+  } catch {
+    res.status(500).json({ message: 'تعذر فتح الوسيط المشفر.' })
+  }
+})
+
+app.post('/api/admin/identity-reviews/:id/decision', requireReviewAccess, (req, res) => {
+  try {
+    const payload = z.object({ decision: z.enum(['APPROVED', 'REJECTED', 'NEEDS_RESUBMISSION']), notes: z.string().max(1000).default('') }).parse(req.body)
+    const review = db.prepare('SELECT * FROM identity_reviews WHERE id = ?').get(req.params.id) as Record<string, unknown> | undefined
+    if (!review) return res.status(404).json({ message: 'طلب المراجعة غير موجود.' })
+    if (review.status !== 'PENDING_REVIEW') return res.status(409).json({ message: 'تم اتخاذ قرار سابق لهذا الطلب.' })
+    const timestamp = new Date().toISOString()
+    db.exec('BEGIN')
+    try {
+      db.prepare(`UPDATE identity_reviews SET status = ?, reviewed_at = ?, reviewed_by = ?, review_notes = ?, updated_at = ? WHERE id = ?`)
+        .run(payload.decision, timestamp, 'موظف مراجعة الهوية', payload.notes, timestamp, req.params.id)
+      const citizenStatus = payload.decision === 'APPROVED' ? 'VERIFIED_MANUAL' : payload.decision
+      db.prepare('UPDATE citizens SET verification_status = ?, updated_at = ? WHERE id = ?').run(citizenStatus, timestamp, review.citizen_id)
+      addAudit({ actor: 'موظف مراجعة الهوية', role: 'IDENTITY_REVIEWER', action: 'IDENTITY_REVIEW_DECIDED', entityType: 'IdentityReview', entityId: req.params.id, previousValue: { status: review.status }, newValue: { status: payload.decision }, metadata: { notesLength: payload.notes.length } })
+      db.exec('COMMIT')
+    } catch (error) {
+      db.exec('ROLLBACK')
+      throw error
+    }
+    for (const mediaId of [review.id_front_media_id, review.id_back_media_id, review.face_video_media_id]) {
+      if (typeof mediaId === 'string') deleteEncryptedMedia(mediaId)
+    }
+    res.json({ id: req.params.id, status: payload.decision, reviewedAt: timestamp, mediaPurged: true })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'تعذر حفظ قرار المراجعة.'
+    res.status(400).json({ message })
+  }
 })
 
 app.get('/api/applications', (_req, res) => res.json(getApplications()))

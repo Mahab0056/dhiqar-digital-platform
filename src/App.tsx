@@ -74,26 +74,147 @@ function LoginPage() {
   return <div className="login-page"><DemoRibbon /><div className="login-backdrop" /><div className="login-top container"><Brand /><Link href="/"><ArrowRight /> العودة للرئيسية</Link></div><main className="container login-content"><div className="login-intro"><span className="eyebrow"><LockKeyhole size={16} /> بوابات دخول منفصلة وآمنة</span><h1>اختر بوابة الدخول</h1><p>لا نخلط حسابات المواطنين بالحسابات الحكومية. كل بوابة لها سياساتها وصلاحياتها ومسار التحقق الخاص بها.</p></div><div className="login-options">{options.map(option => <Link href={option.href} className={`login-option ${option.tone}`} key={option.title}><span><option.icon /></span><div><h2>{option.title}</h2><p>{option.text}</p></div><ArrowLeft /></Link>)}</div><div className="security-note"><ShieldCheck /><div><strong>بنية ثقة صفرية</strong><span>الدخول وحده لا يمنح الوصول؛ كل إجراء حساس يحتاج صلاحية وغرضاً مسجلاً.</span></div></div></main></div>
 }
 
+type CaptureMode = 'photo' | 'video'
+
+function SecureCameraCapture({
+  title,
+  guidance,
+  mode,
+  facingMode,
+  file,
+  onChange,
+}: {
+  title: string
+  guidance: string
+  mode: CaptureMode
+  facingMode: 'user' | 'environment'
+  file: File | null
+  onChange: (file: File | null) => void
+}) {
+  const videoRef = useRef<HTMLVideoElement | null>(null)
+  const inputRef = useRef<HTMLInputElement | null>(null)
+  const streamRef = useRef<MediaStream | null>(null)
+  const recorderRef = useRef<MediaRecorder | null>(null)
+  const chunksRef = useRef<Blob[]>([])
+  const [cameraOpen, setCameraOpen] = useState(false)
+  const [recording, setRecording] = useState(false)
+  const [previewUrl, setPreviewUrl] = useState('')
+  const [cameraError, setCameraError] = useState('')
+
+  const stopCamera = () => {
+    recorderRef.current?.stop()
+    streamRef.current?.getTracks().forEach(track => track.stop())
+    streamRef.current = null
+    setCameraOpen(false)
+    setRecording(false)
+  }
+
+  useEffect(() => () => {
+    streamRef.current?.getTracks().forEach(track => track.stop())
+    if (previewUrl) URL.revokeObjectURL(previewUrl)
+  }, [previewUrl])
+
+  const setCapturedFile = (captured: File) => {
+    if (previewUrl) URL.revokeObjectURL(previewUrl)
+    setPreviewUrl(URL.createObjectURL(captured))
+    onChange(captured)
+  }
+
+  const openCamera = async () => {
+    setCameraError('')
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: facingMode }, width: { ideal: 1280 }, height: { ideal: 720 } },
+        audio: mode === 'video',
+      })
+      streamRef.current = stream
+      setCameraOpen(true)
+      window.setTimeout(() => { if (videoRef.current) videoRef.current.srcObject = stream }, 0)
+    } catch {
+      setCameraError('تعذر فتح الكاميرا. امنح الإذن للكاميرا أو استخدم رفع ملف من الهاتف.')
+    }
+  }
+
+  const takePhoto = () => {
+    const video = videoRef.current
+    if (!video) return
+    const canvas = document.createElement('canvas')
+    canvas.width = video.videoWidth || 1280
+    canvas.height = video.videoHeight || 720
+    const ctx = canvas.getContext('2d')
+    ctx?.drawImage(video, 0, 0, canvas.width, canvas.height)
+    canvas.toBlob(blob => {
+      if (blob) setCapturedFile(new File([blob], `${title}-${Date.now()}.jpg`, { type: 'image/jpeg' }))
+      stopCamera()
+    }, 'image/jpeg', .9)
+  }
+
+  const startVideo = () => {
+    const stream = streamRef.current
+    if (!stream || typeof MediaRecorder === 'undefined') return setCameraError('تسجيل الفيديو غير مدعوم في هذا المتصفح. استخدم رفع فيديو قصير.')
+    const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus') ? 'video/webm;codecs=vp9,opus' : 'video/webm'
+    const recorder = new MediaRecorder(stream, { mimeType })
+    chunksRef.current = []
+    recorder.ondataavailable = event => { if (event.data.size) chunksRef.current.push(event.data) }
+    recorder.onstop = () => {
+      if (chunksRef.current.length) setCapturedFile(new File([new Blob(chunksRef.current, { type: 'video/webm' })], `face-video-${Date.now()}.webm`, { type: 'video/webm' }))
+      streamRef.current?.getTracks().forEach(track => track.stop())
+      streamRef.current = null
+      setCameraOpen(false)
+      setRecording(false)
+    }
+    recorderRef.current = recorder
+    recorder.start()
+    setRecording(true)
+  }
+
+  const stopVideo = () => recorderRef.current?.stop()
+
+  const pickFile = (selected: File | undefined) => {
+    if (!selected) return
+    const accepted = mode === 'photo' ? selected.type.startsWith('image/') : selected.type.startsWith('video/')
+    if (!accepted) return setCameraError(mode === 'photo' ? 'اختر صورة للوثيقة فقط.' : 'اختر فيديو الوجه فقط.')
+    if (selected.size > 20 * 1024 * 1024) return setCameraError('حجم الملف أكبر من 20 MB.')
+    setCameraError('')
+    setCapturedFile(selected)
+  }
+
+  return <div className="secure-capture">
+    <input ref={inputRef} type="file" hidden accept={mode === 'photo' ? 'image/*' : 'video/*'} capture={facingMode === 'environment' ? 'environment' : 'user'} onChange={event => pickFile(event.target.files?.[0])} />
+    <div className="capture-head"><div><strong>{title}</strong><p>{guidance}</p></div>{file && <span className="capture-ready"><CheckCircle2 /> جاهز</span>}</div>
+    {previewUrl && <div className="capture-preview">{mode === 'photo' ? <img src={previewUrl} alt={title} /> : <video src={previewUrl} controls playsInline />}</div>}
+    {cameraOpen && <div className="live-camera"><video ref={videoRef} autoPlay playsInline muted /><div className="live-camera-actions">{mode === 'photo' ? <button type="button" className="button primary" onClick={takePhoto}><Camera /> التقاط الصورة</button> : !recording ? <button type="button" className="button primary" onClick={startVideo}><Camera /> ابدأ فيديو قصير</button> : <button type="button" className="button danger" onClick={stopVideo}>إيقاف وحفظ الفيديو</button>}<button type="button" className="button ghost" onClick={stopCamera}>إلغاء</button></div></div>}
+    <div className="capture-actions"><button type="button" className="button secondary" onClick={openCamera}><Camera /> {file ? 'إعادة التصوير' : 'فتح الكاميرا'}</button><button type="button" className="button ghost" onClick={() => inputRef.current?.click()}><FileText /> {mode === 'photo' ? 'رفع صورة' : 'رفع فيديو'}</button>{file && <button type="button" className="capture-remove" onClick={() => { if (previewUrl) URL.revokeObjectURL(previewUrl); setPreviewUrl(''); onChange(null) }}><RefreshCw /> مسح</button>}</div>
+    {cameraError && <div className="capture-error"><AlertTriangle /> {cameraError}</div>}
+  </div>
+}
+
 function OnboardingPage() {
   const [, navigate] = useLocation()
   const [step, setStep] = useState(1)
   const [phone, setPhone] = useState('')
   const [otp, setOtp] = useState('')
   const [challengeId, setChallengeId] = useState('')
+  const [fullName, setFullName] = useState('')
+  const [nationalId, setNationalId] = useState('')
+  const [idFront, setIdFront] = useState<File | null>(null)
+  const [idBack, setIdBack] = useState<File | null>(null)
+  const [faceVideo, setFaceVideo] = useState<File | null>(null)
+  const [reviewId, setReviewId] = useState('')
   const [consent, setConsent] = useState(false)
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
   const [notice, setNotice] = useState('')
   const requestOtp = async () => { setBusy(true); setMessage(''); setNotice(''); try { const challenge = await api.requestOtp(phone); setChallengeId(challenge.challengeId); setOtp(''); setNotice(`تم إرسال رمز لمرة واحدة إلى ${challenge.phoneMasked}. صالح لمدة 5 دقائق.`) } catch (e) { setMessage((e as Error).message) } finally { setBusy(false) } }
   const nextPhone = async () => { if (!challengeId) return setMessage('اطلب رمز التحقق أولاً.'); setBusy(true); setMessage(''); try { await api.verifyPhone(phone, challengeId, otp); setNotice(''); setStep(2) } catch (e) { setMessage((e as Error).message) } finally { setBusy(false) } }
-  const finish = async () => { if (!consent) return setMessage('يجب الموافقة الصريحة على استخدام صورة الوجه للتحقق والمراجعة.'); setBusy(true); setMessage(''); try { await api.completeIdentity({ fullName: 'مهاب علي ياسين', consent, livenessPassed: false }); setStep(5) } catch (e) { setMessage((e as Error).message) } finally { setBusy(false) } }
-  const titles = ['الهاتف', 'البطاقة', 'مراجعة البيانات', 'الوجه', 'تم']
-  return <div className="onboarding-page"><DemoRibbon /><header className="onboarding-header container"><Brand /><span>إنشاء الهوية الرقمية</span><Link href="/login"><X /></Link></header><main className="container onboarding-layout"><aside className="onboarding-aside"><span className="section-kicker">DIGITAL CITIZEN ONBOARDING</span><h1>حسابك الحكومي يبدأ من هوية موثوقة.</h1><p>رحلة تحقق تدريجية ومفهومة، مع أقل قدر مطلوب من البيانات ومراجعة يدوية للحالات غير المؤكدة.</p><div className="privacy-card"><ShieldCheck /><div><strong>خصوصيتك جزء من التصميم</strong><span>الفيديو البيومتري لا يُخزن دائماً في هذا العرض، ولا يوجد ربط بقاعدة هوية حكومية.</span></div></div></aside><section className="onboarding-panel"><div className="stepper">{titles.map((title, index) => <div className={step > index + 1 ? 'done' : step === index + 1 ? 'active' : ''} key={title}><span>{step > index + 1 ? <Check /> : index + 1}</span><small>{title}</small></div>)}</div>
+  const finish = async () => { if (!consent) return setMessage('الموافقة الصريحة مطلوبة قبل إرسال الهوية والفيديو للمراجعة.'); if (!fullName || !nationalId || !idFront || !idBack || !faceVideo) return setMessage('أكمل الاسم والرقم وصور الهوية وفيديو الوجه قبل الإرسال.'); setBusy(true); setMessage(''); try { const review = await api.submitIdentityReview({ fullName, nationalId, consent, idFront, idBack, faceVideo }); setReviewId(review.id); setStep(5) } catch (e) { setMessage((e as Error).message) } finally { setBusy(false) } }
+  const titles = ['الهاتف', 'الهوية', 'البيانات', 'فيديو الوجه', 'المراجعة']
+  return <div className="onboarding-page"><DemoRibbon /><header className="onboarding-header container"><Brand /><span>إنشاء الهوية الرقمية</span><Link href="/login"><X /></Link></header><main className="container onboarding-layout"><aside className="onboarding-aside"><span className="section-kicker">DIGITAL CITIZEN ONBOARDING</span><h1>حسابك الحكومي يبدأ من هوية موثوقة.</h1><p>رحلة تحقق تدريجية ومفهومة، مع أقل قدر مطلوب من البيانات ومراجعة يدوية للحالات غير المؤكدة.</p><div className="privacy-card"><ShieldCheck /><div><strong>خصوصيتك جزء من التصميم</strong><span>تُحفظ مرفقات الهوية وفيديو الوجه بتشفير وعلى نطاق مراجعة محدد، ولا يصدر قرار تلقائي من الكاميرا وحدها.</span></div></div></aside><section className="onboarding-panel"><div className="stepper">{titles.map((title, index) => <div className={step > index + 1 ? 'done' : step === index + 1 ? 'active' : ''} key={title}><span>{step > index + 1 ? <Check /> : index + 1}</span><small>{title}</small></div>)}</div>
   {step === 1 && <div className="form-stage"><span className="stage-icon"><Phone /></span><h2>تأكيد رقم الهاتف</h2><p>سنرسل رمزاً حقيقياً لمرة واحدة عبر WhatsApp أو Telegram أو SMS مع تحويل تلقائي حسب التوفر.</p><label>رقم الهاتف العراقي<input value={phone} onChange={e => { setPhone(e.target.value); setChallengeId(''); setOtp(''); setNotice('') }} inputMode="tel" autoComplete="tel" placeholder="07XXXXXXXXX" /></label>{!challengeId ? <button className="button primary full" onClick={requestOtp} disabled={busy || phone.length < 10}>{busy ? 'جاري الإرسال...' : 'إرسال رمز التحقق'}</button> : <><label>رمز التحقق<input value={otp} onChange={e => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))} inputMode="numeric" autoComplete="one-time-code" placeholder="6 digits" /></label><button className="button primary full" onClick={nextPhone} disabled={busy || otp.length !== 6}>{busy ? 'جاري التحقق...' : 'تأكيد الهاتف'}</button><button className="button ghost full" onClick={requestOtp} disabled={busy}>إعادة إرسال الرمز</button></>}</div>}
-  {step === 2 && <div className="form-stage"><span className="stage-icon"><Camera /></span><h2>تصوير البطاقة الوطنية</h2><p>وجّه الهاتف إلى البطاقة. سنفحص الوضوح والقص والانعكاس قبل الاستخراج.</p><div className="capture-frame"><div className="national-card-demo"><span>جمهورية العراق</span><strong>البطاقة الوطنية الموحدة</strong><div><span className="fake-face" /><p>مواطن تجريبي<br />ID: DEMO-0001</p></div></div><span className="scan-line" /></div><div className="quality-row"><span><CheckCircle2 /> الصورة واضحة</span><span><CheckCircle2 /> لا يوجد انعكاس</span><span><CheckCircle2 /> الحواف مكتملة</span></div><button className="button primary full" onClick={() => setStep(3)}>استخراج البيانات التجريبية</button></div>}
-  {step === 3 && <div className="form-stage"><span className="stage-icon"><FileCheck2 /></span><h2>راجع البيانات المستخرجة</h2><p>الثقة المنخفضة لا تُعتبر إثباتاً، وتتحول للمراجعة اليدوية.</p><div className="extracted-fields"><div><small>الاسم الكامل</small><strong>مهاب علي ياسين</strong><span>99%</span></div><div><small>الرقم الوطني</small><strong>********** 4821</strong><span>97%</span></div><div><small>تاريخ الميلاد</small><strong>1990/04/12</strong><span>98%</span></div><div><small>محل الولادة</small><strong>ذي قار</strong><span>96%</span></div></div><button className="button primary full" onClick={() => setStep(4)}>البيانات صحيحة</button></div>}
-  {step === 4 && <div className="form-stage"><span className="stage-icon"><Fingerprint /></span><h2>تأكيد الوجه والحيوية</h2><p>هذا فحص تجريبي. لا يصدر قرار رفض نهائي، والحالات الحدودية تتحول إلى مراجعة بشرية.</p><div className="face-preview"><div className="face-ring"><UserRound /></div><span className="liveness-chip"><Activity /> الحركة طبيعية — ناجح</span></div><label className="consent-box"><input type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)} /><span>أوافق صراحة على استخدام صورة/فيديو وجهي للتحقق من الهوية وفق السياسة المعتمدة، وأفهم أن هذه النسخة تجريبية.</span></label><button className="button primary full" onClick={finish} disabled={busy}>{busy ? 'جاري إنشاء الحساب...' : 'إنشاء هويتي الرقمية'}</button></div>}
-  {step === 5 && <div className="form-stage success-stage"><span className="success-seal"><BadgeCheck /></span><h2>تم تأكيد حسابك</h2><p>تم إنشاء حساب مواطن ذي قار الرقمي مع شارة تحقق تجريبية.</p><div className="citizen-id-card"><Brand compact /><div><small>المواطن</small><strong>مهاب علي ياسين</strong><span><BadgeCheck /> VERIFIED — DEMO</span></div><QrCode /></div><button className="button primary full" onClick={() => navigate('/citizen')}>الدخول إلى حسابي <ArrowLeft /></button></div>}
+  {step === 2 && <div className="form-stage"><span className="stage-icon"><Camera /></span><h2>صوّر وجه الهوية الوطنية</h2><p>افتح كاميرا الهاتف وصوّر وجه البطاقة كاملاً في إضاءة واضحة، أو ارفع صورة موجودة على الجهاز.</p><SecureCameraCapture title="وجه الهوية الوطنية" guidance="أظهر الحواف الأربع للبطاقة وتجنب الوهج أو الظلال." mode="photo" facingMode="environment" file={idFront} onChange={setIdFront} /><button className="button primary full" onClick={() => setStep(3)} disabled={!idFront}>متابعة <ArrowLeft /></button></div>}
+  {step === 3 && <div className="form-stage"><span className="stage-icon"><FileCheck2 /></span><h2>أكمل بيانات الهوية</h2><p>لا يُعرض الرقم الوطني كاملاً للموظفين داخل القوائم. أدخل البيانات كما تظهر في البطاقة لإرسالها للمراجعة.</p><SecureCameraCapture title="ظهر الهوية الوطنية" guidance="صوّر الجهة الخلفية للبطاقة بوضوح أو ارفع الصورة من الهاتف." mode="photo" facingMode="environment" file={idBack} onChange={setIdBack} /><label>الاسم الكامل<input value={fullName} onChange={e => setFullName(e.target.value)} autoComplete="name" placeholder="الاسم كما في الهوية" /></label><label>الرقم الوطني<input value={nationalId} onChange={e => setNationalId(e.target.value.replace(/\D/g, '').slice(0, 20))} inputMode="numeric" placeholder="رقم الهوية" /></label><button className="button primary full" onClick={() => setStep(4)} disabled={!idBack || fullName.trim().length < 3 || nationalId.length < 4}>متابعة <ArrowLeft /></button></div>}
+  {step === 4 && <div className="form-stage"><span className="stage-icon"><Fingerprint /></span><h2>سجّل فيديو الوجه القصير</h2><p>استخدم الكاميرا الأمامية وسجّل فيديو قصيراً للوجه. سيصل إلى موظف المراجعة ولا يُعتبر تحقق حيوية أو قرار قبول آلياً.</p><SecureCameraCapture title="فيديو الوجه" guidance="انظر للكاميرا وحرك رأسك ببطء لليمين واليسار خلال 3–8 ثوانٍ." mode="video" facingMode="user" file={faceVideo} onChange={setFaceVideo} /><label className="consent-box"><input type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)} /><span>أوافق صراحة على رفع صور الهوية وفيديو الوجه للتدقيق اليدوي، وأفهم أن الاحتفاظ بها ينتهي بعد المراجعة أو خلال 7 أيام كحد أقصى.</span></label><button className="button primary full" onClick={finish} disabled={busy || !faceVideo || !consent}>{busy ? 'جاري إرسال طلب المراجعة...' : 'إرسال للمراجعة'}</button></div>}
+  {step === 5 && <div className="form-stage success-stage"><span className="success-seal"><FileCheck2 /></span><h2>تم استلام طلب التحقق</h2><p>وصلت صور الهوية وفيديو الوجه بشكل مشفّر إلى قائمة المراجعة. ستتحول الهوية إلى الحالة المناسبة بعد تدقيق الموظف المخول.</p><div className="citizen-id-card"><Brand compact /><div><small>رقم طلب المراجعة</small><strong>{reviewId}</strong><span><Clock3 /> قيد المراجعة البشرية</span></div><QrCode /></div><button className="button primary full" onClick={() => navigate('/citizen')}>الدخول إلى حسابي <ArrowLeft /></button></div>}
   {notice && <div className="form-success"><CheckCircle2 /> {notice}</div>}{message && <div className="form-error"><AlertTriangle /> {message}</div>}</section></main></div>
 }
 
@@ -138,11 +259,27 @@ function ApplicationPage({ reference }: { reference: string }) {
   return <PortalLayout><div className="application-detail-header"><Link href="/citizen"><ArrowRight /> معاملاتي</Link><div><div><span className={`status ${app.status.toLowerCase()}`}>{statusLabels[app.status]}</span><span>{app.reference}</span></div><h1>{app.serviceName}</h1><p>{app.department} • تم التقديم {new Date(app.createdAt).toLocaleDateString('ar-IQ')}</p></div></div><section className={app.status === 'ACTION_REQUIRED' ? 'current-action warning' : app.status === 'APPROVED' ? 'current-action success' : 'current-action'}><span>{app.status === 'ACTION_REQUIRED' ? <AlertTriangle /> : app.status === 'APPROVED' ? <BadgeCheck /> : <Clock3 />}</span><div><small>المطلوب منك الآن</small><strong>{app.currentAction}</strong></div>{app.status === 'ACTION_REQUIRED' && <button className="button primary" onClick={upload} disabled={busy}>{busy ? 'جاري الرفع...' : `رفع ${app.requiredDocument}`} <Plus /></button>}</section><div className="application-detail-grid"><section className="timeline-card"><h2>رحلة المعاملة</h2><div className="timeline">{app.events.map((event, index) => <div className="timeline-item" key={event.id}><span className="timeline-dot">{index === 0 || index === app.events.length - 1 ? <Check /> : index + 1}</span><div><div><strong>{event.title}</strong><time>{new Date(event.createdAt).toLocaleString('ar-IQ')}</time></div><p>{event.description}</p><small>{event.actor}</small></div></div>)}</div></section><aside className="detail-aside"><div><h3>بيانات الطلب</h3><span><small>اسم المحل</small><strong>{app.businessName}</strong></span><span><small>النشاط</small><strong>{app.activityType}</strong></span><span><small>العنوان</small><strong>{app.address}</strong></span><span><small>الرسم</small><strong>{formatIQD(app.fee)} — {app.paymentStatus === 'PAID' ? 'مدفوع' : 'بانتظار الموافقة'}</strong></span></div><div className="support-card"><Headphones /><strong>تحتاج مساعدة؟</strong><p>تواصل مع مركز دعم المواطنين مع ذكر رقم المعاملة.</p><button>اتصل بالدعم</button></div></aside></div>{app.status === 'APPROVED' && <section className="issued-document-section"><div className="issued-document-heading"><div><span className="section-kicker">الوثيقة النهائية</span><h2>تم إصدار إجازة المحل</h2><p>وثيقة تجريبية قابلة للتحقق عبر QR ومعرّف مستقل.</p></div><button className="button primary" onClick={downloadPdf}><Download /> تحميل PDF</button></div><div className="official-document" ref={docRef}><div className="document-watermark">DEMO</div><div className="document-header"><img src="/brand/dhiqar-official-logo.jpg" /><div><strong>جمهورية العراق</strong><span>محافظة ذي قار — بلدية الناصرية</span><b>وثيقة تجريبية غير صالحة للاستخدام الرسمي</b></div><div className="doc-number"><small>رقم الوثيقة</small><strong>{app.documentNumber}</strong></div></div><hr /><h2>إجازة ممارسة نشاط تجاري</h2><p>تشهد بلدية الناصرية، ضمن النسخة التجريبية لمنصة ذي قار الرقمية، بإكمال معاملة إجازة المحل الموضحة بياناتها أدناه.</p><div className="document-data"><span><small>اسم صاحب الطلب</small><strong>{app.citizenName}</strong></span><span><small>اسم المحل</small><strong>{app.businessName}</strong></span><span><small>نوع النشاط</small><strong>{app.activityType}</strong></span><span><small>العنوان</small><strong>{app.address}</strong></span><span><small>رقم المعاملة</small><strong>{app.reference}</strong></span><span><small>تاريخ الإصدار</small><strong>{new Date(app.updatedAt).toLocaleDateString('ar-IQ')}</strong></span></div><div className="document-footer"><div><strong>مدير البلدية</strong><span>توقيع إلكتروني تجريبي</span></div><div className="verification-box">{qr && <img src={qr} />}<span><b>تحقق من الوثيقة</b><small>{app.verificationId}</small></span></div></div></div></section>}</PortalLayout>
 }
 
+function IdentityReviewPanel() {
+  type Review = { id: string; status: string; citizenName: string; phoneMasked: string; nationalIdMasked: string; consentAt: string; submittedAt: string; retentionUntil: string; notes: string | null; media: Array<{ id: string; label: string; mimeType: string; sizeBytes: number }> }
+  const [accessCode, setAccessCode] = useState('')
+  const [reviews, setReviews] = useState<Review[]>([])
+  const [selected, setSelected] = useState<Review | null>(null)
+  const [mediaUrls, setMediaUrls] = useState<Record<string, { url: string; mimeType: string }>>({})
+  const [notes, setNotes] = useState('')
+  const [error, setError] = useState('')
+  const [busy, setBusy] = useState(false)
+  const load = async () => { setBusy(true); setError(''); try { const items = await api.listIdentityReviews(accessCode); setReviews(items); setSelected(current => items.find(item => item.id === current?.id) || items[0] || null) } catch (e) { setError((e as Error).message) } finally { setBusy(false) } }
+  const openMedia = async (mediaId: string) => { if (mediaUrls[mediaId]) return; try { const item = await api.loadReviewMedia(mediaId, accessCode); setMediaUrls(current => ({ ...current, [mediaId]: item })) } catch (e) { setError((e as Error).message) } }
+  const decide = async (decision: 'APPROVED' | 'REJECTED' | 'NEEDS_RESUBMISSION') => { if (!selected) return; setBusy(true); setError(''); try { await api.decideIdentityReview(selected.id, accessCode, { decision, notes }); Object.values(mediaUrls).forEach(item => URL.revokeObjectURL(item.url)); setMediaUrls({}); setNotes(''); await load() } catch (e) { setError((e as Error).message); setBusy(false) } }
+  const labels: Record<string, string> = { PENDING_REVIEW: 'بانتظار المراجعة', APPROVED: 'مقبول يدوياً', REJECTED: 'مرفوض', NEEDS_RESUBMISSION: 'مطلوب إعادة الرفع' }
+  return <section className="identity-review-admin"><div className="identity-review-head"><div><span className="section-kicker">مراجعة الهوية والوسائط</span><h2>ملفات الهوية والفيديو</h2><p>تُفتح المرفقات بتفويض مستقل، وتُسجل المشاهدة والقرار، ثم تُحذف الوسائط عند اكتمال المراجعة.</p></div><div className="review-access"><input type="password" value={accessCode} onChange={e => setAccessCode(e.target.value)} placeholder="رمز دخول المراجع" autoComplete="off" /><button className="button primary" onClick={load} disabled={busy || accessCode.length < 8}>{busy ? 'جاري الفتح...' : 'فتح قائمة المراجعة'}</button></div></div>{error && <div className="form-error"><AlertTriangle /> {error}</div>}{reviews.length > 0 && <div className="identity-review-grid"><div className="identity-review-list">{reviews.map(review => <button key={review.id} className={selected?.id === review.id ? 'identity-review-row selected' : 'identity-review-row'} onClick={() => { setSelected(review); setNotes(review.notes || '') }}><span className={review.status === 'PENDING_REVIEW' ? 'review-status pending' : 'review-status'}>{labels[review.status] || review.status}</span><strong>{review.citizenName}</strong><small>{review.nationalIdMasked} • {review.phoneMasked}</small><time>{new Date(review.submittedAt).toLocaleString('en-GB')}</time></button>)}</div><div className="identity-review-detail">{selected && <><div className="review-citizen-title"><div><span className="review-status pending">{labels[selected.status] || selected.status}</span><h3>{selected.citizenName}</h3><p>{selected.nationalIdMasked} • {selected.phoneMasked}</p></div><small>حذف تلقائي: {new Date(selected.retentionUntil).toLocaleString('en-GB')}</small></div><div className="review-media-grid">{selected.media.map(media => <article key={media.id} className="review-media-card"><div><span><FileArchive /></span><strong>{media.label}</strong><small>{media.mimeType} • {(media.sizeBytes / 1024).toFixed(1)} KB</small></div>{mediaUrls[media.id] ? mediaUrls[media.id].mimeType.startsWith('video/') ? <video src={mediaUrls[media.id].url} controls playsInline /> : <img src={mediaUrls[media.id].url} alt={media.label} /> : <button className="button outline" onClick={() => openMedia(media.id)}><Eye /> فتح الوسيط</button>}</article>)}</div>{selected.status === 'PENDING_REVIEW' && <><label className="review-notes">ملاحظة المراجع<textarea value={notes} onChange={e => setNotes(e.target.value)} maxLength={1000} placeholder="اكتب ملاحظة القرار أو سبب طلب إعادة الرفع" /></label><div className="review-actions identity-decisions"><button className="button outline danger" onClick={() => decide('REJECTED')} disabled={busy}>رفض</button><button className="button outline" onClick={() => decide('NEEDS_RESUBMISSION')} disabled={busy}>طلب إعادة الرفع</button><button className="button primary" onClick={() => decide('APPROVED')} disabled={busy}><CheckCircle2 /> اعتماد يدوي وحذف الوسائط</button></div></>}</>}</div></div>}</section>
+}
+
 function EmployeeDashboard() {
   const [apps, setApps] = useState<GovernmentApplication[]>([]); const [selected, setSelected] = useState<GovernmentApplication | null>(null); const [busy, setBusy] = useState(false)
   const load = () => api.listApplications().then(items => { setApps(items); if (!selected || !items.find(a => a.reference === selected.reference)) setSelected(items[0] || null); else setSelected(items.find(a => a.reference === selected.reference) || null) })
   useEffect(() => { void load() }, []); const act = async (kind: 'request' | 'approve') => { if (!selected) return; setBusy(true); if (kind === 'request') await api.requestDocument(selected.reference, 'عقد الإيجار المحدّث'); else await api.approveApplication(selected.reference); await load(); setBusy(false) }
-  return <PortalLayout role="employee"><section className="employee-heading"><div><span>الثلاثاء، 26 آب 2026</span><h1>صباح الخير، سارة</h1><p>لديك {apps.filter(a => a.status !== 'APPROVED').length} معاملات تحتاج مراجعة اليوم.</p></div><button className="button outline"><RefreshCw /> تحديث قائمة العمل</button></section><section className="employee-kpis"><div><span className="blue"><FileText /></span><small>جديدة</small><strong>{apps.filter(a => a.status === 'SUBMITTED').length}</strong></div><div><span className="green"><Eye /></span><small>قيد التدقيق</small><strong>{apps.filter(a => a.status === 'UNDER_REVIEW').length}</strong></div><div><span className="amber"><Bell /></span><small>بانتظار المواطن</small><strong>{apps.filter(a => a.status === 'ACTION_REQUIRED').length}</strong></div><div><span className="red"><Clock3 /></span><small>متأخرة</small><strong>0</strong></div></section><div className="employee-workspace"><section className="work-queue"><div className="queue-toolbar"><div><h2>قائمة المعاملات</h2><span>{apps.length} نتيجة</span></div><button><Search /></button></div>{apps.length === 0 ? <div className="empty-queue"><FileText /><p>لا توجد معاملات. قدّم طلباً من بوابة المواطن أولاً.</p></div> : apps.map(app => <button className={selected?.reference === app.reference ? 'queue-item selected' : 'queue-item'} key={app.reference} onClick={() => setSelected(app)}><div><strong>{app.serviceName}</strong><span className={`status ${app.status.toLowerCase()}`}>{statusLabels[app.status]}</span></div><small>{app.reference} • {app.citizenName}</small><p>{app.currentAction}</p><time>{new Date(app.updatedAt).toLocaleTimeString('ar-IQ', { hour: '2-digit', minute: '2-digit' })}</time></button>)}</section><section className="review-panel">{selected ? <><div className="review-header"><div><span className={`status ${selected.status.toLowerCase()}`}>{statusLabels[selected.status]}</span><h2>{selected.serviceName}</h2><p>{selected.reference}</p></div><button><FileArchive /></button></div><div className="citizen-access-notice"><ShieldCheck /><span><strong>وصول حسب الحاجة الوظيفية</strong><small>بيانات الهوية الحساسة مخفية، وتم تسجيل فتح المعاملة في سجل التدقيق.</small></span></div><div className="review-section"><h3>بيانات المواطن</h3><div className="review-data-grid"><span><small>الاسم</small><strong>{selected.citizenName} <BadgeCheck /></strong></span><span><small>الرقم الوطني</small><strong>********** 4821</strong></span><span><small>القضاء</small><strong>{selected.district}</strong></span><span><small>حالة الهوية</small><strong>VERIFIED — DEMO</strong></span></div></div><div className="review-section"><h3>بيانات النشاط</h3><div className="review-data-grid"><span><small>المحل</small><strong>{selected.businessName}</strong></span><span><small>النشاط</small><strong>{selected.activityType}</strong></span><span className="wide"><small>العنوان</small><strong>{selected.address}</strong></span></div></div><div className="review-section"><h3>المستندات</h3><div className="review-document"><FileText /><div><strong>عقد الإيجار.pdf</strong><small>PDF • فحص خلو من البرمجيات: ناجح</small></div><button><Eye /></button></div></div><div className="review-actions"><button className="button outline danger" onClick={() => act('request')} disabled={busy}><Bell /> طلب مستند</button><button className="button primary" onClick={() => act('approve')} disabled={busy || selected.status === 'ACTION_REQUIRED' || selected.status === 'APPROVED'}><CheckCircle2 /> {selected.status === 'APPROVED' ? 'تمت الموافقة' : 'موافقة وإصدار الوثيقة'}</button></div></> : <div className="empty-queue"><FileText /><p>اختر معاملة لبدء التدقيق.</p></div>}</section></div></PortalLayout>
+  return <PortalLayout role="employee"><section className="employee-heading"><div><span>الثلاثاء، 26 آب 2026</span><h1>صباح الخير، سارة</h1><p>لديك {apps.filter(a => a.status !== 'APPROVED').length} معاملات تحتاج مراجعة اليوم.</p></div><button className="button outline"><RefreshCw /> تحديث قائمة العمل</button></section><section className="employee-kpis"><div><span className="blue"><FileText /></span><small>جديدة</small><strong>{apps.filter(a => a.status === 'SUBMITTED').length}</strong></div><div><span className="green"><Eye /></span><small>قيد التدقيق</small><strong>{apps.filter(a => a.status === 'UNDER_REVIEW').length}</strong></div><div><span className="amber"><Bell /></span><small>بانتظار المواطن</small><strong>{apps.filter(a => a.status === 'ACTION_REQUIRED').length}</strong></div><div><span className="red"><Clock3 /></span><small>متأخرة</small><strong>0</strong></div></section><div className="employee-workspace"><section className="work-queue"><div className="queue-toolbar"><div><h2>قائمة المعاملات</h2><span>{apps.length} نتيجة</span></div><button><Search /></button></div>{apps.length === 0 ? <div className="empty-queue"><FileText /><p>لا توجد معاملات. قدّم طلباً من بوابة المواطن أولاً.</p></div> : apps.map(app => <button className={selected?.reference === app.reference ? 'queue-item selected' : 'queue-item'} key={app.reference} onClick={() => setSelected(app)}><div><strong>{app.serviceName}</strong><span className={`status ${app.status.toLowerCase()}`}>{statusLabels[app.status]}</span></div><small>{app.reference} • {app.citizenName}</small><p>{app.currentAction}</p><time>{new Date(app.updatedAt).toLocaleTimeString('ar-IQ', { hour: '2-digit', minute: '2-digit' })}</time></button>)}</section><section className="review-panel">{selected ? <><div className="review-header"><div><span className={`status ${selected.status.toLowerCase()}`}>{statusLabels[selected.status]}</span><h2>{selected.serviceName}</h2><p>{selected.reference}</p></div><button><FileArchive /></button></div><div className="citizen-access-notice"><ShieldCheck /><span><strong>وصول حسب الحاجة الوظيفية</strong><small>بيانات الهوية الحساسة مخفية، وتم تسجيل فتح المعاملة في سجل التدقيق.</small></span></div><div className="review-section"><h3>بيانات المواطن</h3><div className="review-data-grid"><span><small>الاسم</small><strong>{selected.citizenName} <BadgeCheck /></strong></span><span><small>الرقم الوطني</small><strong>********** 4821</strong></span><span><small>القضاء</small><strong>{selected.district}</strong></span><span><small>حالة الهوية</small><strong>VERIFIED — DEMO</strong></span></div></div><div className="review-section"><h3>بيانات النشاط</h3><div className="review-data-grid"><span><small>المحل</small><strong>{selected.businessName}</strong></span><span><small>النشاط</small><strong>{selected.activityType}</strong></span><span className="wide"><small>العنوان</small><strong>{selected.address}</strong></span></div></div><div className="review-section"><h3>المستندات</h3><div className="review-document"><FileText /><div><strong>عقد الإيجار.pdf</strong><small>PDF • فحص خلو من البرمجيات: ناجح</small></div><button><Eye /></button></div></div><div className="review-actions"><button className="button outline danger" onClick={() => act('request')} disabled={busy}><Bell /> طلب مستند</button><button className="button primary" onClick={() => act('approve')} disabled={busy || selected.status === 'ACTION_REQUIRED' || selected.status === 'APPROVED'}><CheckCircle2 /> {selected.status === 'APPROVED' ? 'تمت الموافقة' : 'موافقة وإصدار الوثيقة'}</button></div></> : <div className="empty-queue"><FileText /><p>اختر معاملة لبدء التدقيق.</p></div>}</section></div><IdentityReviewPanel /></PortalLayout>
 }
 
 function OperationsShell({ children, active = 'operations' }: { children: React.ReactNode; active?: string }) {
