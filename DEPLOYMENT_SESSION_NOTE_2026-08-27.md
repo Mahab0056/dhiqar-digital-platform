@@ -15,3 +15,7 @@ The server and interface support `OPERATIONS` as a read-only operational role. I
 ## Local browser verification note
 
 The local operations login route returned the expected application title when opened, but the controlled browser moved to `about:blank` before visual controls could be inspected. This browser behavior did not affect the API/E2E verification, which passed against the isolated local server. Visual mobile inspection must be repeated after the deployed build is active.
+
+## Production deployment result
+
+Railway reported a successful deployment for service `dhiqar-digital-platform` after the GitHub push. The deployment corresponded to commit `fbcfc06aa4f7f13824ec2784b18d1a5d3ba72529` and reached status `SUCCESS` at `2026-08-27T06:57:31.890Z`. The service has the configured `/api/health` health-check path and its Railway volume mount remains present.
