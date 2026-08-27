@@ -60,7 +60,7 @@ function validateUploadedFile(file: Express.Multer.File, allowed: Array<'image' 
   return actual
 }
 
-type SessionRole = 'CITIZEN' | 'EMPLOYEE' | 'IDENTITY_REVIEWER'
+type SessionRole = 'CITIZEN' | 'EMPLOYEE' | 'IDENTITY_REVIEWER' | 'SUPER_ADMIN'
 type SessionData = { sub: string; role: SessionRole; exp: number }
 const sessionCookieName = 'dhiqar_session'
 const sessionTtlSeconds = 12 * 60 * 60
@@ -140,6 +140,8 @@ function hasReviewAccess(req: express.Request) {
 }
 
 function requireReviewAccess(req: express.Request, res: express.Response, next: express.NextFunction) {
+  const session = res.locals.session as SessionData | undefined
+  if (session?.role === 'SUPER_ADMIN') return next()
   if (!hasReviewAccess(req)) return res.status(401).json({ message: 'رمز دخول المراجعة غير صحيح أو غير مهيأ.' })
   next()
 }
@@ -224,6 +226,14 @@ app.post('/api/auth/employee', sensitiveLimiter, (req, res) => {
   setSession(res, 'employee-reviewer', 'EMPLOYEE')
   addAudit({ actor: 'موظف مصرح', role: 'EMPLOYEE', action: 'EMPLOYEE_SESSION_CREATED', entityType: 'Session', entityId: randomUUID(), metadata: { ip: req.ip } })
   res.json({ authenticated: true, role: 'EMPLOYEE', expiresInSeconds: sessionTtlSeconds })
+})
+
+app.post('/api/auth/super-admin', sensitiveLimiter, (req, res) => {
+  const payload = z.object({ accessCode: z.string().min(12).max(200) }).parse(req.body)
+  if (!secureStringEquals(process.env.SUPER_ADMIN_PASSWORD, payload.accessCode)) return res.status(401).json({ message: 'بيانات دخول المدير العام غير صحيحة.' })
+  setSession(res, 'super-admin', 'SUPER_ADMIN')
+  addAudit({ actor: 'مدير النظام', role: 'SUPER_ADMIN', action: 'SUPER_ADMIN_SESSION_CREATED', entityType: 'Session', entityId: randomUUID(), metadata: { ip: req.ip } })
+  res.json({ authenticated: true, role: 'SUPER_ADMIN', expiresInSeconds: sessionTtlSeconds })
 })
 
 app.post('/api/auth/logout', (req, res) => {
@@ -481,7 +491,7 @@ app.get('/api/onboarding/identity-review/latest', requireSession('CITIZEN'), (_r
   res.json(review || null)
 })
 
-app.get('/api/admin/identity-reviews', requireSession('EMPLOYEE', 'IDENTITY_REVIEWER'), requireReviewAccess, (_req, res) => {
+app.get('/api/admin/identity-reviews', requireSession('EMPLOYEE', 'IDENTITY_REVIEWER', 'SUPER_ADMIN'), requireReviewAccess, (_req, res) => {
   const rows = db.prepare(`
     SELECT r.id, r.status, r.national_id_masked, r.consent_at, r.submitted_at, r.reviewed_at, r.reviewed_by, r.review_notes, r.retention_until,
            r.quality_status, r.quality_score, r.quality_checks, r.face_match_status, r.face_match_score, r.face_match_provider,
@@ -525,7 +535,7 @@ app.get('/api/admin/identity-reviews', requireSession('EMPLOYEE', 'IDENTITY_REVI
   })))
 })
 
-app.get('/api/admin/media/:id', requireSession('EMPLOYEE', 'IDENTITY_REVIEWER'), requireReviewAccess, (req, res) => {
+app.get('/api/admin/media/:id', requireSession('EMPLOYEE', 'IDENTITY_REVIEWER', 'SUPER_ADMIN'), requireReviewAccess, (req, res) => {
   try {
     const media = readDecryptedMedia(req.params.id)
     if (!media) return res.status(404).json({ message: 'الوسيط غير متاح أو انتهت مدة الاحتفاظ.' })
@@ -539,7 +549,7 @@ app.get('/api/admin/media/:id', requireSession('EMPLOYEE', 'IDENTITY_REVIEWER'),
   }
 })
 
-app.post('/api/admin/identity-reviews/:id/decision', requireSession('EMPLOYEE', 'IDENTITY_REVIEWER'), requireReviewAccess, (req, res) => {
+app.post('/api/admin/identity-reviews/:id/decision', requireSession('EMPLOYEE', 'IDENTITY_REVIEWER', 'SUPER_ADMIN'), requireReviewAccess, (req, res) => {
   try {
     const payload = z.object({ decision: z.enum(['APPROVED', 'REJECTED', 'NEEDS_RESUBMISSION']), notes: z.string().max(1000).default('') }).parse(req.body)
     const review = db.prepare('SELECT * FROM identity_reviews WHERE id = ?').get(req.params.id) as Record<string, unknown> | undefined
@@ -569,9 +579,9 @@ app.post('/api/admin/identity-reviews/:id/decision', requireSession('EMPLOYEE', 
   }
 })
 
-app.get('/api/applications', requireSession('EMPLOYEE'), (_req, res) => res.json(getApplications()))
+app.get('/api/applications', requireSession('EMPLOYEE', 'SUPER_ADMIN'), (_req, res) => res.json(getApplications()))
 
-app.get('/api/applications/:reference', requireSession('CITIZEN', 'EMPLOYEE'), (req, res) => {
+app.get('/api/applications/:reference', requireSession('CITIZEN', 'EMPLOYEE', 'SUPER_ADMIN'), (req, res) => {
   const item = getApplicationByReference(req.params.reference)
   if (!item) return res.status(404).json({ message: 'المعاملة غير موجودة.' })
   const session = res.locals.session as SessionData
@@ -581,7 +591,7 @@ app.get('/api/applications/:reference', requireSession('CITIZEN', 'EMPLOYEE'), (
     if (Number(item.citizenId) !== citizen.id) return res.status(404).json({ message: 'المعاملة غير موجودة.' })
     addAudit({ actor: citizen.fullName, role: 'CITIZEN', action: 'APPLICATION_VIEW', entityType: 'Application', entityId: req.params.reference, metadata: { maskedCitizenData: true } })
   } else {
-    addAudit({ actor: session.sub, role: 'EMPLOYEE', action: 'APPLICATION_VIEW', entityType: 'Application', entityId: req.params.reference, metadata: { maskedCitizenData: true } })
+    addAudit({ actor: session.sub, role: session.role, action: 'APPLICATION_VIEW', entityType: 'Application', entityId: req.params.reference, metadata: { maskedCitizenData: true } })
   }
   res.json(item)
 })
@@ -645,7 +655,7 @@ app.post('/api/applications', requireSession('CITIZEN'), upload.fields([{ name: 
   res.status(201).json(getApplicationByReference(reference))
 })
 
-app.post('/api/applications/:reference/request-document', requireSession('EMPLOYEE'), (req, res) => {
+app.post('/api/applications/:reference/request-document', requireSession('EMPLOYEE', 'SUPER_ADMIN'), (req, res) => {
   const payload = z.object({ documentName: z.string().min(2) }).parse(req.body)
   const item = getApplicationByReference(req.params.reference)
   if (!item) return res.status(404).json({ message: 'المعاملة غير موجودة.' })
@@ -678,7 +688,7 @@ app.post('/api/applications/:reference/upload-document', requireSession('CITIZEN
   res.json(getApplicationByReference(req.params.reference))
 })
 
-app.post('/api/applications/:reference/approve', requireSession('EMPLOYEE'), (req, res) => {
+app.post('/api/applications/:reference/approve', requireSession('EMPLOYEE', 'SUPER_ADMIN'), (req, res) => {
   const item = getApplicationByReference(req.params.reference)
   if (!item) return res.status(404).json({ message: 'المعاملة غير موجودة.' })
   if (item.status === 'ACTION_REQUIRED') return res.status(409).json({ message: 'لا يمكن الموافقة قبل استكمال المستند المطلوب.' })
@@ -761,6 +771,17 @@ app.get('/api/dashboard/stats', (_req, res) => {
     series,
     departments: getRegistryDepartments(),
     registry: registrySummary,
+  })
+})
+
+app.get('/api/super-admin/overview', requireSession('SUPER_ADMIN'), (_req, res) => {
+  const audit = db.prepare(`SELECT actor, role, action, entity_type, entity_id, created_at
+    FROM audit_logs ORDER BY created_at DESC LIMIT 20`).all() as Array<Record<string, unknown>>
+  const pendingIdentity = (db.prepare(`SELECT COUNT(*) AS total FROM identity_reviews WHERE status = 'PENDING_REVIEW'`).get() as { total: number }).total
+  const openApplications = (db.prepare(`SELECT COUNT(*) AS total FROM applications WHERE status IN ('SUBMITTED', 'UNDER_REVIEW', 'ACTION_REQUIRED', 'PAYMENT_REQUIRED')`).get() as { total: number }).total
+  res.json({
+    system: { pendingIdentity, openApplications, verifiedDepartments: registrySummary.verified, gisLocations: registrySummary.gisComplete },
+    recentAudit: audit.map(row => ({ actor: row.actor, role: row.role, action: row.action, entityType: row.entity_type, entityId: row.entity_id, createdAt: row.created_at })),
   })
 })
 

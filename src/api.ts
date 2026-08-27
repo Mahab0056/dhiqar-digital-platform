@@ -14,9 +14,11 @@ const request = async <T>(path: string, options?: RequestInit): Promise<T> => {
 }
 
 export const api = {
-  getSession: () => request<{ authenticated: true; role: 'CITIZEN' | 'EMPLOYEE' | 'IDENTITY_REVIEWER'; subject: string; expiresAt: string }>('/api/auth/session'),
+  getSession: () => request<{ authenticated: true; role: 'CITIZEN' | 'EMPLOYEE' | 'IDENTITY_REVIEWER' | 'SUPER_ADMIN'; subject: string; expiresAt: string }>('/api/auth/session'),
   loginEmployee: (accessCode: string) => request<{ authenticated: true; role: 'EMPLOYEE'; expiresInSeconds: number }>('/api/auth/employee', { method: 'POST', body: JSON.stringify({ accessCode }) }),
+  loginSuperAdmin: (accessCode: string) => request<{ authenticated: true; role: 'SUPER_ADMIN'; expiresInSeconds: number }>('/api/auth/super-admin', { method: 'POST', body: JSON.stringify({ accessCode }) }),
   logout: () => request<{ success: boolean }>('/api/auth/logout', { method: 'POST' }),
+  getSuperAdminOverview: () => request<{ system: { pendingIdentity: number; openApplications: number; verifiedDepartments: number; gisLocations: number }; recentAudit: Array<{ actor: string; role: string; action: string; entityType: string; entityId: string; createdAt: string }> }>('/api/super-admin/overview'),
   getDemoCitizen: () => request<Citizen>('/api/citizen/demo'),
   listCitizenApplications: () => request<GovernmentApplication[]>('/api/citizen/applications'),
   listCitizenServiceRequests: () => request<CitizenServiceRequest[]>('/api/citizen/service-requests'),
