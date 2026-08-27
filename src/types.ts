@@ -75,10 +75,16 @@ export interface CitizenServiceRequest {
   id: number
   reference: string
   serviceKey: string
+  serviceName?: string
   departmentId: string
+  department?: string
   status: string
   formData: Record<string, string>
   currentAction: string
+  decisionNote?: string | null
+  requiredDocument?: string | null
+  citizenName?: string
+  attachments?: Array<{ id: string; mediaId: string; label: string; originalName: string; mimeType: string; sizeBytes: number; available: boolean }>
   createdAt: string
   updatedAt: string
   appointment?: { id: string; preferredDate: string; preferredTime: string; status: string; note?: string | null } | null
@@ -128,6 +134,28 @@ export interface DashboardStats {
     lng: number | null
     status: 'ONLINE' | 'DEGRADED' | 'OFFLINE' | 'UNKNOWN'
     transactions: number
+    submitted: number
+    underReview: number
+    actionRequired: number
+    completed: number
+    rejected: number
+    openFeedback: number
+    workforce: {
+      totalEmployees: number | null
+      presentEmployees: number | null
+      absentEmployees: number | null
+      dataStatus: 'AWAITING_AUTHORIZED_SOURCE' | 'RECORDED_BY_SUPER_ADMIN'
+      sourceName?: string | null
+      sourceUrl?: string | null
+      observedAt?: string | null
+    }
+    cameras: {
+      configured: number
+      enabled: number
+      status: 'AWAITING_AUTHORIZATION' | 'CONFIGURED_DISABLED' | 'READY_FOR_GATEWAY'
+      sourceName?: string | null
+      lastCheckedAt?: string | null
+    }
     automation: number
     sourceUrl?: string
     dataStatus?: 'VERIFIED_SOURCE' | 'NEEDS_VERIFICATION'

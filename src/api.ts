@@ -14,15 +14,24 @@ const request = async <T>(path: string, options?: RequestInit): Promise<T> => {
 }
 
 export const api = {
-  getSession: () => request<{ authenticated: true; role: 'CITIZEN' | 'EMPLOYEE' | 'IDENTITY_REVIEWER' | 'SUPER_ADMIN'; subject: string; expiresAt: string }>('/api/auth/session'),
+  getSession: () => request<{ authenticated: true; role: 'CITIZEN' | 'EMPLOYEE' | 'IDENTITY_REVIEWER' | 'OPERATIONS' | 'SUPER_ADMIN'; subject: string; expiresAt: string }>('/api/auth/session'),
   loginEmployee: (accessCode: string) => request<{ authenticated: true; role: 'EMPLOYEE'; expiresInSeconds: number }>('/api/auth/employee', { method: 'POST', body: JSON.stringify({ accessCode }) }),
+  loginOperations: (accessCode: string) => request<{ authenticated: true; role: 'OPERATIONS'; expiresInSeconds: number }>('/api/auth/operations', { method: 'POST', body: JSON.stringify({ accessCode }) }),
   loginSuperAdmin: (accessCode: string) => request<{ authenticated: true; role: 'SUPER_ADMIN'; expiresInSeconds: number }>('/api/auth/super-admin', { method: 'POST', body: JSON.stringify({ accessCode }) }),
   logout: () => request<{ success: boolean }>('/api/auth/logout', { method: 'POST' }),
   getSuperAdminOverview: () => request<{ system: { pendingIdentity: number; openApplications: number; verifiedDepartments: number; gisLocations: number }; recentAudit: Array<{ actor: string; role: string; action: string; entityType: string; entityId: string; createdAt: string }> }>('/api/super-admin/overview'),
   getDemoCitizen: () => request<Citizen>('/api/citizen/demo'),
   listCitizenApplications: () => request<GovernmentApplication[]>('/api/citizen/applications'),
   listCitizenServiceRequests: () => request<CitizenServiceRequest[]>('/api/citizen/service-requests'),
+  listEmployeeServiceRequests: () => request<CitizenServiceRequest[]>('/api/employee/service-requests'),
+  updateEmployeeServiceRequest: (reference: string, payload: { status: 'UNDER_REVIEW' | 'ACTION_REQUIRED' | 'APPROVED' | 'REJECTED'; currentAction: string; decisionNote?: string; requiredDocument?: string }) => request<CitizenServiceRequest>(`/api/employee/service-requests/${reference}`, { method: 'PATCH', body: JSON.stringify(payload) }),
   createServiceRequest: (serviceKey: string, data: Record<string, string>) => request<{ id: number; reference: string; serviceKey: string; serviceName: string; department: string; status: string; currentAction: string; appointment: { id: string; preferredDate: string; preferredTime: string; status: string } | null; createdAt: string }>('/api/service-requests', { method: 'POST', body: JSON.stringify({ serviceKey, data }) }),
+  uploadServiceRequestDocument: async (reference: string, documentName: string, document: File) => {
+    const form = new FormData(); form.append('documentName', documentName); form.append('document', document)
+    const response = await fetch(`/api/citizen/service-requests/${reference}/upload-document`, { method: 'POST', credentials: 'include', body: form })
+    if (!response.ok) { const body = await response.json().catch(() => ({ message: 'تعذر رفع المستند المطلوب.' })); throw new Error(body.message || 'تعذر رفع المستند المطلوب.') }
+    return response.json() as Promise<CitizenServiceRequest>
+  },
   listFeedback: () => request<CitizenFeedback[]>('/api/citizen/feedback'),
   getFeedback: (reference: string) => request<CitizenFeedback>(`/api/citizen/feedback/${reference}`),
   createFeedback: async (payload: { kind: 'COMPLAINT' | 'SUGGESTION'; category: string; departmentId?: string; subject: string; description: string; district?: string; lat?: number; lng?: number; attachments: File[] }) => {

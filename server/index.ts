@@ -66,7 +66,7 @@ function validateUploadedFile(file: Express.Multer.File, allowed: Array<'image' 
   return actual
 }
 
-type SessionRole = 'CITIZEN' | 'EMPLOYEE' | 'IDENTITY_REVIEWER' | 'SUPER_ADMIN'
+type SessionRole = 'CITIZEN' | 'EMPLOYEE' | 'IDENTITY_REVIEWER' | 'OPERATIONS' | 'SUPER_ADMIN'
 type SessionData = { sub: string; role: SessionRole; exp: number }
 const sessionCookieName = 'dhiqar_session'
 const sessionTtlSeconds = 12 * 60 * 60
@@ -234,6 +234,14 @@ app.post('/api/auth/employee', sensitiveLimiter, (req, res) => {
   res.json({ authenticated: true, role: 'EMPLOYEE', expiresInSeconds: sessionTtlSeconds })
 })
 
+app.post('/api/auth/operations', sensitiveLimiter, (req, res) => {
+  const payload = z.object({ accessCode: z.string().min(12).max(200) }).parse(req.body)
+  if (!secureStringEquals(process.env.OPERATIONS_PASSWORD, payload.accessCode)) return res.status(401).json({ message: 'بيانات دخول غرفة العمليات غير صحيحة.' })
+  setSession(res, 'operations-controller', 'OPERATIONS')
+  addAudit({ actor: 'مشغل غرفة العمليات', role: 'OPERATIONS', action: 'OPERATIONS_SESSION_CREATED', entityType: 'Session', entityId: randomUUID(), metadata: { ip: req.ip } })
+  res.json({ authenticated: true, role: 'OPERATIONS', expiresInSeconds: sessionTtlSeconds })
+})
+
 app.post('/api/auth/super-admin', sensitiveLimiter, (req, res) => {
   const payload = z.object({ accessCode: z.string().min(12).max(200) }).parse(req.body)
   if (!secureStringEquals(process.env.SUPER_ADMIN_PASSWORD, payload.accessCode)) return res.status(401).json({ message: 'بيانات دخول المدير العام غير صحيحة.' })
@@ -291,7 +299,7 @@ app.get('/api/citizen/service-requests', requireSession('CITIZEN'), (_req, res) 
     WHERE sr.citizen_id = ? ORDER BY sr.created_at DESC`).all(citizen.id) as Array<Record<string, unknown>>
   res.json(rows.map(row => ({
     id: row.id, reference: row.reference, serviceKey: row.service_id, departmentId: row.department_id, status: row.status,
-    formData: JSON.parse(String(row.form_data || '{}')), currentAction: row.current_action, createdAt: row.created_at, updatedAt: row.updated_at,
+    formData: JSON.parse(String(row.form_data || '{}')), currentAction: row.current_action, decisionNote: row.decision_note || null, requiredDocument: row.required_document || null, attachments: serviceRequestAttachments(Number(row.id)), createdAt: row.created_at, updatedAt: row.updated_at,
     appointment: row.appointment_id ? { id: row.appointment_id, preferredDate: row.preferred_date, preferredTime: row.preferred_time, status: row.appointment_status, note: row.confirmation_note } : null,
   })))
 })
@@ -388,7 +396,7 @@ app.patch('/api/admin/feedback/:reference', requireSession('EMPLOYEE', 'SUPER_AD
 app.post('/api/service-requests', requireSession('CITIZEN'), (req, res) => {
   const payload = z.object({ serviceKey: z.string().min(2).max(80), data: z.record(z.string(), z.unknown()) }).parse(req.body)
   const definition = getServiceDefinition(payload.serviceKey)
-  if (!definition || definition.mode === 'SPECIALIZED') return res.status(404).json({ message: 'الخدمة غير متاحة عبر محرك الاستمارات العام.' })
+  if (!definition || !['GENERIC', 'APPOINTMENT'].includes(definition.mode)) return res.status(404).json({ message: 'هذه الخدمة لا تُنشأ عبر استمارة محلية داخل المنصة.' })
   const citizen = currentCitizen(res)
   if (!citizen) return
   if (!['VERIFIED', 'VERIFIED_MANUAL'].includes(citizen.verificationStatus)) return res.status(409).json({ message: 'أكمل مراجعة الهوية قبل إرسال طلب جديد.' })
@@ -442,6 +450,86 @@ app.post('/api/service-requests', requireSession('CITIZEN'), (req, res) => {
   createNotification({ citizenId: citizen.id, type: definition.mode === 'APPOINTMENT' ? 'APPOINTMENT_REQUESTED' : 'SERVICE_REQUEST_CREATED', title: definition.mode === 'APPOINTMENT' ? 'تم إرسال طلب الموعد' : 'تم تسجيل طلب الخدمة', message: `${definition.title} — ${reference}. ${currentAction}`, link: '/citizen' })
   addAudit({ actor: citizen.fullName, role: 'CITIZEN', action: definition.mode === 'APPOINTMENT' ? 'APPOINTMENT_REQUESTED' : 'SERVICE_REQUEST_CREATED', entityType: 'ServiceRequest', entityId: reference, newValue: { service: definition.key, department: department.id }, metadata: { storedFields: Object.keys(cleanData) } })
   res.status(201).json({ id: serviceRequestId, reference, serviceKey: definition.key, serviceName: definition.title, department: department.name, status: definition.mode === 'APPOINTMENT' ? 'APPOINTMENT_REQUESTED' : 'SUBMITTED', currentAction, appointment, createdAt: timestamp })
+})
+
+const serviceRequestAttachments = (requestId: number) => (db.prepare(`SELECT srm.id, srm.media_id, srm.label, mo.original_name, mo.mime_type, mo.size_bytes, mo.deleted_at
+  FROM service_request_media srm JOIN media_objects mo ON mo.id = srm.media_id WHERE srm.service_request_id = ? ORDER BY srm.created_at ASC`).all(requestId) as Array<Record<string, unknown>>).map(item => ({
+  id: String(item.id), mediaId: String(item.media_id), label: String(item.label), originalName: String(item.original_name), mimeType: String(item.mime_type), sizeBytes: Number(item.size_bytes), available: !item.deleted_at,
+}))
+
+const serializeServiceRequestForEmployee = (row: Record<string, unknown>) => ({
+  id: Number(row.id), reference: String(row.reference), serviceKey: String(row.service_id), departmentId: String(row.department_id),
+  serviceName: String(row.service_name), department: String(row.department_name), citizenName: String(row.citizen_name),
+  status: String(row.status), formData: JSON.parse(String(row.form_data || '{}')), currentAction: String(row.current_action),
+  decisionNote: row.decision_note ? String(row.decision_note) : null, requiredDocument: row.required_document ? String(row.required_document) : null,
+  attachments: serviceRequestAttachments(Number(row.id)), createdAt: String(row.created_at), updatedAt: String(row.updated_at),
+})
+
+app.get('/api/employee/service-requests', requireSession('EMPLOYEE', 'SUPER_ADMIN'), (_req, res) => {
+  const rows = db.prepare(`SELECT sr.*, sc.name AS service_name, d.name AS department_name, c.full_name AS citizen_name
+    FROM service_requests sr
+    JOIN service_catalog sc ON sc.id = sr.service_id
+    JOIN departments d ON d.id = sr.department_id
+    JOIN citizens c ON c.id = sr.citizen_id
+    ORDER BY CASE sr.status WHEN 'SUBMITTED' THEN 0 WHEN 'UNDER_REVIEW' THEN 1 WHEN 'ACTION_REQUIRED' THEN 2 ELSE 3 END, sr.updated_at DESC`).all() as Array<Record<string, unknown>>
+  res.json(rows.map(serializeServiceRequestForEmployee))
+})
+
+app.patch('/api/employee/service-requests/:reference', requireSession('EMPLOYEE', 'SUPER_ADMIN'), (req, res) => {
+  const row = db.prepare(`SELECT sr.*, sc.name AS service_name, d.name AS department_name, c.full_name AS citizen_name
+    FROM service_requests sr JOIN service_catalog sc ON sc.id = sr.service_id JOIN departments d ON d.id = sr.department_id JOIN citizens c ON c.id = sr.citizen_id
+    WHERE sr.reference = ?`).get(req.params.reference) as Record<string, unknown> | undefined
+  if (!row) return res.status(404).json({ message: 'طلب الخدمة غير موجود.' })
+  const parsed = z.object({
+    status: z.enum(['UNDER_REVIEW', 'ACTION_REQUIRED', 'APPROVED', 'REJECTED']),
+    currentAction: z.string().trim().min(6).max(500),
+    decisionNote: z.string().trim().max(1500).optional(),
+    requiredDocument: z.string().trim().max(160).optional(),
+  }).safeParse(req.body)
+  if (!parsed.success) return res.status(400).json({ message: 'تحقق من الحالة ووصف الإجراء قبل الحفظ.' })
+  if (parsed.data.status === 'ACTION_REQUIRED' && !parsed.data.requiredDocument) return res.status(400).json({ message: 'اكتب اسم المستند أو النقص المطلوب من المواطن.' })
+  if (parsed.data.status === 'REJECTED' && !parsed.data.decisionNote) return res.status(400).json({ message: 'اكتب سبب الرفض للمواطن قبل حفظ القرار.' })
+  const timestamp = new Date().toISOString()
+  db.prepare(`UPDATE service_requests SET status = ?, current_action = ?, decision_note = ?, required_document = ?, updated_at = ? WHERE reference = ?`)
+    .run(parsed.data.status, parsed.data.currentAction, parsed.data.decisionNote || null, parsed.data.status === 'ACTION_REQUIRED' ? parsed.data.requiredDocument : null, timestamp, req.params.reference)
+  const session = res.locals.session as SessionData
+  const actor = session.role === 'SUPER_ADMIN' ? 'مدير النظام' : 'موظف مختص'
+  const title = parsed.data.status === 'APPROVED' ? 'تمت معاملة الخدمة' : parsed.data.status === 'REJECTED' ? 'تم رفض طلب الخدمة' : parsed.data.status === 'ACTION_REQUIRED' ? 'مستندات أو معلومات مطلوبة' : 'طلب الخدمة قيد التدقيق'
+  createNotification({ citizenId: Number(row.citizen_id), type: 'SERVICE_REQUEST_UPDATED', title, message: `${String(row.reference)} — ${parsed.data.currentAction}${parsed.data.decisionNote ? ` • ${parsed.data.decisionNote}` : ''}`, link: '/citizen#my-requests' })
+  addAudit({ actor, role: session.role, action: 'SERVICE_REQUEST_STATUS_UPDATED', entityType: 'ServiceRequest', entityId: req.params.reference, previousValue: { status: row.status }, newValue: { status: parsed.data.status, requiredDocument: parsed.data.requiredDocument || null } })
+  const updated = db.prepare(`SELECT sr.*, sc.name AS service_name, d.name AS department_name, c.full_name AS citizen_name
+    FROM service_requests sr JOIN service_catalog sc ON sc.id = sr.service_id JOIN departments d ON d.id = sr.department_id JOIN citizens c ON c.id = sr.citizen_id
+    WHERE sr.reference = ?`).get(req.params.reference) as Record<string, unknown>
+  res.json(serializeServiceRequestForEmployee(updated))
+})
+
+app.post('/api/citizen/service-requests/:reference/upload-document', requireSession('CITIZEN'), upload.single('document'), (req, res) => {
+  try {
+    const citizen = currentCitizen(res)
+    if (!citizen) return
+    const requestRecord = db.prepare(`SELECT sr.*, sc.name AS service_name, d.name AS department_name, c.full_name AS citizen_name
+      FROM service_requests sr JOIN service_catalog sc ON sc.id = sr.service_id JOIN departments d ON d.id = sr.department_id JOIN citizens c ON c.id = sr.citizen_id
+      WHERE sr.reference = ? AND sr.citizen_id = ?`).get(req.params.reference, citizen.id) as Record<string, unknown> | undefined
+    if (!requestRecord) return res.status(404).json({ message: 'طلب الخدمة غير موجود ضمن حسابك.' })
+    if (requestRecord.status !== 'ACTION_REQUIRED') return res.status(409).json({ message: 'لا يوجد مستند مطلوب لرفعه حالياً ضمن هذا الطلب.' })
+    if (!req.file) return res.status(400).json({ message: 'اختر صورة أو ملف PDF واضحاً قبل الرفع.' })
+    const documentName = String(req.body.documentName || requestRecord.required_document || 'المستند المطلوب').trim().slice(0, 160)
+    const mimeType = validateUploadedFile(req.file, ['image', 'pdf'])
+    const media = storeEncryptedMedia({ citizenId: citizen.id, purpose: 'SERVICE_REQUEST_DOCUMENT', originalName: req.file.originalname || 'service-document', mimeType, buffer: req.file.buffer, retentionHours: 168 })
+    db.prepare('INSERT INTO service_request_media (id, service_request_id, media_id, label, created_at) VALUES (?, ?, ?, ?, ?)')
+      .run(`srm_${randomUUID().replaceAll('-', '')}`, Number(requestRecord.id), media.id, documentName, new Date().toISOString())
+    const timestamp = new Date().toISOString()
+    const currentAction = 'تم رفع المستند المطلوب وإعادة الطلب إلى الموظف للتدقيق.'
+    db.prepare(`UPDATE service_requests SET status = 'UNDER_REVIEW', current_action = ?, decision_note = NULL, required_document = NULL, updated_at = ? WHERE id = ?`)
+      .run(currentAction, timestamp, Number(requestRecord.id))
+    createNotification({ citizenId: citizen.id, type: 'SERVICE_DOCUMENT_UPLOADED', title: 'تم رفع المستند المطلوب', message: `${String(requestRecord.reference)} — ${currentAction}`, link: '/citizen#my-requests' })
+    addAudit({ actor: citizen.fullName, role: 'CITIZEN', action: 'SERVICE_REQUEST_DOCUMENT_UPLOADED', entityType: 'ServiceRequest', entityId: String(requestRecord.reference), newValue: { label: documentName, mediaId: media.id } })
+    const updated = db.prepare(`SELECT sr.*, sc.name AS service_name, d.name AS department_name, c.full_name AS citizen_name
+      FROM service_requests sr JOIN service_catalog sc ON sc.id = sr.service_id JOIN departments d ON d.id = sr.department_id JOIN citizens c ON c.id = sr.citizen_id WHERE sr.id = ?`).get(Number(requestRecord.id)) as Record<string, unknown>
+    res.json(serializeServiceRequestForEmployee(updated))
+  } catch (error) {
+    res.status(400).json({ message: error instanceof Error ? error.message : 'تعذر رفع المستند المطلوب.' })
+  }
 })
 
 app.post('/api/onboarding/request-otp', async (req, res) => {
@@ -823,50 +911,156 @@ app.get('/api/verify/:verificationId', (req, res) => {
 })
 
 function getRegistryDepartments() {
-  const activityRows = db.prepare('SELECT department, COUNT(*) AS transactions FROM applications GROUP BY department').all() as Array<{ department: string; transactions: number }>
-  const activityByDepartment = new Map(activityRows.map(row => [row.department, row.transactions]))
-  return departmentRegistry.map(item => ({
-    id: item.id,
-    name: item.name,
-    type: item.category,
-    district: item.district,
-    lat: item.lat,
-    lng: item.lng,
-    status: item.gisStatus === 'COORDINATES_VERIFIED' ? 'ONLINE' : 'UNKNOWN',
-    transactions: activityByDepartment.get(item.name) || 0,
-    automation: 0,
-    sourceUrl: item.sourceUrl,
-    dataStatus: item.dataStatus,
-    gisStatus: item.gisStatus,
-  }))
+  type WorkloadRow = { departmentId: string; total: number; underReview: number; actionRequired: number; completed: number; rejected: number }
+  const workload = new Map<string, WorkloadRow>()
+  const register = (departmentId: string, status: string, count: number) => {
+    const current = workload.get(departmentId) || { departmentId, total: 0, underReview: 0, actionRequired: 0, completed: 0, rejected: 0 }
+    current.total += count
+    if (status === 'UNDER_REVIEW') current.underReview += count
+    if (status === 'ACTION_REQUIRED') current.actionRequired += count
+    if (status === 'APPROVED') current.completed += count
+    if (status === 'REJECTED') current.rejected += count
+    workload.set(departmentId, current)
+  }
+  const registryByName = new Map(departmentRegistry.map(item => [item.name, item.id]))
+  const serviceRows = db.prepare('SELECT department_id, status, COUNT(*) AS total FROM service_requests GROUP BY department_id, status').all() as Array<{ department_id: string; status: string; total: number }>
+  serviceRows.forEach(row => register(String(row.department_id), String(row.status), Number(row.total)))
+  const applicationRows = db.prepare('SELECT department, status, COUNT(*) AS total FROM applications GROUP BY department, status').all() as Array<{ department: string; status: string; total: number }>
+  applicationRows.forEach(row => { const departmentId = registryByName.get(String(row.department)); if (departmentId) register(departmentId, String(row.status), Number(row.total)) })
+  const feedbackRows = db.prepare(`SELECT department_id, COUNT(*) AS total FROM citizen_feedback
+    WHERE department_id IS NOT NULL AND status NOT IN ('RESOLVED', 'CLOSED') GROUP BY department_id`).all() as Array<{ department_id: string; total: number }>
+  const openFeedbackByDepartment = new Map(feedbackRows.map(row => [String(row.department_id), Number(row.total)]))
+  const workforceRows = db.prepare(`SELECT s.* FROM department_workforce_snapshots s
+    JOIN (SELECT department_id, MAX(observed_at) AS observed_at FROM department_workforce_snapshots GROUP BY department_id) latest
+      ON latest.department_id = s.department_id AND latest.observed_at = s.observed_at`).all() as Array<Record<string, unknown>>
+  const workforceByDepartment = new Map(workforceRows.map(row => [String(row.department_id), row]))
+  const cameraCounts = db.prepare(`SELECT department_id, COUNT(*) AS configured, SUM(CASE WHEN enabled = 1 THEN 1 ELSE 0 END) AS enabled
+    FROM department_cameras GROUP BY department_id`).all() as Array<{ department_id: string; configured: number; enabled: number | null }>
+  const cameraCountByDepartment = new Map(cameraCounts.map(row => [String(row.department_id), row]))
+  const latestCameras = db.prepare(`SELECT c.* FROM department_cameras c
+    JOIN (SELECT department_id, MAX(updated_at) AS updated_at FROM department_cameras GROUP BY department_id) latest
+      ON latest.department_id = c.department_id AND latest.updated_at = c.updated_at`).all() as Array<Record<string, unknown>>
+  const latestCameraByDepartment = new Map(latestCameras.map(row => [String(row.department_id), row]))
+  return departmentRegistry.map(item => {
+    const activity = workload.get(item.id) || { departmentId: item.id, total: 0, underReview: 0, actionRequired: 0, completed: 0, rejected: 0 }
+    const workforce = workforceByDepartment.get(item.id)
+    const cameraCount = cameraCountByDepartment.get(item.id)
+    const latestCamera = latestCameraByDepartment.get(item.id)
+    const cameraEnabled = Number(cameraCount?.enabled || 0)
+    return {
+      id: item.id,
+      name: item.name,
+      type: item.category,
+      district: item.district,
+      lat: item.lat,
+      lng: item.lng,
+      status: item.gisStatus === 'COORDINATES_VERIFIED' ? 'ONLINE' : 'UNKNOWN',
+      transactions: activity.total,
+      submitted: activity.total,
+      underReview: activity.underReview,
+      actionRequired: activity.actionRequired,
+      completed: activity.completed,
+      rejected: activity.rejected,
+      openFeedback: openFeedbackByDepartment.get(item.id) || 0,
+      workforce: workforce ? {
+        totalEmployees: Number(workforce.total_employees), presentEmployees: Number(workforce.present_employees), absentEmployees: Number(workforce.absent_employees),
+        dataStatus: 'RECORDED_BY_SUPER_ADMIN', sourceName: String(workforce.source_name), sourceUrl: workforce.source_url ? String(workforce.source_url) : null, observedAt: String(workforce.observed_at),
+      } : {
+        totalEmployees: null, presentEmployees: null, absentEmployees: null, dataStatus: 'AWAITING_AUTHORIZED_SOURCE', sourceName: null, sourceUrl: null, observedAt: null,
+      },
+      cameras: cameraCount ? {
+        configured: Number(cameraCount.configured), enabled: cameraEnabled,
+        status: cameraEnabled > 0 && latestCamera?.authorization_status === 'AUTHORIZED_GATEWAY' ? 'READY_FOR_GATEWAY' : 'CONFIGURED_DISABLED',
+        sourceName: latestCamera?.source_name ? String(latestCamera.source_name) : null, lastCheckedAt: latestCamera?.last_checked_at ? String(latestCamera.last_checked_at) : null,
+      } : {
+        configured: 0, enabled: 0, status: 'AWAITING_AUTHORIZATION', sourceName: null, lastCheckedAt: null,
+      },
+      automation: 0,
+      sourceUrl: item.sourceUrl,
+      dataStatus: item.dataStatus,
+      gisStatus: item.gisStatus,
+    }
+  })
 }
 
-app.get('/api/dashboard/stats', (_req, res) => {
-  const dynamic = db.prepare(`SELECT COUNT(*) AS total, SUM(CASE WHEN status = 'APPROVED' THEN 1 ELSE 0 END) AS completed FROM applications`).get() as { total: number; completed: number | null }
+app.get('/api/dashboard/stats', requireSession('EMPLOYEE', 'OPERATIONS', 'SUPER_ADMIN'), (_req, res) => {
+  const departments = getRegistryDepartments()
+  const dynamic = departments.reduce((total, department) => ({ total: total.total + department.transactions, completed: total.completed + department.completed }), { total: 0, completed: 0 })
   const citizenCount = db.prepare('SELECT COUNT(*) AS total FROM citizens').get() as { total: number }
   const payments = db.prepare(`SELECT COALESCE(SUM(amount), 0) AS collected FROM payments WHERE status = 'SETTLED'`).get() as { collected: number }
-  const dateRows = db.prepare(`SELECT substr(created_at, 1, 10) AS day, COUNT(*) AS applications, SUM(CASE WHEN status = 'APPROVED' THEN 1 ELSE 0 END) AS completed FROM applications GROUP BY substr(created_at, 1, 10)`).all() as Array<{ day: string; applications: number; completed: number | null }>
+  const dateRows = db.prepare(`SELECT day, COUNT(*) AS applications, SUM(CASE WHEN status = 'APPROVED' THEN 1 ELSE 0 END) AS completed FROM (
+    SELECT substr(created_at, 1, 10) AS day, status FROM applications
+    UNION ALL
+    SELECT substr(created_at, 1, 10) AS day, status FROM service_requests
+  ) GROUP BY day`).all() as Array<{ day: string; applications: number; completed: number | null }>
   const byDay = new Map(dateRows.map(row => [row.day, row]))
   const series = Array.from({ length: 7 }, (_, index) => {
     const date = new Date(); date.setUTCDate(date.getUTCDate() - (6 - index))
     const key = date.toISOString().slice(0, 10); const row = byDay.get(key)
     return { day: key.slice(5).split('-').reverse().join('/'), applications: row?.applications || 0, completed: row?.completed || 0 }
   })
+  const complaints = departments.reduce((total, department) => total + department.openFeedback, 0)
   res.json({
-    todayApplications: dynamic.total,
-    completed: dynamic.completed || 0,
+    todayApplications: (byDay.get(new Date().toISOString().slice(0, 10))?.applications || 0),
+    completed: dynamic.completed,
     overdue: 0,
     activeCitizens: citizenCount.total,
     activeEmployees: 0,
     departmentsOnline: registrySummary.verified,
     financialCollection: payments.collected,
-    complaints: 0,
+    complaints,
     avgProcessingHours: 0,
     automationRate: 0,
     series,
-    departments: getRegistryDepartments(),
+    departments,
     registry: registrySummary,
   })
+})
+
+app.get('/api/operations/cameras', requireSession('EMPLOYEE', 'OPERATIONS', 'SUPER_ADMIN'), (_req, res) => {
+  const rows = db.prepare(`SELECT id, department_id, label, stream_type, enabled, authorization_status, source_name, source_url, last_checked_at, created_at, updated_at
+    FROM department_cameras ORDER BY department_id ASC, updated_at DESC`).all() as Array<Record<string, unknown>>
+  res.json(rows.map(row => ({
+    id: String(row.id), departmentId: String(row.department_id), label: String(row.label), streamType: String(row.stream_type), enabled: Boolean(row.enabled),
+    authorizationStatus: String(row.authorization_status), sourceName: row.source_name ? String(row.source_name) : null, sourceUrl: row.source_url ? String(row.source_url) : null,
+    lastCheckedAt: row.last_checked_at ? String(row.last_checked_at) : null, createdAt: String(row.created_at), updatedAt: String(row.updated_at),
+  })))
+})
+
+app.post('/api/super-admin/operations/cameras', requireSession('SUPER_ADMIN'), sensitiveLimiter, (req, res) => {
+  const payload = z.object({
+    departmentId: z.string().min(3).max(120), label: z.string().min(3).max(160), streamType: z.enum(['HLS', 'WEBRTC']),
+    gatewayUrl: z.string().url().max(2048).optional().refine(value => !value || new URL(value).protocol === 'https:', 'رابط بوابة الكاميرا يجب أن يستخدم HTTPS.'),
+    enabled: z.boolean(), authorizationStatus: z.enum(['AWAITING_AUTHORIZATION', 'AUTHORIZED_GATEWAY']), sourceName: z.string().min(3).max(250).optional(), sourceUrl: z.string().url().max(2048).optional(), lastCheckedAt: z.string().datetime({ offset: true }).optional(),
+  }).parse(req.body)
+  const department = departmentRegistry.find(item => item.id === payload.departmentId)
+  if (!department) return res.status(404).json({ message: 'الدائرة غير موجودة في السجل المعتمد.' })
+  if (payload.enabled && (payload.authorizationStatus !== 'AUTHORIZED_GATEWAY' || !payload.gatewayUrl)) return res.status(400).json({ message: 'تفعيل الكاميرا يتطلب تفويضاً مسجلاً وبوابة HTTPS مصرحاً بها.' })
+  ensureDepartmentRecord(department.name)
+  const id = `cam_${randomUUID().replaceAll('-', '')}`
+  const timestamp = new Date().toISOString()
+  db.prepare(`INSERT INTO department_cameras (id, department_id, label, stream_type, gateway_url, enabled, authorization_status, source_name, source_url, last_checked_at, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+    .run(id, payload.departmentId, payload.label, payload.streamType, payload.gatewayUrl || null, payload.enabled ? 1 : 0, payload.authorizationStatus, payload.sourceName || null, payload.sourceUrl || null, payload.lastCheckedAt || null, timestamp, timestamp)
+  addAudit({ actor: 'مدير النظام', role: 'SUPER_ADMIN', action: 'DEPARTMENT_CAMERA_CONFIGURED', entityType: 'DepartmentCamera', entityId: id, metadata: { departmentId: payload.departmentId, streamType: payload.streamType, enabled: payload.enabled, authorizationStatus: payload.authorizationStatus } })
+  res.status(201).json({ id, departmentId: payload.departmentId, label: payload.label, configured: true })
+})
+
+app.post('/api/super-admin/operations/workforce-snapshots', requireSession('SUPER_ADMIN'), sensitiveLimiter, (req, res) => {
+  const payload = z.object({
+    departmentId: z.string().min(3).max(120), totalEmployees: z.number().int().min(0).max(100000), presentEmployees: z.number().int().min(0).max(100000), absentEmployees: z.number().int().min(0).max(100000),
+    sourceName: z.string().min(3).max(250), sourceUrl: z.string().url().max(2048).optional(), observedAt: z.string().datetime({ offset: true }),
+  }).parse(req.body)
+  if (payload.presentEmployees + payload.absentEmployees > payload.totalEmployees) return res.status(400).json({ message: 'الحضور والغياب لا يمكن أن يتجاوزا عدد الموظفين الكلي.' })
+  const department = departmentRegistry.find(item => item.id === payload.departmentId)
+  if (!department) return res.status(404).json({ message: 'الدائرة غير موجودة في السجل المعتمد.' })
+  ensureDepartmentRecord(department.name)
+  const id = `wrk_${randomUUID().replaceAll('-', '')}`
+  db.prepare(`INSERT INTO department_workforce_snapshots (id, department_id, total_employees, present_employees, absent_employees, source_name, source_url, authorization_status, observed_at, recorded_by, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, 'RECORDED_BY_SUPER_ADMIN', ?, 'مدير النظام', ?)`)
+    .run(id, payload.departmentId, payload.totalEmployees, payload.presentEmployees, payload.absentEmployees, payload.sourceName, payload.sourceUrl || null, payload.observedAt, new Date().toISOString())
+  addAudit({ actor: 'مدير النظام', role: 'SUPER_ADMIN', action: 'WORKFORCE_SNAPSHOT_RECORDED', entityType: 'DepartmentWorkforceSnapshot', entityId: id, metadata: { departmentId: payload.departmentId, observedAt: payload.observedAt, sourceName: payload.sourceName } })
+  res.status(201).json({ id, departmentId: payload.departmentId, recorded: true })
 })
 
 app.get('/api/super-admin/overview', requireSession('SUPER_ADMIN'), (_req, res) => {

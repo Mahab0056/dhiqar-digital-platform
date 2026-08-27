@@ -188,6 +188,37 @@ db.exec(`
     updated_at TEXT NOT NULL
   );
 
+  CREATE TABLE IF NOT EXISTS department_workforce_snapshots (
+    id TEXT PRIMARY KEY,
+    department_id TEXT NOT NULL,
+    total_employees INTEGER NOT NULL CHECK(total_employees >= 0),
+    present_employees INTEGER NOT NULL CHECK(present_employees >= 0),
+    absent_employees INTEGER NOT NULL CHECK(absent_employees >= 0),
+    source_name TEXT NOT NULL,
+    source_url TEXT,
+    authorization_status TEXT NOT NULL DEFAULT 'RECORDED_BY_SUPER_ADMIN',
+    observed_at TEXT NOT NULL,
+    recorded_by TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (department_id) REFERENCES departments(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS department_cameras (
+    id TEXT PRIMARY KEY,
+    department_id TEXT NOT NULL,
+    label TEXT NOT NULL,
+    stream_type TEXT NOT NULL CHECK(stream_type IN ('HLS', 'WEBRTC')),
+    gateway_url TEXT,
+    enabled INTEGER NOT NULL DEFAULT 0,
+    authorization_status TEXT NOT NULL DEFAULT 'AWAITING_AUTHORIZATION',
+    source_name TEXT,
+    source_url TEXT,
+    last_checked_at TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    FOREIGN KEY (department_id) REFERENCES departments(id)
+  );
+
   CREATE TABLE IF NOT EXISTS service_catalog (
     id TEXT PRIMARY KEY,
     department_id TEXT NOT NULL,
@@ -224,6 +255,16 @@ db.exec(`
     FOREIGN KEY (service_id) REFERENCES service_catalog(id),
     FOREIGN KEY (department_id) REFERENCES departments(id),
     FOREIGN KEY (identity_review_id) REFERENCES identity_reviews(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS service_request_media (
+    id TEXT PRIMARY KEY,
+    service_request_id INTEGER NOT NULL,
+    media_id TEXT NOT NULL,
+    label TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (service_request_id) REFERENCES service_requests(id) ON DELETE CASCADE,
+    FOREIGN KEY (media_id) REFERENCES media_objects(id)
   );
 
   CREATE TABLE IF NOT EXISTS appointments (
@@ -349,8 +390,11 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_media_citizen ON media_objects(citizen_id, created_at);
   CREATE INDEX IF NOT EXISTS idx_application_media_application ON application_media(application_id, created_at);
   CREATE INDEX IF NOT EXISTS idx_identity_status ON identity_reviews(status, submitted_at);
+  CREATE INDEX IF NOT EXISTS idx_department_cameras_department ON department_cameras(department_id, updated_at DESC);
+  CREATE INDEX IF NOT EXISTS idx_workforce_snapshots_department ON department_workforce_snapshots(department_id, observed_at DESC);
   CREATE INDEX IF NOT EXISTS idx_service_requests_citizen ON service_requests(citizen_id, created_at);
   CREATE INDEX IF NOT EXISTS idx_service_requests_department ON service_requests(department_id, status);
+  CREATE INDEX IF NOT EXISTS idx_service_request_media_request ON service_request_media(service_request_id, created_at);
   CREATE INDEX IF NOT EXISTS idx_appointments_citizen ON appointments(citizen_id, status, preferred_date);
   CREATE INDEX IF NOT EXISTS idx_news_published ON news_articles(published_at DESC);
   CREATE INDEX IF NOT EXISTS idx_feedback_citizen ON citizen_feedback(citizen_id, created_at DESC);
@@ -370,6 +414,8 @@ ensureColumn('identity_reviews', 'face_match_status', "TEXT NOT NULL DEFAULT 'NO
 ensureColumn('identity_reviews', 'face_match_score', 'REAL')
 ensureColumn('identity_reviews', 'face_match_provider', 'TEXT')
 ensureColumn('citizens', 'account_key', 'TEXT')
+ensureColumn('service_requests', 'decision_note', 'TEXT')
+ensureColumn('service_requests', 'required_document', 'TEXT')
 db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_citizens_account_key ON citizens(account_key) WHERE account_key IS NOT NULL')
 
 const now = () => new Date().toISOString()

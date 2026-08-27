@@ -126,6 +126,126 @@ export const serviceDefinitions: DigitalServiceDefinition[] = [
       { key: 'contactPhone', label: 'هاتف التواصل', type: 'tel', required: true, maxLength: 20 },
     ],
   },
+
+  {
+    key: 'municipality-service', title: 'خدمات البلدية العامة', department: 'مديرية بلديات ذي قار', category: 'البناء والبلديات',
+    description: 'تسجيل طلب خدمي أو إداري للبلدية وتحويله إلى الشعبة المختصة للمراجعة.', estimatedTime: 'تحددها الدائرة بعد فرز الطلب', fee: 0, feeNote: 'لا يثبت رسم قبل التسعير الرسمي من الدائرة.', requirements: ['عنوان موقع الخدمة', 'تفاصيل واضحة', 'مرفقات عند الحاجة'], mode: 'GENERIC',
+    fields: [
+      { key: 'serviceType', label: 'نوع خدمة البلدية', type: 'select', required: true, options: ['طلب رفع أنقاض', 'طلب صيانة شارع', 'طلب إنارة موقع', 'استفسار معاملات بلدية', 'طلب آخر'] },
+      { key: 'district', label: 'القضاء', type: 'select', required: true, options: districts },
+      { key: 'area', label: 'الحي أو المنطقة', type: 'text', required: true, maxLength: 120 },
+      { key: 'address', label: 'العنوان وأقرب نقطة دالة', type: 'textarea', required: true, maxLength: 350 },
+      { key: 'details', label: 'تفاصيل الطلب', type: 'textarea', required: true, maxLength: 1200 },
+      { key: 'contactPhone', label: 'هاتف التواصل', type: 'tel', required: true, maxLength: 20 },
+    ],
+  },
+  {
+    key: 'electricity-service', title: 'خدمات الكهرباء', department: 'فرع توزيع كهرباء ذي قار', category: 'الكهرباء',
+    description: 'طلب خدمي للكهرباء يحال إلى القسم المختص مع بيانات الاشتراك والموقع.', estimatedTime: 'تحدد الأولوية حسب الحالة والموقع', fee: 0, feeNote: 'لا يثبت رسم قبل قرار الدائرة.', requirements: ['رقم الاشتراك إن وجد', 'عنوان الموقع', 'صور للمشكلة عند الحاجة'], mode: 'GENERIC',
+    fields: [
+      { key: 'serviceType', label: 'نوع خدمة الكهرباء', type: 'select', required: true, options: ['انقطاع أو ضعف تجهيز', 'طلب كشف فني', 'مشكلة عداد', 'إنارة شارع', 'طلب آخر'] },
+      { key: 'accountNumber', label: 'رقم اشتراك الكهرباء', type: 'text', required: false, maxLength: 60 },
+      { key: 'district', label: 'القضاء', type: 'select', required: true, options: districts },
+      { key: 'address', label: 'العنوان وأقرب نقطة دالة', type: 'textarea', required: true, maxLength: 350 },
+      { key: 'details', label: 'تفاصيل المشكلة أو الطلب', type: 'textarea', required: true, maxLength: 1200 },
+      { key: 'contactPhone', label: 'هاتف التواصل', type: 'tel', required: true, maxLength: 20 },
+    ],
+  },
+  {
+    key: 'sewerage-service', title: 'خدمات المجاري', department: 'مديرية مجاري ذي قار', category: 'الماء والمجاري',
+    description: 'بلاغ أو طلب خدمة لمتابعة شبكة المجاري وتحويله إلى فريق الدائرة.', estimatedTime: 'بحسب الخطورة وخطة الفريق', fee: 0, feeNote: 'الخدمة لا تسجل رسماً داخل المنصة.', requirements: ['عنوان موقع المشكلة', 'وصف واضح', 'صورة عند الحاجة'], mode: 'GENERIC',
+    fields: [
+      { key: 'serviceType', label: 'نوع خدمة المجاري', type: 'select', required: true, options: ['طفح مجارٍ', 'انسداد خط', 'تسرب أو كسر', 'طلب كشف', 'طلب آخر'] },
+      { key: 'district', label: 'القضاء', type: 'select', required: true, options: districts },
+      { key: 'address', label: 'العنوان وأقرب نقطة دالة', type: 'textarea', required: true, maxLength: 350 },
+      { key: 'impact', label: 'درجة تأثير المشكلة', type: 'select', required: true, options: ['منزل واحد', 'عدة منازل', 'شارع أو منطقة', 'حالة طارئة'] },
+      { key: 'details', label: 'تفاصيل المشكلة', type: 'textarea', required: true, maxLength: 1200 },
+      { key: 'contactPhone', label: 'هاتف التواصل', type: 'tel', required: true, maxLength: 20 },
+    ],
+  },
+  {
+    key: 'health-service', title: 'خدمات صحة ذي قار', department: 'دائرة صحة ذي قار', category: 'الصحة',
+    description: 'تسجيل طلب إداري أو خدمي غير طارئ وتحويله إلى جهة الصحة المختصة.', estimatedTime: 'حسب نوع الطلب والدائرة المعنية', fee: 0, feeNote: 'الرسوم تحددها دائرة الصحة عند وجودها.', requirements: ['بيانات التواصل', 'تفاصيل الطلب', 'المرفقات عند الحاجة'], mode: 'GENERIC',
+    fields: [
+      { key: 'serviceType', label: 'نوع الخدمة الصحية', type: 'select', required: true, options: ['طلب موعد إداري', 'استفسار وثيقة صحية', 'شكوى على خدمة', 'طلب معلومات', 'طلب آخر'] },
+      { key: 'facility', label: 'المؤسسة أو المركز إن وجد', type: 'text', required: false, maxLength: 120 },
+      { key: 'district', label: 'القضاء', type: 'select', required: true, options: districts },
+      { key: 'subject', label: 'عنوان الطلب', type: 'text', required: true, maxLength: 160 },
+      { key: 'details', label: 'تفاصيل الطلب', type: 'textarea', required: true, maxLength: 1200 },
+      { key: 'contactPhone', label: 'هاتف التواصل', type: 'tel', required: true, maxLength: 20 },
+    ],
+  },
+  {
+    key: 'education-service', title: 'خدمات تربية ذي قار', department: 'المديرية العامة للتربية في محافظة ذي قار', category: 'التربية والتعليم',
+    description: 'تقديم طلب إداري أو استفسار مدرسي يحال إلى المديرية أو القسم المختص.', estimatedTime: 'تحددها شعبة التربية بعد فرز الطلب', fee: 0, feeNote: 'لا يثبت رسم قبل إشعار الجهة المختصة.', requirements: ['اسم الطالب أو المستفيد', 'بيانات المدرسة إن وجدت', 'مرفقات عند الحاجة'], mode: 'GENERIC',
+    fields: [
+      { key: 'serviceType', label: 'نوع الخدمة التعليمية', type: 'select', required: true, options: ['طلب نقل طالب', 'استفسار وثيقة مدرسية', 'شكوى خدمية', 'طلب معلومات', 'طلب آخر'] },
+      { key: 'beneficiaryName', label: 'اسم الطالب أو المستفيد', type: 'text', required: true, maxLength: 160 },
+      { key: 'schoolName', label: 'اسم المدرسة الحالية أو المقترحة', type: 'text', required: false, maxLength: 180 },
+      { key: 'district', label: 'القضاء', type: 'select', required: true, options: districts },
+      { key: 'details', label: 'تفاصيل الطلب', type: 'textarea', required: true, maxLength: 1200 },
+      { key: 'contactPhone', label: 'هاتف التواصل', type: 'tel', required: true, maxLength: 20 },
+    ],
+  },
+  {
+    key: 'agriculture-service', title: 'خدمات الزراعة', department: 'مديرية زراعة ذي قار', category: 'الزراعة',
+    description: 'تسجيل طلب أو استفسار زراعي وإحالته إلى الشعبة المختصة في المديرية.', estimatedTime: 'حسب نوع الطلب والكشف المطلوب', fee: 0, feeNote: 'تحدد الرسوم أو المتطلبات من مديرية الزراعة.', requirements: ['موقع النشاط الزراعي', 'وصف الطلب', 'وثائق عند الحاجة'], mode: 'GENERIC',
+    fields: [
+      { key: 'serviceType', label: 'نوع الخدمة الزراعية', type: 'select', required: true, options: ['طلب كشف زراعي', 'استفسار دعم أو مستلزمات', 'تسجيل نشاط', 'شكوى خدمة', 'طلب آخر'] },
+      { key: 'farmLocation', label: 'موقع المزرعة أو النشاط', type: 'textarea', required: true, maxLength: 350 },
+      { key: 'district', label: 'القضاء', type: 'select', required: true, options: districts },
+      { key: 'activityType', label: 'نوع النشاط', type: 'select', required: true, options: ['محاصيل', 'بساتين', 'ثروة حيوانية', 'دواجن', 'أخرى'] },
+      { key: 'details', label: 'تفاصيل الطلب', type: 'textarea', required: true, maxLength: 1200 },
+      { key: 'contactPhone', label: 'هاتف التواصل', type: 'tel', required: true, maxLength: 20 },
+    ],
+  },
+  {
+    key: 'environment-service', title: 'خدمات البيئة', department: 'مديرية بيئة ذي قار', category: 'البيئة',
+    description: 'تسجيل بلاغ أو طلب بيئي وتحويله إلى فريق المتابعة المختص.', estimatedTime: 'حسب درجة الأثر البيئي', fee: 0, feeNote: 'الخدمة بلا رسم داخل المنصة.', requirements: ['موقع واضح', 'وصف الأثر', 'صورة أو ملف عند الحاجة'], mode: 'GENERIC',
+    fields: [
+      { key: 'serviceType', label: 'نوع الطلب البيئي', type: 'select', required: true, options: ['بلاغ تلوث', 'طلب كشف بيئي', 'مقترح بيئي', 'استفسار ترخيص', 'طلب آخر'] },
+      { key: 'district', label: 'القضاء', type: 'select', required: true, options: districts },
+      { key: 'locationDescription', label: 'الموقع وأقرب نقطة دالة', type: 'textarea', required: true, maxLength: 350 },
+      { key: 'impact', label: 'نوع الأثر أو المشكلة', type: 'textarea', required: true, maxLength: 500 },
+      { key: 'details', label: 'تفاصيل إضافية', type: 'textarea', required: true, maxLength: 1200 },
+      { key: 'contactPhone', label: 'هاتف التواصل', type: 'tel', required: true, maxLength: 20 },
+    ],
+  },
+  {
+    key: 'planning-service', title: 'خدمات التخطيط', department: 'مديرية تخطيط ذي قار', category: 'التخطيط',
+    description: 'طلب معلومات أو معاملة إدارية متعلقة بالتخطيط وتحويلها إلى الشعبة المختصة.', estimatedTime: 'بحسب نوع المعلومة أو الكتاب الرسمي', fee: 0, feeNote: 'يحدد أي رسم أو مستند من الدائرة.', requirements: ['عنوان واضح للطلب', 'تفاصيل كافية', 'كتاب رسمي عند الحاجة'], mode: 'GENERIC',
+    fields: [
+      { key: 'serviceType', label: 'نوع خدمة التخطيط', type: 'select', required: true, options: ['طلب بيانات أو إحصائية', 'طلب مخاطبة', 'استفسار خطة مشروع', 'طلب معلومات', 'طلب آخر'] },
+      { key: 'entityType', label: 'صفة مقدم الطلب', type: 'select', required: true, options: ['مواطن', 'شركة', 'منظمة', 'جهة حكومية'] },
+      { key: 'subject', label: 'عنوان الطلب', type: 'text', required: true, maxLength: 160 },
+      { key: 'details', label: 'تفاصيل الطلب والغرض', type: 'textarea', required: true, maxLength: 1200 },
+      { key: 'contactPhone', label: 'هاتف التواصل', type: 'tel', required: true, maxLength: 20 },
+    ],
+  },
+  {
+    key: 'investment-service', title: 'خدمات الاستثمار', department: 'هيئة استثمار ذي قار', category: 'الاستثمار',
+    description: 'تسجيل استفسار أو طلب أولي لمشروع استثماري وإحالته إلى هيئة الاستثمار.', estimatedTime: 'تحددها الهيئة بعد مراجعة ملخص المشروع', fee: 0, feeNote: 'لا يتم تحصيل أي رسم في المنصة قبل الإجراءات الرسمية.', requirements: ['ملخص فكرة المشروع', 'موقع أو قطاع الاستثمار', 'معلومات التواصل'], mode: 'GENERIC',
+    fields: [
+      { key: 'serviceType', label: 'نوع خدمة الاستثمار', type: 'select', required: true, options: ['استفسار فرصة استثمارية', 'تقديم فكرة مشروع', 'طلب مقابلة استثمارية', 'استفسار إجازة', 'طلب آخر'] },
+      { key: 'projectSector', label: 'قطاع المشروع', type: 'select', required: true, options: ['صناعة', 'زراعة', 'سياحة', 'خدمات', 'إسكان', 'طاقة', 'أخرى'] },
+      { key: 'projectLocation', label: 'موقع المشروع المقترح', type: 'text', required: false, maxLength: 200 },
+      { key: 'investmentRange', label: 'حجم الاستثمار التقريبي', type: 'select', required: false, options: ['أقل من 100 مليون د.ع', '100–500 مليون د.ع', 'أكثر من 500 مليون د.ع', 'يحدد لاحقاً'] },
+      { key: 'details', label: 'ملخص المشروع أو الاستفسار', type: 'textarea', required: true, maxLength: 1500 },
+      { key: 'contactPhone', label: 'هاتف التواصل', type: 'tel', required: true, maxLength: 20 },
+    ],
+  },
+  {
+    key: 'governorate-service', title: 'خدمات ديوان المحافظة', department: 'ديوان محافظة ذي قار', category: 'حكومة محلية',
+    description: 'تسجيل طلب إداري أو كتاب متابعة لتحويله إلى القسم المختص في ديوان المحافظة.', estimatedTime: 'تحددها الشعبة المختصة بعد تسجيل الطلب', fee: 0, feeNote: 'لا يوجد رسم مثبت ضمن المنصة.', requirements: ['عنوان الطلب', 'الجهة المعنية إن وجدت', 'تفاصيل وملفات داعمة عند الحاجة'], mode: 'GENERIC',
+    fields: [
+      { key: 'serviceType', label: 'نوع طلب الديوان', type: 'select', required: true, options: ['طلب مقابلة', 'متابعة كتاب', 'طلب معلومات', 'طلب مخاطبة دائرة', 'طلب آخر'] },
+      { key: 'previousReference', label: 'رقم الكتاب أو الطلب السابق', type: 'text', required: false, maxLength: 80 },
+      { key: 'district', label: 'القضاء', type: 'select', required: true, options: districts },
+      { key: 'subject', label: 'عنوان الطلب', type: 'text', required: true, maxLength: 160 },
+      { key: 'details', label: 'تفاصيل الطلب', type: 'textarea', required: true, maxLength: 1500 },
+      { key: 'contactPhone', label: 'هاتف التواصل', type: 'tel', required: true, maxLength: 20 },
+    ],
+  },
 ]
 
 export const getServiceDefinition = (key: string) => serviceDefinitions.find(service => service.key === key)
