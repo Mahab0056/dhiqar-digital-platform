@@ -84,6 +84,29 @@ export interface CitizenServiceRequest {
   appointment?: { id: string; preferredDate: string; preferredTime: string; status: string; note?: string | null } | null
 }
 
+export type FeedbackKind = 'COMPLAINT' | 'SUGGESTION'
+export type FeedbackStatus = 'RECEIVED' | 'IN_REVIEW' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED'
+
+export interface CitizenFeedback {
+  id: number
+  reference: string
+  citizenId: number
+  kind: FeedbackKind
+  category: string
+  departmentId?: string | null
+  subject: string
+  description: string
+  district?: string | null
+  coordinates?: { lat: number; lng: number } | null
+  status: FeedbackStatus
+  currentAction: string
+  adminNote?: string | null
+  createdAt: string
+  updatedAt: string
+  attachments: Array<{ id: number; mediaId: string; label: string; originalName: string; mimeType: string; sizeBytes: number; available: boolean }>
+  events: Array<{ id: number; status: string; title: string; description: string; actor: string; createdAt: string }>
+}
+
 export interface DashboardStats {
   todayApplications: number
   completed: number

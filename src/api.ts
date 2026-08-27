@@ -1,4 +1,4 @@
-import type { Citizen, CitizenNotification, CitizenServiceRequest, DashboardStats, GovernmentApplication } from './types'
+import type { Citizen, CitizenFeedback, CitizenNotification, CitizenServiceRequest, DashboardStats, FeedbackStatus, GovernmentApplication } from './types'
 
 const request = async <T>(path: string, options?: RequestInit): Promise<T> => {
   const response = await fetch(path, {
@@ -23,6 +23,30 @@ export const api = {
   listCitizenApplications: () => request<GovernmentApplication[]>('/api/citizen/applications'),
   listCitizenServiceRequests: () => request<CitizenServiceRequest[]>('/api/citizen/service-requests'),
   createServiceRequest: (serviceKey: string, data: Record<string, string>) => request<{ id: number; reference: string; serviceKey: string; serviceName: string; department: string; status: string; currentAction: string; appointment: { id: string; preferredDate: string; preferredTime: string; status: string } | null; createdAt: string }>('/api/service-requests', { method: 'POST', body: JSON.stringify({ serviceKey, data }) }),
+  listFeedback: () => request<CitizenFeedback[]>('/api/citizen/feedback'),
+  getFeedback: (reference: string) => request<CitizenFeedback>(`/api/citizen/feedback/${reference}`),
+  createFeedback: async (payload: { kind: 'COMPLAINT' | 'SUGGESTION'; category: string; departmentId?: string; subject: string; description: string; district?: string; lat?: number; lng?: number; attachments: File[] }) => {
+    const form = new FormData()
+    form.append('kind', payload.kind)
+    form.append('category', payload.category)
+    if (payload.departmentId) form.append('departmentId', payload.departmentId)
+    form.append('subject', payload.subject)
+    form.append('description', payload.description)
+    if (payload.district) form.append('district', payload.district)
+    if (payload.lat !== undefined && payload.lng !== undefined) { form.append('lat', String(payload.lat)); form.append('lng', String(payload.lng)) }
+    payload.attachments.slice(0, 3).forEach(file => form.append('attachments', file))
+    const response = await fetch('/api/citizen/feedback', { method: 'POST', credentials: 'include', body: form })
+    if (!response.ok) { const body = await response.json().catch(() => ({ message: 'تعذر تسجيل الطلب.' })); throw new Error(body.message || 'تعذر تسجيل الطلب.') }
+    return response.json() as Promise<CitizenFeedback>
+  },
+  loadFeedbackMedia: async (reference: string, mediaId: string) => {
+    const response = await fetch(`/api/citizen/feedback/${reference}/media/${mediaId}`, { credentials: 'include' })
+    if (!response.ok) { const body = await response.json().catch(() => ({ message: 'تعذر فتح المرفق.' })); throw new Error(body.message || 'تعذر فتح المرفق.') }
+    const blob = await response.blob()
+    return { url: URL.createObjectURL(blob), mimeType: blob.type }
+  },
+  listFeedbackForAdmin: () => request<CitizenFeedback[]>('/api/admin/feedback'),
+  updateFeedback: (reference: string, payload: { status: Exclude<FeedbackStatus, 'RECEIVED'>; currentAction: string; adminNote?: string }) => request<CitizenFeedback>(`/api/admin/feedback/${reference}`, { method: 'PATCH', body: JSON.stringify(payload) }),
   getNotifications: () => request<{ unread: number; items: CitizenNotification[] }>('/api/citizen/notifications'),
   markNotificationRead: (id: string) => request<{ unread: number; items: CitizenNotification[] }>(`/api/citizen/notifications/${id}/read`, { method: 'PATCH' }),
   markAllNotificationsRead: () => request<{ unread: number; items: CitizenNotification[] }>('/api/citizen/notifications/read-all', { method: 'POST' }),

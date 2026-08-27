@@ -17,7 +17,7 @@ function encryptionKey() {
   return createHash('sha256').update(secret, 'utf8').digest()
 }
 
-export type MediaPurpose = 'NATIONAL_ID_FRONT' | 'NATIONAL_ID_BACK' | 'FACE_VIDEO' | 'APPLICATION_DOCUMENT' | 'STOREFRONT_PHOTO'
+export type MediaPurpose = 'NATIONAL_ID_FRONT' | 'NATIONAL_ID_BACK' | 'FACE_VIDEO' | 'APPLICATION_DOCUMENT' | 'STOREFRONT_PHOTO' | 'FEEDBACK_ATTACHMENT'
 
 export function storeEncryptedMedia(input: {
   citizenId: number

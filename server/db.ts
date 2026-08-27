@@ -263,6 +263,48 @@ db.exec(`
     FOREIGN KEY (department_id) REFERENCES departments(id)
   );
 
+  CREATE TABLE IF NOT EXISTS citizen_feedback (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    reference TEXT NOT NULL UNIQUE,
+    citizen_id INTEGER NOT NULL,
+    kind TEXT NOT NULL CHECK(kind IN ('COMPLAINT', 'SUGGESTION')),
+    category TEXT NOT NULL,
+    department_id TEXT,
+    subject TEXT NOT NULL,
+    description TEXT NOT NULL,
+    district TEXT,
+    lat REAL,
+    lng REAL,
+    status TEXT NOT NULL DEFAULT 'RECEIVED',
+    current_action TEXT NOT NULL,
+    admin_note TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    FOREIGN KEY (citizen_id) REFERENCES citizens(id),
+    FOREIGN KEY (department_id) REFERENCES departments(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS feedback_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    feedback_id INTEGER NOT NULL,
+    status TEXT NOT NULL,
+    title TEXT NOT NULL,
+    description TEXT NOT NULL,
+    actor TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (feedback_id) REFERENCES citizen_feedback(id) ON DELETE CASCADE
+  );
+
+  CREATE TABLE IF NOT EXISTS feedback_media (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    feedback_id INTEGER NOT NULL,
+    media_id TEXT NOT NULL UNIQUE,
+    label TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (feedback_id) REFERENCES citizen_feedback(id) ON DELETE CASCADE,
+    FOREIGN KEY (media_id) REFERENCES media_objects(id)
+  );
+
   CREATE TABLE IF NOT EXISTS news_articles (
     id TEXT PRIMARY KEY,
     title TEXT NOT NULL,
@@ -311,6 +353,9 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_service_requests_department ON service_requests(department_id, status);
   CREATE INDEX IF NOT EXISTS idx_appointments_citizen ON appointments(citizen_id, status, preferred_date);
   CREATE INDEX IF NOT EXISTS idx_news_published ON news_articles(published_at DESC);
+  CREATE INDEX IF NOT EXISTS idx_feedback_citizen ON citizen_feedback(citizen_id, created_at DESC);
+  CREATE INDEX IF NOT EXISTS idx_feedback_department ON citizen_feedback(department_id, status, updated_at DESC);
+  CREATE INDEX IF NOT EXISTS idx_feedback_events ON feedback_events(feedback_id, created_at ASC);
 `)
 
 const ensureColumn = (table: string, column: string, definition: string) => {
@@ -491,6 +536,72 @@ function mapApplication(row: Record<string, unknown>) {
       createdAt: event.created_at,
     })),
   }
+}
+
+export type FeedbackKind = 'COMPLAINT' | 'SUGGESTION'
+export type FeedbackStatus = 'RECEIVED' | 'IN_REVIEW' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED'
+
+const feedbackReference = (kind: FeedbackKind) => `${kind === 'COMPLAINT' ? 'TQD-CMP' : 'TQD-SUG'}-${new Date().getFullYear()}-${String((db.prepare('SELECT COUNT(*) AS total FROM citizen_feedback').get() as { total: number }).total + 1).padStart(5, '0')}`
+
+function mapFeedback(row: Record<string, unknown>) {
+  const events = db.prepare('SELECT id, status, title, description, actor, created_at FROM feedback_events WHERE feedback_id = ? ORDER BY id ASC').all(row.id) as Array<Record<string, unknown>>
+  const attachments = db.prepare(`SELECT fm.id, fm.label, mo.id AS media_id, mo.original_name, mo.mime_type, mo.size_bytes, mo.deleted_at
+    FROM feedback_media fm JOIN media_objects mo ON mo.id = fm.media_id WHERE fm.feedback_id = ? ORDER BY fm.id ASC`).all(row.id) as Array<Record<string, unknown>>
+  return {
+    id: Number(row.id), reference: String(row.reference), citizenId: Number(row.citizen_id), kind: String(row.kind), category: String(row.category), departmentId: row.department_id ? String(row.department_id) : null,
+    subject: String(row.subject), description: String(row.description), district: row.district ? String(row.district) : null,
+    coordinates: row.lat !== null && row.lng !== null ? { lat: Number(row.lat), lng: Number(row.lng) } : null,
+    status: String(row.status), currentAction: String(row.current_action), adminNote: row.admin_note ? String(row.admin_note) : null,
+    createdAt: String(row.created_at), updatedAt: String(row.updated_at),
+    attachments: attachments.map(item => ({ id: Number(item.id), mediaId: String(item.media_id), label: String(item.label), originalName: String(item.original_name), mimeType: String(item.mime_type), sizeBytes: Number(item.size_bytes), available: !item.deleted_at })),
+    events: events.map(event => ({ id: Number(event.id), status: String(event.status), title: String(event.title), description: String(event.description), actor: String(event.actor), createdAt: String(event.created_at) })),
+  }
+}
+
+export function createFeedback(input: { citizenId: number; kind: FeedbackKind; category: string; departmentId?: string; subject: string; description: string; district?: string; lat?: number; lng?: number }) {
+  const timestamp = now()
+  const reference = feedbackReference(input.kind)
+  const currentAction = input.kind === 'COMPLAINT' ? 'تم استلام الشكوى وتحويلها إلى الجهة المختصة.' : 'تم استلام المقترح وإحالته للمراجعة.'
+  const result = db.prepare(`INSERT INTO citizen_feedback (reference, citizen_id, kind, category, department_id, subject, description, district, lat, lng, status, current_action, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'RECEIVED', ?, ?, ?)`)
+    .run(reference, input.citizenId, input.kind, input.category, input.departmentId || null, input.subject, input.description, input.district || null, input.lat ?? null, input.lng ?? null, currentAction, timestamp, timestamp)
+  const id = Number(result.lastInsertRowid)
+  db.prepare('INSERT INTO feedback_events (feedback_id, status, title, description, actor, created_at) VALUES (?, ?, ?, ?, ?, ?)')
+    .run(id, 'RECEIVED', input.kind === 'COMPLAINT' ? 'تم تسجيل الشكوى' : 'تم تسجيل المقترح', currentAction, 'منصة ذي قار الرقمية', timestamp)
+  return getFeedbackById(id)!
+}
+
+export function attachFeedbackMedia(feedbackId: number, mediaId: string, label: string) {
+  db.prepare('INSERT INTO feedback_media (feedback_id, media_id, label, created_at) VALUES (?, ?, ?, ?)').run(feedbackId, mediaId, label, now())
+}
+
+export function getFeedbackById(id: number) {
+  const row = db.prepare('SELECT * FROM citizen_feedback WHERE id = ?').get(id) as Record<string, unknown> | undefined
+  return row ? mapFeedback(row) : null
+}
+
+export function getFeedbackForCitizen(citizenId: number) {
+  const rows = db.prepare('SELECT * FROM citizen_feedback WHERE citizen_id = ? ORDER BY updated_at DESC').all(citizenId) as Array<Record<string, unknown>>
+  return rows.map(mapFeedback)
+}
+
+export function getFeedbackByReference(reference: string) {
+  const row = db.prepare('SELECT * FROM citizen_feedback WHERE reference = ?').get(reference) as Record<string, unknown> | undefined
+  return row ? mapFeedback(row) : null
+}
+
+export function getFeedbackForAdmin() {
+  const rows = db.prepare('SELECT * FROM citizen_feedback ORDER BY CASE status WHEN \'RECEIVED\' THEN 0 WHEN \'IN_REVIEW\' THEN 1 WHEN \'IN_PROGRESS\' THEN 2 ELSE 3 END, updated_at DESC').all() as Array<Record<string, unknown>>
+  return rows.map(mapFeedback)
+}
+
+export function updateFeedbackStatus(feedbackId: number, input: { status: FeedbackStatus; currentAction: string; adminNote?: string; actor: string }) {
+  const timestamp = now()
+  db.prepare('UPDATE citizen_feedback SET status = ?, current_action = ?, admin_note = ?, updated_at = ? WHERE id = ?')
+    .run(input.status, input.currentAction, input.adminNote || null, timestamp, feedbackId)
+  db.prepare('INSERT INTO feedback_events (feedback_id, status, title, description, actor, created_at) VALUES (?, ?, ?, ?, ?, ?)')
+    .run(feedbackId, input.status, `تحديث الحالة: ${input.status}`, input.currentAction, input.actor, timestamp)
+  return getFeedbackById(feedbackId)
 }
 
 export function resetDemo() {
