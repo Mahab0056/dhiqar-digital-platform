@@ -330,7 +330,7 @@ app.post('/api/onboarding/request-otp', async (req, res) => {
     })
     res.status(201).json(challenge)
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'تعذر إرسال رمز التحقق.'
+    const message = error instanceof z.ZodError ? 'أدخل رقم هاتف عراقي صحيحاً بصيغة 07XXXXXXXXX.' : error instanceof Error ? error.message : 'تعذر إرسال رمز التحقق.'
     res.status(400).json({ message })
   }
 })
@@ -354,7 +354,7 @@ app.post('/api/onboarding/verify-phone', (req, res) => {
     })
     res.json(result)
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'تعذر التحقق من الرمز.'
+    const message = error instanceof z.ZodError ? 'أدخل رقم الهاتف ومعرّف الطلب ورمز التحقق المكوّن من 6 أرقام بصورة صحيحة.' : error instanceof Error ? error.message : 'تعذر التحقق من الرمز.'
     res.status(400).json({ message })
   }
 })
