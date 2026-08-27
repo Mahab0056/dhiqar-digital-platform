@@ -154,7 +154,7 @@ export function verifyOtpChallenge(input: { challengeId: string; phone: string; 
 
   const verifiedAt = new Date().toISOString()
   db.prepare(`UPDATE otp_challenges SET verified_at = ?, delivery_status = 'VERIFIED' WHERE id = ?`).run(verifiedAt, row.id)
-  return { success: true, phoneMasked: maskPhone(phone), verifiedAt }
+  return { success: true, phoneMasked: maskPhone(phone), verifiedAt, accountKey: row.phone_hash }
 }
 
 export function processOtpDeliveryWebhook(input: { secret: string | undefined; payload: unknown }) {

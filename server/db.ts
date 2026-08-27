@@ -20,6 +20,7 @@ db.exec(`
     full_name TEXT NOT NULL,
     national_id_masked TEXT NOT NULL,
     phone_masked TEXT NOT NULL,
+    account_key TEXT,
     verification_status TEXT NOT NULL,
     district TEXT NOT NULL,
     consent_at TEXT,
@@ -323,6 +324,8 @@ ensureColumn('identity_reviews', 'quality_checks', 'TEXT')
 ensureColumn('identity_reviews', 'face_match_status', "TEXT NOT NULL DEFAULT 'NOT_CONFIGURED'")
 ensureColumn('identity_reviews', 'face_match_score', 'REAL')
 ensureColumn('identity_reviews', 'face_match_provider', 'TEXT')
+ensureColumn('citizens', 'account_key', 'TEXT')
+db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_citizens_account_key ON citizens(account_key) WHERE account_key IS NOT NULL')
 
 const now = () => new Date().toISOString()
 
@@ -393,18 +396,39 @@ export function markAllNotificationsRead(citizenId: number) {
   return Number(result.changes)
 }
 
+function mapCitizen(row: Record<string, unknown>) {
+  return {
+    id: Number(row.id),
+    fullName: String(row.full_name),
+    nationalIdMasked: String(row.national_id_masked),
+    phoneMasked: String(row.phone_masked),
+    verificationStatus: String(row.verification_status),
+    district: String(row.district),
+    createdAt: String(row.created_at),
+  }
+}
+
+export function getCitizenById(id: number) {
+  const row = db.prepare('SELECT * FROM citizens WHERE id = ?').get(id) as Record<string, unknown> | undefined
+  return row ? mapCitizen(row) : null
+}
+
+export function getOrCreateCitizen(accountKey: string, phoneMasked: string) {
+  const existing = db.prepare('SELECT * FROM citizens WHERE account_key = ?').get(accountKey) as Record<string, unknown> | undefined
+  if (existing) return mapCitizen(existing)
+  const timestamp = now()
+  const result = db.prepare(`
+    INSERT INTO citizens (full_name, national_id_masked, phone_masked, account_key, verification_status, district, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `).run('مواطن جديد', 'لم تُقدَّم الهوية', phoneMasked, accountKey, 'PHONE_VERIFIED', 'غير محدد', timestamp, timestamp)
+  return getCitizenById(Number(result.lastInsertRowid))!
+}
+
+// يُستخدم فقط لتشغيل بيانات العرض القديمة؛ لا يُستخدم لتحديد هوية جلسة مواطن.
 export function getCitizen() {
   ensureDemoCitizen()
   const row = db.prepare('SELECT * FROM citizens LIMIT 1').get() as Record<string, unknown>
-  return {
-    id: row.id,
-    fullName: row.full_name,
-    nationalIdMasked: row.national_id_masked,
-    phoneMasked: row.phone_masked,
-    verificationStatus: row.verification_status,
-    district: row.district,
-    createdAt: row.created_at,
-  }
+  return mapCitizen(row)
 }
 
 export function getApplications() {

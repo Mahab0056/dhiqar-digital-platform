@@ -13,13 +13,13 @@ import {
   addEvent,
   createNotification,
   db,
-  ensureDemoCitizen,
+  getCitizenById,
+  getOrCreateCitizen,
   getCitizenNotifications,
   getApplicationByReference,
   getApplicationByVerificationId,
   getApplications,
   getApplicationsForCitizen,
-  getCitizen,
   markAllNotificationsRead,
   markNotificationRead,
   resetDemo,
@@ -118,6 +118,21 @@ function requireSession(...roles: SessionRole[]) {
     res.locals.session = session
     next()
   }
+}
+
+function currentCitizen(res: express.Response) {
+  const session = res.locals.session as SessionData | undefined
+  const citizenId = Number(session?.sub)
+  if (session?.role !== 'CITIZEN' || !Number.isSafeInteger(citizenId) || citizenId < 1) {
+    res.status(401).json({ message: 'جلسة المواطن غير صالحة.' })
+    return null
+  }
+  const citizen = getCitizenById(citizenId)
+  if (!citizen) {
+    res.status(401).json({ message: 'تعذر العثور على حساب المواطن المرتبط بهذه الجلسة.' })
+    return null
+  }
+  return citizen
 }
 
 function hasReviewAccess(req: express.Request) {
@@ -219,38 +234,45 @@ app.post('/api/auth/logout', (req, res) => {
 })
 
 app.get('/api/citizen/demo', requireSession('CITIZEN'), (_req, res) => {
-  addAudit({ actor: 'مستخدم مواطن', role: 'CITIZEN', action: 'PROFILE_VIEW', entityType: 'Citizen', entityId: 'current-citizen', metadata: { masked: true } })
-  res.json(getCitizen())
+  const citizen = currentCitizen(res)
+  if (!citizen) return
+  addAudit({ actor: citizen.fullName, role: 'CITIZEN', action: 'PROFILE_VIEW', entityType: 'Citizen', entityId: String(citizen.id), metadata: { masked: true } })
+  res.json(citizen)
 })
 
 app.get('/api/citizen/applications', requireSession('CITIZEN'), (_req, res) => {
-  const citizenId = ensureDemoCitizen()
-  res.json(getApplicationsForCitizen(citizenId))
+  const citizen = currentCitizen(res)
+  if (!citizen) return
+  res.json(getApplicationsForCitizen(citizen.id))
 })
 
 app.get('/api/citizen/notifications', requireSession('CITIZEN'), (_req, res) => {
-  const citizenId = ensureDemoCitizen()
-  res.json(getCitizenNotifications(citizenId))
+  const citizen = currentCitizen(res)
+  if (!citizen) return
+  res.json(getCitizenNotifications(citizen.id))
 })
 
 app.patch('/api/citizen/notifications/:id/read', requireSession('CITIZEN'), (req, res) => {
-  const citizenId = ensureDemoCitizen()
-  if (!markNotificationRead(citizenId, req.params.id)) return res.status(404).json({ message: 'الإشعار غير موجود.' })
-  res.json(getCitizenNotifications(citizenId))
+  const citizen = currentCitizen(res)
+  if (!citizen) return
+  if (!markNotificationRead(citizen.id, req.params.id)) return res.status(404).json({ message: 'الإشعار غير موجود.' })
+  res.json(getCitizenNotifications(citizen.id))
 })
 
 app.post('/api/citizen/notifications/read-all', requireSession('CITIZEN'), (_req, res) => {
-  const citizenId = ensureDemoCitizen()
-  const updated = markAllNotificationsRead(citizenId)
-  addAudit({ actor: 'مستخدم مواطن', role: 'CITIZEN', action: 'NOTIFICATIONS_MARKED_READ', entityType: 'Notification', entityId: 'all', metadata: { updated } })
-  res.json(getCitizenNotifications(citizenId))
+  const citizen = currentCitizen(res)
+  if (!citizen) return
+  const updated = markAllNotificationsRead(citizen.id)
+  addAudit({ actor: citizen.fullName, role: 'CITIZEN', action: 'NOTIFICATIONS_MARKED_READ', entityType: 'Notification', entityId: 'all', metadata: { updated } })
+  res.json(getCitizenNotifications(citizen.id))
 })
 
 app.get('/api/citizen/service-requests', requireSession('CITIZEN'), (_req, res) => {
-  const citizenId = ensureDemoCitizen()
+  const citizen = currentCitizen(res)
+  if (!citizen) return
   const rows = db.prepare(`SELECT sr.*, a.id AS appointment_id, a.preferred_date, a.preferred_time, a.status AS appointment_status, a.confirmation_note
     FROM service_requests sr LEFT JOIN appointments a ON a.service_request_id = sr.id
-    WHERE sr.citizen_id = ? ORDER BY sr.created_at DESC`).all(citizenId) as Array<Record<string, unknown>>
+    WHERE sr.citizen_id = ? ORDER BY sr.created_at DESC`).all(citizen.id) as Array<Record<string, unknown>>
   res.json(rows.map(row => ({
     id: row.id, reference: row.reference, serviceKey: row.service_id, departmentId: row.department_id, status: row.status,
     formData: JSON.parse(String(row.form_data || '{}')), currentAction: row.current_action, createdAt: row.created_at, updatedAt: row.updated_at,
@@ -262,7 +284,8 @@ app.post('/api/service-requests', requireSession('CITIZEN'), (req, res) => {
   const payload = z.object({ serviceKey: z.string().min(2).max(80), data: z.record(z.string(), z.unknown()) }).parse(req.body)
   const definition = getServiceDefinition(payload.serviceKey)
   if (!definition || definition.mode === 'SPECIALIZED') return res.status(404).json({ message: 'الخدمة غير متاحة عبر محرك الاستمارات العام.' })
-  const citizen = getCitizen() as { id: number; fullName: string; verificationStatus: string }
+  const citizen = currentCitizen(res)
+  if (!citizen) return
   if (!['VERIFIED', 'VERIFIED_MANUAL'].includes(citizen.verificationStatus)) return res.status(409).json({ message: 'أكمل مراجعة الهوية قبل إرسال طلب جديد.' })
 
   const cleanData: Record<string, string> = {}
@@ -343,16 +366,17 @@ app.post('/api/onboarding/verify-phone', (req, res) => {
       otp: z.string().regex(/^\d{6}$/),
     }).parse(req.body)
     const result = verifyOtpChallenge(payload)
-    setSession(res, result.phoneMasked, 'CITIZEN')
+    const citizen = getOrCreateCitizen(result.accountKey, result.phoneMasked)
+    setSession(res, String(citizen.id), 'CITIZEN')
     addAudit({
-      actor: 'مواطن',
+      actor: citizen.fullName,
       role: 'CITIZEN',
       action: 'PHONE_OTP_VERIFIED',
       entityType: 'PhoneVerification',
       entityId: payload.challengeId,
-      metadata: { phoneMasked: result.phoneMasked, provider: 'OTPIQ' },
+      metadata: { phoneMasked: result.phoneMasked, citizenId: citizen.id, provider: 'OTPIQ' },
     })
-    res.json(result)
+    res.json({ success: result.success, phoneMasked: result.phoneMasked, verifiedAt: result.verifiedAt })
   } catch (error) {
     const message = error instanceof z.ZodError ? 'أدخل رقم الهاتف ومعرّف الطلب ورمز التحقق المكوّن من 6 أرقام بصورة صحيحة.' : error instanceof Error ? error.message : 'تعذر التحقق من الرمز.'
     res.status(400).json({ message })
@@ -373,12 +397,13 @@ app.post('/api/webhooks/otpiq', (req, res) => {
 
 app.post('/api/onboarding/complete-identity', requireSession('CITIZEN'), (req, res) => {
   const payload = z.object({ fullName: z.string().min(3), consent: z.literal(true), livenessPassed: z.boolean() }).parse(req.body)
-  const citizenId = ensureDemoCitizen()
+  const citizen = currentCitizen(res)
+  if (!citizen) return
   const timestamp = new Date().toISOString()
   db.prepare('UPDATE citizens SET full_name = ?, verification_status = ?, consent_at = ?, updated_at = ? WHERE id = ?')
-    .run(payload.fullName, 'MANUAL_REVIEW', timestamp, timestamp, citizenId)
-  addAudit({ actor: payload.fullName, role: 'CITIZEN', action: 'IDENTITY_REVIEW_REQUESTED', entityType: 'CitizenIdentity', entityId: String(citizenId), newValue: { status: 'MANUAL_REVIEW' }, metadata: { livenessClaimed: payload.livenessPassed, mediaPersisted: false } })
-  res.json(getCitizen())
+    .run(payload.fullName, 'MANUAL_REVIEW', timestamp, timestamp, citizen.id)
+  addAudit({ actor: payload.fullName, role: 'CITIZEN', action: 'IDENTITY_REVIEW_REQUESTED', entityType: 'CitizenIdentity', entityId: String(citizen.id), newValue: { status: 'MANUAL_REVIEW' }, metadata: { livenessClaimed: payload.livenessPassed, mediaPersisted: false } })
+  res.json(getCitizenById(citizen.id))
 })
 
 app.post('/api/onboarding/identity-review', requireSession('CITIZEN'), upload.fields([
@@ -403,7 +428,9 @@ app.post('/api/onboarding/identity-review', requireSession('CITIZEN'), upload.fi
     const screening = screenIdentitySubmission({ idFront, idBack, faceVideo })
     if (screening.qualityStatus === 'NEEDS_RECAPTURE') return res.status(422).json({ message: 'فحص الجودة الآلي طلب إعادة التصوير قبل حفظ بيانات الهوية.', screening })
 
-    const citizenId = ensureDemoCitizen()
+    const citizen = currentCitizen(res)
+    if (!citizen) return
+    const citizenId = citizen.id
     const now = new Date()
     const retentionUntil = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString()
     const front = storeEncryptedMedia({ citizenId, purpose: 'NATIONAL_ID_FRONT', originalName: idFront.originalname || 'national-id-front', mimeType: idFront.mimetype, buffer: idFront.buffer, retentionHours: 168 })
@@ -445,11 +472,12 @@ app.post('/api/onboarding/identity-review', requireSession('CITIZEN'), upload.fi
 })
 
 app.get('/api/onboarding/identity-review/latest', requireSession('CITIZEN'), (_req, res) => {
-  const citizenId = ensureDemoCitizen()
+  const citizen = currentCitizen(res)
+  if (!citizen) return
   const review = db.prepare(`
     SELECT id, status, national_id_masked, submitted_at, reviewed_at, review_notes, retention_until, quality_status, quality_score, quality_checks, face_match_status, face_match_score, face_match_provider
     FROM identity_reviews WHERE citizen_id = ? ORDER BY created_at DESC LIMIT 1
-  `).get(citizenId)
+  `).get(citizen.id)
   res.json(review || null)
 })
 
@@ -546,7 +574,15 @@ app.get('/api/applications', requireSession('EMPLOYEE'), (_req, res) => res.json
 app.get('/api/applications/:reference', requireSession('CITIZEN', 'EMPLOYEE'), (req, res) => {
   const item = getApplicationByReference(req.params.reference)
   if (!item) return res.status(404).json({ message: 'المعاملة غير موجودة.' })
-  addAudit({ actor: 'مستخدم مصرح', role: 'PORTAL_USER', action: 'APPLICATION_VIEW', entityType: 'Application', entityId: req.params.reference, metadata: { maskedCitizenData: true } })
+  const session = res.locals.session as SessionData
+  if (session.role === 'CITIZEN') {
+    const citizen = currentCitizen(res)
+    if (!citizen) return
+    if (Number(item.citizenId) !== citizen.id) return res.status(404).json({ message: 'المعاملة غير موجودة.' })
+    addAudit({ actor: citizen.fullName, role: 'CITIZEN', action: 'APPLICATION_VIEW', entityType: 'Application', entityId: req.params.reference, metadata: { maskedCitizenData: true } })
+  } else {
+    addAudit({ actor: session.sub, role: 'EMPLOYEE', action: 'APPLICATION_VIEW', entityType: 'Application', entityId: req.params.reference, metadata: { maskedCitizenData: true } })
+  }
   res.json(item)
 })
 
@@ -567,7 +603,8 @@ app.post('/api/applications', requireSession('CITIZEN'), upload.fields([{ name: 
     fee: z.coerce.number().nonnegative(),
     attachments: z.array(z.string()).default([]),
   }).parse(req.body)
-  const citizen = getCitizen() as { id: number; fullName: string; verificationStatus: string }
+  const citizen = currentCitizen(res)
+  if (!citizen) return
   if (!['VERIFIED', 'VERIFIED_MANUAL'].includes(citizen.verificationStatus)) return res.status(409).json({ message: 'أكمل مراجعة الهوية أولاً قبل تقديم خدمة جديدة.' })
   const files = req.files as Record<string, Express.Multer.File[]> | undefined
   const propertyDocument = files?.propertyDocument?.[0]
@@ -623,19 +660,21 @@ app.post('/api/applications/:reference/request-document', requireSession('EMPLOY
 
 app.post('/api/applications/:reference/upload-document', requireSession('CITIZEN'), upload.single('document'), (req, res) => {
   const payload = z.object({ documentName: z.string().min(2) }).parse(req.body)
+  const citizen = currentCitizen(res)
+  if (!citizen) return
   const item = getApplicationByReference(req.params.reference)
-  if (!item) return res.status(404).json({ message: 'المعاملة غير موجودة.' })
+  if (!item || Number(item.citizenId) !== citizen.id) return res.status(404).json({ message: 'المعاملة غير موجودة.' })
   if (!req.file) return res.status(400).json({ message: `صوّر أو ارفع ${payload.documentName} قبل الإرسال.` })
   validateUploadedFile(req.file, ['image', 'pdf'])
   const timestamp = new Date().toISOString()
-  const media = storeEncryptedMedia({ citizenId: Number(item.citizenId), purpose: 'APPLICATION_DOCUMENT', originalName: req.file.originalname || payload.documentName, mimeType: req.file.mimetype, buffer: req.file.buffer, retentionHours: 24 * 30 })
+  const media = storeEncryptedMedia({ citizenId: citizen.id, purpose: 'APPLICATION_DOCUMENT', originalName: req.file.originalname || payload.documentName, mimeType: req.file.mimetype, buffer: req.file.buffer, retentionHours: 24 * 30 })
   db.prepare('INSERT INTO application_media (id, application_id, media_id, label, created_at) VALUES (?, ?, ?, ?, ?)')
     .run(`appmedia_${randomUUID().replaceAll('-', '')}`, item.id, media.id, payload.documentName, timestamp)
   db.prepare(`UPDATE applications SET status = 'UNDER_REVIEW', current_action = 'لا يوجد إجراء مطلوب منك. تم استلام المستند وأعيدت المعاملة للموظف المختص.', required_document = NULL, updated_at = ? WHERE reference = ?`)
     .run(timestamp, req.params.reference)
   addEvent(item.id as number, { type: 'DOCUMENT_UPLOADED', title: 'تم استكمال المعلومات', description: `رفع المواطن ${payload.documentName} بشكل مشفر وأعيدت المعاملة إلى التدقيق.`, actor: 'المواطن' })
   createNotification({ citizenId: Number(item.citizenId), type: 'DOCUMENT_RECEIVED', title: 'تم استلام المستند', message: `استلمت المنصة ${payload.documentName} وأعادت المعاملة إلى الموظف المختص.`, link: `/citizen/application/${req.params.reference}` })
-  addAudit({ actor: item.citizenName as string, role: 'CITIZEN', action: 'MISSING_DOCUMENT_UPLOADED', entityType: 'Application', entityId: req.params.reference, previousValue: { status: item.status }, newValue: { status: 'UNDER_REVIEW', document: payload.documentName }, metadata: { protectedMediaId: media.id, retentionDays: 30 } })
+  addAudit({ actor: citizen.fullName, role: 'CITIZEN', action: 'MISSING_DOCUMENT_UPLOADED', entityType: 'Application', entityId: req.params.reference, previousValue: { status: item.status }, newValue: { status: 'UNDER_REVIEW', document: payload.documentName }, metadata: { protectedMediaId: media.id, retentionDays: 30 } })
   res.json(getApplicationByReference(req.params.reference))
 })
 
