@@ -119,7 +119,7 @@ function OperationsLogin() {
     catch (err) { setError((err as Error).message) }
     finally { setBusy(false) }
   }
-  return <div className="login-page operations-login"><CivicUtilityBar /><div className="login-backdrop" /><div className="login-top container"><Brand /><Link href="/login"><ArrowRight /> بوابات الدخول</Link></div><main className="container login-content"><div className="login-intro"><span className="eyebrow"><MonitorCheck size={16} /> OPERATIONS CENTER</span><h1>دخول غرفة العمليات</h1><p>هذه البوابة مخصصة للمتابعة التشغيلية وقراءة مؤشرات الدوائر فقط. رمزها مستقل عن دخول الموظف والمدير العام.</p></div><section className="super-admin-login-card operations-login-card"><span className="super-admin-shield"><MonitorCheck /></span><strong>OPERATIONS</strong><label>رمز دخول غرفة العمليات<input value={accessCode} onChange={event => setAccessCode(event.target.value)} type="password" autoComplete="current-password" onKeyDown={event => { if (event.key === 'Enter' && accessCode.length >= 12) void login() }} /></label>{error && <div className="form-error"><AlertTriangle /> {error}</div>}<button className="button primary full" onClick={() => void login()} disabled={busy || accessCode.length < 12}>{busy ? 'جاري التحقق...' : 'دخول آمن'}</button><small>لا يمنح هذا الدور حق مراجعة الهويات أو فتح مرفقات المواطنين.</small></section></main></div>
+  return <div className="login-page operations-login"><CivicUtilityBar /><div className="login-backdrop" /><div className="login-top container"><Brand /><Link href="/login"><ArrowRight /> بوابات الدخول</Link></div><main className="container login-content"><div className="login-intro"><span className="eyebrow"><MonitorCheck size={16} /> غرفة العمليات</span><h1>دخول غرفة العمليات</h1><p>هذه البوابة مخصصة للمتابعة التشغيلية وقراءة مؤشرات الدوائر فقط. رمزها مستقل عن دخول الموظف والمدير العام.</p></div><section className="super-admin-login-card operations-login-card"><span className="super-admin-shield"><MonitorCheck /></span><strong>وصول تشغيلي</strong><label>رمز دخول غرفة العمليات<input value={accessCode} onChange={event => setAccessCode(event.target.value.replace(/\D/g, '').slice(0, 4))} type="password" inputMode="numeric" autoComplete="current-password" placeholder="••••" onKeyDown={event => { if (event.key === 'Enter' && accessCode.length === 4) void login() }} /></label>{error && <div className="form-error"><AlertTriangle /> {error}</div>}<button className="button primary full" onClick={() => void login()} disabled={busy || accessCode.length !== 4}>{busy ? 'جاري التحقق...' : 'دخول غرفة العمليات'}</button><small>هذا الرمز مؤقت، ولا يمنح هذا الدور حق مراجعة الهويات أو فتح مرفقات المواطنين.</small></section></main></div>
 }
 
 function SuperAdminLogin() {
@@ -182,14 +182,18 @@ function SecureCameraCapture({
   const [recordingSeconds, setRecordingSeconds] = useState(7)
   const [previewUrl, setPreviewUrl] = useState('')
   const [cameraError, setCameraError] = useState('')
+  const [cameraReady, setCameraReady] = useState(false)
 
   const stopCamera = () => {
     discardRecordingRef.current = true
     if (recordingTimerRef.current) window.clearInterval(recordingTimerRef.current)
     recordingTimerRef.current = null
-    recorderRef.current?.stop()
+    if (recorderRef.current?.state === 'recording') recorderRef.current.stop()
+    recorderRef.current = null
     streamRef.current?.getTracks().forEach(track => track.stop())
     streamRef.current = null
+    if (videoRef.current) videoRef.current.srcObject = null
+    setCameraReady(false)
     setCameraOpen(false)
     setRecording(false)
   }
@@ -206,8 +210,24 @@ function SecureCameraCapture({
     onChange(captured)
   }
 
+  const cameraErrorMessage = (error: unknown) => {
+    if (!window.isSecureContext) return 'تحتاج الكاميرا إلى اتصال آمن HTTPS. افتح المنصة من الرابط الرسمي وليس من نافذة داخل تطبيق آخر.'
+    if (error instanceof DOMException) {
+      if (error.name === 'NotAllowedError' || error.name === 'SecurityError') return 'تم رفض إذن الكاميرا. من إعدادات المتصفح اسمح للمنصة باستخدام الكاميرا ثم اضغط إعادة المحاولة.'
+      if (error.name === 'NotFoundError' || error.name === 'OverconstrainedError') return 'لم نعثر على الكاميرا المطلوبة. أوقف التطبيقات الأخرى التي تستخدم الكاميرا ثم أعد المحاولة.'
+      if (error.name === 'NotReadableError') return 'الكاميرا مستخدمة من تطبيق آخر. أغلق الكاميرا أو واتساب أو أي تطبيق مفتوح ثم أعد المحاولة.'
+    }
+    return 'تعذر تشغيل معاينة الكاميرا. تأكد من الإذن، ثم أغلق التطبيقات الأخرى التي تستخدم الكاميرا وأعد المحاولة.'
+  }
+
   const openCamera = async () => {
     setCameraError('')
+    setCameraReady(false)
+    stopCamera()
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setCameraError('هذا المتصفح لا يدعم فتح الكاميرا. استخدم Chrome أو Safari حديثاً، أو ارفع الملف من الهاتف.')
+      return
+    }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: { ideal: facingMode }, width: { ideal: 1280 }, height: { ideal: 720 } },
@@ -215,18 +235,46 @@ function SecureCameraCapture({
       })
       streamRef.current = stream
       setCameraOpen(true)
-      window.setTimeout(() => {
-        if (videoRef.current) videoRef.current.srcObject = stream
-        if (mode === 'video') window.setTimeout(() => startVideo(stream), 700)
-      }, 0)
-    } catch {
-      setCameraError('تعذر فتح الكاميرا. امنح الإذن للكاميرا أو استخدم رفع ملف من الهاتف.')
+      let framesWaited = 0
+      const attachStream = async () => {
+        if (streamRef.current !== stream) return
+        const video = videoRef.current
+        if (!video) {
+          framesWaited += 1
+          if (framesWaited < 12) return window.requestAnimationFrame(() => { void attachStream() })
+          stream.getTracks().forEach(track => track.stop())
+          if (streamRef.current === stream) streamRef.current = null
+          setCameraOpen(false)
+          setCameraError('تعذر تجهيز شاشة الكاميرا. أعد المحاولة أو استخدم رفع الملف.')
+          return
+        }
+        video.srcObject = stream
+        video.muted = true
+        video.playsInline = true
+        try {
+          await video.play()
+          if (streamRef.current !== stream) return
+          setCameraReady(true)
+          if (mode === 'video') window.setTimeout(() => { if (streamRef.current === stream) startVideo(stream) }, 250)
+        } catch (playError) {
+          stream.getTracks().forEach(track => track.stop())
+          if (streamRef.current === stream) streamRef.current = null
+          setCameraOpen(false)
+          setCameraError(cameraErrorMessage(playError))
+        }
+      }
+      window.requestAnimationFrame(() => { void attachStream() })
+    } catch (error) {
+      setCameraError(cameraErrorMessage(error))
     }
   }
 
   const takePhoto = () => {
     const video = videoRef.current
-    if (!video) return
+    if (!video || !cameraReady || video.videoWidth < 1 || video.videoHeight < 1) {
+      setCameraError('انتظر حتى تظهر معاينة الكاميرا بوضوح قبل التقاط الصورة.')
+      return
+    }
     const canvas = document.createElement('canvas')
     canvas.width = video.videoWidth || 1280
     canvas.height = video.videoHeight || 720
@@ -251,10 +299,15 @@ function SecureCameraCapture({
       if (recordingTimerRef.current) window.clearInterval(recordingTimerRef.current)
       recordingTimerRef.current = null
       if (!discardRecordingRef.current && chunksRef.current.length) setCapturedFile(new File([new Blob(chunksRef.current, { type: 'video/webm' })], `face-video-7s-${Date.now()}.webm`, { type: 'video/webm' }))
-      streamRef.current?.getTracks().forEach(track => track.stop())
-      streamRef.current = null
-      setCameraOpen(false)
-      setRecording(false)
+      const isCurrentStream = streamRef.current === stream
+      stream.getTracks().forEach(track => track.stop())
+      if (isCurrentStream) {
+        streamRef.current = null
+        if (videoRef.current) videoRef.current.srcObject = null
+        setCameraReady(false)
+        setCameraOpen(false)
+        setRecording(false)
+      }
     }
     recorderRef.current = recorder
     recorder.start(500)
@@ -284,8 +337,8 @@ function SecureCameraCapture({
     <input ref={inputRef} type="file" hidden accept={mode === 'photo' ? (allowPdf ? 'image/*,application/pdf' : 'image/*') : 'video/*'} capture={facingMode === 'environment' ? 'environment' : 'user'} onChange={event => pickFile(event.target.files?.[0])} />
     <div className="capture-head"><div><strong>{title}</strong><p>{guidance}</p></div>{file && <span className="capture-ready"><CheckCircle2 /> جاهز</span>}</div>
     {previewUrl && <div className="capture-preview">{mode === 'photo' ? file?.type === 'application/pdf' ? <div className="pdf-preview"><FileText /><strong>{file.name}</strong><small>PDF جاهز للرفع</small></div> : <img src={previewUrl} alt={title} /> : <video src={previewUrl} controls playsInline />}</div>}
-    {cameraOpen && <div className="live-camera"><video ref={videoRef} autoPlay playsInline muted /><div className="live-camera-actions">{mode === 'photo' ? <button type="button" className="button primary" onClick={takePhoto}><Camera /> التقاط الصورة</button> : recording ? <div className="recording-countdown"><span>{recordingSeconds}</span><strong>ثوانٍ — حرّك رأسك ببطء وانظر للكاميرا</strong></div> : <div className="camera-preparing"><RefreshCw /> جاري تجهيز التسجيل التلقائي...</div>}<button type="button" className="button ghost" onClick={stopCamera}>إلغاء</button></div></div>}
-    <div className="capture-actions"><button type="button" className="button secondary" onClick={openCamera}><Camera /> {file ? 'إعادة التصوير' : 'فتح الكاميرا'}</button>{!cameraOnly && <button type="button" className="button ghost" onClick={() => inputRef.current?.click()}><FileText /> {mode === 'photo' ? 'رفع صورة' : 'رفع فيديو'}</button>}{file && <button type="button" className="capture-remove" onClick={() => { if (previewUrl) URL.revokeObjectURL(previewUrl); setPreviewUrl(''); onChange(null) }}><RefreshCw /> مسح</button>}</div>
+    {cameraOpen && <div className="live-camera"><video ref={videoRef} autoPlay playsInline muted disablePictureInPicture /><div className="live-camera-actions">{mode === 'photo' ? <button type="button" className="button primary" onClick={takePhoto} disabled={!cameraReady}><Camera /> {cameraReady ? 'التقاط الصورة' : 'جاري تجهيز الكاميرا...'}</button> : recording ? <div className="recording-countdown"><span>{recordingSeconds}</span><strong>ثوانٍ — حرّك رأسك ببطء وانظر للكاميرا</strong></div> : <div className="camera-preparing"><RefreshCw /> {cameraReady ? 'جاري بدء التسجيل التلقائي...' : 'جاري تشغيل معاينة الكاميرا...'}</div>}<button type="button" className="button ghost" onClick={stopCamera}>إلغاء</button></div></div>}
+    <div className="capture-actions"><button type="button" className="button secondary" onClick={() => void openCamera()}><Camera /> {cameraOpen ? 'إعادة محاولة الكاميرا' : file ? 'إعادة التصوير' : 'فتح الكاميرا'}</button>{!cameraOnly && <button type="button" className="button ghost" onClick={() => inputRef.current?.click()}><FileText /> {mode === 'photo' ? 'رفع صورة' : 'رفع فيديو'}</button>}{file && <button type="button" className="capture-remove" onClick={() => { if (previewUrl) URL.revokeObjectURL(previewUrl); setPreviewUrl(''); onChange(null) }}><RefreshCw /> مسح</button>}</div>
     {cameraError && <div className="capture-error"><AlertTriangle /> {cameraError}</div>}
   </div>
 }
@@ -371,6 +424,7 @@ function CitizenDashboard() {
   const nextRequest = serviceRequests[0]
   const serviceActionRequired = serviceRequests.find(request => request.status === 'ACTION_REQUIRED')
   const citizenActionRequired = actionRequired || serviceActionRequired
+  const serviceGroups = Array.from(new Set(services.map(service => service.category))).map(category => ({ category, items: services.filter(service => service.category === category) }))
   return <PortalLayout><div className="citizen-v2">
     <section className="citizen-v2-hero">
       <div className="citizen-v2-intro"><span className="citizen-v2-kicker"><BadgeCheck /> حساب مواطن محمي</span><h1>أهلاً {firstName}،<br /><em>ما الخدمة التي تحتاجها اليوم؟</em></h1><p>خدماتك وطلباتك وإشعاراتك في مكان واحد، بخطوات واضحة من البداية حتى النتيجة.</p><div className="citizen-v2-hero-actions"><Link href="#services" className="button primary"><BriefcaseBusiness /> تصفح الخدمات</Link><Link href="/service/online-appointment" className="button citizen-quiet-button"><CalendarDays /> احجز موعد</Link></div></div>
@@ -378,7 +432,7 @@ function CitizenDashboard() {
     </section>
     <nav className="citizen-v2-quick-actions" aria-label="اختصارات المواطن"><Link href="/service/store-license"><span><Plus /></span><div><strong>خدمة جديدة</strong><small>ابدأ طلبك</small></div><ArrowLeft /></Link><Link href="/service/online-appointment"><span><CalendarDays /></span><div><strong>حجز موعد</strong><small>اختر وقتك</small></div><ArrowLeft /></Link><Link href="#notifications"><span className={unreadNotifications ? 'notification-dot' : ''}><Bell /></span><div><strong>الإشعارات</strong><small>{unreadNotifications ? `${unreadNotifications.toLocaleString('en-US')} جديد` : 'أنت مطّلع'}</small></div><ArrowLeft /></Link><Link href="/citizen/feedback"><span><MessageSquareWarning /></span><div><strong>شكوى أو مقترح</strong><small>سجّل طلبك وتابعه</small></div><ArrowLeft /></Link></nav>
     <section className="citizen-v2-priority-grid"><article className={citizenActionRequired ? 'citizen-priority-card urgent' : 'citizen-priority-card'}><span className="priority-icon">{citizenActionRequired ? <AlertTriangle /> : <CheckCircle2 />}</span><div><small>{citizenActionRequired ? 'إجراء مطلوب منك' : 'حالة حسابك اليوم'}</small><h2>{citizenActionRequired ? citizenActionRequired.currentAction : 'لا يوجد إجراء مطلوب منك حالياً'}</h2><p>{citizenActionRequired ? `${actionRequired?.serviceName || getServiceDefinition(serviceActionRequired?.serviceKey || '')?.title || 'طلب خدمة'} • ${citizenActionRequired.reference}` : 'توصلك الإشعارات مباشرة عند وصول تحديث جديد من الدائرة.'}</p></div>{citizenActionRequired ? <Link className="button primary" href={actionRequired ? `/citizen/application/${actionRequired.reference}` : '#general-requests'}>إكمال الإجراء <ArrowLeft /></Link> : <Link className="button outline" href="#services">ابدأ خدمة <Plus /></Link>}</article><article className="citizen-progress-card"><div><span className="section-kicker">ملخص النشاط</span><h2>صورة سريعة لحسابك</h2></div><div className="progress-stat-row"><span><b>{activeApplications.length.toLocaleString('en-US')}</b><small>طلبات جارية</small></span><span><b>{issuedDocuments.length.toLocaleString('en-US')}</b><small>وثائق صادرة</small></span><span><b>{serviceRequests.length.toLocaleString('en-US')}</b><small>طلبات عامة</small></span></div></article></section>
-    <section className="citizen-v2-services" id="services"><header className="citizen-section-heading"><div><span className="section-kicker">الخدمات الرقمية</span><h2>اختر الخدمة المناسبة لك</h2><p>اختر الخدمة، أكمل استمارتها الخاصة، وتابع كل تحديث من حسابك.</p></div><Link href="/service/online-appointment">حجز موعد <ArrowLeft /></Link></header><div className="citizen-service-deck">{services.map((service, index) => <Link href={`/service/${service.key}`} className={index === 0 ? 'citizen-service-card featured' : 'citizen-service-card'} key={service.key}><div><span className="service-card-icon"><BriefcaseBusiness /></span><small>{service.department}</small></div><h3>{service.title}</h3><p>{service.description}</p><footer><span>{service.fee ? formatIQD(service.fee) : 'مجانية'}</span><ArrowLeft /></footer></Link>)}</div></section>
+    <section className="citizen-v2-services" id="services"><header className="citizen-section-heading"><div><span className="section-kicker">دليل الخدمات الرقمية</span><h2>كل الخدمات المتاحة الآن</h2><p>يوجد {services.length.toLocaleString('en-US')} خدمة ومسار رسمي. اختر الخدمة، أكمل استمارتها الخاصة، وتابع كل تحديث من حسابك.</p></div><Link href="/service/online-appointment">حجز موعد <ArrowLeft /></Link></header><nav className="citizen-service-index" aria-label="تصنيفات الخدمات">{serviceGroups.map((group, index) => <a href={`#service-category-${index}`} key={group.category}>{group.category}<b>{group.items.length.toLocaleString('en-US')}</b></a>)}</nav><div className="citizen-service-directory">{serviceGroups.map((group, groupIndex) => <section className="citizen-service-group" id={`service-category-${groupIndex}`} key={group.category}><header><span className="service-group-mark"><BriefcaseBusiness /></span><div><h3>{group.category}</h3><p>{group.items.length.toLocaleString('en-US')} خدمات ضمن هذا المسار</p></div></header><div className="citizen-service-deck">{group.items.map(service => { const mode = getServiceDefinition(service.key)?.mode; return <Link href={`/service/${service.key}`} className="citizen-service-card" key={service.key}><div><span className="service-card-icon"><BriefcaseBusiness /></span><small>{service.department}</small></div><h3>{service.title}</h3><p>{service.description}</p><footer><span>{mode === 'EXTERNAL' ? 'بوابة رسمية' : service.fee ? formatIQD(service.fee) : 'مجانية'}</span><ArrowLeft /></footer></Link> })}</div></section>)}</div></section>
     <section className="citizen-v2-workspace" id="my-requests"><article className="citizen-workspace-card"><header className="citizen-section-heading compact"><div><span className="section-kicker">معاملاتي</span><h2>تابع معاملاتك</h2></div><Link href="/service/store-license">خدمة جديدة <Plus /></Link></header>{applications.length === 0 ? <div className="citizen-empty"><FileText /><div><strong>لم تبدأ أي معاملة بعد</strong><span>ابدأ خدمة وسيظهر رقم المتابعة والحالة هنا.</span></div><Link className="button primary" href="/service/store-license">ابدأ الآن</Link></div> : <div className="citizen-application-list">{applications.slice(0, 4).map(app => <Link href={`/citizen/application/${app.reference}`} className="citizen-application-row" key={app.reference}><span className={`citizen-application-icon ${app.status.toLowerCase()}`}><BriefcaseBusiness /></span><div><div><strong>{app.serviceName}</strong><em className={`status ${app.status.toLowerCase()}`}>{statusLabels[app.status]}</em></div><small>{app.reference} • {app.department}</small><p>{app.currentAction}</p></div><ChevronLeft /></Link>)}</div>}</article><aside className="citizen-workspace-card citizen-notification-card" id="notifications"><header className="citizen-section-heading compact"><div><span className="section-kicker">التحديثات</span><h2>آخر الإشعارات</h2></div>{unreadNotifications > 0 && <button className="text-action" onClick={() => void readAllNotifications()}>تعليم الكل كمقروء</button>}</header>{notifications.length === 0 ? <div className="citizen-empty compact"><Bell /><div><strong>لا توجد تحديثات جديدة</strong><span>ستظهر هنا تنبيهات الهوية والطلبات والمواعيد.</span></div></div> : <div className="citizen-notification-list">{notifications.slice(0, 4).map(item => item.link ? <Link href={item.link} className={item.readAt ? 'citizen-notification-row read' : 'citizen-notification-row unread'} key={item.id} onClick={() => { if (!item.readAt) void readNotification(item.id) }}><span><Bell /></span><div><strong>{item.title}</strong><p>{item.message}</p><time>{new Date(item.createdAt).toLocaleString('en-GB')}</time></div></Link> : <button className={item.readAt ? 'citizen-notification-row read' : 'citizen-notification-row unread'} key={item.id} onClick={() => void readNotification(item.id)}><span><Bell /></span><div><strong>{item.title}</strong><p>{item.message}</p><time>{new Date(item.createdAt).toLocaleString('en-GB')}</time></div></button>)}</div>}</aside></section>
     {serviceRequests.length > 0 && <section className="citizen-service-requests" id="general-requests"><header className="citizen-section-heading compact"><div><span className="section-kicker">متابعة الخدمات</span><h2>طلبات الخدمات الأخرى</h2><p>تابع القرار، سبب الرفض، أو ارفع النواقص مباشرة من هنا.</p></div></header>{serviceUploadError && <div className="form-error"><AlertTriangle /> {serviceUploadError}</div>}<div className="citizen-service-request-list">{serviceRequests.map(item => <article key={item.reference} className={`citizen-service-request ${item.status.toLowerCase()}`}><div className="citizen-service-request-top"><span className="citizen-application-icon"><BriefcaseBusiness /></span><div><small>{item.reference}</small><h3>{item.serviceName || getServiceDefinition(item.serviceKey)?.title || item.serviceKey}</h3><p>{item.currentAction}</p></div><em className={`status ${item.status.toLowerCase()}`}>{item.status === 'ACTION_REQUIRED' ? 'مطلوب استكمال' : item.status === 'APPROVED' ? 'تمت المعاملة' : item.status === 'REJECTED' ? 'مرفوض' : item.status === 'UNDER_REVIEW' ? 'قيد التدقيق' : 'تم التقديم'}</em></div>{item.decisionNote && <div className="service-decision-note"><AlertTriangle /><span><small>{item.status === 'REJECTED' ? 'سبب الرفض' : 'ملاحظة الموظف'}</small><strong>{item.decisionNote}</strong></span></div>}{item.status === 'ACTION_REQUIRED' && <div className="service-required-upload"><div><FileText /><span><small>المطلوب منك</small><strong>{item.requiredDocument || 'مستند إضافي'}</strong></span></div><label className="button primary"><Camera /> {uploadingServiceReference === item.reference ? 'جاري الرفع...' : 'تصوير / رفع المستند'}<input hidden type="file" accept="image/*,application/pdf" capture="environment" disabled={uploadingServiceReference === item.reference} onChange={event => void uploadServiceDocument(item, event.target.files?.[0] || null)} /></label></div>}{item.attachments && item.attachments.length > 0 && <div className="service-request-attachment-summary"><FileArchive /> {item.attachments.length.toLocaleString('en-US')} مرفق محفوظ ضمن الطلب</div>}</article>)}</div></section>}
     {nextRequest && <section className="citizen-v2-reminder"><span><CalendarDays /></span><div><small>آخر طلب مسجل</small><strong>{getServiceDefinition(nextRequest.serviceKey)?.title || nextRequest.serviceKey}</strong><p>{nextRequest.currentAction}</p></div><Link className="button outline" href="/service/online-appointment">حجز موعد آخر <ArrowLeft /></Link></section>}

@@ -235,7 +235,7 @@ app.post('/api/auth/employee', sensitiveLimiter, (req, res) => {
 })
 
 app.post('/api/auth/operations', sensitiveLimiter, (req, res) => {
-  const payload = z.object({ accessCode: z.string().min(12).max(200) }).parse(req.body)
+  const payload = z.object({ accessCode: z.string().regex(/^\d{4}$/) }).parse(req.body)
   if (!secureStringEquals(process.env.OPERATIONS_PASSWORD, payload.accessCode)) return res.status(401).json({ message: 'بيانات دخول غرفة العمليات غير صحيحة.' })
   setSession(res, 'operations-controller', 'OPERATIONS')
   addAudit({ actor: 'مشغل غرفة العمليات', role: 'OPERATIONS', action: 'OPERATIONS_SESSION_CREATED', entityType: 'Session', entityId: randomUUID(), metadata: { ip: req.ip } })
