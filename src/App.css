@@ -1524,3 +1524,36 @@ body { background: var(--gov-paper); color: var(--gov-text); font-family: "Segoe
   .citizen-notifications-full-list .citizen-notification-row { grid-template-columns: auto minmax(0, 1fr); gap: 11px; padding: 15px 14px; }
   .citizen-notifications-full-list .citizen-notification-row > svg { display: none; }
 }
+
+/* مراجعة بيانات الهوية: تفاصيل OCR كاملة وطلب GPS تلقائي */
+.identity-extracted-data { margin: 16px 0; border: 1px solid #d8e6de; border-radius: 14px; overflow: hidden; background: #fff; box-shadow: 0 8px 24px rgba(16, 67, 47, .05); }
+.identity-extracted-data > header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px; border-bottom: 1px solid #e4eee9; background: linear-gradient(135deg, #f4faf6, #fffdf8); }
+.identity-extracted-data h3 { margin: 3px 0 0; color: #173f31; font-size: 1rem; }
+.analysis-chip, .location-auto-status { display: inline-flex; align-items: center; justify-content: center; flex: none; min-height: 29px; padding: 5px 9px; border: 1px solid #d5e4dc; border-radius: 999px; background: #f7faf8; color: #5e736a; font-size: .72rem; font-weight: 800; }
+.analysis-chip.complete, .location-saved .location-auto-status { border-color: #b7ddc5; background: #edf8f0; color: #197345; }
+.identity-document-data-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.identity-document-data-grid > span { display: grid; gap: 5px; min-width: 0; padding: 12px 14px; border-bottom: 1px solid #edf2ef; }
+.identity-document-data-grid > span:nth-child(odd) { border-inline-start: 1px solid #edf2ef; }
+.identity-document-data-grid > span:nth-last-child(-n+2) { border-bottom: 0; }
+.identity-document-data-grid small { color: #6e7f77; font-size: .72rem; }
+.identity-document-data-grid strong { overflow: hidden; color: #1e4839; font-size: .85rem; line-height: 1.5; text-overflow: ellipsis; white-space: nowrap; }
+.identity-edit-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.location-auto-status { align-self: center; white-space: nowrap; }
+@media (max-width: 620px) { .identity-extracted-data > header { align-items: flex-start; flex-direction: column; } .identity-document-data-grid, .identity-edit-fields { grid-template-columns: 1fr; } .identity-document-data-grid > span, .identity-document-data-grid > span:nth-child(odd) { border-inline-start: 0; border-bottom: 1px solid #edf2ef; } .identity-document-data-grid > span:last-child { border-bottom: 0; } .location-auto-status { align-self: flex-start; } }
+
+/* نتيجة التشابه التقني بين صورة المستند وفيديو الوجه */
+.face-comparison-result { display: flex; align-items: flex-start; gap: 11px; margin: 14px 0; padding: 13px 14px; border: 1px solid #d6e5dd; border-radius: 12px; background: #f8fbf9; color: #244b3a; }
+.face-comparison-result > svg { margin-top: 2px; color: #18744a; }
+.face-comparison-result > span { display: grid; flex: 1; gap: 3px; }
+.face-comparison-result strong { font-size: .84rem; }
+.face-comparison-result small { color: #65796f; font-size: .75rem; line-height: 1.6; }
+.face-comparison-result.match_assisted { border-color: #add8bd; background: #eef9f1; }
+.face-comparison-result.no_match_assisted { border-color: #efd4a8; background: #fffbf2; }
+.face-comparison-result.manual_review_required { border-color: #d8e5df; background: #f7faf8; }
+
+/* بيانات OCR الموسعة ضمن مراجعة الهوية المخولة */
+.review-extracted-document { margin: 14px 0; border: 1px solid #dce9e2; border-radius: 12px; overflow: hidden; background: #fbfdfc; }
+.review-extracted-document > header { padding: 12px 14px; border-bottom: 1px solid #e7efea; background: #f2f8f4; }
+.review-extracted-document h4 { margin: 4px 0 0; color: #224738; font-size: .92rem; }
+.review-extracted-document .review-data-grid { margin: 0; border: 0; border-radius: 0; }
+@media (max-width: 620px) { .review-extracted-document .review-data-grid { grid-template-columns: 1fr; } }

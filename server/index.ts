@@ -727,7 +727,7 @@ app.post('/api/onboarding/identity-review', requireSession('CITIZEN'), upload.fi
     const reviewId = `idv_${randomUUID().replaceAll('-', '')}`
     const maskedNationalId = `********${payload.documentNumber.replace(/\s/g, '').slice(-4)}`
     const locationAllowed = payload.locationConsent === 'true' && payload.locationLat !== undefined && payload.locationLng !== undefined
-    const extractionSummary = JSON.stringify({ status: analysis.status, provider: analysis.provider, confidence: analysis.confidence, documentTypeDetected: analysis.documentTypeDetected, fieldsPresent: Object.fromEntries(Object.entries(analysis.fields).map(([key, value]) => [key, Boolean(value)])), faceComparison: analysis.faceComparison.status })
+    const extractionSummary = JSON.stringify({ status: analysis.status, provider: analysis.provider, confidence: analysis.confidence, documentTypeDetected: analysis.documentTypeDetected, fields: analysis.fields, fieldsPresent: Object.fromEntries(Object.entries(analysis.fields).map(([key, value]) => [key, Boolean(value)])), faceComparison: analysis.faceComparison.status })
 
     db.prepare(`
       INSERT INTO identity_reviews (
@@ -777,7 +777,7 @@ app.get('/api/onboarding/identity-review/latest', requireSession('CITIZEN'), (_r
 app.get('/api/admin/identity-reviews', requireSession('EMPLOYEE', 'IDENTITY_REVIEWER', 'SUPER_ADMIN'), requireReviewAccess, (_req, res) => {
   const rows = db.prepare(`
     SELECT r.id, r.status, r.national_id_masked, r.consent_at, r.submitted_at, r.reviewed_at, r.reviewed_by, r.review_notes, r.retention_until,
-           r.quality_status, r.quality_score, r.quality_checks, r.face_match_status, r.face_match_score, r.face_match_provider,
+           r.quality_status, r.quality_score, r.quality_checks, r.face_match_status, r.face_match_score, r.face_match_provider, r.extracted_data,
            c.full_name, c.phone_masked, c.location_lat, c.location_lng, c.location_accuracy_m, c.location_updated_at,
            front.id AS front_id, front.mime_type AS front_mime, front.size_bytes AS front_size,
            back.id AS back_id, back.mime_type AS back_mime, back.size_bytes AS back_size,
@@ -803,6 +803,21 @@ app.get('/api/admin/identity-reviews', requireSession('EMPLOYEE', 'IDENTITY_REVI
     notes: row.review_notes,
     retentionUntil: row.retention_until,
     location: typeof row.location_lat === 'number' && typeof row.location_lng === 'number' ? { lat: row.location_lat, lng: row.location_lng, accuracyM: typeof row.location_accuracy_m === 'number' ? row.location_accuracy_m : null, updatedAt: row.location_updated_at || null } : null,
+    extractedFields: (() => {
+      try {
+        const extracted = row.extracted_data ? JSON.parse(String(row.extracted_data)) as { fields?: Record<string, unknown>; documentTypeDetected?: string | null } : null
+        const fields = extracted?.fields
+        return fields ? {
+          documentTypeDetected: extracted?.documentTypeDetected || null,
+          fullName: typeof fields.fullName === 'string' ? fields.fullName : null,
+          documentNumber: typeof fields.documentNumber === 'string' ? fields.documentNumber : null,
+          dateOfBirth: typeof fields.dateOfBirth === 'string' ? fields.dateOfBirth : null,
+          nationality: typeof fields.nationality === 'string' ? fields.nationality : null,
+          sex: typeof fields.sex === 'string' ? fields.sex : null,
+          expiryDate: typeof fields.expiryDate === 'string' ? fields.expiryDate : null,
+        } : null
+      } catch { return null }
+    })(),
     screening: {
       qualityStatus: row.quality_status,
       qualityScore: row.quality_score,

@@ -25,11 +25,17 @@ async function getWorker() {
 
 function pickField(text: string, labels: string[]) {
   const lines = text.split(/\r?\n/).map(line => line.trim()).filter(Boolean)
-  for (const line of lines) {
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index]
     const normalized = normaliseText(line).toLowerCase()
     if (!labels.some(label => normalized.includes(label))) continue
-    const after = line.split(/[:：\-]/).slice(1).join(' ').trim()
-    if (after.length >= 2) return after.slice(0, 160)
+    const afterSeparator = line.split(/[:：\-]/).slice(1).join(' ').trim()
+    if (afterSeparator.length >= 2) return afterSeparator.slice(0, 160)
+    const afterLabel = labels.reduce((value, label) => value.replace(new RegExp(label, 'ig'), ''), line)
+      .replace(/[\s:：\-–—|]+/g, ' ').trim()
+    if (afterLabel.length >= 2) return afterLabel.slice(0, 160)
+    const next = lines[index + 1]?.trim() || ''
+    if (next.length >= 2 && !labels.some(label => normaliseText(next).toLowerCase().includes(label))) return next.slice(0, 160)
   }
   return null
 }
@@ -40,7 +46,8 @@ function inferFields(rawText: string, documentType: IdentityDocumentType) {
   const candidateNumbers = (text.match(/(?<!\d)\d[\d\s-]{4,22}\d(?!\d)/g) || [])
     .map(value => value.replace(/[^0-9]/g, ''))
     .filter(value => value.length >= 6 && value.length <= 18)
-  const nameFromLabel = pickField(rawText, ['الاسم', 'name', 'surname', 'given'])
+  const nameFromLabel = pickField(rawText, ['الاسم الكامل', 'الاسم', 'name', 'surname', 'given'])
+  const numberFromLabel = pickField(rawText, ['الرقم الوطني', 'رقم الهوية', 'رقم الجواز', 'رقم الاجازة', 'رقم الإجازة', 'passport no', 'document no'])?.replace(/[^0-9A-Za-z-]/g, '') || null
   const nameFromLine = lines.find(line => {
     const normalized = normaliseText(line)
     const arabicCount = (normalized.match(/[ء-ي]/g) || []).length
@@ -55,7 +62,7 @@ function inferFields(rawText: string, documentType: IdentityDocumentType) {
   const sex = /(?:ذكر|male)\b/i.test(text) ? 'ذكر' : /(?:انثى|أنثى|female)\b/i.test(text) ? 'أنثى' : null
   return {
     fullName: (nameFromLabel || nameFromLine)?.slice(0, 160) || null,
-    documentNumber: candidateNumbers.sort((a, b) => b.length - a.length)[0] || null,
+    documentNumber: numberFromLabel || candidateNumbers.sort((a, b) => b.length - a.length)[0] || null,
     dateOfBirth: dateOfBirth?.slice(0, 40) || null,
     nationality,
     sex,
