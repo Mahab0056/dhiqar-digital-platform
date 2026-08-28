@@ -1154,3 +1154,13 @@ body { background: var(--gov-paper); color: var(--gov-text); font-family: "Segoe
   .issued-document-actions { grid-column: 1 / -1; justify-content: stretch; }
   .issued-document-actions .button { flex: 1; justify-content: center; }
 }
+
+/* Automatic document analysis status */
+.automatic-analysis-status, .automatic-profile-note { display: flex; align-items: flex-start; gap: 11px; margin-top: 12px; padding: 13px 14px; border: 1px solid #d6e7dd; border-radius: 12px; background: #f7fbf8; color: #244b3a; }
+.automatic-analysis-status > svg, .automatic-profile-note > svg { margin-top: 2px; color: #0a7a46; }
+.automatic-analysis-status > span, .automatic-profile-note > span { display: grid; gap: 3px; flex: 1; }
+.automatic-analysis-status strong, .automatic-profile-note strong { font-size: 13px; }
+.automatic-analysis-status small, .automatic-profile-note small { color: #66796f; line-height: 1.6; font-size: 11px; }
+.automatic-analysis-status.complete { border-color: #a9d6bb; background: #edf8f1; }
+.automatic-analysis-status.unavailable { border-color: #f1d6a5; background: #fffaf0; color: #73521a; }
+.automatic-analysis-status .text-action { align-self: center; white-space: nowrap; }

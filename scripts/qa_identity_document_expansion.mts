@@ -1,5 +1,6 @@
 import { createHmac } from 'node:crypto'
 import { existsSync } from 'node:fs'
+import { readFile } from 'node:fs/promises'
 import { ensureDemoCitizen, db } from '../server/db.js'
 import { purgeExpiredMedia } from '../server/media.js'
 
@@ -12,7 +13,7 @@ const sign = (sub: string, role: string) => {
 const citizenId = ensureDemoCitizen()
 const citizenHeaders = { cookie: `dhiqar_session=${sign(String(citizenId), 'CITIZEN')}` }
 const superHeaders = { cookie: `dhiqar_session=${sign('super-admin', 'SUPER_ADMIN')}`, 'content-type': 'application/json' }
-const jpeg = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00]), Buffer.alloc(25_000)])
+const documentImage = await readFile(new URL('./fixtures/synthetic-passport.png', import.meta.url))
 const webm = Buffer.concat([Buffer.from([0x1a, 0x45, 0xdf, 0xa3]), Buffer.alloc(110_000)])
 const form = new FormData()
 form.append('fullName', 'مواطن اختبار جواز')
@@ -26,17 +27,17 @@ form.append('locationConsent', 'true')
 form.append('locationLat', '31.042')
 form.append('locationLng', '46.267')
 form.append('locationAccuracyM', '18')
-form.append('idFront', new Blob([jpeg], { type: 'image/jpeg' }), 'passport-data-page.jpg')
+form.append('idFront', new Blob([documentImage], { type: 'image/png' }), 'passport-data-page.png')
 form.append('faceVideo', new Blob([webm], { type: 'video/webm' }), 'face-video-7s-test.webm')
 
 const preview = new FormData()
 preview.append('documentType', 'PASSPORT')
 preview.append('analysisConsent', 'true')
-preview.append('document', new Blob([jpeg], { type: 'image/jpeg' }), 'passport-data-page.jpg')
+preview.append('document', new Blob([documentImage], { type: 'image/png' }), 'passport-data-page.png')
 const previewResponse = await fetch(`${base}/api/onboarding/identity-extract-preview`, { method: 'POST', headers: citizenHeaders, body: preview })
 if (previewResponse.status !== 200) throw new Error(`preview status ${previewResponse.status}`)
-const previewData = await previewResponse.json() as { status: string; fields: { fullName: string | null; documentNumber: string | null } }
-if (previewData.status !== 'PROVIDER_UNAVAILABLE' || previewData.fields.fullName !== null || previewData.fields.documentNumber !== null) throw new Error('unconfigured analysis did not stay safely empty')
+const previewData = await previewResponse.json() as { status: string; provider: string | null; fields: { fullName: string | null; documentNumber: string | null } }
+if (previewData.status !== 'COMPLETED' || previewData.provider !== 'محرك OCR محلي' || !previewData.fields.documentNumber) throw new Error('لم يكتمل تحليل OCR المحلي للمستند الصناعي كما هو متوقع')
 
 const locationResponse = await fetch(`${base}/api/citizen/location`, { method: 'POST', headers: { ...citizenHeaders, 'content-type': 'application/json' }, body: JSON.stringify({ lat: 31.042, lng: 46.267, accuracyM: 18, consent: true }) })
 if (locationResponse.status !== 200) throw new Error(`location status ${locationResponse.status}`)

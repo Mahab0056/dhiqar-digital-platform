@@ -666,7 +666,7 @@ app.post('/api/onboarding/identity-extract-preview', requireSession('CITIZEN'), 
     validateUploadedFile(req.file, ['image'])
     const analysis = await analyzeIdentityDocument({ documentType: payload.documentType, documentImage: { buffer: req.file.buffer, mimeType: req.file.mimetype }, analysisConsent: true })
     const documentNumber = analysis.fields.documentNumber || ''
-    res.json({ status: analysis.status, provider: analysis.provider, confidence: analysis.confidence, documentTypeDetected: analysis.documentTypeDetected, fields: analysis.fields, documentNumberMasked: documentNumber ? `********${documentNumber.replace(/\s/g, '').slice(-4)}` : null, message: analysis.status === 'PROVIDER_UNAVAILABLE' ? 'التحليل الآلي غير مهيأ حالياً. أكمل البيانات يدوياً وستصل للمراجعة البشرية.' : undefined })
+    res.json({ status: analysis.status, reason: analysis.reason, provider: analysis.provider, confidence: analysis.confidence, documentTypeDetected: analysis.documentTypeDetected, fields: analysis.fields, documentNumberMasked: documentNumber ? `********${documentNumber.replace(/\s/g, '').slice(-4)}` : null, message: analysis.reason === 'NOT_CONFIGURED' ? 'التحليل التلقائي متوقف لأن مزود قراءة المستندات غير مهيأ في بيئة المنصة. لا تُخمن أي بيانات؛ سيعاد التحليل تلقائياً بعد تهيئة المزود.' : analysis.reason === 'PROVIDER_UNAVAILABLE' ? 'تعذر الاتصال بمزود التحليل الآن. احتفظ بالمستند وحاول مرة أخرى خلال قليل.' : undefined })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'تعذر تحليل صورة المستند.'
     res.status(400).json({ message })
@@ -685,8 +685,8 @@ app.post('/api/onboarding/identity-review', requireSession('CITIZEN'), upload.fi
       documentType: z.enum(['NATIONAL_ID', 'PASSPORT', 'DRIVING_LICENSE']).default('NATIONAL_ID'),
       consent: z.literal('true'),
       retainMedia: z.literal('true'),
-      analysisConsent: z.enum(['true', 'false']).default('false'),
-      profilePhotoConsent: z.enum(['true', 'false']).default('false'),
+      analysisConsent: z.literal('true'),
+      profilePhotoConsent: z.literal('true'),
       locationConsent: z.enum(['true', 'false']).default('false'),
       locationLat: z.coerce.number().min(-90).max(90).optional(),
       locationLng: z.coerce.number().min(-180).max(180).optional(),
@@ -712,8 +712,8 @@ app.post('/api/onboarding/identity-review', requireSession('CITIZEN'), upload.fi
     const front = storeEncryptedMedia({ citizenId, purpose: 'IDENTITY_DOCUMENT_FRONT', originalName: idFront.originalname || 'identity-document-front', mimeType: idFront.mimetype, buffer: idFront.buffer, ...mediaRetention })
     const back = idBack ? storeEncryptedMedia({ citizenId, purpose: 'IDENTITY_DOCUMENT_BACK', originalName: idBack.originalname || 'identity-document-back', mimeType: idBack.mimetype, buffer: idBack.buffer, ...mediaRetention }) : null
     const video = storeEncryptedMedia({ citizenId, purpose: 'FACE_VIDEO', originalName: faceVideo.originalname || 'face-video', mimeType: faceVideo.mimetype, buffer: faceVideo.buffer, ...mediaRetention })
-    const analysis = await analyzeIdentityDocument({ documentType: payload.documentType, documentImage: { buffer: idFront.buffer, mimeType: idFront.mimetype }, faceVideo: { buffer: faceVideo.buffer, mimeType: faceVideo.mimetype }, analysisConsent: payload.analysisConsent === 'true' })
-    const profilePhoto = analysis.faceCrop && analysis.confidence !== null && analysis.confidence >= 0.75 && payload.profilePhotoConsent === 'true'
+    const analysis = await analyzeIdentityDocument({ documentType: payload.documentType, documentImage: { buffer: idFront.buffer, mimeType: idFront.mimetype }, faceVideo: { buffer: faceVideo.buffer, mimeType: faceVideo.mimetype }, analysisConsent: true })
+    const profilePhoto = analysis.faceCrop && analysis.confidence !== null && analysis.confidence >= 0.75
       ? storeEncryptedMedia({ citizenId, purpose: 'PROFILE_PHOTO', originalName: 'identity-derived-profile-photo.jpg', mimeType: analysis.faceCrop.mimeType, buffer: Buffer.from(analysis.faceCrop.base64, 'base64'), ...mediaRetention })
       : null
     const reviewId = `idv_${randomUUID().replaceAll('-', '')}`
@@ -728,7 +728,7 @@ app.post('/api/onboarding/identity-review', requireSession('CITIZEN'), upload.fi
         document_type, retention_consent_at, analysis_consent_at, analysis_status, extracted_data, extraction_provider, extraction_confidence, profile_photo_media_id, location_lat, location_lng, location_accuracy_m, location_consent_at,
         consent_at, submitted_at, retention_until, created_at, updated_at
       ) VALUES (?, ?, 'PENDING_REVIEW', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(reviewId, citizenId, maskedNationalId, front.id, back?.id || null, video.id, screening.qualityStatus, screening.qualityScore, JSON.stringify(screening.qualityChecks), analysis.faceComparison.status, analysis.faceComparison.confidence, analysis.provider, payload.documentType, now.toISOString(), payload.analysisConsent === 'true' ? now.toISOString() : null, analysis.status, extractionSummary, analysis.provider, analysis.confidence, profilePhoto?.id || null, locationAllowed ? payload.locationLat : null, locationAllowed ? payload.locationLng : null, locationAllowed ? payload.locationAccuracyM || null : null, locationAllowed ? now.toISOString() : null, now.toISOString(), now.toISOString(), retentionUntil, now.toISOString(), now.toISOString())
+    `).run(reviewId, citizenId, maskedNationalId, front.id, back?.id || null, video.id, screening.qualityStatus, screening.qualityScore, JSON.stringify(screening.qualityChecks), analysis.faceComparison.status, analysis.faceComparison.confidence, analysis.provider, payload.documentType, now.toISOString(), now.toISOString(), analysis.status, extractionSummary, analysis.provider, analysis.confidence, profilePhoto?.id || null, locationAllowed ? payload.locationLat : null, locationAllowed ? payload.locationLng : null, locationAllowed ? payload.locationAccuracyM || null : null, locationAllowed ? now.toISOString() : null, now.toISOString(), now.toISOString(), retentionUntil, now.toISOString(), now.toISOString())
     db.prepare('UPDATE citizens SET full_name = ?, national_id_masked = ?, document_type = ?, profile_media_id = COALESCE(?, profile_media_id), verification_status = ?, consent_at = ?, location_lat = ?, location_lng = ?, location_accuracy_m = ?, location_updated_at = ?, location_consent_at = ?, updated_at = ? WHERE id = ?')
       .run(payload.fullName, maskedNationalId, payload.documentType, profilePhoto?.id || null, 'MANUAL_REVIEW', now.toISOString(), locationAllowed ? payload.locationLat : null, locationAllowed ? payload.locationLng : null, locationAllowed ? payload.locationAccuracyM || null : null, locationAllowed ? now.toISOString() : null, locationAllowed ? now.toISOString() : null, now.toISOString(), citizenId)
     createNotification({ citizenId, type: 'IDENTITY_REVIEW', title: 'تم استلام طلب توثيق الهوية', message: 'وصلت صور الهوية وفيديو الوجه إلى قائمة المراجعة. ستصلك نتيجة القرار هنا.', link: '/citizen' })
@@ -739,7 +739,7 @@ app.post('/api/onboarding/identity-review', requireSession('CITIZEN'), upload.fi
       entityType: 'IdentityReview',
       entityId: reviewId,
       newValue: { status: 'PENDING_REVIEW', media: [front.id, back?.id, video.id].filter(Boolean), documentType: payload.documentType },
-      metadata: { consent: true, retentionPolicy: 'RETAINED_WITH_CONSENT', retentionUntil, analysisRequested: payload.analysisConsent === 'true', analysisStatus: analysis.status, profilePhotoStored: Boolean(profilePhoto), locationProvided: locationAllowed, rawDocumentNumberStored: false, qualityScore: screening.qualityScore, faceMatchStatus: analysis.faceComparison.status },
+      metadata: { consent: true, retentionPolicy: 'RETAINED_WITH_CONSENT', retentionUntil, analysisRequested: true, analysisStatus: analysis.status, profilePhotoStored: Boolean(profilePhoto), locationProvided: locationAllowed, rawDocumentNumberStored: false, qualityScore: screening.qualityScore, faceMatchStatus: analysis.faceComparison.status },
     })
     res.status(201).json({
       id: reviewId,

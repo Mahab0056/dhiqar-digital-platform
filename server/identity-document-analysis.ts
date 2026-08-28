@@ -1,9 +1,11 @@
 import { z } from 'zod'
+import { analyzeIdentityDocumentLocally } from './local-identity-ocr.js'
 
 export type IdentityDocumentType = 'NATIONAL_ID' | 'PASSPORT' | 'DRIVING_LICENSE'
 
 const extractedSchema = z.object({
   status: z.enum(['COMPLETED', 'NO_RESULT', 'PROVIDER_UNAVAILABLE']),
+  reason: z.enum(['COMPLETED', 'NOT_CONFIGURED', 'PROVIDER_UNAVAILABLE', 'NO_DOCUMENT_RESULT']).default('PROVIDER_UNAVAILABLE'),
   provider: z.string().max(120).nullable(),
   confidence: z.number().min(0).max(1).nullable(),
   fields: z.object({
@@ -21,8 +23,9 @@ const extractedSchema = z.object({
 
 export type IdentityAnalysisResult = z.infer<typeof extractedSchema>
 
-const unavailable = (status: 'NO_RESULT' | 'PROVIDER_UNAVAILABLE' = 'PROVIDER_UNAVAILABLE'): IdentityAnalysisResult => ({
+const unavailable = (status: 'NO_RESULT' | 'PROVIDER_UNAVAILABLE' = 'PROVIDER_UNAVAILABLE', reason: 'NOT_CONFIGURED' | 'PROVIDER_UNAVAILABLE' | 'NO_DOCUMENT_RESULT' = 'PROVIDER_UNAVAILABLE'): IdentityAnalysisResult => ({
   status,
+  reason,
   provider: null,
   confidence: null,
   fields: { fullName: null, documentNumber: null, dateOfBirth: null, nationality: null, sex: null, expiryDate: null },
@@ -37,10 +40,10 @@ export async function analyzeIdentityDocument(input: {
   faceVideo?: { buffer: Buffer; mimeType: string } | null
   analysisConsent: boolean
 }): Promise<IdentityAnalysisResult> {
-  if (!input.analysisConsent) return unavailable('NO_RESULT')
+  if (!input.analysisConsent) return unavailable('NO_RESULT', 'NO_DOCUMENT_RESULT')
   const endpoint = process.env.IDENTITY_DOCUMENT_AI_ENDPOINT?.trim()
   const apiKey = process.env.IDENTITY_DOCUMENT_AI_KEY?.trim()
-  if (!endpoint || !apiKey) return unavailable()
+  if (!endpoint || !apiKey) return analyzeIdentityDocumentLocally({ documentType: input.documentType, documentImage: input.documentImage })
   try {
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 12_000)
@@ -56,9 +59,9 @@ export async function analyzeIdentityDocument(input: {
       signal: controller.signal,
     })
     clearTimeout(timeout)
-    if (!response.ok) return unavailable()
+    if (!response.ok) return unavailable('PROVIDER_UNAVAILABLE', 'PROVIDER_UNAVAILABLE')
     return extractedSchema.parse(await response.json())
   } catch {
-    return unavailable()
+    return unavailable('PROVIDER_UNAVAILABLE', 'PROVIDER_UNAVAILABLE')
   }
 }
