@@ -4,20 +4,25 @@ set -euo pipefail
 root="$(cd "$(dirname "$0")/.." && pwd)"
 app="$root/src/App.tsx"
 css="$root/src/App.css"
+server="$root/server/index.ts"
 
-for target in '/#services' '/citizen' '/service/online-appointment' '/directory' '/verify' '/onboarding' '/employee' '/operations/login' '/super-admin/login'; do
+for target in '/#services' '/citizen' '/directory' '/verify' '/onboarding' '/employee' '/operations/login' '/super-admin/login' '/login'; do
   grep -Fq "href=\"$target\"" "$app" || grep -Fq "href: '$target'" "$app" || { echo "missing_route=$target"; exit 1; }
 done
 
-grep -Fq 'submitServiceSearch' "$app"
-grep -Fq 'matchedServices' "$app"
-grep -Fq 'government-hero' "$app"
-grep -Fq 'government-search' "$app"
-grep -Fq 'government-quick-actions' "$app"
-grep -Fq 'government-service-list' "$app"
-grep -Fq 'login-v3-choices' "$app"
-grep -Fq '@media (max-width: 600px)' "$css"
-grep -Fq 'government-hero' "$css"
-grep -Fq 'login-v3-option' "$css"
+for service_key in 'building-permit' 'store-license' 'national-id' 'passport-application'; do
+  grep -Fq "key: '$service_key'" "$app" || { echo "missing_service_shortcut=$service_key"; exit 1; }
+done
+
+for marker in 'submitServiceSearch' 'matchingServices' 'reference-home' 'reference-hero' 'reference-search' 'reference-hero-actions' 'reference-indicators' 'reference-category-grid' 'reference-directory-band' 'login-v3-choices'; do
+  grep -Fq "$marker" "$app" || { echo "missing_app_marker=$marker"; exit 1; }
+done
+
+for marker in 'reference-home' 'reference-hero' 'reference-search' 'reference-indicators' 'reference-category-grid' 'reference-benefits' '@media (max-width: 760px)' 'login-v3-option'; do
+  grep -Fq "$marker" "$css" || { echo "missing_css_marker=$marker"; exit 1; }
+done
+
+grep -Fq 'isLocalPreviewOrigin' "$server" || { echo 'missing_local_preview_origin_guard'; exit 1; }
+grep -Fq 'secureHostedRuntime' "$server" || { echo 'missing_hosted_runtime_guard'; exit 1; }
 
 echo 'home_login_integrity=pass'

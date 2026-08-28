@@ -201,6 +201,7 @@ app.set('trust proxy', 1)
 const productionOrigin = process.env.PUBLIC_BASE_URL?.replace(/\/$/, '') || 'https://dhiqar-digital-platform-production.up.railway.app'
 const secureHostedRuntime = process.env.RAILWAY_ENVIRONMENT === 'production' || (process.env.NODE_ENV === 'production' && process.env.LOCAL_HTTP_PREVIEW !== 'true')
 const allowedOrigins = new Set([productionOrigin, 'http://localhost:5173', 'http://localhost:5174', 'http://127.0.0.1:5173', 'http://127.0.0.1:5174'])
+const isLocalPreviewOrigin = (origin: string) => !secureHostedRuntime && /^http:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?$/.test(origin)
 const apiLimiter = rateLimit({ windowMs: 60 * 1000, limit: 180, standardHeaders: 'draft-8', legacyHeaders: false, message: { message: 'طلبات كثيرة. انتظر دقيقة ثم أعد المحاولة.' } })
 const sensitiveLimiter = rateLimit({ windowMs: 10 * 60 * 1000, limit: 30, standardHeaders: 'draft-8', legacyHeaders: false, message: { message: 'تجاوزت الحد المؤقت لهذه العملية الحساسة. حاول لاحقاً.' } })
 
@@ -229,7 +230,7 @@ app.use(cors({
   methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'X-Review-Access-Code', 'X-CSRF-Token'],
   origin(origin, callback) {
-    if (!origin || allowedOrigins.has(origin)) return callback(null, true)
+    if (!origin || allowedOrigins.has(origin) || isLocalPreviewOrigin(origin)) return callback(null, true)
     callback(new Error('Origin غير مصرح.'))
   },
 }))
