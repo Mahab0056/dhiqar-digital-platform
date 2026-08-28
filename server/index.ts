@@ -1002,15 +1002,16 @@ app.post('/api/applications/:reference/request-document', requireSession('EMPLOY
 })
 
 app.post('/api/applications/:reference/upload-document', requireSession('CITIZEN'), upload.single('document'), (req, res) => {
-  const payload = z.object({ documentName: z.string().min(2) }).parse(req.body)
+  const payload = z.object({ documentName: z.string().min(2), documentPurpose: z.enum(['APPLICATION_DOCUMENT', 'FACE_VIDEO']).default('APPLICATION_DOCUMENT') }).parse(req.body)
   const citizen = currentCitizen(res)
   if (!citizen) return
   const item = getApplicationByReference(req.params.reference)
   if (!item || Number(item.citizenId) !== citizen.id) return res.status(404).json({ message: 'المعاملة غير موجودة.' })
   if (!req.file) return res.status(400).json({ message: `صوّر أو ارفع ${payload.documentName} قبل الإرسال.` })
-  validateUploadedFile(req.file, ['image', 'pdf'])
+  if (payload.documentPurpose === 'FACE_VIDEO') validateUploadedFile(req.file, ['video'])
+  else validateUploadedFile(req.file, ['image', 'pdf'])
   const timestamp = new Date().toISOString()
-  const media = storeEncryptedMedia({ citizenId: citizen.id, purpose: 'APPLICATION_DOCUMENT', originalName: req.file.originalname || payload.documentName, mimeType: req.file.mimetype, buffer: req.file.buffer, retentionHours: 24 * 30 })
+  const media = storeEncryptedMedia({ citizenId: citizen.id, purpose: payload.documentPurpose, originalName: req.file.originalname || payload.documentName, mimeType: req.file.mimetype, buffer: req.file.buffer, retentionHours: 24 * 30 })
   db.prepare('INSERT INTO application_media (id, application_id, media_id, label, created_at) VALUES (?, ?, ?, ?, ?)')
     .run(`appmedia_${randomUUID().replaceAll('-', '')}`, item.id, media.id, payload.documentName, timestamp)
   db.prepare(`UPDATE applications SET status = 'UNDER_REVIEW', current_action = 'لا يوجد إجراء مطلوب منك. تم استلام المستند وأعيدت المعاملة للموظف المختص.', required_document = NULL, updated_at = ? WHERE reference = ?`)
@@ -1026,6 +1027,8 @@ app.post('/api/applications/:reference/approve', requireSession('EMPLOYEE', 'SUP
   if (!item) return res.status(404).json({ message: 'المعاملة غير موجودة.' })
   if (item.status === 'ACTION_REQUIRED') return res.status(409).json({ message: 'لا يمكن الموافقة قبل استكمال المستند المطلوب.' })
   if (item.status === 'APPROVED') return res.json(item)
+  const faceVideo = db.prepare(`SELECT mo.id FROM application_media am JOIN media_objects mo ON mo.id = am.media_id WHERE am.application_id = ? AND mo.purpose = 'FACE_VIDEO' AND mo.deleted_at IS NULL LIMIT 1`).get(item.id)
+  if (!faceVideo) return res.status(409).json({ message: 'لا يمكن اعتماد المعاملة قبل استكمال فيديو توثيق الوجه. استخدم «طلب استكمال التوثيق» لإشعار المواطن.' })
   const timestamp = new Date().toISOString()
   if ((item.fee as number) > 0) {
     db.prepare(`UPDATE applications SET status = 'PAYMENT_REQUIRED', current_action = 'تمت الموافقة الإدارية. بانتظار تهيئة بوابة الدفع المعتمدة لإكمال سداد الرسم وإصدار الوثيقة.', payment_status = 'PENDING', updated_at = ? WHERE reference = ?`)

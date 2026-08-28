@@ -698,7 +698,7 @@ export function getApplicationByVerificationId(verificationId: string) {
 function mapApplication(row: Record<string, unknown>) {
   const events = db.prepare('SELECT * FROM application_events WHERE application_id = ? ORDER BY id ASC').all(row.id) as Array<Record<string, unknown>>
   const attachments = db.prepare(`
-    SELECT am.id, am.label, mo.id AS media_id, mo.original_name, mo.mime_type, mo.size_bytes, mo.deleted_at
+    SELECT am.id, am.label, mo.id AS media_id, mo.original_name, mo.mime_type, mo.purpose, mo.size_bytes, mo.deleted_at
     FROM application_media am JOIN media_objects mo ON mo.id = am.media_id
     WHERE am.application_id = ? ORDER BY am.created_at ASC
   `).all(row.id) as Array<Record<string, unknown>>
@@ -723,7 +723,7 @@ function mapApplication(row: Record<string, unknown>) {
     requiredDocument: row.required_document,
     documentNumber: row.document_number,
     verificationId: row.verification_id,
-    attachments: attachments.map(item => ({ id: item.id, mediaId: item.media_id, label: item.label, originalName: item.original_name, mimeType: item.mime_type, sizeBytes: item.size_bytes, available: !item.deleted_at })),
+    attachments: attachments.map(item => ({ id: item.id, mediaId: item.media_id, label: item.label, originalName: item.original_name, mimeType: item.mime_type, purpose: item.purpose, sizeBytes: item.size_bytes, available: !item.deleted_at })),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     events: events.map(event => ({

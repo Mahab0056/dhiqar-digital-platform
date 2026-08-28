@@ -71,7 +71,7 @@ export interface GovernmentApplication {
   issuedAt?: string | null
   pdfAvailable?: boolean
   originalPdfUrl?: string | null
-  attachments: Array<{ id: string; mediaId: string; label: string; originalName: string; mimeType: string; sizeBytes: number; available: boolean }>
+  attachments: Array<{ id: string; mediaId: string; label: string; originalName: string; mimeType: string; purpose?: string; sizeBytes: number; available: boolean }>
   createdAt: string
   updatedAt: string
   events: ApplicationEvent[]

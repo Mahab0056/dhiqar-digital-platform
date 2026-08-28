@@ -175,9 +175,10 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ documentName }),
     }),
-  uploadMissingDocument: async (reference: string, documentName: string, document: File) => {
+  uploadMissingDocument: async (reference: string, documentName: string, document: File, documentPurpose: 'APPLICATION_DOCUMENT' | 'FACE_VIDEO' = 'APPLICATION_DOCUMENT') => {
     const form = new FormData()
     form.append('documentName', documentName)
+    form.append('documentPurpose', documentPurpose)
     form.append('document', document)
     const response = await fetch(`/api/applications/${reference}/upload-document`, { method: 'POST', body: form, credentials: 'include' })
     if (!response.ok) { const body = await response.json().catch(() => ({ message: 'تعذر رفع المستند.' })); throw new Error(body.message || 'تعذر رفع المستند.') }

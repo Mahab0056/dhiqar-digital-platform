@@ -1557,3 +1557,20 @@ body { background: var(--gov-paper); color: var(--gov-text); font-family: "Segoe
 .review-extracted-document h4 { margin: 4px 0 0; color: #224738; font-size: .92rem; }
 .review-extracted-document .review-data-grid { margin: 0; border: 0; border-radius: 0; }
 @media (max-width: 620px) { .review-extracted-document .review-data-grid { grid-template-columns: 1fr; } }
+
+/* توضيح سبب توقف اعتماد المعاملة القديمة */
+.review-verification-required {
+  display: flex;
+  align-items: flex-start;
+  gap: .7rem;
+  margin: 1rem 0;
+  padding: .85rem 1rem;
+  border: 1px solid #e5bc74;
+  border-radius: 14px;
+  background: #fff9eb;
+  color: #72521a;
+}
+.review-verification-required > svg { width: 1.25rem; height: 1.25rem; flex: 0 0 auto; margin-top: .15rem; }
+.review-verification-required span { display: grid; gap: .18rem; }
+.review-verification-required strong { font-size: .9rem; color: #694009; }
+.review-verification-required small { line-height: 1.65; color: #765b30; }
