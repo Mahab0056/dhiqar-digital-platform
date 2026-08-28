@@ -385,6 +385,101 @@ db.exec(`
     FOREIGN KEY (department_id) REFERENCES departments(id)
   );
 
+  CREATE TABLE IF NOT EXISTS government_service_directory (
+    id TEXT PRIMARY KEY,
+    canonical_service_id TEXT NOT NULL UNIQUE,
+    official_name_ar TEXT NOT NULL,
+    short_name_ar TEXT,
+    citizen_friendly_name TEXT,
+    alternative_search_names TEXT NOT NULL DEFAULT '[]',
+    description TEXT,
+    category TEXT NOT NULL,
+    subcategory TEXT,
+    beneficiary_types TEXT NOT NULL DEFAULT '[]',
+    responsible_ministry TEXT,
+    responsible_authority TEXT,
+    responsible_department TEXT,
+    responsible_section TEXT,
+    administrative_level TEXT NOT NULL DEFAULT 'OTHER_GOVERNMENT_ENTITY',
+    available_in_dhi_qar INTEGER NOT NULL DEFAULT 0,
+    available_nationwide INTEGER NOT NULL DEFAULT 0,
+    dhi_qar_responsible_entity TEXT,
+    dhi_qar_office TEXT,
+    dhi_qar_location TEXT,
+    dhi_qar_gis_status TEXT NOT NULL DEFAULT 'NOT_VERIFIED',
+    service_type TEXT NOT NULL DEFAULT 'INFORMATION_ONLY',
+    application_channel TEXT NOT NULL DEFAULT 'INFORMATION_ONLY',
+    existing_service_key TEXT,
+    external_service_url TEXT,
+    integration_available INTEGER NOT NULL DEFAULT 0,
+    api_available INTEGER NOT NULL DEFAULT 0,
+    sso_possible INTEGER NOT NULL DEFAULT 0,
+    required_documents TEXT NOT NULL DEFAULT '[]',
+    required_information TEXT NOT NULL DEFAULT '[]',
+    eligibility_conditions TEXT NOT NULL DEFAULT '[]',
+    fee_details TEXT NOT NULL DEFAULT '[]',
+    processing_time TEXT,
+    processing_time_status TEXT NOT NULL DEFAULT 'NOT_PUBLISHED',
+    citizen_steps TEXT NOT NULL DEFAULT '[]',
+    internal_workflow TEXT NOT NULL DEFAULT '[]',
+    approval_requirements TEXT NOT NULL DEFAULT '[]',
+    physical_presence_required INTEGER NOT NULL DEFAULT 0,
+    physical_presence_details TEXT,
+    inspection_required INTEGER NOT NULL DEFAULT 0,
+    inspection_details TEXT,
+    appointment_required INTEGER NOT NULL DEFAULT 0,
+    appointment_url TEXT,
+    service_output TEXT,
+    digital_document_available INTEGER NOT NULL DEFAULT 0,
+    physical_document_required INTEGER NOT NULL DEFAULT 0,
+    qr_verification_available INTEGER NOT NULL DEFAULT 0,
+    legal_basis TEXT NOT NULL DEFAULT '[]',
+    verification_status TEXT NOT NULL DEFAULT 'REQUIRES_MANUAL_VERIFICATION',
+    effective_date TEXT,
+    last_verified_date TEXT,
+    source_date TEXT,
+    publication_status TEXT NOT NULL DEFAULT 'DRAFT',
+    active INTEGER NOT NULL DEFAULT 1,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS government_service_sources (
+    id TEXT PRIMARY KEY,
+    service_id TEXT NOT NULL,
+    source_type TEXT NOT NULL,
+    authority_name TEXT NOT NULL,
+    official_url TEXT NOT NULL,
+    page_title TEXT,
+    date_accessed TEXT NOT NULL,
+    date_published TEXT,
+    last_verified_date TEXT,
+    verification_status TEXT NOT NULL,
+    source_note TEXT,
+    created_at TEXT NOT NULL,
+    UNIQUE(service_id, official_url),
+    FOREIGN KEY (service_id) REFERENCES government_service_directory(id) ON DELETE CASCADE
+  );
+
+  CREATE TABLE IF NOT EXISTS government_service_versions (
+    id TEXT PRIMARY KEY,
+    service_id TEXT NOT NULL,
+    change_type TEXT NOT NULL,
+    changed_by TEXT NOT NULL,
+    changed_at TEXT NOT NULL,
+    previous_value TEXT,
+    new_value TEXT,
+    reason TEXT,
+    source_url TEXT,
+    approval_status TEXT NOT NULL DEFAULT 'DRAFT',
+    FOREIGN KEY (service_id) REFERENCES government_service_directory(id) ON DELETE CASCADE
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_government_service_publication ON government_service_directory(publication_status, active, category);
+  CREATE INDEX IF NOT EXISTS idx_government_service_dhiqar ON government_service_directory(available_in_dhi_qar, publication_status);
+  CREATE INDEX IF NOT EXISTS idx_government_service_sources_service ON government_service_sources(service_id, last_verified_date DESC);
+  CREATE INDEX IF NOT EXISTS idx_government_service_versions_service ON government_service_versions(service_id, changed_at DESC);
+
   CREATE INDEX IF NOT EXISTS idx_notifications_citizen ON notifications(citizen_id, read_at, created_at DESC);
   CREATE INDEX IF NOT EXISTS idx_otp_phone_hash ON otp_challenges(phone_hash, created_at);
   CREATE INDEX IF NOT EXISTS idx_media_citizen ON media_objects(citizen_id, created_at);
@@ -416,6 +511,7 @@ ensureColumn('identity_reviews', 'face_match_provider', 'TEXT')
 ensureColumn('citizens', 'account_key', 'TEXT')
 ensureColumn('service_requests', 'decision_note', 'TEXT')
 ensureColumn('service_requests', 'required_document', 'TEXT')
+ensureColumn('government_service_directory', 'existing_service_key', 'TEXT')
 db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_citizens_account_key ON citizens(account_key) WHERE account_key IS NOT NULL')
 
 const now = () => new Date().toISOString()

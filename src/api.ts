@@ -1,4 +1,4 @@
-import type { Citizen, CitizenFeedback, CitizenNotification, CitizenServiceRequest, DashboardStats, FeedbackStatus, GovernmentApplication } from './types'
+import type { Citizen, CitizenFeedback, CitizenNotification, CitizenServiceRequest, DashboardStats, FeedbackStatus, GovernmentApplication, GovernmentServiceDirectoryEntry, GovernmentServicePublicationStatus } from './types'
 
 const request = async <T>(path: string, options?: RequestInit): Promise<T> => {
   const response = await fetch(path, {
@@ -15,6 +15,10 @@ const request = async <T>(path: string, options?: RequestInit): Promise<T> => {
 
 export const api = {
   getSession: () => request<{ authenticated: true; role: 'CITIZEN' | 'EMPLOYEE' | 'IDENTITY_REVIEWER' | 'OPERATIONS' | 'SUPER_ADMIN'; subject: string; expiresAt: string }>('/api/auth/session'),
+  listGovernmentServices: (params: { query?: string; dhiQarOnly?: boolean } = {}) => { const search = new URLSearchParams(); if (params.query) search.set('q', params.query); if (params.dhiQarOnly) search.set('dhiQar', 'true'); return request<GovernmentServiceDirectoryEntry[]>(`/api/government-services${search.size ? `?${search}` : ''}`) },
+  getGovernmentService: (id: string) => request<GovernmentServiceDirectoryEntry>(`/api/government-services/${encodeURIComponent(id)}`),
+  listGovernmentServicesForAdmin: (status?: GovernmentServicePublicationStatus) => request<{ services: GovernmentServiceDirectoryEntry[]; stats: { total: number; approved: number; needsReview: number; verified: number } }>(`/api/super-admin/government-services${status ? `?status=${status}` : ''}`),
+  setGovernmentServicePublication: (id: string, publicationStatus: GovernmentServicePublicationStatus, reason?: string) => request<GovernmentServiceDirectoryEntry>(`/api/super-admin/government-services/${encodeURIComponent(id)}/publication`, { method: 'PATCH', body: JSON.stringify({ publicationStatus, reason }) }),
   loginEmployee: (accessCode: string) => request<{ authenticated: true; role: 'EMPLOYEE'; expiresInSeconds: number }>('/api/auth/employee', { method: 'POST', body: JSON.stringify({ accessCode }) }),
   loginOperations: (accessCode: string) => request<{ authenticated: true; role: 'OPERATIONS'; expiresInSeconds: number }>('/api/auth/operations', { method: 'POST', body: JSON.stringify({ accessCode }) }),
   loginSuperAdmin: (accessCode: string) => request<{ authenticated: true; role: 'SUPER_ADMIN'; expiresInSeconds: number }>('/api/auth/super-admin', { method: 'POST', body: JSON.stringify({ accessCode }) }),

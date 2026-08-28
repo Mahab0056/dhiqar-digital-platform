@@ -174,3 +174,54 @@ export interface ServiceItem {
   fee: number
   requirements: string[]
 }
+
+export type GovernmentServiceVerificationStatus = 'VERIFIED_UR_PORTAL' | 'VERIFIED_MINISTRY' | 'VERIFIED_GOVERNMENT_AUTHORITY' | 'VERIFIED_MULTIPLE_OFFICIAL_SOURCES' | 'PARTIALLY_VERIFIED' | 'REQUIRES_MANUAL_VERIFICATION' | 'OUTDATED_SOURCE' | 'NEEDS_UPDATE'
+export type GovernmentServicePublicationStatus = 'DRAFT' | 'APPROVED' | 'NEEDS_REVIEW' | 'DISABLED'
+
+export interface GovernmentServiceDirectoryEntry {
+  id: string
+  canonicalServiceId: string
+  officialNameAr: string
+  shortNameAr?: string | null
+  citizenFriendlyName?: string | null
+  alternativeSearchNames: string[]
+  description?: string | null
+  category: string
+  subcategory?: string | null
+  beneficiaryTypes: string[]
+  responsibleMinistry?: string | null
+  responsibleAuthority?: string | null
+  responsibleDepartment?: string | null
+  administrativeLevel: string
+  availableInDhiQar?: boolean | null
+  availableNationwide?: boolean | null
+  dhiQarOffice?: string | null
+  serviceType: string
+  applicationChannel: string
+  externalServiceUrl?: string | null
+  existingServiceKey?: string | null
+  requiredDocuments: Array<{ documentName: string; requiredOrOptional: 'REQUIRED' | 'OPTIONAL' | 'CONDITIONAL'; appliesWhen?: string | null; notes?: string | null; originalRequired?: boolean; copyRequired?: boolean; certifiedCopyRequired?: boolean; frontSideRequired?: boolean; backSideRequired?: boolean }>
+  requiredInformation: string[]
+  eligibilityConditions: string[]
+  feeDetails: Array<{ rule: string; amount: number | null; currency?: string | null; status?: string | null }>
+  processingTime?: string | null
+  processingTimeStatus: string
+  citizenSteps: string[]
+  physicalPresenceRequired?: boolean | null
+  physicalPresenceDetails?: string | null
+  inspectionRequired?: boolean | null
+  inspectionDetails?: string | null
+  digitalDocumentAvailable?: boolean | null
+  qrVerificationAvailable?: boolean | null
+  serviceOutput?: string | null
+  physicalDocumentRequired?: boolean | null
+  legalBasis: Array<{ lawName?: string; lawNumber?: string; year?: number; article?: string; regulation?: string; officialSource?: string }>
+  verificationStatus: GovernmentServiceVerificationStatus
+  lastVerifiedDate?: string | null
+  sourceDate?: string | null
+  publicationStatus: GovernmentServicePublicationStatus
+  active: boolean
+  sources: Array<{ id?: string; sourceType: string; authorityName: string; officialUrl: string; pageTitle?: string | null; dateAccessed: string; datePublished?: string | null; lastVerifiedDate?: string | null; verificationStatus: GovernmentServiceVerificationStatus; sourceNote?: string | null }>
+  createdAt: string
+  updatedAt: string
+}

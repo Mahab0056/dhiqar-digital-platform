@@ -35,8 +35,11 @@ import { deleteEncryptedMedia, readDecryptedMedia, storeEncryptedMedia } from '.
 import { departmentRegistry, registrySummary } from './department-registry.js'
 import { getServiceDefinition } from '../src/service-forms.js'
 import { screenIdentitySubmission } from './identity-screening.js'
+import { getGovernmentService, getGovernmentServiceDirectoryStats, listGovernmentServiceVersions, listGovernmentServices, setGovernmentServicePublication, upsertGovernmentService, type GovernmentServiceRecordInput } from './government-service-directory.js'
+import { seedVerifiedGovernmentServices } from './government-service-seed.js'
 
 const app = express()
+seedVerifiedGovernmentServices()
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 20 * 1024 * 1024, files: 3 },
@@ -218,6 +221,18 @@ app.use(['/api/onboarding/request-otp', '/api/onboarding/verify-phone', '/api/on
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', service: 'Dhi Qar Digital API', time: new Date().toISOString() })
+})
+
+app.get('/api/government-services', (req, res) => {
+  const query = typeof req.query.q === 'string' ? req.query.q : undefined
+  const dhiQarOnly = req.query.dhiQar === 'true'
+  res.json(listGovernmentServices({ query, dhiQarOnly, publicationStatus: 'APPROVED', limit: 200 }))
+})
+
+app.get('/api/government-services/:id', (req, res) => {
+  const service = getGovernmentService(req.params.id)
+  if (!service || service.publicationStatus !== 'APPROVED' || !service.active) return res.status(404).json({ message: 'الخدمة غير موجودة أو غير منشورة.' })
+  res.json(service)
 })
 
 app.get('/api/auth/session', (req, res) => {
@@ -1061,6 +1076,36 @@ app.post('/api/super-admin/operations/workforce-snapshots', requireSession('SUPE
     .run(id, payload.departmentId, payload.totalEmployees, payload.presentEmployees, payload.absentEmployees, payload.sourceName, payload.sourceUrl || null, payload.observedAt, new Date().toISOString())
   addAudit({ actor: 'مدير النظام', role: 'SUPER_ADMIN', action: 'WORKFORCE_SNAPSHOT_RECORDED', entityType: 'DepartmentWorkforceSnapshot', entityId: id, metadata: { departmentId: payload.departmentId, observedAt: payload.observedAt, sourceName: payload.sourceName } })
   res.status(201).json({ id, departmentId: payload.departmentId, recorded: true })
+})
+
+app.get('/api/super-admin/government-services', requireSession('SUPER_ADMIN'), (req, res) => {
+  const publicationStatus = typeof req.query.status === 'string' ? req.query.status as 'DRAFT' | 'APPROVED' | 'NEEDS_REVIEW' | 'DISABLED' : undefined
+  res.json({ services: listGovernmentServices({ publicationStatus, limit: 500 }), stats: getGovernmentServiceDirectoryStats() })
+})
+
+app.get('/api/super-admin/government-services/:id', requireSession('SUPER_ADMIN'), (req, res) => {
+  const service = getGovernmentService(req.params.id)
+  if (!service) return res.status(404).json({ message: 'سجل الخدمة غير موجود.' })
+  res.json({ service, versions: listGovernmentServiceVersions(service.id) })
+})
+
+app.post('/api/super-admin/government-services', requireSession('SUPER_ADMIN'), sensitiveLimiter, (req, res) => {
+  const payload = z.object({
+    canonicalServiceId: z.string().min(3).max(160), officialNameAr: z.string().min(3).max(500), category: z.string().min(2).max(200),
+    verificationStatus: z.enum(['VERIFIED_UR_PORTAL', 'VERIFIED_MINISTRY', 'VERIFIED_GOVERNMENT_AUTHORITY', 'VERIFIED_MULTIPLE_OFFICIAL_SOURCES', 'PARTIALLY_VERIFIED', 'REQUIRES_MANUAL_VERIFICATION', 'OUTDATED_SOURCE', 'NEEDS_UPDATE']),
+    publicationStatus: z.enum(['DRAFT', 'APPROVED', 'NEEDS_REVIEW', 'DISABLED']),
+    sources: z.array(z.object({ sourceType: z.enum(['UR_PORTAL', 'MINISTRY', 'GOVERNMENT_AUTHORITY', 'GOVERNORATE', 'OFFICIAL_ENTITY']), authorityName: z.string().min(2).max(240), officialUrl: z.string().url().max(1000), pageTitle: z.string().max(500).optional(), dateAccessed: z.string().min(10).max(40), datePublished: z.string().max(40).optional(), lastVerifiedDate: z.string().max(40).optional(), verificationStatus: z.enum(['VERIFIED_UR_PORTAL', 'VERIFIED_MINISTRY', 'VERIFIED_GOVERNMENT_AUTHORITY', 'VERIFIED_MULTIPLE_OFFICIAL_SOURCES', 'PARTIALLY_VERIFIED', 'REQUIRES_MANUAL_VERIFICATION', 'OUTDATED_SOURCE', 'NEEDS_UPDATE']), sourceNote: z.string().max(4000).optional() })).min(1).max(20),
+  }).passthrough().parse(req.body) as GovernmentServiceRecordInput
+  if (payload.publicationStatus === 'APPROVED' && !payload.sources.length) return res.status(422).json({ message: 'لا يمكن نشر خدمة بلا مصدر حكومي رسمي.' })
+  const service = upsertGovernmentService(payload, 'مدير النظام')
+  res.status(201).json(service)
+})
+
+app.patch('/api/super-admin/government-services/:id/publication', requireSession('SUPER_ADMIN'), sensitiveLimiter, (req, res) => {
+  const payload = z.object({ publicationStatus: z.enum(['DRAFT', 'APPROVED', 'NEEDS_REVIEW', 'DISABLED']), reason: z.string().max(1000).optional() }).parse(req.body)
+  const service = setGovernmentServicePublication({ id: req.params.id, publicationStatus: payload.publicationStatus, reason: payload.reason, actor: 'مدير النظام' })
+  if (!service) return res.status(404).json({ message: 'سجل الخدمة غير موجود.' })
+  res.json(service)
 })
 
 app.get('/api/super-admin/overview', requireSession('SUPER_ADMIN'), (_req, res) => {
