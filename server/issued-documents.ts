@@ -10,7 +10,7 @@ import { storeEncryptedMedia } from './media.js'
 const currentDir = dirname(fileURLToPath(import.meta.url))
 const arabicFontPath = join(currentDir, 'assets', 'NotoSansArabic-Regular.ttf')
 const iraqEmblemPath = join(currentDir, '..', 'public', 'brand', 'iraq-coat-of-arms.png')
-const dhiqarLogoPath = join(currentDir, '..', 'public', 'brand', 'dhiqar-official-logo.jpg')
+const dhiqarLogoPath = join(currentDir, '..', 'public', 'brand', 'dhiqar-unified-logo.png')
 
 export type IssuedDocumentSource = {
   sourceKind: 'APPLICATION' | 'SERVICE_REQUEST'
@@ -82,10 +82,10 @@ async function renderIssuedDocumentPdf(input: IssuedDocumentSource, documentNumb
   pdf.fillColor(green).fontSize(17).text(sanitizePdfText(input.documentTitle, 100), 42, 128, { align: 'center', width: 511 })
   pdf.fillColor('#51645A').fontSize(9).text('إشعار اعتماد وإتمام معاملة ضمن سجل ذي قار الرقمية', 42, 154, { align: 'center', width: 511 })
   pdf.roundedRect(42, 182, 511, 55, 8).fill('#F1F7F3')
-  pdf.fillColor('#62746A').fontSize(8).text('رقم الوثيقة', 62, 196, { align: 'right', width: 195 })
-  pdf.fillColor(green).fontSize(12).text(documentNumber, 62, 210, { align: 'right', width: 195 })
-  pdf.fillColor('#62746A').fontSize(8).text('معرّف التحقق', 338, 196, { align: 'right', width: 195 })
-  pdf.fillColor(green).fontSize(10).text(verificationId, 338, 211, { align: 'right', width: 195 })
+  pdf.font(existsSync(arabicFontPath) ? 'Arabic' : 'Helvetica').fillColor('#62746A').fontSize(8).text('رقم الوثيقة', 62, 196, { align: 'right', width: 195 })
+  pdf.font('Helvetica').fillColor(green).fontSize(12).text(documentNumber, 62, 210, { align: 'right', width: 195 })
+  pdf.font(existsSync(arabicFontPath) ? 'Arabic' : 'Helvetica').fillColor('#62746A').fontSize(8).text('معرّف التحقق', 338, 196, { align: 'right', width: 195 })
+  pdf.font('Helvetica').fillColor(green).fontSize(10).text(verificationId, 338, 211, { align: 'right', width: 195 })
   const topDetails = [
     { label: 'صاحب الطلب', value: input.citizenName },
     { label: 'الخدمة', value: input.serviceName },
@@ -102,7 +102,8 @@ async function renderIssuedDocumentPdf(input: IssuedDocumentSource, documentNumb
       const x = col === 0 ? 42 : 304
       pdf.roundedRect(x, y, 249, 56, 6).lineWidth(.6).strokeColor('#D7E3DB').stroke()
       pdf.fillColor('#718178').fontSize(8).text(sanitizePdfText(item.label, 70), x + 12, y + 11, { align: 'right', width: 225 })
-      pdf.fillColor('#173A50').fontSize(10).text(sanitizePdfText(item.value), x + 12, y + 27, { align: 'right', width: 225, ellipsis: true })
+      const value = sanitizePdfText(item.value)
+      pdf.font(/^[A-Za-z0-9 .:/_-]+$/.test(value) ? 'Helvetica' : (existsSync(arabicFontPath) ? 'Arabic' : 'Helvetica')).fillColor('#173A50').fontSize(10).text(value, x + 12, y + 27, { align: 'right', width: 225, ellipsis: true })
     }
     y += 67
   }
@@ -110,10 +111,10 @@ async function renderIssuedDocumentPdf(input: IssuedDocumentSource, documentNumb
   const footerY = Math.min(Math.max(y + 8, 500), 610)
   pdf.roundedRect(42, footerY, 511, 124, 8).fill('#F7FAF8')
   pdf.image(qrData, 64, footerY + 18, { fit: [82, 82] })
-  pdf.fillColor(green).fontSize(11).text('تحقق من الأصل الرقمي', 166, footerY + 28, { align: 'right', width: 350 })
+  pdf.font(existsSync(arabicFontPath) ? 'Arabic' : 'Helvetica').fillColor(green).fontSize(11).text('تحقق من الأصل الرقمي', 166, footerY + 28, { align: 'right', width: 350 })
   pdf.fillColor('#56685D').fontSize(9).text('امسح رمز QR أو أدخل معرّف التحقق في منصة ذي قار الرقمية لفتح ملف PDF الأصلي المؤرشف.', 166, footerY + 48, { align: 'right', width: 350, lineGap: 4 })
-  pdf.fillColor(navy).fontSize(9).text(verificationId, 166, footerY + 87, { align: 'right', width: 350 })
-  pdf.fillColor('#5D6C64').fontSize(7.5).text(`تاريخ الإصدار: ${new Date(input.issuedAt).toLocaleString('en-GB')}  •  الاعتماد المسجل بواسطة: ${sanitizePdfText(input.issuedBy, 70)}`, 42, 750, { align: 'center', width: 511 })
+  pdf.font('Helvetica').fillColor(navy).fontSize(9).text(verificationId, 166, footerY + 87, { align: 'right', width: 350 })
+  pdf.font(existsSync(arabicFontPath) ? 'Arabic' : 'Helvetica').fillColor('#5D6C64').fontSize(7.5).text(`تاريخ الإصدار: ${new Date(input.issuedAt).toLocaleString('en-GB')}  •  الاعتماد المسجل بواسطة: ${sanitizePdfText(input.issuedBy, 70)}`, 42, 750, { align: 'center', width: 511 })
   pdf.fillColor('#6D7E74').fontSize(7).text('هذه الوثيقة تثبت حالة الاعتماد المسجلة إلكترونياً في المنصة. تستكمل أي آثار قانونية أو تنظيمية وفق صلاحيات وتعليمات الجهة المختصة.', 42, 766, { align: 'center', width: 511 })
   pdf.end()
   return bufferPromise
