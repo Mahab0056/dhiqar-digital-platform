@@ -1189,3 +1189,26 @@ body { background: var(--gov-paper); color: var(--gov-text); font-family: "Segoe
   .review-location-card { align-items: flex-start; flex-wrap: wrap; }
   .review-location-card .button { width: 100%; justify-content: center; }
 }
+
+/* توجيه فيديو الوجه — إطار مرئي فوق معاينة الكاميرا */
+.face-video-camera { isolation: isolate; background: #071910; }
+.face-video-camera > video { min-height: 320px; object-fit: cover; }
+.face-guide-frame { position: absolute; z-index: 2; inset: 13% 22% 25%; border: 3px solid rgba(255,255,255,.95); border-radius: 49% 49% 43% 43%; box-shadow: 0 0 0 999px rgba(0, 34, 20, .14), 0 0 0 6px rgba(12, 190, 104, .2); pointer-events: none; }
+.face-guide-frame span { position: absolute; top: -34px; right: 50%; transform: translateX(50%); white-space: nowrap; padding: 6px 11px; border-radius: 999px; background: rgba(2, 44, 27, .84); color: #fff; font-size: 11px; font-weight: 800; box-shadow: 0 4px 13px rgba(0,0,0,.2); }
+.face-guide-frame i { position: absolute; width: 12px; height: 12px; border-color: #a7ffd0; border-style: solid; }
+.face-guide-frame i:first-of-type { top: 11%; right: 11%; border-width: 3px 0 0 3px; }
+.face-guide-frame i:last-of-type { bottom: 11%; left: 11%; border-width: 0 3px 3px 0; }
+.face-capture-instructions { position: absolute; z-index: 3; right: 14px; left: 14px; bottom: 79px; display: grid; gap: 4px; padding: 11px 13px; border-radius: 12px; background: rgba(2, 40, 25, .88); color: #fff; border: 1px solid rgba(183, 255, 215, .28); backdrop-filter: blur(7px); pointer-events: none; }
+.face-capture-instructions strong { font-size: 12px; color: #bdffda; }
+.face-capture-instructions span { font-size: 11px; line-height: 1.65; color: #f2fff7; }
+.face-video-camera .live-camera-actions { position: relative; z-index: 4; }
+@media (max-width: 620px) {
+  .face-video-camera > video { min-height: 290px; }
+  .face-guide-frame { inset: 16% 19% 30%; }
+  .face-capture-instructions { bottom: 83px; right: 10px; left: 10px; padding: 9px 11px; }
+  .face-capture-instructions span { font-size: 10px; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .face-guide-frame { animation: faceGuidePulse 2.2s ease-in-out infinite; }
+}
+@keyframes faceGuidePulse { 0%, 100% { box-shadow: 0 0 0 999px rgba(0, 34, 20, .14), 0 0 0 6px rgba(12, 190, 104, .2); } 50% { box-shadow: 0 0 0 999px rgba(0, 34, 20, .19), 0 0 0 10px rgba(12, 190, 104, .34); } }
