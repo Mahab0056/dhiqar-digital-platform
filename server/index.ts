@@ -770,7 +770,7 @@ app.get('/api/admin/identity-reviews', requireSession('EMPLOYEE', 'IDENTITY_REVI
   const rows = db.prepare(`
     SELECT r.id, r.status, r.national_id_masked, r.consent_at, r.submitted_at, r.reviewed_at, r.reviewed_by, r.review_notes, r.retention_until,
            r.quality_status, r.quality_score, r.quality_checks, r.face_match_status, r.face_match_score, r.face_match_provider,
-           c.full_name, c.phone_masked,
+           c.full_name, c.phone_masked, c.location_lat, c.location_lng, c.location_accuracy_m, c.location_updated_at,
            front.id AS front_id, front.mime_type AS front_mime, front.size_bytes AS front_size,
            back.id AS back_id, back.mime_type AS back_mime, back.size_bytes AS back_size,
            face.id AS face_id, face.mime_type AS face_mime, face.size_bytes AS face_size
@@ -794,6 +794,7 @@ app.get('/api/admin/identity-reviews', requireSession('EMPLOYEE', 'IDENTITY_REVI
     reviewedBy: row.reviewed_by,
     notes: row.review_notes,
     retentionUntil: row.retention_until,
+    location: typeof row.location_lat === 'number' && typeof row.location_lng === 'number' ? { lat: row.location_lat, lng: row.location_lng, accuracyM: typeof row.location_accuracy_m === 'number' ? row.location_accuracy_m : null, updatedAt: row.location_updated_at || null } : null,
     screening: {
       qualityStatus: row.quality_status,
       qualityScore: row.quality_score,

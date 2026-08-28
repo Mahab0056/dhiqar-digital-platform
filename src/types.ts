@@ -24,7 +24,6 @@ export interface Citizen {
   district: string
   documentType?: 'NATIONAL_ID' | 'PASSPORT' | 'DRIVING_LICENSE' | null
   profileMediaId?: string | null
-  location?: { lat: number; lng: number; accuracyM: number | null; updatedAt: string | null } | null
   createdAt: string
 }
 

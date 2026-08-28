@@ -648,7 +648,6 @@ function mapCitizen(row: Record<string, unknown>) {
     district: String(row.district),
     documentType: row.document_type ? String(row.document_type) : null,
     profileMediaId: row.profile_media_id ? String(row.profile_media_id) : null,
-    location: row.location_lat !== null && row.location_lat !== undefined && row.location_lng !== null && row.location_lng !== undefined ? { lat: Number(row.location_lat), lng: Number(row.location_lng), accuracyM: row.location_accuracy_m === null || row.location_accuracy_m === undefined ? null : Number(row.location_accuracy_m), updatedAt: row.location_updated_at ? String(row.location_updated_at) : null } : null,
     createdAt: String(row.created_at),
   }
 }

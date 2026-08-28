@@ -57,4 +57,12 @@ const mediaRows = db.prepare('SELECT storage_path, retention_policy, deleted_at 
 const citizen = db.prepare('SELECT document_type, location_lat, location_lng FROM citizens WHERE id = ?').get(citizenId) as { document_type: string; location_lat: number; location_lng: number }
 if (mediaRows.length !== 2 || mediaRows.some(row => row.retention_policy !== 'RETAINED_WITH_CONSENT' || row.deleted_at !== null || !existsSync(row.storage_path))) throw new Error('retained media was not preserved')
 if (citizen.document_type !== 'PASSPORT' || citizen.location_lat !== 31.042 || citizen.location_lng !== 46.267) throw new Error('document type or approved location not stored')
+const citizenProfileResponse = await fetch(`${base}/api/citizen/demo`, { headers: citizenHeaders })
+if (citizenProfileResponse.status !== 200) throw new Error(`citizen profile status ${citizenProfileResponse.status}`)
+const citizenProfile = await citizenProfileResponse.json() as Record<string, unknown>
+if ('location' in citizenProfile || 'locationLat' in citizenProfile || 'locationLng' in citizenProfile) throw new Error('location leaked to citizen profile response')
+const reviewerResponse = await fetch(`${base}/api/admin/identity-reviews`, { headers: superHeaders })
+if (reviewerResponse.status !== 200) throw new Error(`reviewer queue status ${reviewerResponse.status}`)
+const reviewerItems = await reviewerResponse.json() as Array<{ id: string; location?: { lat: number; lng: number } | null }>
+if (!reviewerItems.some(item => item.id === review.id && item.location?.lat === 31.042 && item.location?.lng === 46.267)) throw new Error('reviewer did not receive protected location')
 console.log('identity_document_expansion_qa=pass')
