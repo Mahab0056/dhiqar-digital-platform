@@ -294,7 +294,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
 .capture-ready svg { width: 13px; }
 .capture-preview { margin: 0 14px 14px; overflow: hidden; border-radius: 13px; background: #09251a; aspect-ratio: 16/9; }
 .capture-preview img, .capture-preview video { width: 100%; height: 100%; display: block; object-fit: contain; }
-.live-camera { margin: 0 14px 14px; overflow: hidden; border-radius: 13px; background: #071a12; }
+.live-camera { position: relative; margin: 0 14px 14px; overflow: hidden; border-radius: 13px; background: #071a12; }
 .live-camera video { display: block; width: 100%; max-height: 330px; object-fit: cover; }
 .live-camera-actions { display: flex; flex-wrap: wrap; gap: 8px; padding: 10px; background: #09251a; }
 .live-camera-actions .button { min-height: 39px; padding: 8px 11px; font-size: 10px; }
@@ -1192,21 +1192,30 @@ body { background: var(--gov-paper); color: var(--gov-text); font-family: "Segoe
 
 /* توجيه فيديو الوجه — إطار مرئي فوق معاينة الكاميرا */
 .face-video-camera { isolation: isolate; background: #071910; }
-.face-video-camera > video { min-height: 320px; object-fit: cover; }
-.face-guide-frame { position: absolute; z-index: 2; inset: 13% 22% 25%; border: 3px solid rgba(255,255,255,.95); border-radius: 49% 49% 43% 43%; box-shadow: 0 0 0 999px rgba(0, 34, 20, .14), 0 0 0 6px rgba(12, 190, 104, .2); pointer-events: none; }
-.face-guide-frame span { position: absolute; top: -34px; right: 50%; transform: translateX(50%); white-space: nowrap; padding: 6px 11px; border-radius: 999px; background: rgba(2, 44, 27, .84); color: #fff; font-size: 11px; font-weight: 800; box-shadow: 0 4px 13px rgba(0,0,0,.2); }
-.face-guide-frame i { position: absolute; width: 12px; height: 12px; border-color: #a7ffd0; border-style: solid; }
-.face-guide-frame i:first-of-type { top: 11%; right: 11%; border-width: 3px 0 0 3px; }
-.face-guide-frame i:last-of-type { bottom: 11%; left: 11%; border-width: 0 3px 3px 0; }
-.face-capture-instructions { position: absolute; z-index: 3; right: 14px; left: 14px; bottom: 79px; display: grid; gap: 4px; padding: 11px 13px; border-radius: 12px; background: rgba(2, 40, 25, .88); color: #fff; border: 1px solid rgba(183, 255, 215, .28); backdrop-filter: blur(7px); pointer-events: none; }
-.face-capture-instructions strong { font-size: 12px; color: #bdffda; }
-.face-capture-instructions span { font-size: 11px; line-height: 1.65; color: #f2fff7; }
+.face-video-camera > video { min-height: 360px; object-fit: cover; }
+.face-guide-frame { position: absolute; z-index: 2; inset: 11% 22% 30%; border: 3px solid rgba(255,255,255,.96); border-radius: 49% 49% 44% 44%; box-shadow: 0 0 0 999px rgba(0, 34, 20, .18), 0 0 0 6px rgba(12, 190, 104, .24); pointer-events: none; }
+.face-guide-frame span { position: absolute; top: -35px; right: 50%; transform: translateX(50%); white-space: nowrap; padding: 6px 11px; border-radius: 999px; background: rgba(2, 44, 27, .88); color: #fff; font-size: 11px; font-weight: 800; box-shadow: 0 4px 13px rgba(0,0,0,.2); }
+.face-guide-frame i { position: absolute; width: 14px; height: 14px; border-color: #a7ffd0; border-style: solid; }
+.face-guide-frame i:first-of-type { top: 10%; right: 10%; border-width: 3px 0 0 3px; }
+.face-guide-frame i:last-of-type { bottom: 10%; left: 10%; border-width: 0 3px 3px 0; }
+.face-capture-instructions { position: absolute; z-index: 3; right: 14px; left: 14px; bottom: 76px; display: grid; gap: 9px; padding: 11px 13px; border-radius: 13px; background: rgba(2, 40, 25, .91); color: #fff; border: 1px solid rgba(183, 255, 215, .34); box-shadow: 0 10px 24px rgba(0, 0, 0, .22); backdrop-filter: blur(8px); pointer-events: none; }
+.face-capture-status { display: flex; align-items: center; gap: 10px; }
+.face-countdown { display: grid; width: 42px; height: 42px; flex: 0 0 auto; place-items: center; border: 2px solid rgba(189,255,218,.8); border-radius: 50%; color: #fff; background: rgba(15, 136, 87, .24); font: 800 21px/1 Inter, sans-serif; direction: ltr; }
+.face-countdown.active { border-color: #8ff0bc; background: #08784e; }
+.face-capture-status > div { display: grid; gap: 2px; }
+.face-capture-status small { color: #bce9cf; font-size: 10px; font-weight: 700; }
+.face-capture-instructions strong { font-size: 13px; color: #fff; }
+.face-capture-progress { overflow: hidden; height: 4px; border-radius: 99px; background: rgba(255,255,255,.20); }
+.face-capture-progress i { display: block; height: 100%; border-radius: inherit; background: #a7ffd0; transition: width .18s linear; }
+.face-capture-instructions > span { font-size: 11px; line-height: 1.55; color: #eafff1; }
 .face-video-camera .live-camera-actions { position: relative; z-index: 4; }
 @media (max-width: 620px) {
-  .face-video-camera > video { min-height: 290px; }
-  .face-guide-frame { inset: 16% 19% 30%; }
-  .face-capture-instructions { bottom: 83px; right: 10px; left: 10px; padding: 9px 11px; }
-  .face-capture-instructions span { font-size: 10px; }
+  .face-video-camera > video { min-height: 320px; }
+  .face-guide-frame { inset: 13% 18% 31%; }
+  .face-capture-instructions { right: 10px; left: 10px; bottom: 78px; padding: 9px 11px; }
+  .face-countdown { width: 38px; height: 38px; font-size: 19px; }
+  .face-capture-instructions strong { font-size: 12px; }
+  .face-capture-instructions > span { font-size: 10px; }
 }
 @media (prefers-reduced-motion: no-preference) {
   .face-guide-frame { animation: faceGuidePulse 2.2s ease-in-out infinite; }

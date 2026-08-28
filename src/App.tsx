@@ -278,6 +278,20 @@ function SecureCameraCapture({
   const [previewUrl, setPreviewUrl] = useState('')
   const [cameraError, setCameraError] = useState('')
   const [cameraReady, setCameraReady] = useState(false)
+  const faceChallenge = !recording
+    ? { title: 'استعد لتسجيل فيديو الوجه', detail: 'ضع وجهك داخل الإطار وانتظر بدء العد التنازلي.' }
+    : recordingSeconds >= 6
+      ? { title: 'ثبّت وجهك داخل الإطار', detail: 'انظر إلى الكاميرا مباشرةً بإضاءة واضحة.' }
+      : recordingSeconds === 5
+        ? { title: 'ابتسم للكاميرا', detail: 'ابتسامة طبيعية وخفيفة تكفي.' }
+        : recordingSeconds === 4
+          ? { title: 'حرّك رأسك ببطء إلى اليمين', detail: 'حركة صغيرة وهادئة من دون الخروج من الإطار.' }
+          : recordingSeconds === 3
+            ? { title: 'حرّك رأسك ببطء إلى اليسار', detail: 'ابقَ داخل الإطار وانظر للكاميرا.' }
+            : recordingSeconds === 2
+              ? { title: 'ارمش مرتين بوضوح', detail: 'لا تحتاج إلى أي حركة سريعة.' }
+              : { title: 'ابقَ ثابتاً لحظة أخيرة', detail: 'سيكتمل التسجيل تلقائياً ويحفظ الفيديو المشفر.' }
+  const faceRecordingProgress = recording ? Math.min(100, Math.max(0, ((7 - recordingSeconds) / 7) * 100)) : 0
 
   const stopCamera = () => {
     discardRecordingRef.current = true
@@ -432,7 +446,7 @@ function SecureCameraCapture({
     <input ref={inputRef} type="file" hidden accept={mode === 'photo' ? (allowPdf ? 'image/*,application/pdf' : 'image/*') : 'video/*'} capture={facingMode === 'environment' ? 'environment' : 'user'} onChange={event => pickFile(event.target.files?.[0])} />
     <div className="capture-head"><div><strong>{title}</strong><p>{guidance}</p></div>{file && <span className="capture-ready"><CheckCircle2 /> جاهز</span>}</div>
     {previewUrl && <div className="capture-preview">{mode === 'photo' ? file?.type === 'application/pdf' ? <div className="pdf-preview"><FileText /><strong>{file.name}</strong><small>PDF جاهز للرفع</small></div> : <img src={previewUrl} alt={title} /> : <video src={previewUrl} controls playsInline />}</div>}
-    {cameraOpen && <div className={`live-camera ${mode === 'video' ? 'face-video-camera' : ''}`}><video ref={videoRef} autoPlay playsInline muted disablePictureInPicture />{mode === 'video' && <><div className="face-guide-frame" aria-hidden="true"><span>ضع الوجه داخل الإطار</span><i /><i /></div><div className="face-capture-instructions" aria-live="polite"><strong>{recording ? `التسجيل جارٍ — متبقي ${recordingSeconds.toLocaleString('en-US')} ثوانٍ` : 'استعد لتسجيل فيديو الوجه'}</strong><span>انظر للكاميرا مباشرةً، حرّك رأسك ببطء إلى اليمين ثم اليسار، وابقَ في إضاءة أمامية واضحة.</span></div></>}<div className="live-camera-actions">{mode === 'photo' ? <button type="button" className="button primary" onClick={takePhoto} disabled={!cameraReady}><Camera /> {cameraReady ? 'التقاط الصورة' : 'جاري تجهيز الكاميرا...'}</button> : recording ? <div className="recording-countdown"><span>{recordingSeconds}</span><strong>ثوانٍ — حرّك رأسك ببطء وانظر للكاميرا</strong></div> : <div className="camera-preparing"><RefreshCw /> {cameraReady ? 'جاري بدء التسجيل التلقائي...' : 'جاري تشغيل معاينة الكاميرا...'}</div>}<button type="button" className="button ghost" onClick={stopCamera}>إلغاء</button></div></div>}
+    {cameraOpen && <div className={`live-camera ${mode === 'video' ? 'face-video-camera' : ''}`}><video ref={videoRef} autoPlay playsInline muted disablePictureInPicture />{mode === 'video' && <><div className="face-guide-frame" aria-hidden="true"><span>ضع الوجه داخل الإطار</span><i /><i /></div><div className="face-capture-instructions" aria-live="assertive"><div className="face-capture-status"><b className={recording ? 'face-countdown active' : 'face-countdown'}>{recording ? recordingSeconds.toLocaleString('en-US') : '7'}</b><div><small>{recording ? 'التسجيل جارٍ الآن' : 'استعد — التسجيل يبدأ تلقائياً'}</small><strong>{faceChallenge.title}</strong></div></div><div className="face-capture-progress" aria-hidden="true"><i style={{ width: `${faceRecordingProgress}%` }} /></div><span>{faceChallenge.detail}</span></div></>}<div className="live-camera-actions">{mode === 'photo' ? <button type="button" className="button primary" onClick={takePhoto} disabled={!cameraReady}><Camera /> {cameraReady ? 'التقاط الصورة' : 'جاري تجهيز الكاميرا...'}</button> : <div className="camera-preparing"><RefreshCw /> {recording ? 'تابع التوجيه داخل شاشة الكاميرا' : cameraReady ? 'جاري بدء التسجيل التلقائي...' : 'جاري تشغيل معاينة الكاميرا...'}</div>}<button type="button" className="button ghost" onClick={stopCamera}>إلغاء</button></div></div>}
     <div className="capture-actions"><button type="button" className="button secondary" onClick={() => void openCamera()}><Camera /> {cameraOpen ? 'إعادة محاولة الكاميرا' : file ? 'إعادة التصوير' : 'فتح الكاميرا'}</button>{!cameraOnly && <button type="button" className="button ghost" onClick={() => inputRef.current?.click()}><FileText /> {mode === 'photo' ? 'رفع صورة' : 'رفع فيديو'}</button>}{file && <button type="button" className="capture-remove" onClick={() => { if (previewUrl) URL.revokeObjectURL(previewUrl); setPreviewUrl(''); onChange(null) }}><RefreshCw /> مسح</button>}</div>
     {cameraError && <div className="capture-error"><AlertTriangle /> {cameraError}</div>}
   </div>
