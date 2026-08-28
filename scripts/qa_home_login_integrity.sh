@@ -14,11 +14,11 @@ for service_key in 'building-permit' 'store-license' 'national-id' 'passport-app
   grep -Fq "key: '$service_key'" "$app" || { echo "missing_service_shortcut=$service_key"; exit 1; }
 done
 
-for marker in 'submitServiceSearch' 'matchingServices' 'reference-home' 'reference-hero' 'reference-search' 'reference-hero-actions' 'reference-indicators' 'reference-category-grid' 'reference-directory-band' 'login-v3-choices'; do
+for marker in 'submitServiceSearch' 'matchingServices' 'civic-home' 'civic-hero' 'civic-search' 'civic-quick-grid' 'civic-facts' 'reference-category-grid' 'reference-directory-band' 'login-v3-choices'; do
   grep -Fq "$marker" "$app" || { echo "missing_app_marker=$marker"; exit 1; }
 done
 
-for marker in 'reference-home' 'reference-hero' 'reference-search' 'reference-indicators' 'reference-category-grid' 'reference-benefits' '@media (max-width: 760px)' 'login-v3-option'; do
+for marker in 'civic-home' 'civic-hero' 'civic-search' 'civic-quick-grid' 'civic-facts' 'reference-category-grid' 'reference-benefits' '@media (max-width: 760px)' 'login-v3-option'; do
   grep -Fq "$marker" "$css" || { echo "missing_css_marker=$marker"; exit 1; }
 done
 

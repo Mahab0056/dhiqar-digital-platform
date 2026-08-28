@@ -36,37 +36,37 @@ await send('Runtime.enable');
 await send('Page.navigate', { url: targetUrl });
 await delay(1200);
 
-const categories = await evaluate(`(() => [...document.querySelectorAll('.reference-search select option')].map(option => option.value))()`);
+const categories = await evaluate(`(() => [...document.querySelectorAll('.civic-search select option')].map(option => option.value))()`);
 if (!categories.includes('المحلات والأعمال')) throw new Error('تصنيف المحلات والأعمال غير ظاهر في الفلتر.');
 
-await evaluate(`(() => document.querySelector('.reference-search input')?.focus())()`);
+await evaluate(`(() => document.querySelector('.civic-search input')?.focus())()`);
 await send('Input.insertText', { text: 'إجازة محل' });
 await delay(350);
 const filtered = await evaluate(`(() => ({
-  query: document.querySelector('.reference-search input')?.value || '',
-  resultHref: document.querySelector('.reference-search-results a')?.getAttribute('href') || null,
-  resultText: document.querySelector('.reference-search-results a strong')?.textContent?.trim() || null,
-  submitDisabled: document.querySelector('.reference-search button[type="submit"]')?.disabled || false,
+  query: document.querySelector('.civic-search input')?.value || '',
+  resultHref: document.querySelector('.civic-search-results a')?.getAttribute('href') || null,
+  resultText: document.querySelector('.civic-search-results a strong')?.textContent?.trim() || null,
+  submitDisabled: document.querySelector('.civic-search button[type="submit"]')?.disabled || false,
 }))()`);
 if (filtered.resultHref !== '/service/store-license' || filtered.submitDisabled) {
   throw new Error(`نتيجة بحث غير متوقعة: ${JSON.stringify(filtered)}`);
 }
 
 await evaluate(`(() => {
-  const select = document.querySelector('.reference-search select');
+  const select = document.querySelector('.civic-search select');
   select.value = 'المحلات والأعمال';
   select.dispatchEvent(new Event('change', { bubbles: true }));
   return select.value;
 })()`);
 await delay(200);
-const categoryState = await evaluate(`(() => document.querySelector('.reference-search select')?.value || '')()`);
+const categoryState = await evaluate(`(() => document.querySelector('.civic-search select')?.value || '')()`);
 if (categoryState !== 'المحلات والأعمال') throw new Error(`تعذر تطبيق فلتر القطاع: ${categoryState}`);
 
 await evaluate(`(() => {
-  const select = document.querySelector('.reference-search select');
+  const select = document.querySelector('.civic-search select');
   select.value = 'الكل';
   select.dispatchEvent(new Event('change', { bubbles: true }));
-  document.querySelector('form.reference-search')?.requestSubmit();
+  document.querySelector('form.civic-search')?.requestSubmit();
   return true;
 })()`);
 await delay(450);
