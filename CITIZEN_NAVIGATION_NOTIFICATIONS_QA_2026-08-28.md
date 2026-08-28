@@ -25,3 +25,7 @@ At a 390 × 844 mobile viewport, the notifications page displays a compact accou
 ## Data and permissions
 
 The page reads only the signed-in citizen's existing notifications through the established notification endpoints. It does not introduce synthetic notifications or change employee, reviewer, operations, or administrator permissions.
+
+## Production verification
+
+After publication, Railway returned `200` from `/api/health` and served the expected updated JavaScript and CSS bundle. The production bundle contains the `/citizen/notifications` route, the **إشعارات الحساب** heading, and the **تعليم الكل كمقروء** action. A request to `/api/citizen/notifications` without a citizen session returned `401`, confirming that the new UI remains protected by the existing access boundary.
