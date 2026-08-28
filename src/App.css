@@ -989,3 +989,14 @@ body { background: var(--gov-paper); color: var(--gov-text); font-family: "Segoe
 .service-admin-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 7px; }
 .service-admin-actions .button { padding: 9px 11px; font-size: .78rem; }
 @media (max-width: 760px) { .government-service-admin { padding: 16px; } .service-admin-list article { align-items: stretch; flex-direction: column; } .service-admin-actions { justify-content: stretch; } .service-admin-actions .button { flex: 1; } }
+
+.profile-avatar { object-fit: cover; object-position: center; background: #e8f2ed; border: 2px solid #d5e4dc; }
+.document-type-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 16px 0; }
+.document-type-options button { min-height: 52px; padding: 9px; border: 1px solid #cedbd4; border-radius: 8px; background: #f8fbf9; color: #3c564c; font-weight: 700; font-size: .84rem; line-height: 1.45; }
+.document-type-options button.active { background: #0b6950; border-color: #0b6950; color: #fff; box-shadow: 0 8px 18px rgba(11, 105, 80, .16); }
+.location-consent-card { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin: 18px 0; padding: 14px; border: 1px solid #d7e4dc; border-radius: 10px; background: #f5f9f7; }
+.location-consent-card > div { min-width: 0; }
+.location-consent-card svg { color: #0b6950; width: 19px; height: 19px; vertical-align: middle; margin-left: 7px; }
+.location-consent-card strong { color: #20483a; font-size: .92rem; }
+.location-consent-card p { margin: 5px 0 0; color: #60766c; line-height: 1.55; font-size: .82rem; }
+@media (max-width: 620px) { .document-type-options { grid-template-columns: 1fr; } .location-consent-card { align-items: flex-start; flex-direction: column; } .location-consent-card .button { width: 100%; } }

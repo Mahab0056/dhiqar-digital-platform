@@ -78,20 +78,36 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(payload),
     }),
-  submitIdentityReview: async (payload: { fullName: string; nationalId: string; consent: boolean; idFront: File; idBack: File; faceVideo: File }) => {
+  previewIdentityDocument: async (payload: { documentType: 'NATIONAL_ID' | 'PASSPORT' | 'DRIVING_LICENSE'; document: File }) => {
+    const form = new FormData()
+    form.append('documentType', payload.documentType)
+    form.append('analysisConsent', 'true')
+    form.append('document', payload.document)
+    const response = await fetch('/api/onboarding/identity-extract-preview', { method: 'POST', body: form, credentials: 'include' })
+    if (!response.ok) { const body = await response.json().catch(() => ({ message: 'تعذر تحليل صورة المستند.' })); throw new Error(body.message || 'تعذر تحليل صورة المستند.') }
+    return response.json() as Promise<{ status: string; provider: string | null; confidence: number | null; documentTypeDetected: string | null; fields: { fullName: string | null; documentNumber: string | null; dateOfBirth: string | null; nationality: string | null; sex: string | null; expiryDate: string | null }; documentNumberMasked: string | null; message?: string }>
+  },
+  updateCitizenLocation: (payload: { lat: number; lng: number; accuracyM?: number; consent: true }) => request<Citizen>('/api/citizen/location', { method: 'POST', body: JSON.stringify(payload) }),
+  submitIdentityReview: async (payload: { fullName: string; documentNumber: string; documentType: 'NATIONAL_ID' | 'PASSPORT' | 'DRIVING_LICENSE'; consent: boolean; retainMedia: boolean; analysisConsent: boolean; profilePhotoConsent: boolean; location?: { lat: number; lng: number; accuracyM?: number } | null; idFront: File; idBack?: File | null; faceVideo: File }) => {
     const form = new FormData()
     form.append('fullName', payload.fullName)
-    form.append('nationalId', payload.nationalId)
+    form.append('documentNumber', payload.documentNumber)
+    form.append('documentType', payload.documentType)
     form.append('consent', String(payload.consent))
+    form.append('retainMedia', String(payload.retainMedia))
+    form.append('analysisConsent', String(payload.analysisConsent))
+    form.append('profilePhotoConsent', String(payload.profilePhotoConsent))
+    form.append('locationConsent', String(Boolean(payload.location)))
+    if (payload.location) { form.append('locationLat', String(payload.location.lat)); form.append('locationLng', String(payload.location.lng)); if (payload.location.accuracyM !== undefined) form.append('locationAccuracyM', String(payload.location.accuracyM)) }
     form.append('idFront', payload.idFront)
-    form.append('idBack', payload.idBack)
+    if (payload.idBack) form.append('idBack', payload.idBack)
     form.append('faceVideo', payload.faceVideo)
     const response = await fetch('/api/onboarding/identity-review', { method: 'POST', body: form, credentials: 'include' })
     if (!response.ok) {
       const body = await response.json().catch(() => ({ message: 'تعذر رفع وسائط الهوية.' }))
       throw new Error(body.message || 'تعذر رفع وسائط الهوية.')
     }
-    return response.json() as Promise<{ id: string; status: string; retentionUntil: string; files: Array<{ id: string; purpose: string; sizeBytes: number }>; screening: { qualityStatus: string; qualityScore: number; qualityChecks: Array<{ key: string; label: string; passed: boolean; detail: string }>; faceMatchStatus: string; faceMatchScore: number | null; faceMatchProvider: string | null } }>
+    return response.json() as Promise<{ id: string; status: string; retentionUntil: string; documentType: string; analysis: { status: string; provider: string | null; confidence: number | null; fields: { fullName: string | null; documentNumber: string | null; dateOfBirth: string | null; nationality: string | null; sex: string | null; expiryDate: string | null }; documentTypeDetected: string | null; profilePhotoStored: boolean; faceComparison: { status: string; confidence: number | null } }; files: Array<{ id: string; purpose: string; sizeBytes: number; retentionPolicy: string }>; screening: { qualityStatus: string; qualityScore: number; qualityChecks: Array<{ key: string; label: string; passed: boolean; detail: string }>; faceMatchStatus: string; faceMatchScore: number | null; faceMatchProvider: string | null } }>
   },
   getLatestIdentityReview: () => request<{ id: string; status: string; national_id_masked: string; submitted_at: string; reviewed_at: string | null; review_notes: string | null; retention_until: string; quality_status: string; quality_score: number | null; quality_checks: string | null; face_match_status: string; face_match_score: number | null; face_match_provider: string | null } | null>('/api/onboarding/identity-review/latest'),
   listIdentityReviews: (reviewAccessCode: string) => request<Array<{ id: string; status: string; citizenName: string; phoneMasked: string; nationalIdMasked: string; consentAt: string; submittedAt: string; reviewedAt: string | null; reviewedBy: string | null; notes: string | null; retentionUntil: string; screening: { qualityStatus: string; qualityScore: number | null; qualityChecks: Array<{ key: string; label: string; passed: boolean; detail: string }>; faceMatchStatus: string; faceMatchScore: number | null; faceMatchProvider: string | null }; media: Array<{ id: string; label: string; mimeType: string; sizeBytes: number }> }>>('/api/admin/identity-reviews', { headers: { 'x-review-access-code': reviewAccessCode } }),
@@ -101,7 +117,7 @@ export const api = {
     const blob = await response.blob()
     return { url: URL.createObjectURL(blob), mimeType: blob.type }
   },
-  decideIdentityReview: (reviewId: string, reviewAccessCode: string, payload: { decision: 'APPROVED' | 'REJECTED' | 'NEEDS_RESUBMISSION'; notes: string }) => request<{ id: string; status: string; reviewedAt: string; mediaPurged: boolean }>(`/api/admin/identity-reviews/${reviewId}/decision`, { method: 'POST', headers: { 'x-review-access-code': reviewAccessCode }, body: JSON.stringify(payload) }),
+  decideIdentityReview: (reviewId: string, reviewAccessCode: string, payload: { decision: 'APPROVED' | 'REJECTED' | 'NEEDS_RESUBMISSION'; notes: string }) => request<{ id: string; status: string; reviewedAt: string; mediaPurged: boolean; mediaRetained: boolean }>(`/api/admin/identity-reviews/${reviewId}/decision`, { method: 'POST', headers: { 'x-review-access-code': reviewAccessCode }, body: JSON.stringify(payload) }),
   listApplications: () => request<GovernmentApplication[]>('/api/applications'),
   getApplication: (reference: string) => request<GovernmentApplication>(`/api/applications/${reference}`),
   createApplication: (payload: Record<string, unknown>) =>

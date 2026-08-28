@@ -512,6 +512,27 @@ ensureColumn('citizens', 'account_key', 'TEXT')
 ensureColumn('service_requests', 'decision_note', 'TEXT')
 ensureColumn('service_requests', 'required_document', 'TEXT')
 ensureColumn('government_service_directory', 'existing_service_key', 'TEXT')
+ensureColumn('media_objects', 'retention_policy', "TEXT NOT NULL DEFAULT 'TIME_LIMITED'")
+ensureColumn('media_objects', 'retention_consent_at', 'TEXT')
+ensureColumn('citizens', 'document_type', 'TEXT')
+ensureColumn('citizens', 'profile_media_id', 'TEXT')
+ensureColumn('citizens', 'location_lat', 'REAL')
+ensureColumn('citizens', 'location_lng', 'REAL')
+ensureColumn('citizens', 'location_accuracy_m', 'REAL')
+ensureColumn('citizens', 'location_updated_at', 'TEXT')
+ensureColumn('citizens', 'location_consent_at', 'TEXT')
+ensureColumn('identity_reviews', 'document_type', "TEXT NOT NULL DEFAULT 'NATIONAL_ID'")
+ensureColumn('identity_reviews', 'retention_consent_at', 'TEXT')
+ensureColumn('identity_reviews', 'analysis_consent_at', 'TEXT')
+ensureColumn('identity_reviews', 'analysis_status', "TEXT NOT NULL DEFAULT 'NOT_REQUESTED'")
+ensureColumn('identity_reviews', 'extracted_data', 'TEXT')
+ensureColumn('identity_reviews', 'extraction_provider', 'TEXT')
+ensureColumn('identity_reviews', 'extraction_confidence', 'REAL')
+ensureColumn('identity_reviews', 'profile_photo_media_id', 'TEXT')
+ensureColumn('identity_reviews', 'location_lat', 'REAL')
+ensureColumn('identity_reviews', 'location_lng', 'REAL')
+ensureColumn('identity_reviews', 'location_accuracy_m', 'REAL')
+ensureColumn('identity_reviews', 'location_consent_at', 'TEXT')
 db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_citizens_account_key ON citizens(account_key) WHERE account_key IS NOT NULL')
 
 const now = () => new Date().toISOString()
@@ -591,6 +612,9 @@ function mapCitizen(row: Record<string, unknown>) {
     phoneMasked: String(row.phone_masked),
     verificationStatus: String(row.verification_status),
     district: String(row.district),
+    documentType: row.document_type ? String(row.document_type) : null,
+    profileMediaId: row.profile_media_id ? String(row.profile_media_id) : null,
+    location: row.location_lat !== null && row.location_lat !== undefined && row.location_lng !== null && row.location_lng !== undefined ? { lat: Number(row.location_lat), lng: Number(row.location_lng), accuracyM: row.location_accuracy_m === null || row.location_accuracy_m === undefined ? null : Number(row.location_accuracy_m), updatedAt: row.location_updated_at ? String(row.location_updated_at) : null } : null,
     createdAt: String(row.created_at),
   }
 }

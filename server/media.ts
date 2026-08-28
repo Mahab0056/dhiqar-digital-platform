@@ -17,7 +17,7 @@ function encryptionKey() {
   return createHash('sha256').update(secret, 'utf8').digest()
 }
 
-export type MediaPurpose = 'NATIONAL_ID_FRONT' | 'NATIONAL_ID_BACK' | 'FACE_VIDEO' | 'APPLICATION_DOCUMENT' | 'STOREFRONT_PHOTO' | 'FEEDBACK_ATTACHMENT'
+export type MediaPurpose = 'NATIONAL_ID_FRONT' | 'NATIONAL_ID_BACK' | 'IDENTITY_DOCUMENT_FRONT' | 'IDENTITY_DOCUMENT_BACK' | 'FACE_VIDEO' | 'PROFILE_PHOTO' | 'APPLICATION_DOCUMENT' | 'STOREFRONT_PHOTO' | 'FEEDBACK_ATTACHMENT'
 
 export function storeEncryptedMedia(input: {
   citizenId: number
@@ -26,6 +26,8 @@ export function storeEncryptedMedia(input: {
   mimeType: string
   buffer: Buffer
   retentionHours?: number
+  retentionPolicy?: 'TIME_LIMITED' | 'RETAINED_WITH_CONSENT'
+  retentionConsentAt?: string
 }) {
   const id = `media_${randomUUID().replaceAll('-', '')}`
   const iv = randomBytes(12)
@@ -35,15 +37,18 @@ export function storeEncryptedMedia(input: {
   const envelope = Buffer.concat([iv, authTag, encrypted])
   const storagePath = join(mediaRoot, `${id}.bin`)
   const timestamp = new Date()
-  const expiresAt = new Date(timestamp.getTime() + (input.retentionHours ?? 168) * 60 * 60 * 1000)
+  const retentionPolicy = input.retentionPolicy || 'TIME_LIMITED'
+  const expiresAt = retentionPolicy === 'RETAINED_WITH_CONSENT'
+    ? new Date('9999-12-31T23:59:59.999Z')
+    : new Date(timestamp.getTime() + (input.retentionHours ?? 168) * 60 * 60 * 1000)
   const sha256 = createHash('sha256').update(input.buffer).digest('hex')
 
   writeFileSync(storagePath, envelope, { mode: 0o600 })
   db.prepare(`
     INSERT INTO media_objects (
       id, citizen_id, purpose, storage_path, original_name, mime_type,
-      size_bytes, sha256, encrypted, expires_at, created_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
+      size_bytes, sha256, encrypted, expires_at, retention_policy, retention_consent_at, created_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?)
   `).run(
     id,
     input.citizenId,
@@ -54,12 +59,15 @@ export function storeEncryptedMedia(input: {
     input.buffer.length,
     sha256,
     expiresAt.toISOString(),
+    retentionPolicy,
+    retentionPolicy === 'RETAINED_WITH_CONSENT' ? (input.retentionConsentAt || timestamp.toISOString()) : null,
     timestamp.toISOString(),
   )
 
   return {
     id,
     purpose: input.purpose,
+    retentionPolicy,
     mimeType: input.mimeType,
     sizeBytes: input.buffer.length,
     sha256,
@@ -97,7 +105,7 @@ export function deleteEncryptedMedia(id: string) {
 export function purgeExpiredMedia() {
   const expired = db.prepare(`
     SELECT id FROM media_objects
-    WHERE deleted_at IS NULL AND expires_at <= ?
+    WHERE deleted_at IS NULL AND retention_policy != 'RETAINED_WITH_CONSENT' AND expires_at <= ?
   `).all(new Date().toISOString()) as Array<{ id: string }>
 
   let removed = 0

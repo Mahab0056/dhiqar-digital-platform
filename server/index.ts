@@ -31,10 +31,11 @@ import {
   resetDemo,
 } from './db.js'
 import { createOtpChallenge, processOtpDeliveryWebhook, verifyOtpChallenge } from './otp.js'
-import { deleteEncryptedMedia, readDecryptedMedia, storeEncryptedMedia } from './media.js'
+import { readDecryptedMedia, storeEncryptedMedia } from './media.js'
 import { departmentRegistry, registrySummary } from './department-registry.js'
 import { getServiceDefinition } from '../src/service-forms.js'
 import { screenIdentitySubmission } from './identity-screening.js'
+import { analyzeIdentityDocument } from './identity-document-analysis.js'
 import { getGovernmentService, getGovernmentServiceDirectoryStats, listGovernmentServiceVersions, listGovernmentServices, setGovernmentServicePublication, upsertGovernmentService, type GovernmentServiceRecordInput } from './government-service-directory.js'
 import { seedVerifiedGovernmentServices } from './government-service-seed.js'
 
@@ -217,7 +218,7 @@ app.use(['/api/onboarding', '/api/admin', '/api/applications'], (req, res, next)
 })
 app.use(express.json({ limit: '1mb' }))
 app.use(express.urlencoded({ extended: false, limit: '64kb' }))
-app.use(['/api/onboarding/request-otp', '/api/onboarding/verify-phone', '/api/onboarding/identity-review', '/api/admin'], sensitiveLimiter)
+app.use(['/api/onboarding/request-otp', '/api/onboarding/verify-phone', '/api/onboarding/identity-review', '/api/onboarding/identity-extract-preview', '/api/admin'], sensitiveLimiter)
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', service: 'Dhi Qar Digital API', time: new Date().toISOString() })
@@ -614,48 +615,78 @@ app.post('/api/onboarding/complete-identity', requireSession('CITIZEN'), (req, r
   res.json(getCitizenById(citizen.id))
 })
 
+app.post('/api/onboarding/identity-extract-preview', requireSession('CITIZEN'), upload.single('document'), async (req, res) => {
+  try {
+    const payload = z.object({ documentType: z.enum(['NATIONAL_ID', 'PASSPORT', 'DRIVING_LICENSE']), analysisConsent: z.literal('true') }).parse(req.body)
+    if (!req.file) return res.status(400).json({ message: 'ارفع أو التقط صورة المستند أولاً.' })
+    validateUploadedFile(req.file, ['image'])
+    const analysis = await analyzeIdentityDocument({ documentType: payload.documentType, documentImage: { buffer: req.file.buffer, mimeType: req.file.mimetype }, analysisConsent: true })
+    const documentNumber = analysis.fields.documentNumber || ''
+    res.json({ status: analysis.status, provider: analysis.provider, confidence: analysis.confidence, documentTypeDetected: analysis.documentTypeDetected, fields: analysis.fields, documentNumberMasked: documentNumber ? `********${documentNumber.replace(/\s/g, '').slice(-4)}` : null, message: analysis.status === 'PROVIDER_UNAVAILABLE' ? 'التحليل الآلي غير مهيأ حالياً. أكمل البيانات يدوياً وستصل للمراجعة البشرية.' : undefined })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'تعذر تحليل صورة المستند.'
+    res.status(400).json({ message })
+  }
+})
+
 app.post('/api/onboarding/identity-review', requireSession('CITIZEN'), upload.fields([
   { name: 'idFront', maxCount: 1 },
   { name: 'idBack', maxCount: 1 },
   { name: 'faceVideo', maxCount: 1 },
-]), (req, res) => {
+]), async (req, res) => {
   try {
     const payload = z.object({
       fullName: z.string().min(3).max(120),
-      nationalId: z.string().min(4).max(30),
+      documentNumber: z.string().min(4).max(40),
+      documentType: z.enum(['NATIONAL_ID', 'PASSPORT', 'DRIVING_LICENSE']).default('NATIONAL_ID'),
       consent: z.literal('true'),
+      retainMedia: z.literal('true'),
+      analysisConsent: z.enum(['true', 'false']).default('false'),
+      profilePhotoConsent: z.enum(['true', 'false']).default('false'),
+      locationConsent: z.enum(['true', 'false']).default('false'),
+      locationLat: z.coerce.number().min(-90).max(90).optional(),
+      locationLng: z.coerce.number().min(-180).max(180).optional(),
+      locationAccuracyM: z.coerce.number().min(0).max(50_000).optional(),
     }).parse(req.body)
     const files = req.files as Record<string, Express.Multer.File[]> | undefined
     const idFront = files?.idFront?.[0]
     const idBack = files?.idBack?.[0]
     const faceVideo = files?.faceVideo?.[0]
-    if (!idFront || !idBack || !faceVideo) return res.status(400).json({ message: 'صوّر الوجهين للهوية وفيديو الوجه القصير لإرسال طلب المراجعة.' })
+    if (!idFront || !faceVideo || (payload.documentType !== 'PASSPORT' && !idBack)) return res.status(400).json({ message: payload.documentType === 'PASSPORT' ? 'صوّر صفحة البيانات في جواز السفر وفيديو الوجه القصير لإرسال طلب المراجعة.' : 'صوّر وجهي المستند وفيديو الوجه القصير لإرسال طلب المراجعة.' })
     validateUploadedFile(idFront, ['image'])
-    validateUploadedFile(idBack, ['image'])
+    if (idBack) validateUploadedFile(idBack, ['image'])
     validateUploadedFile(faceVideo, ['video'])
-    const screening = screenIdentitySubmission({ idFront, idBack, faceVideo })
+    const screening = screenIdentitySubmission({ idFront, idBack: idBack || idFront, faceVideo })
     if (screening.qualityStatus === 'NEEDS_RECAPTURE') return res.status(422).json({ message: 'فحص الجودة الآلي طلب إعادة التصوير قبل حفظ بيانات الهوية.', screening })
 
     const citizen = currentCitizen(res)
     if (!citizen) return
     const citizenId = citizen.id
     const now = new Date()
-    const retentionUntil = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString()
-    const front = storeEncryptedMedia({ citizenId, purpose: 'NATIONAL_ID_FRONT', originalName: idFront.originalname || 'national-id-front', mimeType: idFront.mimetype, buffer: idFront.buffer, retentionHours: 168 })
-    const back = storeEncryptedMedia({ citizenId, purpose: 'NATIONAL_ID_BACK', originalName: idBack.originalname || 'national-id-back', mimeType: idBack.mimetype, buffer: idBack.buffer, retentionHours: 168 })
-    const video = storeEncryptedMedia({ citizenId, purpose: 'FACE_VIDEO', originalName: faceVideo.originalname || 'face-video', mimeType: faceVideo.mimetype, buffer: faceVideo.buffer, retentionHours: 168 })
+    const retentionUntil = '9999-12-31T23:59:59.999Z'
+    const mediaRetention = { retentionPolicy: 'RETAINED_WITH_CONSENT' as const, retentionConsentAt: now.toISOString() }
+    const front = storeEncryptedMedia({ citizenId, purpose: 'IDENTITY_DOCUMENT_FRONT', originalName: idFront.originalname || 'identity-document-front', mimeType: idFront.mimetype, buffer: idFront.buffer, ...mediaRetention })
+    const back = idBack ? storeEncryptedMedia({ citizenId, purpose: 'IDENTITY_DOCUMENT_BACK', originalName: idBack.originalname || 'identity-document-back', mimeType: idBack.mimetype, buffer: idBack.buffer, ...mediaRetention }) : null
+    const video = storeEncryptedMedia({ citizenId, purpose: 'FACE_VIDEO', originalName: faceVideo.originalname || 'face-video', mimeType: faceVideo.mimetype, buffer: faceVideo.buffer, ...mediaRetention })
+    const analysis = await analyzeIdentityDocument({ documentType: payload.documentType, documentImage: { buffer: idFront.buffer, mimeType: idFront.mimetype }, faceVideo: { buffer: faceVideo.buffer, mimeType: faceVideo.mimetype }, analysisConsent: payload.analysisConsent === 'true' })
+    const profilePhoto = analysis.faceCrop && analysis.confidence !== null && analysis.confidence >= 0.75 && payload.profilePhotoConsent === 'true'
+      ? storeEncryptedMedia({ citizenId, purpose: 'PROFILE_PHOTO', originalName: 'identity-derived-profile-photo.jpg', mimeType: analysis.faceCrop.mimeType, buffer: Buffer.from(analysis.faceCrop.base64, 'base64'), ...mediaRetention })
+      : null
     const reviewId = `idv_${randomUUID().replaceAll('-', '')}`
-    const maskedNationalId = `********${payload.nationalId.replace(/\s/g, '').slice(-4)}`
+    const maskedNationalId = `********${payload.documentNumber.replace(/\s/g, '').slice(-4)}`
+    const locationAllowed = payload.locationConsent === 'true' && payload.locationLat !== undefined && payload.locationLng !== undefined
+    const extractionSummary = JSON.stringify({ status: analysis.status, provider: analysis.provider, confidence: analysis.confidence, documentTypeDetected: analysis.documentTypeDetected, fieldsPresent: Object.fromEntries(Object.entries(analysis.fields).map(([key, value]) => [key, Boolean(value)])), faceComparison: analysis.faceComparison.status })
 
     db.prepare(`
       INSERT INTO identity_reviews (
         id, citizen_id, status, national_id_masked, id_front_media_id, id_back_media_id,
         face_video_media_id, quality_status, quality_score, quality_checks, face_match_status, face_match_score, face_match_provider,
+        document_type, retention_consent_at, analysis_consent_at, analysis_status, extracted_data, extraction_provider, extraction_confidence, profile_photo_media_id, location_lat, location_lng, location_accuracy_m, location_consent_at,
         consent_at, submitted_at, retention_until, created_at, updated_at
-      ) VALUES (?, ?, 'PENDING_REVIEW', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(reviewId, citizenId, maskedNationalId, front.id, back.id, video.id, screening.qualityStatus, screening.qualityScore, JSON.stringify(screening.qualityChecks), screening.faceMatchStatus, screening.faceMatchScore, screening.faceMatchProvider, now.toISOString(), now.toISOString(), retentionUntil, now.toISOString(), now.toISOString())
-    db.prepare('UPDATE citizens SET full_name = ?, national_id_masked = ?, verification_status = ?, consent_at = ?, updated_at = ? WHERE id = ?')
-      .run(payload.fullName, maskedNationalId, 'MANUAL_REVIEW', now.toISOString(), now.toISOString(), citizenId)
+      ) VALUES (?, ?, 'PENDING_REVIEW', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(reviewId, citizenId, maskedNationalId, front.id, back?.id || null, video.id, screening.qualityStatus, screening.qualityScore, JSON.stringify(screening.qualityChecks), analysis.faceComparison.status, analysis.faceComparison.confidence, analysis.provider, payload.documentType, now.toISOString(), payload.analysisConsent === 'true' ? now.toISOString() : null, analysis.status, extractionSummary, analysis.provider, analysis.confidence, profilePhoto?.id || null, locationAllowed ? payload.locationLat : null, locationAllowed ? payload.locationLng : null, locationAllowed ? payload.locationAccuracyM || null : null, locationAllowed ? now.toISOString() : null, now.toISOString(), now.toISOString(), retentionUntil, now.toISOString(), now.toISOString())
+    db.prepare('UPDATE citizens SET full_name = ?, national_id_masked = ?, document_type = ?, profile_media_id = COALESCE(?, profile_media_id), verification_status = ?, consent_at = ?, location_lat = ?, location_lng = ?, location_accuracy_m = ?, location_updated_at = ?, location_consent_at = ?, updated_at = ? WHERE id = ?')
+      .run(payload.fullName, maskedNationalId, payload.documentType, profilePhoto?.id || null, 'MANUAL_REVIEW', now.toISOString(), locationAllowed ? payload.locationLat : null, locationAllowed ? payload.locationLng : null, locationAllowed ? payload.locationAccuracyM || null : null, locationAllowed ? now.toISOString() : null, locationAllowed ? now.toISOString() : null, now.toISOString(), citizenId)
     createNotification({ citizenId, type: 'IDENTITY_REVIEW', title: 'تم استلام طلب توثيق الهوية', message: 'وصلت صور الهوية وفيديو الوجه إلى قائمة المراجعة. ستصلك نتيجة القرار هنا.', link: '/citizen' })
     addAudit({
       actor: payload.fullName,
@@ -663,14 +694,16 @@ app.post('/api/onboarding/identity-review', requireSession('CITIZEN'), upload.fi
       action: 'IDENTITY_MEDIA_SUBMITTED',
       entityType: 'IdentityReview',
       entityId: reviewId,
-      newValue: { status: 'PENDING_REVIEW', media: [front.id, back.id, video.id] },
-      metadata: { consent: true, retentionUntil, rawNationalIdStored: false, qualityScore: screening.qualityScore, faceMatchStatus: screening.faceMatchStatus },
+      newValue: { status: 'PENDING_REVIEW', media: [front.id, back?.id, video.id].filter(Boolean), documentType: payload.documentType },
+      metadata: { consent: true, retentionPolicy: 'RETAINED_WITH_CONSENT', retentionUntil, analysisRequested: payload.analysisConsent === 'true', analysisStatus: analysis.status, profilePhotoStored: Boolean(profilePhoto), locationProvided: locationAllowed, rawDocumentNumberStored: false, qualityScore: screening.qualityScore, faceMatchStatus: analysis.faceComparison.status },
     })
     res.status(201).json({
       id: reviewId,
       status: 'PENDING_REVIEW',
       retentionUntil,
-      files: [front, back, video].map(file => ({ id: file.id, purpose: file.purpose, sizeBytes: file.sizeBytes })),
+      documentType: payload.documentType,
+      analysis: { status: analysis.status, provider: analysis.provider, confidence: analysis.confidence, fields: analysis.fields, documentTypeDetected: analysis.documentTypeDetected, profilePhotoStored: Boolean(profilePhoto), faceComparison: analysis.faceComparison },
+      files: [front, back, video, profilePhoto].filter(Boolean).map(file => ({ id: file.id, purpose: file.purpose, sizeBytes: file.sizeBytes, retentionPolicy: file.retentionPolicy })),
       screening,
     })
   } catch (error) {
@@ -767,13 +800,42 @@ app.post('/api/admin/identity-reviews/:id/decision', requireSession('EMPLOYEE', 
       db.exec('ROLLBACK')
       throw error
     }
-    for (const mediaId of [review.id_front_media_id, review.id_back_media_id, review.face_video_media_id]) {
-      if (typeof mediaId === 'string') deleteEncryptedMedia(mediaId)
-    }
-    res.json({ id: req.params.id, status: payload.decision, reviewedAt: timestamp, mediaPurged: true })
+    addAudit({ actor: 'موظف مراجعة الهوية', role: 'IDENTITY_REVIEWER', action: 'IDENTITY_MEDIA_RETAINED_AFTER_DECISION', entityType: 'IdentityReview', entityId: req.params.id, metadata: { retained: true, decision: payload.decision } })
+    res.json({ id: req.params.id, status: payload.decision, reviewedAt: timestamp, mediaPurged: false, mediaRetained: true })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'تعذر حفظ قرار المراجعة.'
     res.status(400).json({ message })
+  }
+})
+
+app.post('/api/citizen/location', requireSession('CITIZEN'), (req, res) => {
+  try {
+    const payload = z.object({ lat: z.number().min(-90).max(90), lng: z.number().min(-180).max(180), accuracyM: z.number().min(0).max(50_000).optional(), consent: z.literal(true) }).parse(req.body)
+    const citizen = currentCitizen(res)
+    if (!citizen) return
+    const timestamp = new Date().toISOString()
+    db.prepare('UPDATE citizens SET location_lat = ?, location_lng = ?, location_accuracy_m = ?, location_updated_at = ?, location_consent_at = ?, updated_at = ? WHERE id = ?')
+      .run(payload.lat, payload.lng, payload.accuracyM || null, timestamp, timestamp, timestamp, citizen.id)
+    addAudit({ actor: citizen.fullName, role: 'CITIZEN', action: 'CITIZEN_LOCATION_UPDATED', entityType: 'Citizen', entityId: String(citizen.id), metadata: { consent: true, accuracyM: payload.accuracyM || null } })
+    res.json(getCitizenById(citizen.id))
+  } catch (error) {
+    res.status(400).json({ message: error instanceof Error ? error.message : 'تعذر حفظ الموقع.' })
+  }
+})
+
+app.get('/api/citizen/profile-photo', requireSession('CITIZEN'), (_req, res) => {
+  try {
+    const citizen = currentCitizen(res)
+    if (!citizen?.profileMediaId) return res.status(404).json({ message: 'لا توجد صورة ملف مشتقة بعد.' })
+    const media = readDecryptedMedia(citizen.profileMediaId)
+    if (!media) return res.status(404).json({ message: 'صورة الملف غير متاحة.' })
+    addAudit({ actor: citizen.fullName, role: 'CITIZEN', action: 'CITIZEN_PROFILE_PHOTO_VIEWED', entityType: 'MediaObject', entityId: citizen.profileMediaId, metadata: { purpose: 'profile-photo' } })
+    res.setHeader('Content-Type', media.mimeType)
+    res.setHeader('Content-Disposition', 'inline')
+    res.setHeader('Cache-Control', 'private, no-store')
+    res.send(media.buffer)
+  } catch {
+    res.status(500).json({ message: 'تعذر فتح صورة الملف.' })
   }
 })
 
