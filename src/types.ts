@@ -228,3 +228,21 @@ export interface GovernmentServiceDirectoryEntry {
   createdAt: string
   updatedAt: string
 }
+
+export interface PlatformServiceSettings {
+  id: string
+  name: string
+  department: string
+  requiredDocuments: string[]
+}
+
+export interface DepartmentWorkbench {
+  id: string
+  name: string
+  category: string
+  district: string
+  dataStatus: string
+  sourceUrl: string | null
+  services: Array<{ id: string; name: string; category: string; requiredDocuments: string[]; active: boolean; updatedAt: string }>
+  requests: Array<{ reference: string; serviceName: string; citizenName: string; status: string; currentAction: string; createdAt: string; updatedAt: string }>
+}

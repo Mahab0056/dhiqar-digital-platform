@@ -33,7 +33,7 @@ import {
 import { createOtpChallenge, processOtpDeliveryWebhook, verifyOtpChallenge } from './otp.js'
 import { readDecryptedMedia, storeEncryptedMedia } from './media.js'
 import { departmentRegistry, registrySummary } from './department-registry.js'
-import { getServiceDefinition } from '../src/service-forms.js'
+import { getServiceDefinition, serviceDefinitions } from '../src/service-forms.js'
 import { screenIdentitySubmission } from './identity-screening.js'
 import { analyzeIdentityDocument } from './identity-document-analysis.js'
 import { getGovernmentService, getGovernmentServiceDirectoryStats, listGovernmentServiceVersions, listGovernmentServices, setGovernmentServicePublication, upsertGovernmentService, type GovernmentServiceRecordInput } from './government-service-directory.js'
@@ -71,7 +71,7 @@ function validateUploadedFile(file: Express.Multer.File, allowed: Array<'image' 
 }
 
 type SessionRole = 'CITIZEN' | 'EMPLOYEE' | 'IDENTITY_REVIEWER' | 'OPERATIONS' | 'SUPER_ADMIN'
-type SessionData = { sub: string; role: SessionRole; exp: number }
+type SessionData = { sub: string; role: SessionRole; exp: number; sid?: string }
 const sessionCookieName = 'dhiqar_session'
 const sessionTtlSeconds = 12 * 60 * 60
 
@@ -110,8 +110,17 @@ function readSession(req: express.Request): SessionData | null {
   } catch { return null }
 }
 
+function touchPresence(session: SessionData) {
+  const timestamp = new Date().toISOString()
+  const sessionId = session.sid || `legacy-${session.role}-${session.sub}`
+  db.prepare(`INSERT INTO live_presence (session_id, role, session_subject, last_seen_at, created_at)
+    VALUES (?, ?, ?, ?, ?) ON CONFLICT(session_id) DO UPDATE SET last_seen_at = excluded.last_seen_at, role = excluded.role, session_subject = excluded.session_subject`)
+    .run(sessionId, session.role, session.sub, timestamp, timestamp)
+}
+
 function setSession(res: express.Response, sub: string, role: SessionRole) {
-  const data: SessionData = { sub, role, exp: Math.floor(Date.now() / 1000) + sessionTtlSeconds }
+  const data: SessionData = { sub, role, sid: randomUUID(), exp: Math.floor(Date.now() / 1000) + sessionTtlSeconds }
+  touchPresence(data)
   const secure = process.env.NODE_ENV === 'production' ? '; Secure' : ''
   res.append('Set-Cookie', `${sessionCookieName}=${signSession(data)}; Path=/; HttpOnly; SameSite=Lax${secure}; Max-Age=${sessionTtlSeconds}`)
 }
@@ -126,6 +135,7 @@ function requireSession(...roles: SessionRole[]) {
     const session = readSession(req)
     if (!session || !roles.includes(session.role)) return res.status(401).json({ message: 'تحتاج جلسة دخول صالحة للوصول إلى هذا المورد.' })
     res.locals.session = session
+    touchPresence(session)
     next()
   }
 }
@@ -166,6 +176,19 @@ function ensureDepartmentRecord(name: string) {
     .run(item.id, item.name, item.category, item.district, item.sourceUrl, item.lat, item.lng, item.dataStatus, item.sourceUrl, timestamp, timestamp)
   return item
 }
+
+function seedPlatformServiceCatalog() {
+  const timestamp = new Date().toISOString()
+  for (const definition of serviceDefinitions) {
+    const department = ensureDepartmentRecord(definition.department)
+    if (!department) continue
+    db.prepare(`INSERT INTO service_catalog (id, department_id, name, category, description, fee_iqd, fee_status, estimated_duration, form_schema, required_documents, payment_mode, active, source_url, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'DISABLED', 1, ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET department_id = excluded.department_id, name = excluded.name, category = excluded.category, description = excluded.description, fee_iqd = excluded.fee_iqd, estimated_duration = excluded.estimated_duration, form_schema = excluded.form_schema, source_url = excluded.source_url, updated_at = excluded.updated_at`)
+      .run(definition.key, department.id, definition.title, definition.category, definition.description, definition.fee, definition.fee > 0 ? 'UNVERIFIED' : 'NOT_REQUIRED', definition.estimatedTime, JSON.stringify(definition.fields), JSON.stringify(definition.requirements), department.sourceUrl, timestamp, timestamp)
+  }
+}
+seedPlatformServiceCatalog()
 
 const currentDir = dirname(fileURLToPath(import.meta.url))
 const projectRoot = join(currentDir, '..')
@@ -413,6 +436,8 @@ app.post('/api/service-requests', requireSession('CITIZEN'), (req, res) => {
   const payload = z.object({ serviceKey: z.string().min(2).max(80), data: z.record(z.string(), z.unknown()) }).parse(req.body)
   const definition = getServiceDefinition(payload.serviceKey)
   if (!definition || !['GENERIC', 'APPOINTMENT'].includes(definition.mode)) return res.status(404).json({ message: 'هذه الخدمة لا تُنشأ عبر استمارة محلية داخل المنصة.' })
+  const catalogStatus = db.prepare('SELECT active FROM service_catalog WHERE id = ?').get(definition.key) as { active: number } | undefined
+  if (catalogStatus && !catalogStatus.active) return res.status(409).json({ message: 'أوقفت الدائرة استقبال الطلبات لهذه الخدمة مؤقتاً. راجع الدائرة المختصة أو حاول لاحقاً.' })
   const citizen = currentCitizen(res)
   if (!citizen) return
   if (!['VERIFIED', 'VERIFIED_MANUAL'].includes(citizen.verificationStatus)) return res.status(409).json({ message: 'أكمل مراجعة الهوية قبل إرسال طلب جديد.' })
@@ -446,7 +471,7 @@ app.post('/api/service-requests', requireSession('CITIZEN'), (req, res) => {
   const timestamp = new Date().toISOString()
   db.prepare(`INSERT INTO service_catalog (id, department_id, name, category, description, fee_iqd, fee_status, estimated_duration, form_schema, required_documents, payment_mode, active, source_url, created_at, updated_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'DISABLED', 1, ?, ?, ?)
-    ON CONFLICT(id) DO UPDATE SET department_id = excluded.department_id, name = excluded.name, category = excluded.category, description = excluded.description, form_schema = excluded.form_schema, required_documents = excluded.required_documents, updated_at = excluded.updated_at`)
+    ON CONFLICT(id) DO UPDATE SET department_id = excluded.department_id, name = excluded.name, category = excluded.category, description = excluded.description, form_schema = excluded.form_schema, updated_at = excluded.updated_at`)
     .run(definition.key, department.id, definition.title, definition.category, definition.description, definition.fee, definition.fee > 0 ? 'UNVERIFIED' : 'NOT_REQUIRED', definition.estimatedTime, JSON.stringify(definition.fields), JSON.stringify(definition.requirements), department.sourceUrl, timestamp, timestamp)
   const serial = String((db.prepare('SELECT COUNT(*) AS count FROM service_requests').get() as { count: number }).count + 1).padStart(5, '0')
   const reference = `TQS-${new Date().getFullYear()}-${serial}`
@@ -1060,10 +1085,16 @@ function getRegistryDepartments() {
   })
 }
 
+app.post('/api/presence/heartbeat', requireSession('CITIZEN', 'EMPLOYEE', 'IDENTITY_REVIEWER', 'OPERATIONS', 'SUPER_ADMIN'), (_req, res) => {
+  res.json({ activeWindowSeconds: 120 })
+})
+
 app.get('/api/dashboard/stats', requireSession('EMPLOYEE', 'OPERATIONS', 'SUPER_ADMIN'), (_req, res) => {
   const departments = getRegistryDepartments()
   const dynamic = departments.reduce((total, department) => ({ total: total.total + department.transactions, completed: total.completed + department.completed }), { total: 0, completed: 0 })
-  const citizenCount = db.prepare('SELECT COUNT(*) AS total FROM citizens').get() as { total: number }
+  const activeSince = new Date(Date.now() - 2 * 60 * 1000).toISOString()
+  const activeCitizens = db.prepare(`SELECT COUNT(DISTINCT session_subject) AS total FROM live_presence WHERE role = 'CITIZEN' AND last_seen_at >= ?`).get(activeSince) as { total: number }
+  const activeEmployees = db.prepare(`SELECT COUNT(DISTINCT session_subject) AS total FROM live_presence WHERE role IN ('EMPLOYEE', 'IDENTITY_REVIEWER') AND last_seen_at >= ?`).get(activeSince) as { total: number }
   const payments = db.prepare(`SELECT COALESCE(SUM(amount), 0) AS collected FROM payments WHERE status = 'SETTLED'`).get() as { collected: number }
   const dateRows = db.prepare(`SELECT day, COUNT(*) AS applications, SUM(CASE WHEN status = 'APPROVED' THEN 1 ELSE 0 END) AS completed FROM (
     SELECT substr(created_at, 1, 10) AS day, status FROM applications
@@ -1081,8 +1112,8 @@ app.get('/api/dashboard/stats', requireSession('EMPLOYEE', 'OPERATIONS', 'SUPER_
     todayApplications: (byDay.get(new Date().toISOString().slice(0, 10))?.applications || 0),
     completed: dynamic.completed,
     overdue: 0,
-    activeCitizens: citizenCount.total,
-    activeEmployees: 0,
+    activeCitizens: activeCitizens.total,
+    activeEmployees: activeEmployees.total,
     departmentsOnline: registrySummary.verified,
     financialCollection: payments.collected,
     complaints,
@@ -1102,6 +1133,52 @@ app.get('/api/operations/cameras', requireSession('EMPLOYEE', 'OPERATIONS', 'SUP
     authorizationStatus: String(row.authorization_status), sourceName: row.source_name ? String(row.source_name) : null, sourceUrl: row.source_url ? String(row.source_url) : null,
     lastCheckedAt: row.last_checked_at ? String(row.last_checked_at) : null, createdAt: String(row.created_at), updatedAt: String(row.updated_at),
   })))
+})
+
+app.get('/api/operations/new-request-alerts', requireSession('EMPLOYEE', 'OPERATIONS', 'SUPER_ADMIN'), (_req, res) => {
+  const serviceRequests = db.prepare(`SELECT sr.reference, sc.name AS service_name, d.name AS department_name, sr.status, sr.created_at, sr.updated_at
+    FROM service_requests sr JOIN service_catalog sc ON sc.id = sr.service_id JOIN departments d ON d.id = sr.department_id
+    WHERE sr.status IN ('SUBMITTED', 'APPOINTMENT_REQUESTED') ORDER BY sr.created_at DESC LIMIT 30`).all() as Array<Record<string, unknown>>
+  const applications = db.prepare(`SELECT reference, service_name, department AS department_name, status, created_at, updated_at
+    FROM applications WHERE status = 'SUBMITTED' ORDER BY created_at DESC LIMIT 30`).all() as Array<Record<string, unknown>>
+  const alerts = [...serviceRequests, ...applications].map(item => ({ reference: String(item.reference), serviceName: String(item.service_name), department: String(item.department_name), status: String(item.status), createdAt: String(item.created_at), updatedAt: String(item.updated_at) })).sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 30)
+  res.json({ alerts, generatedAt: new Date().toISOString() })
+})
+
+app.get('/api/platform-services/:key', (req, res) => {
+  const item = db.prepare(`SELECT sc.id, sc.name, sc.department_id, sc.required_documents, sc.active, d.name AS department_name
+    FROM service_catalog sc JOIN departments d ON d.id = sc.department_id WHERE sc.id = ?`).get(req.params.key) as Record<string, unknown> | undefined
+  if (!item || !Number(item.active)) return res.status(404).json({ message: 'الخدمة غير متاحة في سجل المنصة.' })
+  res.json({ id: String(item.id), name: String(item.name), department: String(item.department_name), requiredDocuments: JSON.parse(String(item.required_documents || '[]')) })
+})
+
+app.get('/api/super-admin/department-workbench', requireSession('SUPER_ADMIN'), (_req, res) => {
+  const departments = db.prepare(`SELECT id, name, category, district, data_status, source_url FROM departments WHERE active = 1 ORDER BY name`).all() as Array<Record<string, unknown>>
+  const services = db.prepare(`SELECT sc.id, sc.department_id, sc.name, sc.category, sc.required_documents, sc.active, sc.updated_at FROM service_catalog sc ORDER BY sc.name`).all() as Array<Record<string, unknown>>
+  const requestRows = db.prepare(`SELECT sr.reference, sr.department_id, sr.status, sr.current_action, sr.created_at, sr.updated_at, sc.name AS service_name, c.full_name AS citizen_name
+    FROM service_requests sr JOIN service_catalog sc ON sc.id = sr.service_id JOIN citizens c ON c.id = sr.citizen_id ORDER BY sr.updated_at DESC LIMIT 250`).all() as Array<Record<string, unknown>>
+  const applicationRows = db.prepare(`SELECT reference, department, status, current_action, created_at, updated_at, service_name, citizen_name FROM applications ORDER BY updated_at DESC LIMIT 250`).all() as Array<Record<string, unknown>>
+  const departmentByName = new Map(departments.map(item => [String(item.name), String(item.id)]))
+  const normalisedApplications = applicationRows.map(item => ({ ...item, department_id: departmentByName.get(String(item.department)) || null }))
+  res.json({ departments: departments.map(department => ({
+    id: String(department.id), name: String(department.name), category: String(department.category), district: String(department.district), dataStatus: String(department.data_status), sourceUrl: department.source_url ? String(department.source_url) : null,
+    services: services.filter(service => String(service.department_id) === String(department.id)).map(service => ({ id: String(service.id), name: String(service.name), category: String(service.category), requiredDocuments: JSON.parse(String(service.required_documents || '[]')), active: Boolean(service.active), updatedAt: String(service.updated_at) })),
+    requests: [...requestRows, ...normalisedApplications].filter(item => String(item.department_id || '') === String(department.id)).slice(0, 40).map(item => ({ reference: String(item.reference), serviceName: String(item.service_name), citizenName: String(item.citizen_name), status: String(item.status), currentAction: String(item.current_action), createdAt: String(item.created_at), updatedAt: String(item.updated_at) })),
+  })) })
+})
+
+app.patch('/api/super-admin/platform-services/:key', requireSession('SUPER_ADMIN'), sensitiveLimiter, (req, res) => {
+  const payload = z.object({ requiredDocuments: z.array(z.string().trim().min(2).max(240)).min(1).max(24).optional(), active: z.boolean().optional() }).safeParse(req.body)
+  if (!payload.success || (!payload.data.requiredDocuments && payload.data.active === undefined)) return res.status(400).json({ message: 'أدخل متطلباً واحداً على الأقل أو حدّث حالة الخدمة.' })
+  const current = db.prepare('SELECT id, required_documents, active FROM service_catalog WHERE id = ?').get(req.params.key) as Record<string, unknown> | undefined
+  if (!current) return res.status(404).json({ message: 'الخدمة غير موجودة في سجل المنصة.' })
+  const timestamp = new Date().toISOString()
+  db.prepare('UPDATE service_catalog SET required_documents = ?, active = ?, updated_at = ? WHERE id = ?').run(
+    JSON.stringify(payload.data.requiredDocuments || JSON.parse(String(current.required_documents || '[]'))),
+    payload.data.active === undefined ? Number(current.active) : Number(payload.data.active), timestamp, req.params.key,
+  )
+  addAudit({ actor: 'مدير النظام', role: 'SUPER_ADMIN', action: 'PLATFORM_SERVICE_UPDATED', entityType: 'ServiceCatalog', entityId: req.params.key, previousValue: { requiredDocuments: JSON.parse(String(current.required_documents || '[]')), active: Boolean(current.active) }, newValue: payload.data })
+  res.json({ success: true, updatedAt: timestamp })
 })
 
 app.post('/api/super-admin/operations/cameras', requireSession('SUPER_ADMIN'), sensitiveLimiter, (req, res) => {
@@ -1195,11 +1272,17 @@ if (existsSync(distDir)) {
 
 app.use((error: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   const requestId = String(res.locals.requestId || randomUUID())
-  if (error instanceof z.ZodError) return res.status(400).json({ message: 'البيانات المدخلة غير مكتملة أو غير صحيحة.', requestId })
-  if (error instanceof multer.MulterError) return res.status(error.code === 'LIMIT_FILE_SIZE' ? 413 : 400).json({ message: 'تعذر قبول الملف بسبب الحجم أو العدد.', requestId })
+  if (error instanceof z.ZodError) return res.status(400).json({ message: 'تحقق من الحقول المطلوبة وصيغة البيانات قبل الإرسال.', requestId })
+  if (error instanceof multer.MulterError) {
+    if (error.code === 'LIMIT_FILE_SIZE') return res.status(413).json({ message: 'حجم المرفق أكبر من الحد المسموح. اختر ملفاً أصغر ثم أعد الإرسال.', requestId })
+    if (error.code === 'LIMIT_UNEXPECTED_FILE') return res.status(400).json({ message: 'نوع أو اسم المرفق غير متوقع لهذه المعاملة. أعد رفع المستند من الحقل المخصص له.', requestId })
+    return res.status(400).json({ message: 'تعذر قبول المرفقات بسبب العدد أو الصيغة. تحقق من الملفات ثم أعد الإرسال.', requestId })
+  }
+  if (error instanceof Error && error.message.includes('محتوى الملف')) return res.status(400).json({ message: `${error.message} أعد تصويره أو ارفع ملفاً أصلياً بصيغة صورة أو PDF مسموح.`, requestId })
+  if (error instanceof Error && error.message.includes('توقيع ملف PDF')) return res.status(400).json({ message: 'ملف PDF المرفوع غير صالح أو امتداده لا يطابق محتواه. اختر ملف PDF أصلياً ثم أعد الإرسال.', requestId })
   if (error instanceof Error && error.message.includes('Origin غير مصرح')) return res.status(403).json({ message: 'المصدر غير مصرح.', requestId })
   console.error(`[${requestId}]`, error)
-  res.status(500).json({ message: 'حدث خطأ داخلي. تم تسجيل مرجع الخطأ للمتابعة.', requestId })
+  res.status(500).json({ message: 'تعذر إكمال الإرسال الآن. لم تُسجل المعاملة؛ أعد المحاولة لاحقاً، وإذا استمر الخطأ أرسل رمز المتابعة إلى الدعم.', requestId })
 })
 
 app.listen(port, '0.0.0.0', () => {

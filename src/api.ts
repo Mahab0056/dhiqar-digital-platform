@@ -1,14 +1,26 @@
-import type { Citizen, CitizenFeedback, CitizenNotification, CitizenServiceRequest, DashboardStats, FeedbackStatus, GovernmentApplication, GovernmentServiceDirectoryEntry, GovernmentServicePublicationStatus } from './types'
+import type { Citizen, CitizenFeedback, CitizenNotification, CitizenServiceRequest, DashboardStats, DepartmentWorkbench, FeedbackStatus, GovernmentApplication, GovernmentServiceDirectoryEntry, GovernmentServicePublicationStatus, PlatformServiceSettings } from './types'
+
+const readableRequestError = (status: number, message?: string) => {
+  if (status === 401) return 'انتهت جلسة الدخول أو لا تملك صلاحية الإرسال. سجّل الدخول من جديد ثم أعد المحاولة.'
+  if (status === 413) return 'حجم أحد المرفقات أكبر من المسموح. صوّر الملف بدقة أقل أو اختر ملفاً أصغر ثم أعد الإرسال.'
+  if (status === 429) return 'تجاوزت عدد المحاولات المسموح حالياً. انتظر دقائق قليلة ثم أعد المحاولة.'
+  return message || 'تعذر تنفيذ الطلب. تحقق من البيانات ثم أعد المحاولة.'
+}
 
 const request = async <T>(path: string, options?: RequestInit): Promise<T> => {
-  const response = await fetch(path, {
-    credentials: 'include',
-    headers: { 'Content-Type': 'application/json', ...(options?.headers || {}) },
-    ...options,
-  })
+  let response: Response
+  try {
+    response = await fetch(path, {
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json', ...(options?.headers || {}) },
+      ...options,
+    })
+  } catch {
+    throw new Error('تعذر الاتصال بالمنصة. تحقق من اتصال الإنترنت ثم أعد الإرسال؛ لم يُسجل الطلب ما لم يظهر رقم متابعة.')
+  }
   if (!response.ok) {
-    const payload = await response.json().catch(() => ({ message: 'تعذر تنفيذ الطلب' }))
-    throw new Error(payload.message || 'تعذر تنفيذ الطلب')
+    const payload = await response.json().catch(() => ({ message: '' })) as { message?: string }
+    throw new Error(readableRequestError(response.status, payload.message))
   }
   return response.json() as Promise<T>
 }
@@ -23,6 +35,11 @@ export const api = {
   loginOperations: (accessCode: string) => request<{ authenticated: true; role: 'OPERATIONS'; expiresInSeconds: number }>('/api/auth/operations', { method: 'POST', body: JSON.stringify({ accessCode }) }),
   loginSuperAdmin: (accessCode: string) => request<{ authenticated: true; role: 'SUPER_ADMIN'; expiresInSeconds: number }>('/api/auth/super-admin', { method: 'POST', body: JSON.stringify({ accessCode }) }),
   logout: () => request<{ success: boolean }>('/api/auth/logout', { method: 'POST' }),
+  heartbeatPresence: () => request<{ activeWindowSeconds: number }>('/api/presence/heartbeat', { method: 'POST' }),
+  getPlatformServiceSettings: (serviceKey: string) => request<PlatformServiceSettings>(`/api/platform-services/${encodeURIComponent(serviceKey)}`),
+  getDepartmentWorkbench: () => request<{ departments: DepartmentWorkbench[] }>('/api/super-admin/department-workbench'),
+  updatePlatformService: (serviceKey: string, payload: { requiredDocuments?: string[]; active?: boolean }) => request<{ success: true; updatedAt: string }>(`/api/super-admin/platform-services/${encodeURIComponent(serviceKey)}`, { method: 'PATCH', body: JSON.stringify(payload) }),
+  getNewRequestAlerts: () => request<{ alerts: Array<{ reference: string; serviceName: string; department: string; status: string; createdAt: string; updatedAt: string }>; generatedAt: string }>('/api/operations/new-request-alerts'),
   getSuperAdminOverview: () => request<{ system: { pendingIdentity: number; openApplications: number; verifiedDepartments: number; gisLocations: number }; recentAudit: Array<{ actor: string; role: string; action: string; entityType: string; entityId: string; createdAt: string }> }>('/api/super-admin/overview'),
   getDemoCitizen: () => request<Citizen>('/api/citizen/demo'),
   listCitizenApplications: () => request<GovernmentApplication[]>('/api/citizen/applications'),
@@ -134,8 +151,10 @@ export const api = {
     form.append('coordinates', JSON.stringify(payload.coordinates))
     if (payload.propertyDocument) form.append('propertyDocument', payload.propertyDocument)
     if (payload.storefrontPhoto) form.append('storefrontPhoto', payload.storefrontPhoto)
-    const response = await fetch('/api/applications', { method: 'POST', body: form, credentials: 'include' })
-    if (!response.ok) { const body = await response.json().catch(() => ({ message: 'تعذر إرسال المعاملة.' })); throw new Error(body.message || 'تعذر إرسال المعاملة.') }
+    let response: Response
+    try { response = await fetch('/api/applications', { method: 'POST', body: form, credentials: 'include' }) }
+    catch { throw new Error('تعذر الاتصال بالمنصة. تحقق من الإنترنت ثم أعد الإرسال؛ لم تُسجل المعاملة ما لم يظهر رقم متابعة.') }
+    if (!response.ok) { const body = await response.json().catch(() => ({ message: '' })) as { message?: string }; throw new Error(readableRequestError(response.status, body.message)) }
     return response.json() as Promise<GovernmentApplication>
   },
   requestDocument: (reference: string, documentName: string) =>

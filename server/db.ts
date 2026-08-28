@@ -101,6 +101,15 @@ db.exec(`
     created_at TEXT NOT NULL
   );
 
+  CREATE TABLE IF NOT EXISTS live_presence (
+    session_id TEXT PRIMARY KEY,
+    role TEXT NOT NULL,
+    session_subject TEXT NOT NULL,
+    last_seen_at TEXT NOT NULL,
+    created_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_live_presence_role_seen ON live_presence(role, last_seen_at);
+
   CREATE TABLE IF NOT EXISTS otp_challenges (
     id TEXT PRIMARY KEY,
     phone_hash TEXT NOT NULL,
