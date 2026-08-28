@@ -434,8 +434,9 @@ app.patch('/api/admin/feedback/:reference', requireSession('EMPLOYEE', 'SUPER_AD
   res.json(updated)
 })
 
-app.post('/api/service-requests', requireSession('CITIZEN'), (req, res) => {
-  const payload = z.object({ serviceKey: z.string().min(2).max(80), data: z.record(z.string(), z.unknown()) }).parse(req.body)
+app.post('/api/service-requests', requireSession('CITIZEN'), upload.single('faceVideo'), (req, res) => {
+  const rawData = typeof req.body.data === 'string' ? (() => { try { return JSON.parse(req.body.data) } catch { return req.body.data } })() : req.body.data
+  const payload = z.object({ serviceKey: z.string().min(2).max(80), data: z.record(z.string(), z.unknown()), faceConsent: z.literal('true') }).parse({ ...req.body, data: rawData })
   const definition = getServiceDefinition(payload.serviceKey)
   if (!definition || !['GENERIC', 'APPOINTMENT'].includes(definition.mode)) return res.status(404).json({ message: 'هذه الخدمة لا تُنشأ عبر استمارة محلية داخل المنصة.' })
   const catalogStatus = db.prepare('SELECT active FROM service_catalog WHERE id = ?').get(definition.key) as { active: number } | undefined
@@ -443,6 +444,9 @@ app.post('/api/service-requests', requireSession('CITIZEN'), (req, res) => {
   const citizen = currentCitizen(res)
   if (!citizen) return
   if (!['VERIFIED', 'VERIFIED_MANUAL'].includes(citizen.verificationStatus)) return res.status(409).json({ message: 'أكمل مراجعة الهوية قبل إرسال طلب جديد.' })
+  const faceVideo = req.file
+  if (!faceVideo) return res.status(400).json({ message: 'صوّر فيديو توثيق الوجه القصير قبل إرسال الطلب.' })
+  validateUploadedFile(faceVideo, ['video'])
 
   const cleanData: Record<string, string> = {}
   for (const field of definition.fields) {
@@ -482,6 +486,9 @@ app.post('/api/service-requests', requireSession('CITIZEN'), (req, res) => {
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`)
     .run(reference, citizen.id, definition.key, department.id, definition.mode === 'APPOINTMENT' ? 'APPOINTMENT_REQUESTED' : 'SUBMITTED', JSON.stringify(cleanData), currentAction, timestamp, timestamp)
   const serviceRequestId = Number(result.lastInsertRowid)
+  const faceMedia = storeEncryptedMedia({ citizenId: citizen.id, purpose: 'FACE_VIDEO', originalName: faceVideo.originalname || 'service-face-video', mimeType: faceVideo.mimetype, buffer: faceVideo.buffer, retentionHours: 24 * 30 })
+  db.prepare('INSERT INTO service_request_media (id, service_request_id, media_id, label, created_at) VALUES (?, ?, ?, ?, ?)')
+    .run(`srm_${randomUUID().replaceAll('-', '')}`, serviceRequestId, faceMedia.id, 'فيديو توثيق الوجه قبل الإرسال', timestamp)
   let appointment = null
   if (definition.mode === 'APPOINTMENT') {
     const appointmentId = `apt_${randomUUID().replaceAll('-', '')}`
@@ -491,7 +498,7 @@ app.post('/api/service-requests', requireSession('CITIZEN'), (req, res) => {
     appointment = { id: appointmentId, preferredDate: cleanData.preferredDate, preferredTime: cleanData.preferredTime, status: 'REQUESTED' }
   }
   createNotification({ citizenId: citizen.id, type: definition.mode === 'APPOINTMENT' ? 'APPOINTMENT_REQUESTED' : 'SERVICE_REQUEST_CREATED', title: definition.mode === 'APPOINTMENT' ? 'تم إرسال طلب الموعد' : 'تم تسجيل طلب الخدمة', message: `${definition.title} — ${reference}. ${currentAction}`, link: '/citizen' })
-  addAudit({ actor: citizen.fullName, role: 'CITIZEN', action: definition.mode === 'APPOINTMENT' ? 'APPOINTMENT_REQUESTED' : 'SERVICE_REQUEST_CREATED', entityType: 'ServiceRequest', entityId: reference, newValue: { service: definition.key, department: department.id }, metadata: { storedFields: Object.keys(cleanData) } })
+  addAudit({ actor: citizen.fullName, role: 'CITIZEN', action: definition.mode === 'APPOINTMENT' ? 'APPOINTMENT_REQUESTED' : 'SERVICE_REQUEST_CREATED', entityType: 'ServiceRequest', entityId: reference, newValue: { service: definition.key, department: department.id }, metadata: { storedFields: Object.keys(cleanData), protectedFaceVideoId: faceMedia.id, faceConsent: true } })
   res.status(201).json({ id: serviceRequestId, reference, serviceKey: definition.key, serviceName: definition.title, department: department.name, status: definition.mode === 'APPOINTMENT' ? 'APPOINTMENT_REQUESTED' : 'SUBMITTED', currentAction, appointment, createdAt: timestamp })
 })
 
@@ -902,7 +909,7 @@ app.get('/api/applications/:reference', requireSession('CITIZEN', 'EMPLOYEE', 'S
   res.json(item)
 })
 
-app.post('/api/applications', requireSession('CITIZEN'), upload.fields([{ name: 'propertyDocument', maxCount: 1 }, { name: 'storefrontPhoto', maxCount: 1 }]), (req, res) => {
+app.post('/api/applications', requireSession('CITIZEN'), upload.fields([{ name: 'propertyDocument', maxCount: 1 }, { name: 'storefrontPhoto', maxCount: 1 }, { name: 'faceVideo', maxCount: 1 }]), (req, res) => {
   const payload = z.object({
     serviceKey: z.string().min(2),
     serviceName: z.string().min(2),
@@ -917,6 +924,7 @@ app.post('/api/applications', requireSession('CITIZEN'), upload.fields([{ name: 
       try { return JSON.parse(value) } catch { return value }
     }, z.object({ lat: z.coerce.number(), lng: z.coerce.number() })),
     fee: z.coerce.number().nonnegative(),
+    faceConsent: z.literal('true'),
     attachments: z.array(z.string()).default([]),
   }).parse(req.body)
   const citizen = currentCitizen(res)
@@ -925,10 +933,13 @@ app.post('/api/applications', requireSession('CITIZEN'), upload.fields([{ name: 
   const files = req.files as Record<string, Express.Multer.File[]> | undefined
   const propertyDocument = files?.propertyDocument?.[0]
   const storefrontPhoto = files?.storefrontPhoto?.[0]
+  const faceVideo = files?.faceVideo?.[0]
   const requiredPropertyDocument = payload.ownershipType === 'rent' ? 'عقد الإيجار' : 'سند الملكية'
   if (payload.serviceKey === 'store-license' && (!propertyDocument || !storefrontPhoto)) return res.status(400).json({ message: `يرجى تصوير أو رفع ${requiredPropertyDocument} وصورة واجهة المحل قبل إرسال الطلب.` })
+  if (!faceVideo) return res.status(400).json({ message: 'صوّر فيديو توثيق الوجه القصير قبل إرسال الطلب.' })
   if (propertyDocument) validateUploadedFile(propertyDocument, ['image', 'pdf'])
   if (storefrontPhoto) validateUploadedFile(storefrontPhoto, ['image'])
+  validateUploadedFile(faceVideo, ['video'])
   const timestamp = new Date().toISOString()
   const serial = String((db.prepare('SELECT COUNT(*) AS count FROM applications').get() as { count: number }).count + 1).padStart(4, '0')
   const reference = `TQD-2026-${serial}`
@@ -946,9 +957,10 @@ app.post('/api/applications', requireSession('CITIZEN'), upload.fields([{ name: 
     payload.fee > 0 ? 'PENDING' : 'NOT_REQUIRED', timestamp, timestamp,
   )
   const applicationId = Number(result.lastInsertRowid)
-  const protectedFiles: Array<{ file: Express.Multer.File; purpose: 'APPLICATION_DOCUMENT' | 'STOREFRONT_PHOTO'; label: string }> = []
+  const protectedFiles: Array<{ file: Express.Multer.File; purpose: 'APPLICATION_DOCUMENT' | 'STOREFRONT_PHOTO' | 'FACE_VIDEO'; label: string }> = []
   if (propertyDocument) protectedFiles.push({ file: propertyDocument, purpose: 'APPLICATION_DOCUMENT', label: requiredPropertyDocument })
   if (storefrontPhoto) protectedFiles.push({ file: storefrontPhoto, purpose: 'STOREFRONT_PHOTO', label: 'صورة واجهة المحل' })
+  protectedFiles.push({ file: faceVideo, purpose: 'FACE_VIDEO', label: 'فيديو توثيق الوجه قبل الإرسال' })
   for (const item of protectedFiles) {
     const media = storeEncryptedMedia({ citizenId: citizen.id, purpose: item.purpose, originalName: item.file.originalname || item.label, mimeType: item.file.mimetype, buffer: item.file.buffer, retentionHours: 24 * 30 })
     db.prepare('INSERT INTO application_media (id, application_id, media_id, label, created_at) VALUES (?, ?, ?, ?, ?)')
@@ -957,7 +969,7 @@ app.post('/api/applications', requireSession('CITIZEN'), upload.fields([{ name: 
   addEvent(applicationId, { type: 'APPLICATION_CREATED', title: 'تم التقديم', description: 'استلمت المنصة الطلب والمرفقات المشفرة وسجلته للتدقيق.', actor: 'المواطن' })
   addEvent(applicationId, { type: 'ROUTED', title: 'تم التوجيه إلى الدائرة', description: `تم توجيه الطلب آلياً إلى ${payload.department}.`, actor: 'محرك سير العمل' })
   createNotification({ citizenId: citizen.id, type: 'APPLICATION_CREATED', title: 'تم تسجيل المعاملة', message: `سُجل طلب ${payload.serviceName} بالرقم ${reference} ووُجه إلى ${payload.department}.`, link: `/citizen/application/${reference}` })
-  addAudit({ actor: citizen.fullName, role: 'CITIZEN', action: 'APPLICATION_CREATED', entityType: 'Application', entityId: reference, newValue: { service: payload.serviceKey, district: payload.district }, metadata: { protectedAttachments: protectedFiles.map(file => file.label), retentionDays: 30 } })
+  addAudit({ actor: citizen.fullName, role: 'CITIZEN', action: 'APPLICATION_CREATED', entityType: 'Application', entityId: reference, newValue: { service: payload.serviceKey, district: payload.district }, metadata: { protectedAttachments: protectedFiles.map(file => file.label), retentionDays: 30, faceConsent: true } })
   res.status(201).json(getApplicationByReference(reference))
 })
 

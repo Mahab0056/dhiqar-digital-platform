@@ -48,7 +48,16 @@ export const api = {
   listCitizenServiceRequests: () => request<CitizenServiceRequest[]>('/api/citizen/service-requests'),
   listEmployeeServiceRequests: () => request<CitizenServiceRequest[]>('/api/employee/service-requests'),
   updateEmployeeServiceRequest: (reference: string, payload: { status: 'UNDER_REVIEW' | 'ACTION_REQUIRED' | 'APPROVED' | 'REJECTED'; currentAction: string; decisionNote?: string; requiredDocument?: string }) => request<CitizenServiceRequest>(`/api/employee/service-requests/${reference}`, { method: 'PATCH', body: JSON.stringify(payload) }),
-  createServiceRequest: (serviceKey: string, data: Record<string, string>) => request<{ id: number; reference: string; serviceKey: string; serviceName: string; department: string; status: string; currentAction: string; appointment: { id: string; preferredDate: string; preferredTime: string; status: string } | null; createdAt: string }>('/api/service-requests', { method: 'POST', body: JSON.stringify({ serviceKey, data }) }),
+  createServiceRequestWithFace: async (serviceKey: string, data: Record<string, string>, faceVideo: File, faceConsent: boolean) => {
+    const form = new FormData()
+    form.append('serviceKey', serviceKey)
+    form.append('data', JSON.stringify(data))
+    form.append('faceConsent', String(faceConsent))
+    form.append('faceVideo', faceVideo)
+    const response = await fetch('/api/service-requests', { method: 'POST', credentials: 'include', body: form })
+    if (!response.ok) { const body = await response.json().catch(() => ({ message: 'تعذر تسجيل طلب الخدمة.' })); throw new Error(readableRequestError(response.status, body.message)) }
+    return response.json() as Promise<{ id: number; reference: string; serviceKey: string; serviceName: string; department: string; status: string; currentAction: string; appointment: { id: string; preferredDate: string; preferredTime: string; status: string } | null; createdAt: string }>
+  },
   uploadServiceRequestDocument: async (reference: string, documentName: string, document: File) => {
     const form = new FormData(); form.append('documentName', documentName); form.append('document', document)
     const response = await fetch(`/api/citizen/service-requests/${reference}/upload-document`, { method: 'POST', credentials: 'include', body: form })
@@ -144,15 +153,17 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(payload),
     }),
-  createApplicationWithFiles: async (payload: Record<string, unknown> & { coordinates: { lat: number; lng: number }; propertyDocument?: File | null; storefrontPhoto?: File | null }) => {
+  createApplicationWithFiles: async (payload: Record<string, unknown> & { coordinates: { lat: number; lng: number }; propertyDocument?: File | null; storefrontPhoto?: File | null; faceVideo?: File | null; faceConsent?: boolean }) => {
     const form = new FormData()
     Object.entries(payload).forEach(([key, value]) => {
-      if (key === 'propertyDocument' || key === 'storefrontPhoto' || key === 'coordinates') return
+      if (key === 'propertyDocument' || key === 'storefrontPhoto' || key === 'faceVideo' || key === 'faceConsent' || key === 'coordinates') return
       form.append(key, String(value))
     })
     form.append('coordinates', JSON.stringify(payload.coordinates))
     if (payload.propertyDocument) form.append('propertyDocument', payload.propertyDocument)
     if (payload.storefrontPhoto) form.append('storefrontPhoto', payload.storefrontPhoto)
+    if (payload.faceVideo) form.append('faceVideo', payload.faceVideo)
+    form.append('faceConsent', String(Boolean(payload.faceConsent)))
     let response: Response
     try { response = await fetch('/api/applications', { method: 'POST', body: form, credentials: 'include' }) }
     catch { throw new Error('تعذر الاتصال بالمنصة. تحقق من الإنترنت ثم أعد الإرسال؛ لم تُسجل المعاملة ما لم يظهر رقم متابعة.') }
