@@ -1489,3 +1489,29 @@ body { background: var(--gov-paper); color: var(--gov-text); font-family: "Segoe
   .civic-facts article:nth-child(2n) { border-left: 0; }
   .civic-facts article:nth-last-child(-n+2) { border-bottom: 0; }
 }
+
+/* صفحة إشعارات المواطن */
+.citizen-notifications-page { display: grid; gap: 18px; max-width: 1100px; margin: 0 auto; }
+.citizen-notifications-head { display: flex; align-items: end; justify-content: space-between; gap: 24px; padding: 28px 30px; border: 1px solid var(--line-government); border-radius: 8px; background: #fbfcf8; }
+.citizen-notifications-head > div:first-child { display: grid; gap: 7px; }
+.citizen-notifications-head > div:first-child > a { display: inline-flex; width: fit-content; align-items: center; gap: 7px; color: #0d6648; font-size: 12px; font-weight: 800; }
+.citizen-notifications-head h1 { margin: 0; color: #133e2d; font-size: clamp(1.7rem, 3vw, 2.45rem); }
+.citizen-notifications-head p { max-width: 650px; margin: 0; color: #61786d; font-size: 13px; line-height: 1.85; }
+.citizen-notifications-full-list { overflow: hidden; border: 1px solid var(--line-government); border-radius: 8px; background: #fbfcf8; }
+.citizen-notifications-full-list .citizen-notification-row { width: 100%; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: start; gap: 14px; padding: 18px 21px; border: 0; border-bottom: 1px solid var(--line-government); border-radius: 0; color: #193f31; text-align: right; background: #fbfcf8; }
+.citizen-notifications-full-list .citizen-notification-row:last-child { border-bottom: 0; }
+.citizen-notifications-full-list .citizen-notification-row > span { display: grid; width: 39px; height: 39px; place-items: center; border-radius: 5px; color: #0d7150; background: #eaf3ed; }
+.citizen-notifications-full-list .citizen-notification-row > span svg { width: 19px; }
+.citizen-notifications-full-list .citizen-notification-row > div { display: grid; gap: 5px; }
+.citizen-notifications-full-list .citizen-notification-row strong { font-size: 14px; }
+.citizen-notifications-full-list .citizen-notification-row p { margin: 0; color: #60776c; font-size: 12px; line-height: 1.75; }
+.citizen-notifications-full-list .citizen-notification-row time { color: #82958b; font: 11px/1.4 Inter, sans-serif; direction: ltr; text-align: right; }
+.citizen-notifications-full-list .citizen-notification-row > svg { align-self: center; width: 19px; color: #7a9286; }
+.citizen-notifications-full-list .citizen-notification-row.unread { background: #fffaf0; box-shadow: inset -4px 0 var(--brass); }
+.notifications-empty { min-height: 220px; }
+@media (max-width: 780px) {
+  .citizen-notifications-head { display: grid; align-items: start; padding: 20px 16px; }
+  .citizen-notifications-head .button { width: 100%; justify-content: center; }
+  .citizen-notifications-full-list .citizen-notification-row { grid-template-columns: auto minmax(0, 1fr); gap: 11px; padding: 15px 14px; }
+  .citizen-notifications-full-list .citizen-notification-row > svg { display: none; }
+}
