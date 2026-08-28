@@ -15,6 +15,6 @@ The previous home hero used oversized typography, two competing photographs, sha
 
 The home search still filters the existing service catalog and directs to the first matching service. A browser interaction check confirmed that the query `إجازة محل` returns and opens `/service/store-license`, and that the sector filter `المحلات والأعمال` operates correctly. The quick cards retain their established local and official-national service routes. Indicator values remain based on the service catalog, government entity directory, displayed news records, and QR verification route; no population, transaction, or performance figures were introduced.
 
-## Publication gate
+## Publication verification
 
-The redesign remains local until explicit publication confirmation is received.
+The redesign was published after explicit confirmation. Railway returned `200` from `/api/health`, served the expected JavaScript and CSS bundle names, and a 1440 × 1100 production screenshot confirmed the new civic hero, image, search surface, quick-service cards, and factual indicators are present.
