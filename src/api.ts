@@ -1,4 +1,4 @@
-import type { Citizen, CitizenFeedback, CitizenNotification, CitizenServiceRequest, DashboardStats, DepartmentWorkbench, FeedbackStatus, GovernmentApplication, GovernmentServiceDirectoryEntry, GovernmentServicePublicationStatus, PlatformServiceSettings } from './types'
+import type { Citizen, CitizenFeedback, CitizenNotification, CitizenServiceRequest, DashboardStats, DepartmentWorkbench, FeedbackStatus, GovernmentApplication, GovernmentServiceDirectoryEntry, GovernmentServicePublicationStatus, IssuedDocument, PlatformServiceSettings } from './types'
 
 const readableRequestError = (status: number, message?: string) => {
   if (status === 401) return 'انتهت جلسة الدخول أو لا تملك صلاحية الإرسال. سجّل الدخول من جديد ثم أعد المحاولة.'
@@ -43,6 +43,8 @@ export const api = {
   getSuperAdminOverview: () => request<{ system: { pendingIdentity: number; openApplications: number; verifiedDepartments: number; gisLocations: number }; recentAudit: Array<{ actor: string; role: string; action: string; entityType: string; entityId: string; createdAt: string }> }>('/api/super-admin/overview'),
   getDemoCitizen: () => request<Citizen>('/api/citizen/demo'),
   listCitizenApplications: () => request<GovernmentApplication[]>('/api/citizen/applications'),
+  listIssuedDocuments: () => request<IssuedDocument[]>('/api/citizen/issued-documents'),
+  listEmployeeIssuedDocuments: () => request<IssuedDocument[]>('/api/employee/issued-documents'),
   listCitizenServiceRequests: () => request<CitizenServiceRequest[]>('/api/citizen/service-requests'),
   listEmployeeServiceRequests: () => request<CitizenServiceRequest[]>('/api/employee/service-requests'),
   updateEmployeeServiceRequest: (reference: string, payload: { status: 'UNDER_REVIEW' | 'ACTION_REQUIRED' | 'APPROVED' | 'REJECTED'; currentAction: string; decisionNote?: string; requiredDocument?: string }) => request<CitizenServiceRequest>(`/api/employee/service-requests/${reference}`, { method: 'PATCH', body: JSON.stringify(payload) }),

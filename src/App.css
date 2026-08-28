@@ -1135,3 +1135,22 @@ body { background: var(--gov-paper); color: var(--gov-text); font-family: "Segoe
 .citizen-service-controls > small { color: #5e786b; font-size: .76rem; white-space: nowrap; }
 .service-filter-empty { margin-top: 12px; }
 @media (max-width: 860px) { .citizen-service-controls { grid-template-columns: 1fr; gap: 10px; } .citizen-service-controls > small { justify-self: start; } }
+
+/* Archived issued documents */
+.citizen-issued-documents { margin-top: 22px; padding: 26px; border: 1px solid #d5e4dc; border-radius: 18px; background: #fff; box-shadow: 0 12px 32px #143b2710; }
+.citizen-issued-document-list { display: grid; gap: 12px; margin-top: 18px; }
+.citizen-issued-document-list article { display: grid; grid-template-columns: 46px minmax(0, 1fr) auto; align-items: center; gap: 14px; padding: 16px; border: 1px solid #d9e7df; border-radius: 13px; background: linear-gradient(135deg, #ffffff, #f5faf7); }
+.citizen-issued-document-list > article > span { width: 42px; height: 42px; display: grid; place-items: center; border-radius: 12px; color: #0a5137; background: #eaf5ee; }
+.citizen-issued-document-list h3 { margin: 4px 0; color: #173a50; font-size: 15px; }
+.citizen-issued-document-list p, .citizen-issued-document-list small { margin: 0; color: #61736a; font-size: 12px; }
+.issued-document-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+.issued-document-actions .button { min-height: 40px; font-size: 12px; white-space: nowrap; }
+.document-archiving-state { display: inline-flex; align-items: center; gap: 8px; color: #52665b; font-size: 13px; }
+.verification-pdf-link { margin-top: 18px; }
+@media (max-width: 680px) {
+  .citizen-issued-documents { margin: 16px 0; padding: 18px; border-radius: 14px; }
+  .citizen-issued-document-list article { grid-template-columns: 40px minmax(0, 1fr); padding: 13px; }
+  .citizen-issued-document-list > article > span { width: 38px; height: 38px; }
+  .issued-document-actions { grid-column: 1 / -1; justify-content: stretch; }
+  .issued-document-actions .button { flex: 1; justify-content: center; }
+}

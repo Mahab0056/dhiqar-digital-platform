@@ -68,10 +68,29 @@ export interface GovernmentApplication {
   requiredDocument?: string | null
   documentNumber?: string | null
   verificationId?: string | null
+  documentTitle?: string | null
+  issuedAt?: string | null
+  pdfAvailable?: boolean
+  originalPdfUrl?: string | null
   attachments: Array<{ id: string; mediaId: string; label: string; originalName: string; mimeType: string; sizeBytes: number; available: boolean }>
   createdAt: string
   updatedAt: string
   events: ApplicationEvent[]
+}
+
+export interface IssuedDocument {
+  id: string
+  sourceKind: 'APPLICATION' | 'SERVICE_REQUEST'
+  applicationReference?: string | null
+  serviceRequestReference?: string | null
+  serviceName: string
+  departmentName: string
+  documentTitle: string
+  documentNumber: string
+  verificationId: string
+  status: 'ACTIVE' | 'REVOKED'
+  issuedAt: string
+  pdfUrl: string
 }
 
 export interface CitizenServiceRequest {

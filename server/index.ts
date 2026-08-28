@@ -32,6 +32,7 @@ import {
 } from './db.js'
 import { createOtpChallenge, processOtpDeliveryWebhook, verifyOtpChallenge } from './otp.js'
 import { readDecryptedMedia, storeEncryptedMedia } from './media.js'
+import { createIssuedDocument, getIssuedDocumentByVerificationId, getIssuedDocumentForCitizen, getIssuedDocumentForEmployee, listIssuedDocumentsForCitizen, listIssuedDocumentsForEmployee } from './issued-documents.js'
 import { departmentRegistry, registrySummary } from './department-registry.js'
 import { getServiceDefinition, serviceDefinitions } from '../src/service-forms.js'
 import { screenIdentitySubmission } from './identity-screening.js'
@@ -493,6 +494,15 @@ app.post('/api/service-requests', requireSession('CITIZEN'), (req, res) => {
   res.status(201).json({ id: serviceRequestId, reference, serviceKey: definition.key, serviceName: definition.title, department: department.name, status: definition.mode === 'APPOINTMENT' ? 'APPOINTMENT_REQUESTED' : 'SUBMITTED', currentAction, appointment, createdAt: timestamp })
 })
 
+const serviceRequestDocumentDetails = (row: Record<string, unknown>) => {
+  const fieldLabels = new Map((getServiceDefinition(String(row.service_id))?.fields || []).map(field => [field.key, field.label]))
+  const sensitiveKeys = /phone|mobile|email|national|identity|passport|license|licence|address|location|lat|lng/i
+  return Object.entries(JSON.parse(String(row.form_data || '{}')) as Record<string, unknown>)
+    .filter(([key, value]) => !sensitiveKeys.test(key) && String(value || '').trim().length > 0)
+    .slice(0, 4)
+    .map(([key, value]) => ({ label: fieldLabels.get(key) || key, value: String(value) }))
+}
+
 const serviceRequestAttachments = (requestId: number) => (db.prepare(`SELECT srm.id, srm.media_id, srm.label, mo.original_name, mo.mime_type, mo.size_bytes, mo.deleted_at
   FROM service_request_media srm JOIN media_objects mo ON mo.id = srm.media_id WHERE srm.service_request_id = ? ORDER BY srm.created_at ASC`).all(requestId) as Array<Record<string, unknown>>).map(item => ({
   id: String(item.id), mediaId: String(item.media_id), label: String(item.label), originalName: String(item.original_name), mimeType: String(item.mime_type), sizeBytes: Number(item.size_bytes), available: !item.deleted_at,
@@ -516,7 +526,7 @@ app.get('/api/employee/service-requests', requireSession('EMPLOYEE', 'SUPER_ADMI
   res.json(rows.map(serializeServiceRequestForEmployee))
 })
 
-app.patch('/api/employee/service-requests/:reference', requireSession('EMPLOYEE', 'SUPER_ADMIN'), (req, res) => {
+app.patch('/api/employee/service-requests/:reference', requireSession('EMPLOYEE', 'SUPER_ADMIN'), async (req, res) => {
   const row = db.prepare(`SELECT sr.*, sc.name AS service_name, d.name AS department_name, c.full_name AS citizen_name
     FROM service_requests sr JOIN service_catalog sc ON sc.id = sr.service_id JOIN departments d ON d.id = sr.department_id JOIN citizens c ON c.id = sr.citizen_id
     WHERE sr.reference = ?`).get(req.params.reference) as Record<string, unknown> | undefined
@@ -531,13 +541,22 @@ app.patch('/api/employee/service-requests/:reference', requireSession('EMPLOYEE'
   if (parsed.data.status === 'ACTION_REQUIRED' && !parsed.data.requiredDocument) return res.status(400).json({ message: 'اكتب اسم المستند أو النقص المطلوب من المواطن.' })
   if (parsed.data.status === 'REJECTED' && !parsed.data.decisionNote) return res.status(400).json({ message: 'اكتب سبب الرفض للمواطن قبل حفظ القرار.' })
   const timestamp = new Date().toISOString()
-  db.prepare(`UPDATE service_requests SET status = ?, current_action = ?, decision_note = ?, required_document = ?, updated_at = ? WHERE reference = ?`)
-    .run(parsed.data.status, parsed.data.currentAction, parsed.data.decisionNote || null, parsed.data.status === 'ACTION_REQUIRED' ? parsed.data.requiredDocument : null, timestamp, req.params.reference)
   const session = res.locals.session as SessionData
   const actor = session.role === 'SUPER_ADMIN' ? 'مدير النظام' : 'موظف مختص'
-  const title = parsed.data.status === 'APPROVED' ? 'تمت معاملة الخدمة' : parsed.data.status === 'REJECTED' ? 'تم رفض طلب الخدمة' : parsed.data.status === 'ACTION_REQUIRED' ? 'مستندات أو معلومات مطلوبة' : 'طلب الخدمة قيد التدقيق'
-  createNotification({ citizenId: Number(row.citizen_id), type: 'SERVICE_REQUEST_UPDATED', title, message: `${String(row.reference)} — ${parsed.data.currentAction}${parsed.data.decisionNote ? ` • ${parsed.data.decisionNote}` : ''}`, link: '/citizen#my-requests' })
-  addAudit({ actor, role: session.role, action: 'SERVICE_REQUEST_STATUS_UPDATED', entityType: 'ServiceRequest', entityId: req.params.reference, previousValue: { status: row.status }, newValue: { status: parsed.data.status, requiredDocument: parsed.data.requiredDocument || null } })
+  let issuedDocument: Awaited<ReturnType<typeof createIssuedDocument>> | null = null
+  if (parsed.data.status === 'APPROVED') {
+    issuedDocument = await createIssuedDocument({
+      sourceKind: 'SERVICE_REQUEST', serviceRequestReference: String(row.reference), citizenId: Number(row.citizen_id), citizenName: String(row.citizen_name),
+      serviceName: String(row.service_name), departmentName: String(row.department_name), documentTitle: `وثيقة إتمام معاملة — ${String(row.service_name)}`,
+      issuedBy: actor, issuedAt: timestamp, details: serviceRequestDocumentDetails(row),
+    })
+  }
+  const approvedAction = issuedDocument ? `${parsed.data.currentAction} صدرت الوثيقة الرقمية ${issuedDocument.documentNumber} وهي محفوظة في الأرشيف.` : parsed.data.currentAction
+  db.prepare(`UPDATE service_requests SET status = ?, current_action = ?, decision_note = ?, required_document = ?, updated_at = ? WHERE reference = ?`)
+    .run(parsed.data.status, approvedAction, parsed.data.decisionNote || null, parsed.data.status === 'ACTION_REQUIRED' ? parsed.data.requiredDocument : null, timestamp, req.params.reference)
+  const title = parsed.data.status === 'APPROVED' ? 'تمت معاملة الخدمة وصدر PDF' : parsed.data.status === 'REJECTED' ? 'تم رفض طلب الخدمة' : parsed.data.status === 'ACTION_REQUIRED' ? 'مستندات أو معلومات مطلوبة' : 'طلب الخدمة قيد التدقيق'
+  createNotification({ citizenId: Number(row.citizen_id), type: 'SERVICE_REQUEST_UPDATED', title, message: `${String(row.reference)} — ${approvedAction}${parsed.data.decisionNote ? ` • ${parsed.data.decisionNote}` : ''}`, link: '/citizen#issued-documents' })
+  addAudit({ actor, role: session.role, action: issuedDocument ? 'SERVICE_REQUEST_APPROVED_DOCUMENT_ISSUED' : 'SERVICE_REQUEST_STATUS_UPDATED', entityType: 'ServiceRequest', entityId: req.params.reference, previousValue: { status: row.status }, newValue: { status: parsed.data.status, requiredDocument: parsed.data.requiredDocument || null, documentNumber: issuedDocument?.documentNumber || null, verificationId: issuedDocument?.verificationId || null } })
   const updated = db.prepare(`SELECT sr.*, sc.name AS service_name, d.name AS department_name, c.full_name AS citizen_name
     FROM service_requests sr JOIN service_catalog sc ON sc.id = sr.service_id JOIN departments d ON d.id = sr.department_id JOIN citizens c ON c.id = sr.citizen_id
     WHERE sr.reference = ?`).get(req.params.reference) as Record<string, unknown>
@@ -973,7 +992,7 @@ app.post('/api/applications/:reference/upload-document', requireSession('CITIZEN
   res.json(getApplicationByReference(req.params.reference))
 })
 
-app.post('/api/applications/:reference/approve', requireSession('EMPLOYEE', 'SUPER_ADMIN'), (req, res) => {
+app.post('/api/applications/:reference/approve', requireSession('EMPLOYEE', 'SUPER_ADMIN'), async (req, res) => {
   const item = getApplicationByReference(req.params.reference)
   if (!item) return res.status(404).json({ message: 'المعاملة غير موجودة.' })
   if (item.status === 'ACTION_REQUIRED') return res.status(409).json({ message: 'لا يمكن الموافقة قبل استكمال المستند المطلوب.' })
@@ -987,16 +1006,25 @@ app.post('/api/applications/:reference/approve', requireSession('EMPLOYEE', 'SUP
     addAudit({ actor: 'سارة كاظم حسن', role: 'EMPLOYEE', action: 'PAYMENT_REQUIRED', entityType: 'Application', entityId: req.params.reference, previousValue: { status: item.status }, newValue: { status: 'PAYMENT_REQUIRED' }, metadata: { fee: item.fee, providerConfigured: false } })
     return res.json(getApplicationByReference(req.params.reference))
   }
-  const documentNumber = `LIC-${new Date().getFullYear()}-${String(item.id).padStart(5, '0')}`
-  const verificationId = `TQD-${randomUUID().replaceAll('-', '').slice(0, 18).toUpperCase()}`
+  const issuedDocument = await createIssuedDocument({
+    sourceKind: 'APPLICATION', applicationReference: String(item.reference), citizenId: Number(item.citizenId), citizenName: String(item.citizenName),
+    serviceName: String(item.serviceName), departmentName: String(item.department), documentTitle: `إجازة ممارسة نشاط تجاري — ${String(item.businessName)}`,
+    issuedBy: 'موظف مختص', issuedAt: timestamp, preferredDocumentNumber: `LIC-${new Date().getFullYear()}-${String(item.id).padStart(5, '0')}`,
+    details: [
+      { label: 'اسم المحل', value: String(item.businessName || '') }, { label: 'نوع النشاط', value: String(item.activityType || '') },
+      { label: 'القضاء', value: String(item.district || '') }, { label: 'نوع الإشغال', value: String(item.ownershipType || '') },
+    ],
+  })
+  const documentNumber = issuedDocument.documentNumber
+  const verificationId = issuedDocument.verificationId
   db.exec('BEGIN')
   try {
     db.prepare(`UPDATE applications SET status = 'APPROVED', current_action = 'اكتملت المعاملة. يمكنك تحميل الوثيقة والتحقق منها عبر QR.', payment_status = 'NOT_REQUIRED', document_number = ?, verification_id = ?, updated_at = ? WHERE reference = ?`)
       .run(documentNumber, verificationId, timestamp, req.params.reference)
     addEvent(item.id as number, { type: 'APPROVED', title: 'تمت الموافقة', description: 'اعتمد الموظف المختص الطلب.', actor: 'موظفة التدقيق — سارة كاظم' })
-    addEvent(item.id as number, { type: 'DOCUMENT_ISSUED', title: 'تم إصدار الوثيقة', description: `أُنشئت الوثيقة ${documentNumber} ومعرّف التحقق الرقمي.`, actor: 'نظام الوثائق الرقمية' })
-    createNotification({ citizenId: Number(item.citizenId), type: 'DOCUMENT_ISSUED', title: 'اكتملت المعاملة', message: `صدرت الوثيقة ${documentNumber}. يمكنك تحميلها والتحقق منها عبر QR.`, link: `/citizen/application/${req.params.reference}` })
-    addAudit({ actor: 'سارة كاظم حسن', role: 'EMPLOYEE', action: 'APPLICATION_APPROVED', entityType: 'Application', entityId: req.params.reference, previousValue: { status: item.status }, newValue: { status: 'APPROVED', documentNumber }, metadata: { paymentRecorded: false, qrVerification: true } })
+    addEvent(item.id as number, { type: 'DOCUMENT_ISSUED', title: 'تم إصدار الوثيقة المؤرشفة', description: `أُنشئت الوثيقة ${documentNumber} ومعرّف التحقق الرقمي وحُفظ PDF الأصلي مشفراً في الأرشيف.`, actor: 'نظام الوثائق الرقمية' })
+    createNotification({ citizenId: Number(item.citizenId), type: 'DOCUMENT_ISSUED', title: 'اكتملت المعاملة وصدر PDF', message: `صدرت الوثيقة ${documentNumber}. يمكنك فتح PDF الأصلي والتحقق منه عبر QR.`, link: '/citizen#issued-documents' })
+    addAudit({ actor: 'موظف مختص', role: 'EMPLOYEE', action: 'APPLICATION_APPROVED_DOCUMENT_ISSUED', entityType: 'Application', entityId: req.params.reference, previousValue: { status: item.status }, newValue: { status: 'APPROVED', documentNumber, verificationId }, metadata: { paymentRecorded: false, qrVerification: true, issuedDocumentId: issuedDocument.id } })
     db.exec('COMMIT')
   } catch (error) {
     db.exec('ROLLBACK')
@@ -1005,11 +1033,75 @@ app.post('/api/applications/:reference/approve', requireSession('EMPLOYEE', 'SUP
   res.json(getApplicationByReference(req.params.reference))
 })
 
+function sendIssuedPdf(res: express.Response, row: Record<string, unknown>) {
+  const media = readDecryptedMedia(String(row.pdf_media_id))
+  if (!media || media.mimeType !== 'application/pdf') return res.status(404).json({ message: 'ملف PDF الأصلي غير متاح في الأرشيف.' })
+  res.setHeader('Content-Type', 'application/pdf')
+  res.setHeader('Content-Disposition', `inline; filename="${String(row.document_number).replace(/[^A-Za-z0-9_-]/g, '_')}.pdf"`)
+  res.setHeader('Cache-Control', 'private, no-store')
+  return res.send(media.buffer)
+}
+
+app.get('/api/citizen/issued-documents', requireSession('CITIZEN'), (_req, res) => {
+  const citizen = currentCitizen(res)
+  if (!citizen) return
+  res.json(listIssuedDocumentsForCitizen(citizen.id).map(row => ({
+    id: String(row.id), sourceKind: String(row.source_kind), applicationReference: row.application_reference ? String(row.application_reference) : null,
+    serviceRequestReference: row.service_request_reference ? String(row.service_request_reference) : null, serviceName: String(row.service_name),
+    departmentName: String(row.department_name), documentTitle: String(row.document_title), documentNumber: String(row.document_number),
+    verificationId: String(row.verification_id), status: String(row.status), issuedAt: String(row.issued_at),
+    pdfUrl: `/api/citizen/issued-documents/${String(row.id)}/pdf`,
+  })))
+})
+
+app.get('/api/citizen/issued-documents/:id/pdf', requireSession('CITIZEN'), (req, res) => {
+  const citizen = currentCitizen(res)
+  if (!citizen) return
+  const row = getIssuedDocumentForCitizen(req.params.id, citizen.id)
+  if (!row) return res.status(404).json({ message: 'الوثيقة غير موجودة ضمن حسابك.' })
+  addAudit({ actor: citizen.fullName, role: 'CITIZEN', action: 'ISSUED_DOCUMENT_OPENED', entityType: 'IssuedDocument', entityId: String(row.id) })
+  return sendIssuedPdf(res, row)
+})
+
+app.get('/api/employee/issued-documents', requireSession('EMPLOYEE', 'SUPER_ADMIN'), (_req, res) => {
+  res.json(listIssuedDocumentsForEmployee().map(row => ({
+    id: String(row.id), sourceKind: String(row.source_kind), applicationReference: row.application_reference ? String(row.application_reference) : null,
+    serviceRequestReference: row.service_request_reference ? String(row.service_request_reference) : null, serviceName: String(row.service_name),
+    departmentName: String(row.department_name), documentTitle: String(row.document_title), documentNumber: String(row.document_number),
+    verificationId: String(row.verification_id), status: String(row.status), issuedAt: String(row.issued_at),
+    pdfUrl: `/api/employee/issued-documents/${String(row.id)}/pdf`,
+  })))
+})
+
+app.get('/api/employee/issued-documents/:id/pdf', requireSession('EMPLOYEE', 'SUPER_ADMIN'), (req, res) => {
+  const row = getIssuedDocumentForEmployee(req.params.id)
+  if (!row) return res.status(404).json({ message: 'الوثيقة المؤرشفة غير موجودة.' })
+  const session = res.locals.session as SessionData
+  addAudit({ actor: session.role === 'SUPER_ADMIN' ? 'مدير النظام' : 'موظف مختص', role: session.role, action: 'ISSUED_DOCUMENT_OPENED', entityType: 'IssuedDocument', entityId: String(row.id) })
+  return sendIssuedPdf(res, row)
+})
+
+app.get('/api/verify/:verificationId/original-pdf', (req, res) => {
+  const row = getIssuedDocumentByVerificationId(req.params.verificationId)
+  if (!row || row.status !== 'ACTIVE') return res.status(404).json({ message: 'لا يوجد ملف PDF فعال بهذا المعرّف.' })
+  addAudit({ actor: 'Public Verification', role: 'PUBLIC', action: 'ISSUED_DOCUMENT_ORIGINAL_OPENED', entityType: 'IssuedDocument', entityId: String(row.id), metadata: { verificationId: req.params.verificationId } })
+  return sendIssuedPdf(res, row)
+})
+
 app.get('/api/verify/:verificationId', (req, res) => {
+  const issued = getIssuedDocumentByVerificationId(req.params.verificationId)
+  if (issued && issued.status === 'ACTIVE') {
+    addAudit({ actor: 'Public Verification', role: 'PUBLIC', action: 'ISSUED_DOCUMENT_VERIFIED', entityType: 'IssuedDocument', entityId: String(issued.id), metadata: { exposedFields: 'document-minimum' } })
+    return res.json({
+      reference: issued.application_reference || issued.service_request_reference, citizenName: issued.citizen_name, serviceName: issued.service_name,
+      department: issued.department_name, documentTitle: issued.document_title, documentNumber: issued.document_number, verificationId: issued.verification_id,
+      status: 'APPROVED', issuedAt: issued.issued_at, updatedAt: issued.updated_at, originalPdfUrl: `/api/verify/${req.params.verificationId}/original-pdf`, pdfAvailable: true,
+    })
+  }
   const item = getApplicationByVerificationId(req.params.verificationId)
   if (!item) return res.status(404).json({ message: 'لم يتم العثور على وثيقة صادرة بهذا المعرّف.' })
-  addAudit({ actor: 'Public Verification', role: 'PUBLIC', action: 'DOCUMENT_VERIFIED', entityType: 'Document', entityId: req.params.verificationId, metadata: { exposedFields: 'minimal' } })
-  res.json(item)
+  addAudit({ actor: 'Public Verification', role: 'PUBLIC', action: 'DOCUMENT_VERIFIED', entityType: 'Document', entityId: req.params.verificationId, metadata: { exposedFields: 'minimal', archivedPdf: false } })
+  return res.json({ ...item, pdfAvailable: false, originalPdfUrl: null })
 })
 
 function getRegistryDepartments() {

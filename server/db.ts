@@ -151,6 +151,31 @@ db.exec(`
     FOREIGN KEY (media_id) REFERENCES media_objects(id)
   );
 
+  CREATE TABLE IF NOT EXISTS issued_documents (
+    id TEXT PRIMARY KEY,
+    source_kind TEXT NOT NULL CHECK(source_kind IN ('APPLICATION', 'SERVICE_REQUEST')),
+    application_reference TEXT UNIQUE,
+    service_request_reference TEXT UNIQUE,
+    citizen_id INTEGER NOT NULL,
+    service_name TEXT NOT NULL,
+    department_name TEXT NOT NULL,
+    document_title TEXT NOT NULL,
+    document_number TEXT NOT NULL UNIQUE,
+    verification_id TEXT NOT NULL UNIQUE,
+    status TEXT NOT NULL DEFAULT 'ACTIVE' CHECK(status IN ('ACTIVE', 'REVOKED')),
+    pdf_media_id TEXT NOT NULL UNIQUE,
+    issued_by TEXT NOT NULL,
+    issued_at TEXT NOT NULL,
+    revoked_at TEXT,
+    revoked_reason TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    FOREIGN KEY (citizen_id) REFERENCES citizens(id),
+    FOREIGN KEY (pdf_media_id) REFERENCES media_objects(id)
+  );
+  CREATE INDEX IF NOT EXISTS idx_issued_documents_citizen ON issued_documents(citizen_id, issued_at DESC);
+  CREATE INDEX IF NOT EXISTS idx_issued_documents_verify ON issued_documents(verification_id, status);
+
   CREATE TABLE IF NOT EXISTS identity_reviews (
     id TEXT PRIMARY KEY,
     citizen_id INTEGER NOT NULL,
