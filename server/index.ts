@@ -40,6 +40,7 @@ import { screenIdentitySubmission } from './identity-screening.js'
 import { analyzeIdentityDocument } from './identity-document-analysis.js'
 import { getGovernmentService, getGovernmentServiceDirectoryStats, listGovernmentServiceVersions, listGovernmentServices, setGovernmentServicePublication, upsertGovernmentService, type GovernmentServiceRecordInput } from './government-service-directory.js'
 import { installCitizenNotificationRealtime } from './citizen-notification-realtime.js'
+import { installEmployeeWorkQueueRealtime } from './employee-work-queue-realtime.js'
 import { seedVerifiedGovernmentServices } from './government-service-seed.js'
 
 const app = express()
@@ -213,6 +214,15 @@ const citizenNotificationRealtime = installCitizenNotificationRealtime({
     if (session?.role !== 'CITIZEN') return null
     const citizenId = Number(session.sub)
     return Number.isSafeInteger(citizenId) && citizenId > 0 && getCitizenById(citizenId) ? citizenId : null
+  },
+  isAllowedOrigin: isAllowedRealtimeOrigin,
+})
+const employeeWorkQueueRealtime = installEmployeeWorkQueueRealtime({
+  server: httpServer,
+  authenticateEmployee(request) {
+    const session = readSession(request)
+    if (!session || !['EMPLOYEE', 'IDENTITY_REVIEWER', 'SUPER_ADMIN'].includes(session.role)) return null
+    return { subject: session.sub, role: session.role as 'EMPLOYEE' | 'IDENTITY_REVIEWER' | 'SUPER_ADMIN' }
   },
   isAllowedOrigin: isAllowedRealtimeOrigin,
 })
@@ -520,6 +530,7 @@ app.post('/api/service-requests', requireSession('CITIZEN'), upload.single('face
     appointment = { id: appointmentId, preferredDate: cleanData.preferredDate, preferredTime: cleanData.preferredTime, status: 'REQUESTED' }
   }
   notifyCitizen({ citizenId: citizen.id, type: definition.mode === 'APPOINTMENT' ? 'APPOINTMENT_REQUESTED' : 'SERVICE_REQUEST_CREATED', title: definition.mode === 'APPOINTMENT' ? 'تم إرسال طلب الموعد' : 'تم تسجيل طلب الخدمة', message: `${definition.title} — ${reference}. ${currentAction}`, link: '/citizen' })
+  employeeWorkQueueRealtime.publish({ entity: 'SERVICE_REQUEST', action: 'CREATED', reference })
   addAudit({ actor: citizen.fullName, role: 'CITIZEN', action: definition.mode === 'APPOINTMENT' ? 'APPOINTMENT_REQUESTED' : 'SERVICE_REQUEST_CREATED', entityType: 'ServiceRequest', entityId: reference, newValue: { service: definition.key, department: department.id }, metadata: { storedFields: Object.keys(cleanData), protectedFaceVideoId: faceMedia.id, faceConsent: true } })
   res.status(201).json({ id: serviceRequestId, reference, serviceKey: definition.key, serviceName: definition.title, department: department.name, status: definition.mode === 'APPOINTMENT' ? 'APPOINTMENT_REQUESTED' : 'SUBMITTED', currentAction, appointment, createdAt: timestamp })
 })
@@ -762,6 +773,7 @@ app.post('/api/onboarding/identity-review', requireSession('CITIZEN'), upload.fi
     db.prepare('UPDATE citizens SET full_name = ?, national_id_masked = ?, document_type = ?, profile_media_id = COALESCE(?, profile_media_id), verification_status = ?, consent_at = ?, location_lat = ?, location_lng = ?, location_accuracy_m = ?, location_updated_at = ?, location_consent_at = ?, updated_at = ? WHERE id = ?')
       .run(payload.fullName, maskedNationalId, payload.documentType, profilePhoto?.id || null, 'MANUAL_REVIEW', now.toISOString(), locationAllowed ? payload.locationLat : null, locationAllowed ? payload.locationLng : null, locationAllowed ? payload.locationAccuracyM || null : null, locationAllowed ? now.toISOString() : null, locationAllowed ? now.toISOString() : null, now.toISOString(), citizenId)
     notifyCitizen({ citizenId, type: 'IDENTITY_REVIEW', title: 'تم استلام طلب توثيق الهوية', message: 'وصلت صور الهوية وفيديو الوجه إلى قائمة المراجعة. ستصلك نتيجة القرار هنا.', link: '/citizen' })
+    employeeWorkQueueRealtime.publish({ entity: 'IDENTITY_REVIEW', action: 'CREATED', reference: reviewId })
     addAudit({
       actor: payload.fullName,
       role: 'CITIZEN',
@@ -929,6 +941,13 @@ app.get('/api/citizen/profile-photo', requireSession('CITIZEN'), (_req, res) => 
   }
 })
 
+app.get('/api/employee/work-queue-summary', requireSession('EMPLOYEE', 'IDENTITY_REVIEWER', 'SUPER_ADMIN'), (_req, res) => {
+  const applications = Number((db.prepare(`SELECT COUNT(*) AS count FROM applications WHERE status IN ('UNDER_REVIEW', 'SUBMITTED')`).get() as { count: number }).count)
+  const serviceRequests = Number((db.prepare(`SELECT COUNT(*) AS count FROM service_requests WHERE status IN ('SUBMITTED', 'UNDER_REVIEW', 'REQUESTED', 'APPOINTMENT_REQUESTED')`).get() as { count: number }).count)
+  const identityReviews = Number((db.prepare(`SELECT COUNT(*) AS count FROM identity_reviews WHERE status = 'PENDING_REVIEW'`).get() as { count: number }).count)
+  res.json({ applications, serviceRequests, identityReviews, total: applications + serviceRequests + identityReviews, generatedAt: new Date().toISOString() })
+})
+
 app.get('/api/applications', requireSession('EMPLOYEE', 'SUPER_ADMIN'), (_req, res) => res.json(getApplications()))
 
 app.get('/api/applications/:reference', requireSession('CITIZEN', 'EMPLOYEE', 'SUPER_ADMIN'), (req, res) => {
@@ -1006,6 +1025,7 @@ app.post('/api/applications', requireSession('CITIZEN'), upload.fields([{ name: 
   addEvent(applicationId, { type: 'APPLICATION_CREATED', title: 'تم التقديم', description: 'استلمت المنصة الطلب والمرفقات المشفرة وسجلته للتدقيق.', actor: 'المواطن' })
   addEvent(applicationId, { type: 'ROUTED', title: 'تم التوجيه إلى الدائرة', description: `تم توجيه الطلب آلياً إلى ${payload.department}.`, actor: 'محرك سير العمل' })
   notifyCitizen({ citizenId: citizen.id, type: 'APPLICATION_CREATED', title: 'تم تسجيل المعاملة', message: `سُجل طلب ${payload.serviceName} بالرقم ${reference} ووُجه إلى ${payload.department}.`, link: `/citizen/application/${reference}` })
+  employeeWorkQueueRealtime.publish({ entity: 'APPLICATION', action: 'CREATED', reference })
   addAudit({ actor: citizen.fullName, role: 'CITIZEN', action: 'APPLICATION_CREATED', entityType: 'Application', entityId: reference, newValue: { service: payload.serviceKey, district: payload.district }, metadata: { protectedAttachments: protectedFiles.map(file => file.label), retentionDays: 30, faceConsent: true } })
   res.status(201).json(getApplicationByReference(reference))
 })
@@ -1040,6 +1060,7 @@ app.post('/api/applications/:reference/upload-document', requireSession('CITIZEN
     .run(timestamp, req.params.reference)
   addEvent(item.id as number, { type: 'DOCUMENT_UPLOADED', title: 'تم استكمال المعلومات', description: `رفع المواطن ${payload.documentName} بشكل مشفر وأعيدت المعاملة إلى التدقيق.`, actor: 'المواطن' })
   notifyCitizen({ citizenId: Number(item.citizenId), type: 'DOCUMENT_RECEIVED', title: 'تم استلام المستند', message: `استلمت المنصة ${payload.documentName} وأعادت المعاملة إلى الموظف المختص.`, link: `/citizen/application/${req.params.reference}` })
+  employeeWorkQueueRealtime.publish({ entity: 'APPLICATION', action: 'UPDATED', reference: req.params.reference })
   addAudit({ actor: citizen.fullName, role: 'CITIZEN', action: 'MISSING_DOCUMENT_UPLOADED', entityType: 'Application', entityId: req.params.reference, previousValue: { status: item.status }, newValue: { status: 'UNDER_REVIEW', document: payload.documentName }, metadata: { protectedMediaId: media.id, retentionDays: 30 } })
   res.json(getApplicationByReference(req.params.reference))
 })
@@ -1077,7 +1098,7 @@ app.post('/api/applications/:reference/approve', requireSession('EMPLOYEE', 'SUP
       .run(documentNumber, verificationId, timestamp, req.params.reference)
     addEvent(item.id as number, { type: 'APPROVED', title: 'تمت الموافقة', description: 'اعتمد الموظف المختص الطلب.', actor: 'موظفة التدقيق — سارة كاظم' })
     addEvent(item.id as number, { type: 'DOCUMENT_ISSUED', title: 'تم إصدار الوثيقة المؤرشفة', description: `أُنشئت الوثيقة ${documentNumber} ومعرّف التحقق الرقمي وحُفظ PDF الأصلي مشفراً في الأرشيف.`, actor: 'نظام الوثائق الرقمية' })
-    notifyCitizen({ citizenId: Number(item.citizenId), type: 'DOCUMENT_ISSUED', title: 'اكتملت المعاملة وصدر PDF', message: `صدرت الوثيقة ${documentNumber}. يمكنك فتح PDF الأصلي والتحقق منه عبر QR.`, link: '/citizen#issued-documents' })
+    notifyCitizen({ citizenId: Number(item.citizenId), type: 'DOCUMENT_ISSUED', title: 'وثيقتك جاهزة للعرض والتنزيل', message: `صدرت الوثيقة ${documentNumber}. افتح المعاملة لمعاينة PDF أو تنزيله أو التحقق منه عبر QR.`, link: `/citizen/application/${req.params.reference}` })
     addAudit({ actor: 'موظف مختص', role: 'EMPLOYEE', action: 'APPLICATION_APPROVED_DOCUMENT_ISSUED', entityType: 'Application', entityId: req.params.reference, previousValue: { status: item.status }, newValue: { status: 'APPROVED', documentNumber, verificationId }, metadata: { paymentRecorded: false, qrVerification: true, issuedDocumentId: issuedDocument.id } })
     db.exec('COMMIT')
   } catch (error) {
@@ -1087,11 +1108,12 @@ app.post('/api/applications/:reference/approve', requireSession('EMPLOYEE', 'SUP
   res.json(getApplicationByReference(req.params.reference))
 })
 
-function sendIssuedPdf(res: express.Response, row: Record<string, unknown>) {
+function sendIssuedPdf(res: express.Response, row: Record<string, unknown>, download = false) {
   const media = readDecryptedMedia(String(row.pdf_media_id))
   if (!media || media.mimeType !== 'application/pdf') return res.status(404).json({ message: 'ملف PDF الأصلي غير متاح في الأرشيف.' })
+  const filename = `${String(row.document_number).replace(/[^A-Za-z0-9_-]/g, '_')}.pdf`
   res.setHeader('Content-Type', 'application/pdf')
-  res.setHeader('Content-Disposition', `inline; filename="${String(row.document_number).replace(/[^A-Za-z0-9_-]/g, '_')}.pdf"`)
+  res.setHeader('Content-Disposition', `${download ? 'attachment' : 'inline'}; filename="${filename}"`)
   res.setHeader('Cache-Control', 'private, no-store')
   return res.send(media.buffer)
 }
@@ -1105,6 +1127,7 @@ app.get('/api/citizen/issued-documents', requireSession('CITIZEN'), (_req, res) 
     departmentName: String(row.department_name), documentTitle: String(row.document_title), documentNumber: String(row.document_number),
     verificationId: String(row.verification_id), status: String(row.status), issuedAt: String(row.issued_at),
     pdfUrl: `/api/citizen/issued-documents/${String(row.id)}/pdf`,
+    pdfDownloadUrl: `/api/citizen/issued-documents/${String(row.id)}/pdf?download=1`,
   })))
 })
 
@@ -1114,7 +1137,7 @@ app.get('/api/citizen/issued-documents/:id/pdf', requireSession('CITIZEN'), (req
   const row = getIssuedDocumentForCitizen(req.params.id, citizen.id)
   if (!row) return res.status(404).json({ message: 'الوثيقة غير موجودة ضمن حسابك.' })
   addAudit({ actor: citizen.fullName, role: 'CITIZEN', action: 'ISSUED_DOCUMENT_OPENED', entityType: 'IssuedDocument', entityId: String(row.id) })
-  return sendIssuedPdf(res, row)
+  return sendIssuedPdf(res, row, req.query.download === '1')
 })
 
 app.get('/api/employee/issued-documents', requireSession('EMPLOYEE', 'SUPER_ADMIN'), (_req, res) => {

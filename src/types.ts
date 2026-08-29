@@ -90,6 +90,7 @@ export interface IssuedDocument {
   status: 'ACTIVE' | 'REVOKED'
   issuedAt: string
   pdfUrl: string
+  pdfDownloadUrl: string
 }
 
 export interface CitizenServiceRequest {

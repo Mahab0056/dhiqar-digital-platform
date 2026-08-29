@@ -45,6 +45,7 @@ export const api = {
   listCitizenApplications: () => request<GovernmentApplication[]>('/api/citizen/applications'),
   listIssuedDocuments: () => request<IssuedDocument[]>('/api/citizen/issued-documents'),
   listEmployeeIssuedDocuments: () => request<IssuedDocument[]>('/api/employee/issued-documents'),
+  getEmployeeWorkQueueSummary: () => request<{ applications: number; serviceRequests: number; identityReviews: number; total: number; generatedAt: string }>('/api/employee/work-queue-summary'),
   listCitizenServiceRequests: () => request<CitizenServiceRequest[]>('/api/citizen/service-requests'),
   listEmployeeServiceRequests: () => request<CitizenServiceRequest[]>('/api/employee/service-requests'),
   updateEmployeeServiceRequest: (reference: string, payload: { status: 'UNDER_REVIEW' | 'ACTION_REQUIRED' | 'APPROVED' | 'REJECTED'; currentAction: string; decisionNote?: string; requiredDocument?: string }) => request<CitizenServiceRequest>(`/api/employee/service-requests/${reference}`, { method: 'PATCH', body: JSON.stringify(payload) }),

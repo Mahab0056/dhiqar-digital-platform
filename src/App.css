@@ -1622,3 +1622,72 @@ body { background: var(--gov-paper); color: var(--gov-text); font-family: "Segoe
   .citizen-realtime-toast { bottom: 86px; inset-inline-end: 16px; }
   .realtime-unread-badge { inset-inline-end: -6px; }
 }
+
+/* وصول واضح للوثيقة المعتمدة */
+.issued-pdf-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .65rem;
+  margin-top: .85rem;
+}
+.issued-pdf-actions .button { min-height: 43px; }
+.issued-pdf-actions .button svg { width: 17px; height: 17px; }
+.issued-pdf-actions.compact { margin: 0; justify-content: flex-end; }
+.issued-pdf-actions.compact .button { min-height: 38px; padding: 9px 11px; font-size: 11px; }
+.issued-document-section .issued-pdf-actions {
+  justify-content: flex-end;
+  max-width: 460px;
+}
+@media (max-width: 760px) {
+  .issued-document-section .issued-pdf-actions { width: 100%; justify-content: stretch; }
+  .issued-document-section .issued-pdf-actions .button { flex: 1 1 130px; }
+  .issued-pdf-actions.compact { justify-content: stretch; width: 100%; margin-top: .65rem; }
+  .issued-pdf-actions.compact .button { flex: 1 1 112px; }
+}
+
+/* طابور العمل اللحظي للموظف */
+.employee-live-work-queue {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+  gap: 1px;
+  overflow: hidden;
+  margin: 1rem 0;
+  border: 1px solid #dce9e1;
+  border-radius: 16px;
+  background: #dce9e1;
+  box-shadow: 0 10px 22px rgba(8, 59, 37, .05);
+}
+.employee-live-work-queue > div, .employee-live-work-queue > a { min-height: 86px; background: #fff; }
+.employee-live-work-queue > div { display: grid; grid-template-columns: 36px 1fr; grid-template-rows: auto 1fr; gap: 2px 10px; align-content: center; padding: 14px; }
+.employee-live-work-queue > div > span { grid-row: span 2; display: grid; width: 34px; height: 34px; place-items: center; border-radius: 10px; background: #edf6f0; color: #0d6040; }
+.employee-live-work-queue small { color: #70847a; font-size: 11px; font-weight: 700; }
+.employee-live-work-queue strong { color: #093c28; font-size: 22px; line-height: 1; }
+.employee-live-work-queue > a { display: flex; align-items: center; justify-content: center; gap: 7px; padding: 12px 16px; color: #0b5739; font-size: 12px; font-weight: 900; }
+.employee-realtime-toast {
+  position: fixed;
+  z-index: 130;
+  inset-inline-end: 24px;
+  bottom: 24px;
+  width: min(360px, calc(100vw - 32px));
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  padding: 14px;
+  border: 1px solid rgba(124, 201, 153, .35);
+  border-radius: 16px;
+  background: rgba(8, 57, 37, .97);
+  box-shadow: 0 18px 46px rgba(1, 30, 18, .28);
+  color: #fff;
+  animation: citizen-toast-in .28s ease-out both;
+}
+.employee-realtime-toast > svg { width: 21px; height: 21px; margin-top: 2px; color: #94e5b0; }
+.employee-realtime-toast > span { display: grid; min-width: 0; gap: 3px; }
+.employee-realtime-toast small { color: #addabe; font-size: 10px; font-weight: 800; }
+.employee-realtime-toast strong { font-size: 13px; }
+.employee-realtime-toast em { overflow: hidden; color: #e5f5ea; font-size: 11px; font-style: normal; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 760px) {
+  .employee-live-work-queue { grid-template-columns: 1fr 1fr; }
+  .employee-live-work-queue > a { grid-column: 1 / -1; min-height: 44px; }
+  .employee-realtime-toast { bottom: 86px; inset-inline-end: 16px; }
+}

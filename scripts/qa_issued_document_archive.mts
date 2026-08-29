@@ -28,12 +28,15 @@ const approvalResponse = await fetch(`${base}/api/employee/service-requests/${cr
 if (approvalResponse.status !== 200) throw new Error(`approval failed: ${approvalResponse.status} ${await approvalResponse.text()}`)
 const archiveResponse = await fetch(`${base}/api/citizen/issued-documents`, { headers: { cookie: citizenCookie } })
 if (archiveResponse.status !== 200) throw new Error(`archive denied: ${archiveResponse.status}`)
-const documents = await archiveResponse.json() as Array<{ serviceRequestReference: string; verificationId: string; pdfUrl: string }>
+const documents = await archiveResponse.json() as Array<{ serviceRequestReference: string; verificationId: string; pdfUrl: string; pdfDownloadUrl: string }>
 const document = documents.find(item => item.serviceRequestReference === created.reference)
 if (!document) throw new Error('issued document was not found in citizen archive')
 const protectedPdf = await fetch(`${base}${document.pdfUrl}`, { headers: { cookie: citizenCookie } })
 const protectedPdfBytes = Buffer.from(await protectedPdf.arrayBuffer())
-if (protectedPdf.status !== 200 || !protectedPdfBytes.subarray(0, 4).equals(Buffer.from('%PDF'))) throw new Error(`citizen original PDF failed: ${protectedPdf.status}`)
+if (protectedPdf.status !== 200 || !protectedPdfBytes.subarray(0, 4).equals(Buffer.from('%PDF')) || !protectedPdf.headers.get('content-disposition')?.startsWith('inline')) throw new Error(`citizen original PDF failed: ${protectedPdf.status}`)
+const downloadedPdf = await fetch(`${base}${document.pdfDownloadUrl}`, { headers: { cookie: citizenCookie } })
+const downloadedPdfBytes = Buffer.from(await downloadedPdf.arrayBuffer())
+if (downloadedPdf.status !== 200 || !downloadedPdfBytes.subarray(0, 4).equals(Buffer.from('%PDF')) || !downloadedPdf.headers.get('content-disposition')?.startsWith('attachment')) throw new Error(`citizen PDF download failed: ${downloadedPdf.status}`)
 const publicVerify = await fetch(`${base}/api/verify/${document.verificationId}`)
 const verification = await publicVerify.json() as { pdfAvailable?: boolean; originalPdfUrl?: string }
 if (publicVerify.status !== 200 || !verification.pdfAvailable || !verification.originalPdfUrl) throw new Error(`public verification failed: ${publicVerify.status}`)
@@ -55,11 +58,13 @@ const application = await applicationResponse.json() as { reference: string }
 const appApproval = await fetch(`${base}/api/applications/${application.reference}/approve`, { method: 'POST', headers: { cookie: employeeCookie } })
 if (appApproval.status !== 200) throw new Error(`application approval failed: ${appApproval.status} ${await appApproval.text()}`)
 const archiveAfterApplication = await fetch(`${base}/api/citizen/issued-documents`, { headers: { cookie: citizenCookie } })
-const documentsAfterApplication = await archiveAfterApplication.json() as Array<{ applicationReference: string; pdfUrl: string }>
+const documentsAfterApplication = await archiveAfterApplication.json() as Array<{ applicationReference: string; pdfUrl: string; pdfDownloadUrl: string }>
 const applicationDocument = documentsAfterApplication.find(item => item.applicationReference === application.reference)
 if (!applicationDocument) throw new Error('application PDF was not archived')
 const applicationPdf = await fetch(`${base}${applicationDocument.pdfUrl}`, { headers: { cookie: citizenCookie } })
-if (applicationPdf.status !== 200 || !Buffer.from(await applicationPdf.arrayBuffer()).subarray(0, 4).equals(Buffer.from('%PDF'))) throw new Error('application archived PDF could not be opened')
+if (applicationPdf.status !== 200 || !Buffer.from(await applicationPdf.arrayBuffer()).subarray(0, 4).equals(Buffer.from('%PDF')) || !applicationPdf.headers.get('content-disposition')?.startsWith('inline')) throw new Error('application archived PDF could not be opened')
+const applicationDownload = await fetch(`${base}${applicationDocument.pdfDownloadUrl}`, { headers: { cookie: citizenCookie } })
+if (applicationDownload.status !== 200 || !applicationDownload.headers.get('content-disposition')?.startsWith('attachment')) throw new Error('application archived PDF could not be downloaded')
 const unauthorizedArchive = await fetch(`${base}/api/citizen/issued-documents`)
 if (unauthorizedArchive.status !== 401) throw new Error(`citizen archive unexpectedly public: ${unauthorizedArchive.status}`)
 console.log('issued_document_archive_qa=pass')
