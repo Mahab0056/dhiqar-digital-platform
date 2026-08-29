@@ -1,4 +1,4 @@
-import type { Citizen, CitizenFeedback, CitizenNotification, CitizenServiceRequest, DashboardStats, DepartmentWorkbench, FeedbackStatus, GovernmentApplication, GovernmentServiceDirectoryEntry, GovernmentServicePublicationStatus, IssuedDocument, PlatformServiceSettings } from './types'
+import type { AdminCitizenDirectoryItem, Citizen, CitizenFeedback, CitizenNotification, CitizenServiceRequest, DashboardStats, DepartmentWorkbench, FeedbackStatus, GovernmentApplication, GovernmentServiceDirectoryEntry, GovernmentServicePublicationStatus, IssuedDocument, PlatformServiceSettings } from './types'
 
 const readableRequestError = (status: number, message?: string) => {
   if (status === 401) return 'انتهت جلسة الدخول أو لا تملك صلاحية الإرسال. سجّل الدخول من جديد ثم أعد المحاولة.'
@@ -41,6 +41,13 @@ export const api = {
   updatePlatformService: (serviceKey: string, payload: { requiredDocuments?: string[]; active?: boolean }) => request<{ success: true; updatedAt: string }>(`/api/super-admin/platform-services/${encodeURIComponent(serviceKey)}`, { method: 'PATCH', body: JSON.stringify(payload) }),
   getNewRequestAlerts: () => request<{ alerts: Array<{ reference: string; serviceName: string; department: string; status: string; createdAt: string; updatedAt: string }>; generatedAt: string }>('/api/operations/new-request-alerts'),
   getSuperAdminOverview: () => request<{ system: { pendingIdentity: number; openApplications: number; verifiedDepartments: number; gisLocations: number }; recentAudit: Array<{ actor: string; role: string; action: string; entityType: string; entityId: string; createdAt: string }> }>('/api/super-admin/overview'),
+  listSuperAdminCitizens: (filters: { query?: string; verificationStatus?: string; documentType?: string } = {}) => {
+    const params = new URLSearchParams()
+    if (filters.query?.trim()) params.set('q', filters.query.trim())
+    if (filters.verificationStatus) params.set('verificationStatus', filters.verificationStatus)
+    if (filters.documentType) params.set('documentType', filters.documentType)
+    return request<{ citizens: AdminCitizenDirectoryItem[] }>(`/api/super-admin/citizens${params.size ? `?${params.toString()}` : ''}`)
+  },
   getDemoCitizen: () => request<Citizen>('/api/citizen/demo'),
   listCitizenApplications: () => request<GovernmentApplication[]>('/api/citizen/applications'),
   listIssuedDocuments: () => request<IssuedDocument[]>('/api/citizen/issued-documents'),

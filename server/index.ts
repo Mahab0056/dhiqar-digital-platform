@@ -22,6 +22,7 @@ import {
   db,
   getCitizenById,
   getOrCreateCitizen,
+  listCitizensForSuperAdmin,
   getCitizenNotifications,
   getApplicationByReference,
   getApplicationByVerificationId,
@@ -1416,6 +1417,15 @@ app.patch('/api/super-admin/government-services/:id/publication', requireSession
   res.json(service)
 })
 
+app.get('/api/super-admin/citizens', requireSession('SUPER_ADMIN'), (req, res) => {
+  const filters = z.object({
+    q: z.string().trim().max(80).optional(),
+    verificationStatus: z.enum(['PHONE_VERIFIED', 'PENDING_REVIEW', 'VERIFIED', 'VERIFIED_MANUAL', 'VERIFIED_UR_PORTAL', 'NEEDS_RESUBMISSION', 'REJECTED']).optional(),
+    documentType: z.enum(['NATIONAL_ID', 'PASSPORT', 'DRIVING_LICENSE', 'UNSPECIFIED']).optional(),
+    limit: z.coerce.number().int().min(1).max(250).optional(),
+  }).parse(req.query)
+  res.json({ citizens: listCitizensForSuperAdmin({ query: filters.q, verificationStatus: filters.verificationStatus, documentType: filters.documentType, limit: filters.limit }) })
+})
 app.get('/api/super-admin/overview', requireSession('SUPER_ADMIN'), (_req, res) => {
   const audit = db.prepare(`SELECT actor, role, action, entity_type, entity_id, created_at
     FROM audit_logs ORDER BY created_at DESC LIMIT 20`).all() as Array<Record<string, unknown>>

@@ -568,6 +568,7 @@ ensureColumn('identity_reviews', 'location_lng', 'REAL')
 ensureColumn('identity_reviews', 'location_accuracy_m', 'REAL')
 ensureColumn('identity_reviews', 'location_consent_at', 'TEXT')
 db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_citizens_account_key ON citizens(account_key) WHERE account_key IS NOT NULL')
+db.exec('CREATE INDEX IF NOT EXISTS idx_citizens_admin_directory ON citizens(verification_status, document_type, updated_at DESC)')
 
 const now = () => new Date().toISOString()
 
@@ -675,7 +676,56 @@ export function getCitizen() {
   return mapCitizen(row)
 }
 
+const adminCitizenVerificationStatuses = new Set(['PHONE_VERIFIED', 'PENDING_REVIEW', 'VERIFIED', 'VERIFIED_MANUAL', 'VERIFIED_UR_PORTAL', 'NEEDS_RESUBMISSION', 'REJECTED'])
+const adminCitizenDocumentTypes = new Set(['NATIONAL_ID', 'PASSPORT', 'DRIVING_LICENSE', 'UNSPECIFIED'])
+
+export function listCitizensForSuperAdmin(filters: { query?: string; verificationStatus?: string; documentType?: string; limit?: number } = {}) {
+  const where: string[] = []
+  const values: Array<string | number> = []
+  const query = String(filters.query || '').trim().replace(/[\u0000-\u001f]/g, '').slice(0, 80)
+  const verificationStatus = String(filters.verificationStatus || '').trim()
+  const documentType = String(filters.documentType || '').trim()
+  const limit = Math.min(Math.max(Number(filters.limit) || 100, 1), 250)
+  if (query) {
+    const search = `%${query}%`
+    where.push('(c.full_name LIKE ? OR c.phone_masked LIKE ? OR c.national_id_masked LIKE ?)')
+    values.push(search, search, search)
+  }
+  if (adminCitizenVerificationStatuses.has(verificationStatus)) {
+    where.push('c.verification_status = ?')
+    values.push(verificationStatus)
+  }
+  if (adminCitizenDocumentTypes.has(documentType)) {
+    if (documentType === 'UNSPECIFIED') where.push("(c.document_type IS NULL OR c.document_type = '')")
+    else { where.push('c.document_type = ?'); values.push(documentType) }
+  }
+  const clause = where.length ? `WHERE ${where.join(' AND ')}` : ''
+  const rows = db.prepare(`
+    SELECT c.id, c.full_name, c.national_id_masked, c.phone_masked, c.verification_status, c.district, c.document_type, c.created_at, c.updated_at,
+      (SELECT COUNT(*) FROM applications a WHERE a.citizen_id = c.id) AS application_count,
+      (SELECT COUNT(*) FROM service_requests sr WHERE sr.citizen_id = c.id) AS service_request_count,
+      MAX(COALESCE(c.updated_at, c.created_at)) AS last_activity_at
+    FROM citizens c ${clause}
+    ORDER BY c.updated_at DESC, c.id DESC LIMIT ?
+  `).all(...values, limit) as Array<Record<string, unknown>>
+  return rows.map(row => ({
+    id: Number(row.id),
+    fullName: String(row.full_name),
+    phoneMasked: String(row.phone_masked),
+    nationalIdMasked: String(row.national_id_masked),
+    verificationStatus: String(row.verification_status),
+    district: String(row.district),
+    documentType: row.document_type ? String(row.document_type) : null,
+    createdAt: String(row.created_at),
+    updatedAt: String(row.updated_at),
+    applicationCount: Number(row.application_count || 0),
+    serviceRequestCount: Number(row.service_request_count || 0),
+    lastActivityAt: String(row.last_activity_at || row.updated_at || row.created_at),
+  }))
+}
+
 export function getApplications() {
+
   const rows = db.prepare('SELECT * FROM applications ORDER BY id DESC').all() as Array<Record<string, unknown>>
   return rows.map(mapApplication)
 }

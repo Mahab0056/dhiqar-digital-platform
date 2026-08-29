@@ -7,6 +7,7 @@ export type ApplicationStatus =
   | 'REJECTED'
 
 export type VerificationStatus =
+  | 'PHONE_VERIFIED'
   | 'PENDING_VERIFICATION'
   | 'VERIFIED'
   | 'VERIFIED_MANUAL'
@@ -34,6 +35,21 @@ export interface ApplicationEvent {
   description: string
   actor: string
   createdAt: string
+}
+
+export interface AdminCitizenDirectoryItem {
+  id: number
+  fullName: string
+  nationalIdMasked: string
+  phoneMasked: string
+  verificationStatus: string
+  district: string
+  documentType?: 'NATIONAL_ID' | 'PASSPORT' | 'DRIVING_LICENSE' | null
+  createdAt: string
+  updatedAt: string
+  lastActivityAt: string
+  applicationCount: number
+  serviceRequestCount: number
 }
 
 export interface CitizenNotification {

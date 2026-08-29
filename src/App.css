@@ -1691,3 +1691,51 @@ body { background: var(--gov-paper); color: var(--gov-text); font-family: "Segoe
   .employee-live-work-queue > a { grid-column: 1 / -1; min-height: 44px; }
   .employee-realtime-toast { bottom: 86px; inset-inline-end: 16px; }
 }
+
+/* سجل المواطنين — صلاحية المدير العام فقط */
+.admin-citizens-panel {
+  margin-top: 22px;
+  padding: 24px;
+  border: 1px solid #d7e4dc;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 12px 32px rgba(17, 65, 45, .06);
+}
+.admin-citizens-panel .panel-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; }
+.admin-citizen-total { display: grid; min-width: 96px; place-items: center; gap: 2px; padding: 11px; border: 1px solid #d9e9df; border-radius: 13px; background: #f1f8f3; color: #0a5a39; }
+.admin-citizen-total svg { width: 19px; height: 19px; }
+.admin-citizen-total strong { font-size: 23px; line-height: 1; }
+.admin-citizen-total small { color: #648277; font-size: 10px; font-weight: 800; }
+.admin-citizen-controls { display: grid; grid-template-columns: minmax(230px, 1.4fr) minmax(160px, .7fr) minmax(160px, .7fr) auto; align-items: end; gap: 11px; margin: 17px 0; padding: 14px; border: 1px solid #e0ebe4; border-radius: 14px; background: #f8fbf9; }
+.admin-citizen-controls > label:not(.admin-citizen-search) { display: grid; gap: 6px; color: #355447; font-size: 11px; font-weight: 900; }
+.admin-citizen-controls select, .admin-citizen-search { min-height: 44px; border: 1px solid #cfdfd5; border-radius: 10px; background: #fff; color: #153d2d; font: inherit; }
+.admin-citizen-controls select { padding: 0 10px; }
+.admin-citizen-search { display: flex; align-items: center; gap: 9px; padding: 0 12px; color: #4f7967; }
+.admin-citizen-search input { width: 100%; min-width: 0; border: 0; outline: 0; background: transparent; color: #133a2a; font: inherit; }
+.admin-citizen-search:focus-within, .admin-citizen-controls select:focus { border-color: #208459; box-shadow: 0 0 0 3px rgba(32, 132, 89, .11); }
+.admin-citizen-controls .button { min-height: 44px; white-space: nowrap; }
+.admin-citizen-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 13px; }
+.admin-citizen-list article { overflow: hidden; border: 1px solid #dbe7df; border-radius: 14px; background: #fff; box-shadow: 0 7px 18px rgba(13, 67, 43, .035); }
+.admin-citizen-list article > header { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 13px; border-bottom: 1px solid #e8efeb; background: linear-gradient(135deg, #fbfdfc, #f3f8f5); }
+.admin-citizen-avatar { display: grid; width: 37px; height: 37px; place-items: center; border-radius: 50%; background: #0c6744; color: #fff; font-size: 15px; font-weight: 900; }
+.admin-citizen-list h3 { overflow: hidden; margin: 0 0 3px; color: #0e3d2b; font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
+.admin-citizen-list header small { display: block; overflow: hidden; color: #71837a; font-size: 10px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.admin-citizen-status { padding: 6px 8px; border-radius: 999px; background: #edf2ee; color: #496257; font-size: 10px; font-weight: 900; white-space: nowrap; }
+.admin-citizen-status.verified, .admin-citizen-status.verified_manual, .admin-citizen-status.verified_ur_portal { background: #dcf5e5; color: #08703e; }
+.admin-citizen-status.pending_review, .admin-citizen-status.manual_review, .admin-citizen-status.phone_verified { background: #fff1cc; color: #8b6004; }
+.admin-citizen-status.needs_resubmission, .admin-citizen-status.rejected { background: #fee7e7; color: #a33131; }
+.admin-citizen-list dl { display: grid; grid-template-columns: 1fr 1fr; margin: 0; }
+.admin-citizen-list dl > div { min-width: 0; padding: 10px 13px; border-bottom: 1px solid #edf2ef; }
+.admin-citizen-list dl > div:nth-child(odd) { border-inline-end: 1px solid #edf2ef; }
+.admin-citizen-list dt { margin-bottom: 3px; color: #7a8c83; font-size: 10px; font-weight: 800; }
+.admin-citizen-list dd { overflow: hidden; margin: 0; color: #173f2e; font-size: 12px; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
+.admin-citizen-list footer { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 13px; padding: 11px 13px; background: #fcfdfc; color: #466659; font-size: 10px; font-weight: 800; }
+.admin-citizen-list footer span { display: inline-flex; align-items: center; gap: 5px; }
+.admin-citizen-list footer svg { width: 14px; height: 14px; color: #16704b; }
+.admin-citizen-list footer time { margin-inline-start: auto; color: #7c8e84; }
+.admin-citizens-empty { display: grid; min-height: 180px; place-items: center; align-content: center; gap: 7px; border: 1px dashed #c8dacf; border-radius: 13px; background: #fbfdfc; color: #5d7669; text-align: center; }
+.admin-citizens-empty svg { width: 28px; height: 28px; color: #1a8155; }
+.admin-citizens-empty h3 { margin: 3px 0 0; color: #245640; font-size: 14px; }
+.admin-citizens-empty p { margin: 0; font-size: 12px; }
+@media (max-width: 940px) { .admin-citizen-controls { grid-template-columns: 1fr 1fr; } .admin-citizen-search { grid-column: 1 / -1; } .admin-citizen-controls .button { justify-self: start; } }
+@media (max-width: 680px) { .admin-citizens-panel { margin-inline: -4px; padding: 16px; border-radius: 12px; } .admin-citizens-panel .panel-heading { align-items: stretch; } .admin-citizen-total { min-width: 78px; } .admin-citizen-controls { grid-template-columns: 1fr; padding: 10px; } .admin-citizen-search { grid-column: auto; } .admin-citizen-controls .button { width: 100%; justify-content: center; } .admin-citizen-list { grid-template-columns: 1fr; } .admin-citizen-list article > header { grid-template-columns: auto minmax(0, 1fr); } .admin-citizen-status { grid-column: 2; justify-self: start; } .admin-citizen-list footer time { width: 100%; margin-inline-start: 0; } }
