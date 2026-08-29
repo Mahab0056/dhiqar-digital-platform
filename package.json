@@ -35,6 +35,7 @@
     "recharts": "^3.10.1",
     "tesseract.js": "^7.0.0",
     "wouter": "^3.10.0",
+    "ws": "^8.21.3",
     "zod": "^4.4.3"
   },
   "devDependencies": {

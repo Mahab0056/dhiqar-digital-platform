@@ -4,6 +4,7 @@ import helmet from 'helmet'
 import { rateLimit } from 'express-rate-limit'
 import multer from 'multer'
 import { existsSync } from 'node:fs'
+import { createServer, type IncomingMessage } from 'node:http'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto'
@@ -38,9 +39,11 @@ import { getServiceDefinition, serviceDefinitions } from '../src/service-forms.j
 import { screenIdentitySubmission } from './identity-screening.js'
 import { analyzeIdentityDocument } from './identity-document-analysis.js'
 import { getGovernmentService, getGovernmentServiceDirectoryStats, listGovernmentServiceVersions, listGovernmentServices, setGovernmentServicePublication, upsertGovernmentService, type GovernmentServiceRecordInput } from './government-service-directory.js'
+import { installCitizenNotificationRealtime } from './citizen-notification-realtime.js'
 import { seedVerifiedGovernmentServices } from './government-service-seed.js'
 
 const app = express()
+const httpServer = createServer(app)
 seedVerifiedGovernmentServices()
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -96,7 +99,7 @@ function signSession(data: SessionData) {
   return `${payload}.${signature}`
 }
 
-function readSession(req: express.Request): SessionData | null {
+function readSession(req: Pick<IncomingMessage, 'headers'>): SessionData | null {
   try {
     const cookie = req.headers.cookie?.split(';').map(item => item.trim()).find(item => item.startsWith(`${sessionCookieName}=`))
     const token = cookie?.slice(sessionCookieName.length + 1)
@@ -202,6 +205,21 @@ const productionOrigin = process.env.PUBLIC_BASE_URL?.replace(/\/$/, '') || 'htt
 const secureHostedRuntime = process.env.RAILWAY_ENVIRONMENT === 'production' || (process.env.NODE_ENV === 'production' && process.env.LOCAL_HTTP_PREVIEW !== 'true')
 const allowedOrigins = new Set([productionOrigin, 'http://localhost:5173', 'http://localhost:5174', 'http://127.0.0.1:5173', 'http://127.0.0.1:5174'])
 const isLocalPreviewOrigin = (origin: string) => !secureHostedRuntime && /^http:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?$/.test(origin)
+const isAllowedRealtimeOrigin = (origin?: string) => !origin || allowedOrigins.has(origin) || isLocalPreviewOrigin(origin)
+const citizenNotificationRealtime = installCitizenNotificationRealtime({
+  server: httpServer,
+  authenticateCitizen(request) {
+    const session = readSession(request)
+    if (session?.role !== 'CITIZEN') return null
+    const citizenId = Number(session.sub)
+    return Number.isSafeInteger(citizenId) && citizenId > 0 && getCitizenById(citizenId) ? citizenId : null
+  },
+  isAllowedOrigin: isAllowedRealtimeOrigin,
+})
+function notifyCitizen(input: { citizenId: number; type: string; title: string; message: string; link?: string }) {
+  createNotification(input)
+  citizenNotificationRealtime.publish(input.citizenId, getCitizenNotifications(input.citizenId))
+}
 const apiLimiter = rateLimit({ windowMs: 60 * 1000, limit: 180, standardHeaders: 'draft-8', legacyHeaders: false, message: { message: 'طلبات كثيرة. انتظر دقيقة ثم أعد المحاولة.' } })
 const sensitiveLimiter = rateLimit({ windowMs: 10 * 60 * 1000, limit: 30, standardHeaders: 'draft-8', legacyHeaders: false, message: { message: 'تجاوزت الحد المؤقت لهذه العملية الحساسة. حاول لاحقاً.' } })
 
@@ -213,7 +231,7 @@ app.use(helmet({
       frameAncestors: ["'none'"],
       imgSrc: ["'self'", 'data:', 'blob:', 'https://*.tile.openstreetmap.org'],
       mediaSrc: ["'self'", 'blob:'],
-      connectSrc: ["'self'"],
+      connectSrc: ["'self'", 'ws:', 'wss:'],
       scriptSrc: ["'self'"],
       styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
       fontSrc: ["'self'", 'data:', 'https://fonts.gstatic.com'],
@@ -321,7 +339,9 @@ app.patch('/api/citizen/notifications/:id/read', requireSession('CITIZEN'), (req
   const citizen = currentCitizen(res)
   if (!citizen) return
   if (!markNotificationRead(citizen.id, req.params.id)) return res.status(404).json({ message: 'الإشعار غير موجود.' })
-  res.json(getCitizenNotifications(citizen.id))
+  const snapshot = getCitizenNotifications(citizen.id)
+  citizenNotificationRealtime.publish(citizen.id, snapshot)
+  res.json(snapshot)
 })
 
 app.post('/api/citizen/notifications/read-all', requireSession('CITIZEN'), (_req, res) => {
@@ -329,7 +349,9 @@ app.post('/api/citizen/notifications/read-all', requireSession('CITIZEN'), (_req
   if (!citizen) return
   const updated = markAllNotificationsRead(citizen.id)
   addAudit({ actor: citizen.fullName, role: 'CITIZEN', action: 'NOTIFICATIONS_MARKED_READ', entityType: 'Notification', entityId: 'all', metadata: { updated } })
-  res.json(getCitizenNotifications(citizen.id))
+  const snapshot = getCitizenNotifications(citizen.id)
+  citizenNotificationRealtime.publish(citizen.id, snapshot)
+  res.json(snapshot)
 })
 
 app.get('/api/citizen/service-requests', requireSession('CITIZEN'), (_req, res) => {
@@ -390,7 +412,7 @@ app.post('/api/citizen/feedback', requireSession('CITIZEN'), upload.array('attac
       attachFeedbackMedia(feedback.id, media.id, `مرفق ${index + 1}`)
     }
     const result = getFeedbackByReference(feedback.reference)!
-    createNotification({ citizenId: citizen.id, type: parsed.kind === 'COMPLAINT' ? 'COMPLAINT_CREATED' : 'SUGGESTION_CREATED', title: parsed.kind === 'COMPLAINT' ? 'تم استلام الشكوى' : 'تم استلام المقترح', message: `${result.reference} — ${result.currentAction}`, link: `/citizen/feedback/${result.reference}` })
+    notifyCitizen({ citizenId: citizen.id, type: parsed.kind === 'COMPLAINT' ? 'COMPLAINT_CREATED' : 'SUGGESTION_CREATED', title: parsed.kind === 'COMPLAINT' ? 'تم استلام الشكوى' : 'تم استلام المقترح', message: `${result.reference} — ${result.currentAction}`, link: `/citizen/feedback/${result.reference}` })
     addAudit({ actor: citizen.fullName, role: 'CITIZEN', action: parsed.kind === 'COMPLAINT' ? 'COMPLAINT_CREATED' : 'SUGGESTION_CREATED', entityType: 'CitizenFeedback', entityId: result.reference, newValue: { category: parsed.category, departmentId: parsed.departmentId, attachmentCount: files.length }, metadata: { hasLocation: parsed.lat !== undefined } })
     res.status(201).json(result)
   } catch (error) {
@@ -429,7 +451,7 @@ app.patch('/api/admin/feedback/:reference', requireSession('EMPLOYEE', 'SUPER_AD
   const session = res.locals.session as SessionData
   const actor = session.role === 'SUPER_ADMIN' ? 'مدير النظام' : 'موظف مختص'
   const updated = updateFeedbackStatus(feedback.id, { ...parsed.data, actor })
-  createNotification({ citizenId: feedback.citizenId, type: 'FEEDBACK_UPDATED', title: feedback.kind === 'COMPLAINT' ? 'تحديث على الشكوى' : 'تحديث على المقترح', message: `${feedback.reference} — ${parsed.data.currentAction}`, link: `/citizen/feedback/${feedback.reference}` })
+  notifyCitizen({ citizenId: feedback.citizenId, type: 'FEEDBACK_UPDATED', title: feedback.kind === 'COMPLAINT' ? 'تحديث على الشكوى' : 'تحديث على المقترح', message: `${feedback.reference} — ${parsed.data.currentAction}`, link: `/citizen/feedback/${feedback.reference}` })
   addAudit({ actor, role: session.role, action: 'FEEDBACK_STATUS_UPDATED', entityType: 'CitizenFeedback', entityId: feedback.reference, previousValue: { status: feedback.status }, newValue: { status: parsed.data.status } })
   res.json(updated)
 })
@@ -497,7 +519,7 @@ app.post('/api/service-requests', requireSession('CITIZEN'), upload.single('face
       .run(appointmentId, `APT-${reference.slice(4)}`, citizen.id, serviceRequestId, department.name, cleanData.purpose, cleanData.preferredDate, cleanData.preferredTime, timestamp, timestamp)
     appointment = { id: appointmentId, preferredDate: cleanData.preferredDate, preferredTime: cleanData.preferredTime, status: 'REQUESTED' }
   }
-  createNotification({ citizenId: citizen.id, type: definition.mode === 'APPOINTMENT' ? 'APPOINTMENT_REQUESTED' : 'SERVICE_REQUEST_CREATED', title: definition.mode === 'APPOINTMENT' ? 'تم إرسال طلب الموعد' : 'تم تسجيل طلب الخدمة', message: `${definition.title} — ${reference}. ${currentAction}`, link: '/citizen' })
+  notifyCitizen({ citizenId: citizen.id, type: definition.mode === 'APPOINTMENT' ? 'APPOINTMENT_REQUESTED' : 'SERVICE_REQUEST_CREATED', title: definition.mode === 'APPOINTMENT' ? 'تم إرسال طلب الموعد' : 'تم تسجيل طلب الخدمة', message: `${definition.title} — ${reference}. ${currentAction}`, link: '/citizen' })
   addAudit({ actor: citizen.fullName, role: 'CITIZEN', action: definition.mode === 'APPOINTMENT' ? 'APPOINTMENT_REQUESTED' : 'SERVICE_REQUEST_CREATED', entityType: 'ServiceRequest', entityId: reference, newValue: { service: definition.key, department: department.id }, metadata: { storedFields: Object.keys(cleanData), protectedFaceVideoId: faceMedia.id, faceConsent: true } })
   res.status(201).json({ id: serviceRequestId, reference, serviceKey: definition.key, serviceName: definition.title, department: department.name, status: definition.mode === 'APPOINTMENT' ? 'APPOINTMENT_REQUESTED' : 'SUBMITTED', currentAction, appointment, createdAt: timestamp })
 })
@@ -563,7 +585,7 @@ app.patch('/api/employee/service-requests/:reference', requireSession('EMPLOYEE'
   db.prepare(`UPDATE service_requests SET status = ?, current_action = ?, decision_note = ?, required_document = ?, updated_at = ? WHERE reference = ?`)
     .run(parsed.data.status, approvedAction, parsed.data.decisionNote || null, parsed.data.status === 'ACTION_REQUIRED' ? parsed.data.requiredDocument : null, timestamp, req.params.reference)
   const title = parsed.data.status === 'APPROVED' ? 'تمت معاملة الخدمة وصدر PDF' : parsed.data.status === 'REJECTED' ? 'تم رفض طلب الخدمة' : parsed.data.status === 'ACTION_REQUIRED' ? 'مستندات أو معلومات مطلوبة' : 'طلب الخدمة قيد التدقيق'
-  createNotification({ citizenId: Number(row.citizen_id), type: 'SERVICE_REQUEST_UPDATED', title, message: `${String(row.reference)} — ${approvedAction}${parsed.data.decisionNote ? ` • ${parsed.data.decisionNote}` : ''}`, link: '/citizen#issued-documents' })
+  notifyCitizen({ citizenId: Number(row.citizen_id), type: 'SERVICE_REQUEST_UPDATED', title, message: `${String(row.reference)} — ${approvedAction}${parsed.data.decisionNote ? ` • ${parsed.data.decisionNote}` : ''}`, link: '/citizen#issued-documents' })
   addAudit({ actor, role: session.role, action: issuedDocument ? 'SERVICE_REQUEST_APPROVED_DOCUMENT_ISSUED' : 'SERVICE_REQUEST_STATUS_UPDATED', entityType: 'ServiceRequest', entityId: req.params.reference, previousValue: { status: row.status }, newValue: { status: parsed.data.status, requiredDocument: parsed.data.requiredDocument || null, documentNumber: issuedDocument?.documentNumber || null, verificationId: issuedDocument?.verificationId || null } })
   const updated = db.prepare(`SELECT sr.*, sc.name AS service_name, d.name AS department_name, c.full_name AS citizen_name
     FROM service_requests sr JOIN service_catalog sc ON sc.id = sr.service_id JOIN departments d ON d.id = sr.department_id JOIN citizens c ON c.id = sr.citizen_id
@@ -590,7 +612,7 @@ app.post('/api/citizen/service-requests/:reference/upload-document', requireSess
     const currentAction = 'تم رفع المستند المطلوب وإعادة الطلب إلى الموظف للتدقيق.'
     db.prepare(`UPDATE service_requests SET status = 'UNDER_REVIEW', current_action = ?, decision_note = NULL, required_document = NULL, updated_at = ? WHERE id = ?`)
       .run(currentAction, timestamp, Number(requestRecord.id))
-    createNotification({ citizenId: citizen.id, type: 'SERVICE_DOCUMENT_UPLOADED', title: 'تم رفع المستند المطلوب', message: `${String(requestRecord.reference)} — ${currentAction}`, link: '/citizen#my-requests' })
+    notifyCitizen({ citizenId: citizen.id, type: 'SERVICE_DOCUMENT_UPLOADED', title: 'تم رفع المستند المطلوب', message: `${String(requestRecord.reference)} — ${currentAction}`, link: '/citizen#my-requests' })
     addAudit({ actor: citizen.fullName, role: 'CITIZEN', action: 'SERVICE_REQUEST_DOCUMENT_UPLOADED', entityType: 'ServiceRequest', entityId: String(requestRecord.reference), newValue: { label: documentName, mediaId: media.id } })
     const updated = db.prepare(`SELECT sr.*, sc.name AS service_name, d.name AS department_name, c.full_name AS citizen_name
       FROM service_requests sr JOIN service_catalog sc ON sc.id = sr.service_id JOIN departments d ON d.id = sr.department_id JOIN citizens c ON c.id = sr.citizen_id WHERE sr.id = ?`).get(Number(requestRecord.id)) as Record<string, unknown>
@@ -739,7 +761,7 @@ app.post('/api/onboarding/identity-review', requireSession('CITIZEN'), upload.fi
     `).run(reviewId, citizenId, maskedNationalId, front.id, back?.id || null, video.id, screening.qualityStatus, screening.qualityScore, JSON.stringify(screening.qualityChecks), analysis.faceComparison.status, analysis.faceComparison.confidence, analysis.provider, payload.documentType, now.toISOString(), now.toISOString(), analysis.status, extractionSummary, analysis.provider, analysis.confidence, profilePhoto?.id || null, locationAllowed ? payload.locationLat : null, locationAllowed ? payload.locationLng : null, locationAllowed ? payload.locationAccuracyM || null : null, locationAllowed ? now.toISOString() : null, now.toISOString(), now.toISOString(), retentionUntil, now.toISOString(), now.toISOString())
     db.prepare('UPDATE citizens SET full_name = ?, national_id_masked = ?, document_type = ?, profile_media_id = COALESCE(?, profile_media_id), verification_status = ?, consent_at = ?, location_lat = ?, location_lng = ?, location_accuracy_m = ?, location_updated_at = ?, location_consent_at = ?, updated_at = ? WHERE id = ?')
       .run(payload.fullName, maskedNationalId, payload.documentType, profilePhoto?.id || null, 'MANUAL_REVIEW', now.toISOString(), locationAllowed ? payload.locationLat : null, locationAllowed ? payload.locationLng : null, locationAllowed ? payload.locationAccuracyM || null : null, locationAllowed ? now.toISOString() : null, locationAllowed ? now.toISOString() : null, now.toISOString(), citizenId)
-    createNotification({ citizenId, type: 'IDENTITY_REVIEW', title: 'تم استلام طلب توثيق الهوية', message: 'وصلت صور الهوية وفيديو الوجه إلى قائمة المراجعة. ستصلك نتيجة القرار هنا.', link: '/citizen' })
+    notifyCitizen({ citizenId, type: 'IDENTITY_REVIEW', title: 'تم استلام طلب توثيق الهوية', message: 'وصلت صور الهوية وفيديو الوجه إلى قائمة المراجعة. ستصلك نتيجة القرار هنا.', link: '/citizen' })
     addAudit({
       actor: payload.fullName,
       role: 'CITIZEN',
@@ -861,7 +883,7 @@ app.post('/api/admin/identity-reviews/:id/decision', requireSession('EMPLOYEE', 
         .run(payload.decision, timestamp, 'موظف مراجعة الهوية', payload.notes, timestamp, req.params.id)
       const citizenStatus = payload.decision === 'APPROVED' ? 'VERIFIED_MANUAL' : payload.decision
       db.prepare('UPDATE citizens SET verification_status = ?, updated_at = ? WHERE id = ?').run(citizenStatus, timestamp, review.citizen_id)
-      createNotification({ citizenId: Number(review.citizen_id), type: 'IDENTITY_DECISION', title: payload.decision === 'APPROVED' ? 'تم اعتماد مراجعة الهوية' : payload.decision === 'NEEDS_RESUBMISSION' ? 'مطلوب إعادة رفع الهوية' : 'تعذر اعتماد مراجعة الهوية', message: payload.notes || (payload.decision === 'APPROVED' ? 'اكتملت المراجعة البشرية ويمكنك متابعة الخدمات المتاحة.' : 'راجع الملاحظة وأعد تقديم البيانات المطلوبة.'), link: '/citizen' })
+      notifyCitizen({ citizenId: Number(review.citizen_id), type: 'IDENTITY_DECISION', title: payload.decision === 'APPROVED' ? 'تم اعتماد مراجعة الهوية' : payload.decision === 'NEEDS_RESUBMISSION' ? 'مطلوب إعادة رفع الهوية' : 'تعذر اعتماد مراجعة الهوية', message: payload.notes || (payload.decision === 'APPROVED' ? 'اكتملت المراجعة البشرية ويمكنك متابعة الخدمات المتاحة.' : 'راجع الملاحظة وأعد تقديم البيانات المطلوبة.'), link: '/citizen' })
       addAudit({ actor: 'موظف مراجعة الهوية', role: 'IDENTITY_REVIEWER', action: 'IDENTITY_REVIEW_DECIDED', entityType: 'IdentityReview', entityId: req.params.id, previousValue: { status: review.status }, newValue: { status: payload.decision }, metadata: { notesLength: payload.notes.length } })
       db.exec('COMMIT')
     } catch (error) {
@@ -983,7 +1005,7 @@ app.post('/api/applications', requireSession('CITIZEN'), upload.fields([{ name: 
   }
   addEvent(applicationId, { type: 'APPLICATION_CREATED', title: 'تم التقديم', description: 'استلمت المنصة الطلب والمرفقات المشفرة وسجلته للتدقيق.', actor: 'المواطن' })
   addEvent(applicationId, { type: 'ROUTED', title: 'تم التوجيه إلى الدائرة', description: `تم توجيه الطلب آلياً إلى ${payload.department}.`, actor: 'محرك سير العمل' })
-  createNotification({ citizenId: citizen.id, type: 'APPLICATION_CREATED', title: 'تم تسجيل المعاملة', message: `سُجل طلب ${payload.serviceName} بالرقم ${reference} ووُجه إلى ${payload.department}.`, link: `/citizen/application/${reference}` })
+  notifyCitizen({ citizenId: citizen.id, type: 'APPLICATION_CREATED', title: 'تم تسجيل المعاملة', message: `سُجل طلب ${payload.serviceName} بالرقم ${reference} ووُجه إلى ${payload.department}.`, link: `/citizen/application/${reference}` })
   addAudit({ actor: citizen.fullName, role: 'CITIZEN', action: 'APPLICATION_CREATED', entityType: 'Application', entityId: reference, newValue: { service: payload.serviceKey, district: payload.district }, metadata: { protectedAttachments: protectedFiles.map(file => file.label), retentionDays: 30, faceConsent: true } })
   res.status(201).json(getApplicationByReference(reference))
 })
@@ -996,7 +1018,7 @@ app.post('/api/applications/:reference/request-document', requireSession('EMPLOY
   db.prepare(`UPDATE applications SET status = 'ACTION_REQUIRED', current_action = ?, required_document = ?, updated_at = ? WHERE reference = ?`)
     .run(`يرجى رفع ${payload.documentName} لإكمال التدقيق.`, payload.documentName, timestamp, req.params.reference)
   addEvent(item.id as number, { type: 'INFORMATION_REQUESTED', title: 'طلب معلومات إضافية', description: `طلب الموظف رفع ${payload.documentName}.`, actor: 'موظفة التدقيق — سارة كاظم' })
-  createNotification({ citizenId: Number(item.citizenId), type: 'ACTION_REQUIRED', title: 'مطلوب مستند إضافي', message: `ارفع ${payload.documentName} لإكمال تدقيق المعاملة ${req.params.reference}.`, link: `/citizen/application/${req.params.reference}` })
+  notifyCitizen({ citizenId: Number(item.citizenId), type: 'ACTION_REQUIRED', title: 'مطلوب مستند إضافي', message: `ارفع ${payload.documentName} لإكمال تدقيق المعاملة ${req.params.reference}.`, link: `/citizen/application/${req.params.reference}` })
   addAudit({ actor: 'سارة كاظم حسن', role: 'EMPLOYEE', action: 'DOCUMENT_REQUESTED', entityType: 'Application', entityId: req.params.reference, previousValue: { status: item.status }, newValue: { status: 'ACTION_REQUIRED', document: payload.documentName } })
   res.json(getApplicationByReference(req.params.reference))
 })
@@ -1017,7 +1039,7 @@ app.post('/api/applications/:reference/upload-document', requireSession('CITIZEN
   db.prepare(`UPDATE applications SET status = 'UNDER_REVIEW', current_action = 'لا يوجد إجراء مطلوب منك. تم استلام المستند وأعيدت المعاملة للموظف المختص.', required_document = NULL, updated_at = ? WHERE reference = ?`)
     .run(timestamp, req.params.reference)
   addEvent(item.id as number, { type: 'DOCUMENT_UPLOADED', title: 'تم استكمال المعلومات', description: `رفع المواطن ${payload.documentName} بشكل مشفر وأعيدت المعاملة إلى التدقيق.`, actor: 'المواطن' })
-  createNotification({ citizenId: Number(item.citizenId), type: 'DOCUMENT_RECEIVED', title: 'تم استلام المستند', message: `استلمت المنصة ${payload.documentName} وأعادت المعاملة إلى الموظف المختص.`, link: `/citizen/application/${req.params.reference}` })
+  notifyCitizen({ citizenId: Number(item.citizenId), type: 'DOCUMENT_RECEIVED', title: 'تم استلام المستند', message: `استلمت المنصة ${payload.documentName} وأعادت المعاملة إلى الموظف المختص.`, link: `/citizen/application/${req.params.reference}` })
   addAudit({ actor: citizen.fullName, role: 'CITIZEN', action: 'MISSING_DOCUMENT_UPLOADED', entityType: 'Application', entityId: req.params.reference, previousValue: { status: item.status }, newValue: { status: 'UNDER_REVIEW', document: payload.documentName }, metadata: { protectedMediaId: media.id, retentionDays: 30 } })
   res.json(getApplicationByReference(req.params.reference))
 })
@@ -1034,7 +1056,7 @@ app.post('/api/applications/:reference/approve', requireSession('EMPLOYEE', 'SUP
     db.prepare(`UPDATE applications SET status = 'PAYMENT_REQUIRED', current_action = 'تمت الموافقة الإدارية. بانتظار تهيئة بوابة الدفع المعتمدة لإكمال سداد الرسم وإصدار الوثيقة.', payment_status = 'PENDING', updated_at = ? WHERE reference = ?`)
       .run(timestamp, req.params.reference)
     addEvent(item.id as number, { type: 'PAYMENT_REQUIRED', title: 'بانتظار الدفع', description: `رسم الخدمة ${item.fee} د.ع. لا يُسجل دفع ولا تصدر وثيقة حتى عودة بوابة الدفع المعتمدة.`, actor: 'محرك سير العمل' })
-    createNotification({ citizenId: Number(item.citizenId), type: 'PAYMENT_REQUIRED', title: 'المعاملة بانتظار الدفع', message: `تمت الموافقة الإدارية على ${req.params.reference}. سيُفتح الدفع عند ربط بوابة الدفع المعتمدة.`, link: `/citizen/application/${req.params.reference}` })
+    notifyCitizen({ citizenId: Number(item.citizenId), type: 'PAYMENT_REQUIRED', title: 'المعاملة بانتظار الدفع', message: `تمت الموافقة الإدارية على ${req.params.reference}. سيُفتح الدفع عند ربط بوابة الدفع المعتمدة.`, link: `/citizen/application/${req.params.reference}` })
     addAudit({ actor: 'سارة كاظم حسن', role: 'EMPLOYEE', action: 'PAYMENT_REQUIRED', entityType: 'Application', entityId: req.params.reference, previousValue: { status: item.status }, newValue: { status: 'PAYMENT_REQUIRED' }, metadata: { fee: item.fee, providerConfigured: false } })
     return res.json(getApplicationByReference(req.params.reference))
   }
@@ -1055,7 +1077,7 @@ app.post('/api/applications/:reference/approve', requireSession('EMPLOYEE', 'SUP
       .run(documentNumber, verificationId, timestamp, req.params.reference)
     addEvent(item.id as number, { type: 'APPROVED', title: 'تمت الموافقة', description: 'اعتمد الموظف المختص الطلب.', actor: 'موظفة التدقيق — سارة كاظم' })
     addEvent(item.id as number, { type: 'DOCUMENT_ISSUED', title: 'تم إصدار الوثيقة المؤرشفة', description: `أُنشئت الوثيقة ${documentNumber} ومعرّف التحقق الرقمي وحُفظ PDF الأصلي مشفراً في الأرشيف.`, actor: 'نظام الوثائق الرقمية' })
-    createNotification({ citizenId: Number(item.citizenId), type: 'DOCUMENT_ISSUED', title: 'اكتملت المعاملة وصدر PDF', message: `صدرت الوثيقة ${documentNumber}. يمكنك فتح PDF الأصلي والتحقق منه عبر QR.`, link: '/citizen#issued-documents' })
+    notifyCitizen({ citizenId: Number(item.citizenId), type: 'DOCUMENT_ISSUED', title: 'اكتملت المعاملة وصدر PDF', message: `صدرت الوثيقة ${documentNumber}. يمكنك فتح PDF الأصلي والتحقق منه عبر QR.`, link: '/citizen#issued-documents' })
     addAudit({ actor: 'موظف مختص', role: 'EMPLOYEE', action: 'APPLICATION_APPROVED_DOCUMENT_ISSUED', entityType: 'Application', entityId: req.params.reference, previousValue: { status: item.status }, newValue: { status: 'APPROVED', documentNumber, verificationId }, metadata: { paymentRecorded: false, qrVerification: true, issuedDocumentId: issuedDocument.id } })
     db.exec('COMMIT')
   } catch (error) {
@@ -1409,6 +1431,6 @@ app.use((error: unknown, _req: express.Request, res: express.Response, _next: ex
   res.status(500).json({ message: 'تعذر إكمال الإرسال الآن. لم تُسجل المعاملة؛ أعد المحاولة لاحقاً، وإذا استمر الخطأ أرسل رمز المتابعة إلى الدعم.', requestId })
 })
 
-app.listen(port, '0.0.0.0', () => {
+httpServer.listen(port, '0.0.0.0', () => {
   console.log(`Dhi Qar Digital API listening on http://0.0.0.0:${port}`)
 })

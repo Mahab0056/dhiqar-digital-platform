@@ -587,6 +587,53 @@ function PortalLayout({ children, role = 'citizen' }: { children: React.ReactNod
   const [location] = useLocation()
   const [mobileNav, setMobileNav] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  const [liveUnread, setLiveUnread] = useState(0)
+  const [liveNotification, setLiveNotification] = useState<CitizenNotification | null>(null)
+  const realtimeTimerRef = useRef<number | null>(null)
+  useEffect(() => {
+    if (role !== 'citizen' || typeof WebSocket === 'undefined') return
+    let socket: WebSocket | null = null
+    let stopped = false
+    let retryDelay = 1000
+    const publishSnapshot = (payload: { unread: number; items: CitizenNotification[] }, notify = false) => {
+      setLiveUnread(payload.unread)
+      window.dispatchEvent(new CustomEvent('citizen-notifications-updated', { detail: payload }))
+      if (notify) {
+        const newest = payload.items.find(item => !item.readAt)
+        if (newest) {
+          setLiveNotification(newest)
+          window.setTimeout(() => setLiveNotification(current => current?.id === newest.id ? null : current), 7000)
+        }
+      }
+    }
+    const connect = () => {
+      if (stopped) return
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+      socket = new WebSocket(`${protocol}//${window.location.host}/ws/citizen-notifications`)
+      socket.addEventListener('open', () => {
+        retryDelay = 1000
+        void api.getNotifications().then(payload => publishSnapshot(payload)).catch(() => {})
+      })
+      socket.addEventListener('message', event => {
+        try {
+          const message = JSON.parse(String(event.data)) as { type?: string; payload?: { unread: number; items: CitizenNotification[] } }
+          if (message.type === 'citizen.notifications.updated' && message.payload) publishSnapshot(message.payload, true)
+        } catch { /* رسالة غير صالحة لا تؤثر على الواجهة */ }
+      })
+      socket.addEventListener('error', () => socket?.close())
+      socket.addEventListener('close', () => {
+        if (stopped) return
+        realtimeTimerRef.current = window.setTimeout(connect, retryDelay)
+        retryDelay = Math.min(retryDelay * 2, 15_000)
+      })
+    }
+    connect()
+    return () => {
+      stopped = true
+      if (realtimeTimerRef.current) window.clearTimeout(realtimeTimerRef.current)
+      socket?.close()
+    }
+  }, [role])
   useEffect(() => { void api.heartbeatPresence().catch(() => {}); const timer = window.setInterval(() => void api.heartbeatPresence().catch(() => {}), 60_000); return () => window.clearInterval(timer) }, [])
   const searchResults = useMemo(() => {
     const term = searchQuery.trim().toLowerCase()
@@ -598,7 +645,7 @@ function PortalLayout({ children, role = 'citizen' }: { children: React.ReactNod
     { icon: CalendarDays, label: 'الكشوفات', href: '/employee#employee-service-requests' }, { icon: FileArchive, label: 'الأرشيف', href: '/employee#employee-archive' },
     { icon: Activity, label: 'سجل الإجراءات', href: '/employee#employee-activity' },
   ]
-  return <div className="portal-shell"><CivicUtilityBar /><aside className={mobileNav ? 'portal-sidebar open' : 'portal-sidebar'}><div className="sidebar-brand"><Brand /><button onClick={() => setMobileNav(false)}><X /></button></div><div className="role-chip">{role === 'citizen' ? <UserRound /> : <Building2 />} {role === 'citizen' ? 'بوابة المواطن' : 'بوابة الموظف'}</div><nav>{nav.map((item, index) => <a href={item.href} onClick={() => setMobileNav(false)} className={location === item.href || (index === 0 && location === '/citizen') ? 'active' : ''} key={item.label}><item.icon /> {item.label}</a>)}</nav><div className="sidebar-security"><ShieldCheck /><span>جلسة محمية</span><small>آخر نشاط: الآن</small></div><Link href="/login" className="sidebar-logout"><LogIn /> تبديل البوابة</Link></aside><div className="portal-main"><header className="portal-topbar"><button className="mobile-sidebar-button" onClick={() => setMobileNav(true)}><Menu /></button><div className="topbar-search"><Search /><input value={searchQuery} onChange={event => setSearchQuery(event.target.value)} placeholder="ابحث عن خدمة أو دائرة" aria-label="ابحث داخل المنصة" />{!searchQuery && <span className="search-help">بحث</span>}{searchResults.length > 0 && <div className="topbar-search-results">{searchResults.map(service => <Link href={`/service/${service.key}`} key={service.key} onClick={() => setSearchQuery('')}><span><BriefcaseBusiness /></span><div><strong>{service.title}</strong><small>{service.department} • {service.category}</small></div><ArrowLeft /></Link>)}</div>}</div><div className="topbar-actions"><Link className="topbar-notification-link" href={role === 'citizen' ? '/citizen/notifications' : '/employee'} aria-label={role === 'citizen' ? 'فتح الإشعارات' : 'فتح قائمة المعاملات'}><Bell /></Link>{role === 'citizen' ? <CitizenProfileAvatar /> : <div className="user-avatar">م</div>}<div><strong>{role === 'citizen' ? 'حساب المواطن' : 'حساب الموظف'}</strong><small>{role === 'citizen' ? 'الخدمات والإشعارات' : 'التدقيق والمعاملات'}</small></div></div></header><main className="portal-content">{children}</main><nav className="mobile-bottom-nav" aria-label="التنقل السريع">{nav.slice(0, 4).map((item, index) => <a href={item.href} onClick={() => setMobileNav(false)} className={location === item.href || (index === 0 && location === '/citizen') ? 'active' : ''} key={`mobile-${item.label}`}><item.icon /><span>{item.label}</span></a>)}</nav></div></div>
+  return <div className="portal-shell"><CivicUtilityBar /><aside className={mobileNav ? 'portal-sidebar open' : 'portal-sidebar'}><div className="sidebar-brand"><Brand /><button onClick={() => setMobileNav(false)}><X /></button></div><div className="role-chip">{role === 'citizen' ? <UserRound /> : <Building2 />} {role === 'citizen' ? 'بوابة المواطن' : 'بوابة الموظف'}</div><nav>{nav.map((item, index) => <a href={item.href} onClick={() => setMobileNav(false)} className={location === item.href || (index === 0 && location === '/citizen') ? 'active' : ''} key={item.label}><item.icon /> {item.label}</a>)}</nav><div className="sidebar-security"><ShieldCheck /><span>جلسة محمية</span><small>آخر نشاط: الآن</small></div><Link href="/login" className="sidebar-logout"><LogIn /> تبديل البوابة</Link></aside><div className="portal-main"><header className="portal-topbar"><button className="mobile-sidebar-button" onClick={() => setMobileNav(true)}><Menu /></button><div className="topbar-search"><Search /><input value={searchQuery} onChange={event => setSearchQuery(event.target.value)} placeholder="ابحث عن خدمة أو دائرة" aria-label="ابحث داخل المنصة" />{!searchQuery && <span className="search-help">بحث</span>}{searchResults.length > 0 && <div className="topbar-search-results">{searchResults.map(service => <Link href={`/service/${service.key}`} key={service.key} onClick={() => setSearchQuery('')}><span><BriefcaseBusiness /></span><div><strong>{service.title}</strong><small>{service.department} • {service.category}</small></div><ArrowLeft /></Link>)}</div>}</div><div className="topbar-actions"><Link className="topbar-notification-link" href={role === 'citizen' ? '/citizen/notifications' : '/employee'} aria-label={role === 'citizen' ? 'فتح الإشعارات' : 'فتح قائمة المعاملات'}><Bell />{role === 'citizen' && liveUnread > 0 && <b className="realtime-unread-badge">{liveUnread > 99 ? '99+' : liveUnread.toLocaleString('en-US')}</b>}</Link>{role === 'citizen' ? <CitizenProfileAvatar /> : <div className="user-avatar">م</div>}<div><strong>{role === 'citizen' ? 'حساب المواطن' : 'حساب الموظف'}</strong><small>{role === 'citizen' ? 'الخدمات والإشعارات' : 'التدقيق والمعاملات'}</small></div></div></header><main className="portal-content">{children}</main><nav className="mobile-bottom-nav" aria-label="التنقل السريع">{nav.slice(0, 4).map((item, index) => <a href={item.href} onClick={() => setMobileNav(false)} className={location === item.href || (index === 0 && location === '/citizen') ? 'active' : ''} key={`mobile-${item.label}`}><item.icon /><span>{item.label}</span></a>)}</nav></div>{role === 'citizen' && liveNotification && <Link href={liveNotification.link || '/citizen/notifications'} className="citizen-realtime-toast" aria-live="polite"><Bell /><span><small>إشعار جديد</small><strong>{liveNotification.title}</strong><em>{liveNotification.message}</em></span><X onClick={event => { event.preventDefault(); setLiveNotification(null) }} /></Link>}</div>
 }
 
 function CitizenDashboard() {
@@ -610,6 +657,7 @@ function CitizenDashboard() {
   const [unreadNotifications, setUnreadNotifications] = useState(0)
   const applyNotifications = (payload: { unread: number; items: CitizenNotification[] }) => { setUnreadNotifications(payload.unread); setNotifications(payload.items) }
   useEffect(() => { void Promise.all([api.getDemoCitizen().then(setCitizen), api.listCitizenApplications().then(setApplications), api.listCitizenServiceRequests().then(setServiceRequests), api.listIssuedDocuments().then(setIssuedDocuments), api.getNotifications().then(applyNotifications)]) }, [])
+  useEffect(() => { const receive = (event: Event) => applyNotifications((event as CustomEvent<{ unread: number; items: CitizenNotification[] }>).detail); window.addEventListener('citizen-notifications-updated', receive); return () => window.removeEventListener('citizen-notifications-updated', receive) }, [])
   const readNotification = async (id: string) => applyNotifications(await api.markNotificationRead(id))
   const readAllNotifications = async () => applyNotifications(await api.markAllNotificationsRead())
   const [uploadingServiceReference, setUploadingServiceReference] = useState<string | null>(null)
@@ -657,6 +705,7 @@ function CitizenNotificationsPage() {
   const [error, setError] = useState('')
   const applyNotifications = (payload: { unread: number; items: CitizenNotification[] }) => { setUnread(payload.unread); setNotifications(payload.items) }
   useEffect(() => { let active = true; api.getNotifications().then(payload => { if (active) applyNotifications(payload) }).catch(loadError => { if (active) setError((loadError as Error).message) }).finally(() => { if (active) setLoading(false) }); return () => { active = false } }, [])
+  useEffect(() => { const receive = (event: Event) => { applyNotifications((event as CustomEvent<{ unread: number; items: CitizenNotification[] }>).detail); setLoading(false) }; window.addEventListener('citizen-notifications-updated', receive); return () => window.removeEventListener('citizen-notifications-updated', receive) }, [])
   const markOne = async (id: string) => { try { applyNotifications(await api.markNotificationRead(id)) } catch (markError) { setError((markError as Error).message) } }
   const markAll = async () => { try { applyNotifications(await api.markAllNotificationsRead()) } catch (markError) { setError((markError as Error).message) } }
   return <PortalLayout><section className="citizen-notifications-page"><header className="citizen-notifications-head"><div><Link href="/citizen"><ArrowRight /> حساب المواطن</Link><span className="section-kicker">التحديثات</span><h1>إشعارات الحساب</h1><p>تظهر هنا تحديثات المعاملات وطلبات النواقص ونتائج المراجعة حال ورودها من المنصة.</p></div><div>{unread > 0 && <button className="button outline" onClick={() => void markAll()}>تعليم الكل كمقروء <Check /></button>}</div></header>{error && <div className="form-error"><AlertTriangle /> {error}</div>}{loading ? <div className="loading-state"><RefreshCw className="spin" /> جاري تحميل الإشعارات...</div> : notifications.length === 0 ? <div className="citizen-empty notifications-empty"><Bell /><div><strong>لا توجد إشعارات حالياً</strong><span>ستصل تحديثات الحساب والمعاملات هنا عند حدوثها.</span></div><Link href="/citizen#services" className="button primary">تصفح الخدمات <ArrowLeft /></Link></div> : <div className="citizen-notifications-full-list">{notifications.map(item => item.link ? <Link href={item.link} className={item.readAt ? 'citizen-notification-row read' : 'citizen-notification-row unread'} key={item.id} onClick={() => { if (!item.readAt) void markOne(item.id) }}><span><Bell /></span><div><strong>{item.title}</strong><p>{item.message}</p><time>{new Date(item.createdAt).toLocaleString('en-GB')}</time></div><ArrowLeft /></Link> : <button type="button" className={item.readAt ? 'citizen-notification-row read' : 'citizen-notification-row unread'} key={item.id} onClick={() => { if (!item.readAt) void markOne(item.id) }}><span><Bell /></span><div><strong>{item.title}</strong><p>{item.message}</p><time>{new Date(item.createdAt).toLocaleString('en-GB')}</time></div></button>)}</div>}</section></PortalLayout>
