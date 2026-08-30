@@ -205,7 +205,8 @@ app.set('trust proxy', 1)
 
 const productionOrigin = process.env.PUBLIC_BASE_URL?.replace(/\/$/, '') || 'https://dhiqar-digital-platform-production.up.railway.app'
 const secureHostedRuntime = process.env.RAILWAY_ENVIRONMENT === 'production' || (process.env.NODE_ENV === 'production' && process.env.LOCAL_HTTP_PREVIEW !== 'true')
-const allowedOrigins = new Set([productionOrigin, 'http://localhost:5173', 'http://localhost:5174', 'http://127.0.0.1:5173', 'http://127.0.0.1:5174'])
+const customDomainOrigins = ['https://thi-qar.com', 'https://www.thi-qar.com'] as const
+const allowedOrigins = new Set([productionOrigin, ...customDomainOrigins, 'http://localhost:5173', 'http://localhost:5174', 'http://127.0.0.1:5173', 'http://127.0.0.1:5174'])
 const isLocalPreviewOrigin = (origin: string) => !secureHostedRuntime && /^http:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?$/.test(origin)
 const isAllowedRealtimeOrigin = (origin?: string) => !origin || allowedOrigins.has(origin) || isLocalPreviewOrigin(origin)
 const citizenNotificationRealtime = installCitizenNotificationRealtime({
