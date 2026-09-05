@@ -21,6 +21,7 @@ import { AdminCitizensPanel } from './AdminCitizensPanel'
 import { DepartmentManagementPanel } from './DepartmentManagementPanel'
 import { GovernmentServiceAdminPanel } from './GovernmentServiceAdminPanel'
 import { StaffAccountsPanel } from './StaffAccountsPanel'
+import { SystemHealthPanel } from './SystemHealthPanel'
 import { logoutAndRedirect, useSession } from '../../lib/session'
 
 export function SuperAdminDashboard() {
@@ -224,6 +225,7 @@ export function SuperAdminDashboard() {
       <AdminCitizensPanel />
       <DepartmentManagementPanel />
       <GovernmentServiceAdminPanel />
+      <SystemHealthPanel />
     </OperationsShell>
   )
 }

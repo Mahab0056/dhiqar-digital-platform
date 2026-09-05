@@ -126,6 +126,23 @@ export const api = {
     request<{ success: boolean; revoked: number }>(`/api/super-admin/staff/${encodeURIComponent(id)}/revoke-sessions`, {
       method: 'POST',
     }),
+  getDatabaseStatus: () =>
+    request<{
+      engine: string
+      path: string
+      sizeBytes: number
+      journalMode: string
+      tables: Array<{ name: string; rows: number }>
+      backups: Array<{ file: string; path: string; sizeBytes: number; createdAt: string }>
+      backupDir: string
+      retentionDays: number
+      intervalHours: number
+      integrity: { ok: boolean; detail: string[] }
+    }>('/api/super-admin/system/database'),
+  createBackup: () =>
+    request<{ file: string; sizeBytes: number; createdAt: string }>('/api/super-admin/system/backups', {
+      method: 'POST',
+    }),
   listAuditLogs: (params: { limit?: number; action?: string; actor?: string } = {}) => {
     const search = new URLSearchParams()
     if (params.limit) search.set('limit', String(params.limit))

@@ -1,6 +1,7 @@
 import type express from 'express'
 import { z } from 'zod'
 import { addAudit, db } from '../db.js'
+import { createBackup, databaseStats, integrityCheck } from '../db-ops/backup.js'
 import { param } from '../http/params.js'
 import { sensitiveLimiter } from '../http/rate-limit.js'
 import { currentSession, requireSession, revokeStaffSessions } from '../auth/session.js'
@@ -161,6 +162,28 @@ export function registerStaffAdminRoutes(app: express.Express) {
       metadata: { revoked },
     })
     res.json({ success: true, revoked })
+  })
+
+  app.get('/api/super-admin/system/database', guard, (_req, res) => {
+    res.json({ ...databaseStats(), integrity: integrityCheck() })
+  })
+
+  app.post('/api/super-admin/system/backups', guard, sensitiveLimiter, (_req, res) => {
+    const session = currentSession(res)
+    try {
+      const entry = createBackup('MANUAL')
+      addAudit({
+        actor: session.actor,
+        role: session.role,
+        action: 'DATABASE_BACKUP_CREATED',
+        entityType: 'Database',
+        entityId: entry.file,
+        metadata: { sizeBytes: entry.sizeBytes },
+      })
+      res.status(201).json(entry)
+    } catch (error) {
+      res.status(500).json({ message: `تعذر إنشاء النسخة الاحتياطية: ${(error as Error).message}` })
+    }
   })
 
   app.get('/api/super-admin/audit-logs', guard, (req, res) => {

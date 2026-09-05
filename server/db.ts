@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url'
 const currentDir = dirname(fileURLToPath(import.meta.url))
 const defaultDatabasePath = join(currentDir, '..', 'data', 'dhiqar-demo.sqlite')
 const railwayVolumePath = process.env.RAILWAY_VOLUME_MOUNT_PATH?.trim()
-const databasePath =
+export const databasePath =
   process.env.DATABASE_PATH?.trim() ||
   (railwayVolumePath ? join(railwayVolumePath, 'dhiqar-demo.sqlite') : defaultDatabasePath)
 mkdirSync(dirname(databasePath), { recursive: true })

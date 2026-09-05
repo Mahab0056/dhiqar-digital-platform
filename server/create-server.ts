@@ -21,6 +21,7 @@ import { registerSystemRoutes } from './routes/system.js'
 import { registerStaffAdminRoutes } from './routes/staff-admin.js'
 import { registerDepartmentRoutes } from './routes/departments.js'
 import { seedDepartments } from './departments.js'
+import { scheduleBackups } from './db-ops/backup.js'
 import { bootstrapStaffAccounts } from './auth/staff.js'
 import { purgeExpiredSessions } from './auth/session.js'
 
@@ -30,6 +31,7 @@ export function createPlatformServer(options: { serveStatic?: boolean } = {}) {
   seedPlatformServiceCatalog()
   bootstrapStaffAccounts()
   purgeExpiredSessions()
+  scheduleBackups()
   setInterval(purgeExpiredSessions, 60 * 60 * 1000).unref()
 
   const { app, httpServer } = createApp()
