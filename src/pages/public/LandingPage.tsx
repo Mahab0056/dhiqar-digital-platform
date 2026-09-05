@@ -1,5 +1,6 @@
+import { api } from '../../api'
 import type React from 'react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useLocation } from 'wouter'
 import { ArrowLeft, Bell, BriefcaseBusiness, Building2, FileText, Fingerprint, Landmark, LogIn, MapPin, QrCode, Search, ShieldCheck } from 'lucide-react'
 import { categoryIcons, services } from '../../data'
@@ -13,6 +14,13 @@ import { PublicHeader } from '../../components/public/PublicHeader'
 export function LandingPage() {
   const [, navigate] = useLocation()
   const [serviceQuery, setServiceQuery] = useState('')
+  const [departmentCount, setDepartmentCount] = useState<number | null>(null)
+  useEffect(() => {
+    api
+      .listDepartments()
+      .then(result => setDepartmentCount(result.summary.total))
+      .catch(() => setDepartmentCount(null))
+  }, [])
   const [category, setCategory] = useState('الكل')
   const categories = Array.from(new Set(services.map(service => service.category))).map(label => ({
     label,
@@ -65,7 +73,11 @@ export function LandingPage() {
     )
   const indicators = [
     { value: services.length.toLocaleString('en-US'), label: 'خدمة ومسار في الدليل', icon: BriefcaseBusiness },
-    { value: governmentEntities.length.toLocaleString('en-US'), label: 'جهة حكومية مدرجة', icon: Landmark },
+    {
+      value: (departmentCount ?? governmentEntities.length).toLocaleString('en-US'),
+      label: 'دائرة وجهة حكومية في الدليل',
+      icon: Landmark,
+    },
     { value: dhiqarNews.length.toLocaleString('en-US'), label: 'خبر من مصدر معروض', icon: Bell },
     { value: 'QR', label: 'تحقق من الوثائق', icon: QrCode },
   ]

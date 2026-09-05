@@ -525,3 +525,43 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ---- staff login page: stronger, legible backdrop ---------------------------------------- */
+.staff-login .login-backdrop {
+  inset: 0 0 0 54%;
+  border-bottom-left-radius: 120px;
+  background:
+    radial-gradient(circle at 30% 30%, rgba(38, 217, 128, 0.16), transparent 42%),
+    linear-gradient(160deg, #052a1c 0%, #08402b 55%, #0a5a3a 100%);
+}
+.staff-login .login-backdrop::after {
+  opacity: 0.35;
+}
+.staff-login .login-top > a {
+  color: #d9e9df;
+  background: rgba(3, 27, 19, 0.55);
+  padding: 8px 12px;
+  border-radius: 10px;
+}
+.staff-login .login-intro {
+  padding: 40px 0 0 24px;
+}
+.staff-login .login-intro h1 {
+  color: #fff;
+}
+.staff-login .login-intro p {
+  color: #d3e6da;
+}
+.staff-login .staff-login-card {
+  margin-top: 40px;
+}
+@media (max-width: 900px) {
+  .staff-login .login-backdrop {
+    inset: 0;
+    border-radius: 0;
+  }
+  .staff-login .login-intro h1,
+  .staff-login .login-intro p {
+    color: #fff;
+  }
+}

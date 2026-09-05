@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from 'react'
-import { useLocation } from 'wouter'
+import { Link, useLocation } from 'wouter'
 import {
   Activity,
   AlertTriangle,
   BadgeCheck,
   Bell,
   BriefcaseBusiness,
+  Building2,
   CheckCircle2,
   Clock3,
   Eye,
@@ -18,6 +19,7 @@ import {
   X,
 } from 'lucide-react'
 import { api } from '../../api'
+import { useSession } from '../../lib/session'
 import { statusLabels } from '../../data'
 import type { GovernmentApplication } from '../../types'
 import { PortalLayout } from '../../components/citizen/PortalLayout'
@@ -27,6 +29,7 @@ import { ServiceRequestAdminPanel } from './ServiceRequestAdminPanel'
 
 export function EmployeeDashboard() {
   const [, navigate] = useLocation()
+  const { session } = useSession()
   const todayLabel = new Date().toLocaleDateString('en-GB')
   const [apps, setApps] = useState<GovernmentApplication[]>([])
   const [selected, setSelected] = useState<GovernmentApplication | null>(null)
@@ -113,13 +116,26 @@ export function EmployeeDashboard() {
     <PortalLayout role="employee">
       <section className="employee-heading" id="workboard">
         <div>
-          <span>اليوم • {todayLabel}</span>
-          <h1>لوحة عمل المراجعة</h1>
-          <p>هناك {apps.filter(a => a.status !== 'APPROVED').length.toLocaleString('en-US')} معاملات تحتاج مراجعة.</p>
+          <span>
+            اليوم • {todayLabel}
+            {session?.departmentName ? ` • ${session.departmentName}` : ''}
+          </span>
+          <h1>{session?.displayName ? `مرحباً ${session.displayName.split(' ')[0]}، ` : ''}لوحة عمل المراجعة</h1>
+          <p>
+            هناك {apps.filter(a => a.status !== 'APPROVED' && a.status !== 'REJECTED').length.toLocaleString('en-US')}{' '}
+            معاملات تحتاج مراجعة.
+          </p>
         </div>
-        <button className="button outline" onClick={() => void load()} disabled={busy}>
-          <RefreshCw /> تحديث قائمة العمل
-        </button>
+        <div className="department-dashboard-actions">
+          {session?.departmentId && (
+            <Link href={`/department/${session.departmentId}`} className="button ghost">
+              <Building2 /> لوحة دائرتي
+            </Link>
+          )}
+          <button className="button outline" onClick={() => void load()} disabled={busy}>
+            <RefreshCw /> تحديث قائمة العمل
+          </button>
+        </div>
       </section>
       <section className="employee-live-work-queue" aria-live="polite">
         <div>
