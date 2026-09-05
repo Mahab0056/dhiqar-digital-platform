@@ -15,6 +15,7 @@ import {
   ShieldCheck,
 } from 'lucide-react'
 import { api } from '../../api'
+import { auditActionLabel } from '../../audit-labels'
 import { OperationsShell } from '../../components/operations/OperationsShell'
 import { NewRequestAlertsPanel } from '../../components/shared/NewRequestAlertsPanel'
 import { AdminCitizensPanel } from './AdminCitizensPanel'
@@ -203,7 +204,7 @@ export function SuperAdminDashboard() {
                 <div key={`${entry.entityId}-${index}`}>
                   <span className={`audit-role ${entry.role.toLowerCase()}`}>{entry.role}</span>
                   <div>
-                    <strong>{entry.action.replaceAll('_', ' ')}</strong>
+                    <strong>{auditActionLabel(entry.action)}</strong>
                     <small>
                       {entry.actor} • {entry.entityType} / {entry.entityId}
                     </small>

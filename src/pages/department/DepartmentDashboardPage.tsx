@@ -16,7 +16,9 @@ import {
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { api } from '../../api'
 import { statusLabels } from '../../data'
+import { auditActionLabel } from '../../audit-labels'
 import type { DepartmentDashboard } from '../../types'
+import { ServiceRequestAdminPanel } from '../employee/ServiceRequestAdminPanel'
 import { PortalLayout } from '../../components/citizen/PortalLayout'
 import { useSession } from '../../lib/session'
 
@@ -27,20 +29,6 @@ const roleLabels: Record<string, string> = {
   SUPER_ADMIN: 'مدير النظام',
 }
 
-const actionLabels: Record<string, string> = {
-  DOCUMENT_REQUESTED: 'طلب مستند',
-  APPLICATION_APPROVED_DOCUMENT_ISSUED: 'موافقة وإصدار وثيقة',
-  APPLICATION_REJECTED: 'رفض معاملة',
-  PAYMENT_REQUIRED: 'طلب دفع',
-  IDENTITY_REVIEW_DECIDED: 'قرار مراجعة هوية',
-  IDENTITY_MEDIA_VIEWED: 'عرض وسيط هوية',
-  STAFF_SESSION_CREATED: 'تسجيل دخول',
-  SESSION_ENDED: 'تسجيل خروج',
-  DEPARTMENT_DASHBOARD_VIEWED: 'فتح لوحة الدائرة',
-  SERVICE_REQUEST_DECIDED: 'قرار على طلب خدمة',
-  FEEDBACK_STATUS_UPDATED: 'تحديث شكوى',
-}
-
 const formatDate = (value: string) =>
   new Date(value).toLocaleString('ar-IQ', { dateStyle: 'medium', timeStyle: 'short' })
 
@@ -48,6 +36,7 @@ export function DepartmentDashboardPage({ id }: { id: string }) {
   const [data, setData] = useState<DepartmentDashboard | null>(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
+  const [focusReference, setFocusReference] = useState<string | null>(null)
   const { session } = useSession()
 
   const load = useCallback(async () => {
@@ -268,15 +257,13 @@ export function DepartmentDashboardPage({ id }: { id: string }) {
                     {data.requests.map(row => (
                       <tr key={`${row.kind}-${row.reference}`}>
                         <td>
-                          <Link
-                            href={
-                              row.kind === 'APPLICATION'
-                                ? `/employee#employee-applications`
-                                : '/employee#employee-service-requests'
-                            }
-                          >
-                            {row.reference}
-                          </Link>
+                          {row.kind === 'APPLICATION' ? (
+                            <Link href="/employee#employee-applications">{row.reference}</Link>
+                          ) : (
+                            <a href="#department-review" onClick={() => setFocusReference(row.reference)}>
+                              {row.reference}
+                            </a>
+                          )}
                         </td>
                         <td>{row.citizenName}</td>
                         <td>{row.serviceName}</td>
@@ -382,7 +369,7 @@ export function DepartmentDashboardPage({ id }: { id: string }) {
               <ul className="department-activity">
                 {data.recentActivity.map((entry, index) => (
                   <li key={`${entry.createdAt}-${index}`}>
-                    <strong>{actionLabels[entry.action] || entry.action}</strong>
+                    <strong>{auditActionLabel(entry.action)}</strong>
                     <small>
                       {entry.actor} • {entry.entityType} {entry.entityId.slice(0, 24)} • {formatDate(entry.createdAt)}
                     </small>
@@ -409,6 +396,9 @@ export function DepartmentDashboardPage({ id }: { id: string }) {
                 {data.department.gisStatus === 'COORDINATES_VERIFIED' ? 'إحداثيات موثقة' : 'بانتظار إحداثيات رسمية'}
               </p>
             </article>
+          </section>
+          <section className="department-review" id="department-review">
+            <ServiceRequestAdminPanel departmentId={id} focusReference={focusReference} />
           </section>
         </>
       )}

@@ -12,6 +12,7 @@ import {
   XCircle,
 } from 'lucide-react'
 import { api } from '../../api'
+import { useSession } from '../../lib/session'
 import type { ChecklistItem, CitizenServiceRequest } from '../../types'
 
 const requestStatus: Record<string, string> = {
@@ -32,7 +33,17 @@ const checklistStatus: Record<ChecklistItem['status'], string> = {
 
 type Decision = 'UNDER_REVIEW' | 'ACTION_REQUIRED' | 'APPROVED' | 'REJECTED'
 
-export function ServiceRequestAdminPanel() {
+export function ServiceRequestAdminPanel({
+  departmentId,
+  focusReference,
+}: {
+  /** When set (department dashboard), only this department's requests are shown even for supervisors. */
+  departmentId?: string
+  /** Reference to open when the list loads / changes. */
+  focusReference?: string | null
+} = {}) {
+  const { session } = useSession()
+  const readOnly = session?.role === 'OPERATIONS' || session?.role === 'IDENTITY_REVIEWER'
   const [items, setItems] = useState<CitizenServiceRequest[]>([])
   const [scope, setScope] = useState<{ scope: string; message?: string }>({ scope: 'ALL' })
   const [filter, setFilter] = useState<'OPEN' | 'ALL'>('OPEN')
@@ -71,23 +82,33 @@ export function ServiceRequestAdminPanel() {
       try {
         const response = await api.listEmployeeServiceRequests()
         setScope({ scope: response.scope, message: response.message })
-        setItems(response.items)
+        const items = departmentId ? response.items.filter(item => item.departmentId === departmentId) : response.items
+        setItems(items)
         const target = reference || selected?.reference
-        const next = response.items.find(item => item.reference === target) || null
-        if (next || !target) selectItem(next || response.items[0] || null)
+        const next = items.find(item => item.reference === target) || null
+        if (next || !target) selectItem(next || items[0] || null)
       } catch (loadError) {
         setError((loadError as Error).message)
       } finally {
         setBusy(false)
       }
     },
-    [selected?.reference, selectItem]
+    [selected?.reference, selectItem, departmentId]
   )
 
   useEffect(() => {
     void load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+  useEffect(() => {
+    if (!focusReference) return
+    const match = items.find(item => item.reference === focusReference)
+    if (match && match.reference !== selected?.reference) {
+      selectItem(match)
+      setFilter('ALL')
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusReference, items])
   useEffect(() => {
     const refreshQueue = () => void load()
     window.addEventListener('employee-work-queue-updated', refreshQueue)
@@ -324,7 +345,7 @@ export function ServiceRequestAdminPanel() {
                               >
                                 <Eye /> عرض {attachment?.mimeType === 'application/pdf' ? 'PDF' : 'الصورة'}
                               </a>
-                              {!closed && item.status === 'UPLOADED' && (
+                              {!closed && !readOnly && item.status === 'UPLOADED' && (
                                 <>
                                   <input
                                     value={docNotes[item.key] || ''}
@@ -362,7 +383,7 @@ export function ServiceRequestAdminPanel() {
                 )}
               </section>
 
-              {!closed ? (
+              {!closed && !readOnly ? (
                 <section className="service-request-update">
                   <h4>قرار الدائرة</h4>
                   <label>
@@ -438,6 +459,11 @@ export function ServiceRequestAdminPanel() {
                     <CheckCircle2 /> حفظ القرار وإشعار المواطن
                   </button>
                 </section>
+              ) : readOnly && !closed ? (
+                <div className="service-request-current-action">
+                  <Info />
+                  <span>عرض للمتابعة فقط — القرار وتدقيق المستمسكات من صلاحية موظفي الدائرة.</span>
+                </div>
               ) : (
                 <div className="service-request-current-action closed">
                   <CheckCircle2 />

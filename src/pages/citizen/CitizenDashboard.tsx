@@ -118,15 +118,24 @@ export function CitizenDashboard() {
   const availableServices = useMemo(
     () =>
       catalog && catalog.length
-        ? catalog.map(item => ({
-            key: item.key,
-            title: item.title,
-            department: item.departmentName,
-            category: item.category,
-            description: item.description,
-            channel: item.channel,
-            mode: item.mode,
-          }))
+        ? [...catalog]
+            .sort(
+              (a, b) =>
+                Number(b.mode !== 'CATALOG') - Number(a.mode !== 'CATALOG') ||
+                ['ONLINE_SUBMISSION', 'APPOINTMENT_REQUIRED', 'INFORMATION_ONLY'].indexOf(a.channel) -
+                  ['ONLINE_SUBMISSION', 'APPOINTMENT_REQUIRED', 'INFORMATION_ONLY'].indexOf(b.channel) ||
+                ['OFFICIAL', 'RELIABLE', 'UNVERIFIED'].indexOf(a.sourceQuality) -
+                  ['OFFICIAL', 'RELIABLE', 'UNVERIFIED'].indexOf(b.sourceQuality)
+            )
+            .map(item => ({
+              key: item.key,
+              title: item.title,
+              department: item.departmentName,
+              category: item.category,
+              description: item.description,
+              channel: item.channel,
+              mode: item.mode,
+            }))
         : services.map(item => ({
             key: item.key,
             title: item.title,
