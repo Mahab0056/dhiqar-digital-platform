@@ -5,6 +5,8 @@ import {
   Bell,
   BookOpen,
   BriefcaseBusiness,
+  Building2,
+  Bus,
   CheckCircle2,
   ChevronLeft,
   ClipboardList,
@@ -12,7 +14,11 @@ import {
   FilePlus2,
   FileSearch,
   FileText,
+  GraduationCap,
+  HeartPulse,
   History,
+  Home,
+  Leaf,
   LockKeyhole,
   Map as MapIcon,
   MapPin,
@@ -21,11 +27,13 @@ import {
   Search,
   ShieldCheck,
   Upload,
+  UserRound,
   X,
+  Zap,
 } from 'lucide-react'
 import { CircleMarker, MapContainer, TileLayer, Tooltip as LeafletTooltip } from 'react-leaflet'
 import { api } from '../../api'
-import { categoryIcons, services } from '../../data'
+import { services } from '../../data'
 import { dhiqarNews } from '../../news'
 import type { DepartmentSummary } from '../../types'
 import { Footer } from '../../components/public/Footer'
@@ -81,6 +89,18 @@ const journey = [
   { icon: FileCheck2, title: 'استلم النتيجة', text: 'احصل على وثيقتك إلكترونياً' },
 ]
 
+const homeCategories = [
+  { label: 'الأعمال والتجارة', icon: BriefcaseBusiness, query: 'المحلات والأعمال' },
+  { label: 'السكن والعقار', icon: Home, query: 'السكن والأراضي' },
+  { label: 'الطاقة والماء', icon: Zap, query: 'الماء' },
+  { label: 'البلديات', icon: Building2, query: 'البلديات' },
+  { label: 'الزراعة', icon: Leaf, query: 'الزراعة' },
+  { label: 'النقل', icon: Bus, query: 'السياقة' },
+  { label: 'التعليم', icon: GraduationCap, query: 'التربية والتعليم' },
+  { label: 'الصحة', icon: HeartPulse, query: 'الصحة' },
+  { label: 'الخدمات الشخصية', icon: UserRound, query: 'الوثائق الحكومية' },
+]
+
 const capabilities = [
   { icon: FileText, label: 'معاملات إلكترونية' },
   { icon: Search, label: 'تتبع حالة الطلب' },
@@ -111,15 +131,6 @@ export function LandingPage() {
       .catch(() => setDepartments([]))
   }, [])
 
-  const categories = useMemo(
-    () =>
-      Array.from(new Set(services.map(service => service.category))).map(label => ({
-        label,
-        Icon: categoryIcons[label as keyof typeof categoryIcons] || BriefcaseBusiness,
-      })),
-    []
-  )
-
   const results = useMemo(() => {
     const tokens = normalizeArabic(query)
       .split(' ')
@@ -134,9 +145,12 @@ export function LandingPage() {
   }, [query])
 
   const suggestions = [
-    ...services.slice(0, 3).map(service => ({ label: service.title, href: `/service/${service.key}` })),
-    { label: 'الشكاوى', href: '/citizen/feedback' },
+    { label: 'إجازة بناء', href: '/service/building-permit' },
+    { label: 'إجازة محل', href: '/service/store-license' },
+    { label: 'خدمات البلدية', href: '/service/municipality-service' },
+    { label: 'الخدمات العقارية', href: '/directory?q=عقار' },
     { label: 'متابعة معاملة', href: '/citizen#my-requests' },
+    { label: 'الشكاوى', href: '/citizen/feedback' },
   ]
 
   const located = departments.filter(
@@ -160,8 +174,12 @@ export function LandingPage() {
           <div className="gov-hero-art gov-hero-art-left" aria-hidden="true" />
           <div className="gov-container gov-hero-inner">
             <aside className="gov-hero-side gov-hero-side-right" aria-hidden="true">
-              <span className="gov-kicker">حكومة رقمية</span>
-              <p>لمجتمع أفضل</p>
+              <span className="gov-hero-tagline">ذي قار..</span>
+              <p>
+                أرض الإنسان..
+                <br />
+                تصنع المستقبل
+              </p>
             </aside>
             <div className="gov-hero-center">
               <span className="gov-hero-eyebrow">المنصة الحكومية الموحدة لمحافظة ذي قار</span>
@@ -213,8 +231,12 @@ export function LandingPage() {
               </div>
             </div>
             <aside className="gov-hero-side gov-hero-side-left" aria-hidden="true">
-              <span className="gov-hero-tagline">ذي قار ..</span>
-              <p>أرض الإنسان .. تصنع المستقبل</p>
+              <span className="gov-hero-tagline">هويتنا</span>
+              <p>
+                تراث عريق..
+                <br />
+                ومستقبل رقمي
+              </p>
             </aside>
           </div>
 
@@ -248,39 +270,68 @@ export function LandingPage() {
             </Link>
           </header>
           <div className="gov-categories">
-            {categories.map(({ label, Icon }, index) => (
+            {homeCategories.map((item, index) => (
               <Link
-                href={`/directory?q=${encodeURIComponent(label)}`}
-                className={index === 0 ? 'gov-category is-active' : 'gov-category'}
-                key={label}
+                href={`/directory?q=${encodeURIComponent(item.query)}`}
+                className={index === 1 ? 'gov-category is-active' : 'gov-category'}
+                key={item.label}
               >
-                <Icon />
-                <span>{label}</span>
+                <item.icon />
+                <span>{item.label}</span>
               </Link>
             ))}
           </div>
         </section>
 
         {/* ---- capabilities / journey / map ------------------------------------------ */}
-        <section className="gov-section gov-container gov-three">
-          <article className="gov-panel">
+        <section className="gov-section gov-container gov-three gov-three-main" id="journey">
+          <article className="gov-panel gov-verify-panel">
             <header className="gov-panel-head">
-              <h2>مزايا المنصة</h2>
-              <p>خدمات حكومية رقمية موثوقة وآمنة</p>
+              <div>
+                <h2>التحقق من وثيقة</h2>
+                <p>تأكد من صحة أي وثيقة صادرة عن المنصة</p>
+              </div>
             </header>
-            <ul className="gov-capabilities">
-              {capabilities.map(item => (
-                <li key={item.label}>
-                  <span>
-                    <item.icon />
-                  </span>
-                  {item.label}
-                </li>
-              ))}
-            </ul>
+            <div className="gov-doc-preview" aria-hidden="true">
+              <div className="gov-doc-sheet">
+                <span className="gov-doc-seal">
+                  <ShieldCheck />
+                </span>
+                <i className="gov-doc-line w60" />
+                <i className="gov-doc-line w80" />
+                <i className="gov-doc-line w45" />
+                <i className="gov-doc-line w70" />
+                <span className="gov-doc-qr">
+                  <QrCode />
+                </span>
+              </div>
+              <div className="gov-doc-badge">
+                <CheckCircle2 size={14} /> وثيقة موثقة رقمياً
+              </div>
+            </div>
+            <form
+              className="gov-verify-form"
+              onSubmit={event => {
+                event.preventDefault()
+                if (verifyId.trim()) navigate(`/verify/${encodeURIComponent(verifyId.trim())}`)
+              }}
+            >
+              <input
+                value={verifyId}
+                onChange={event => setVerifyId(event.target.value)}
+                placeholder="مثال: TQD-XXXXXXXXXXXXXXXX"
+                dir="ltr"
+                aria-label="معرّف التحقق"
+              />
+              <button type="submit" className="gov-btn primary" disabled={!verifyId.trim()}>
+                التحقق من وثيقة
+              </button>
+            </form>
+            <Link href="/verify" className="gov-verify-scan">
+              <QrCode size={18} /> مسح رمز QR بالكاميرا
+            </Link>
           </article>
-
-          <article className="gov-panel">
+          <article className="gov-panel gov-journey-panel">
             <header className="gov-panel-head">
               <h2>رحلة إنجاز معاملتك</h2>
             </header>
@@ -296,6 +347,14 @@ export function LandingPage() {
                 </li>
               ))}
             </ol>
+            <div className="gov-journey-foot">
+              <span>
+                {services.length.toLocaleString('en-US')} خدمة متاحة إلكترونياً الآن — قدّم طلبك وتابعه من حسابك.
+              </span>
+              <Link href="/onboarding" className="gov-btn primary small">
+                ابدأ معاملتك <ArrowLeft size={14} />
+              </Link>
+            </div>
           </article>
 
           <article className="gov-panel gov-map-panel">
@@ -352,8 +411,24 @@ export function LandingPage() {
           </article>
         </section>
 
-        {/* ---- services / news / verify ---------------------------------------------- */}
         <section className="gov-section gov-container gov-three gov-three-bottom">
+          <article className="gov-panel">
+            <header className="gov-panel-head">
+              <h2>مزايا المنصة</h2>
+              <p>خدمات حكومية رقمية موثوقة وآمنة</p>
+            </header>
+            <ul className="gov-capabilities">
+              {capabilities.map(item => (
+                <li key={item.label}>
+                  <span>
+                    <item.icon />
+                  </span>
+                  {item.label}
+                </li>
+              ))}
+            </ul>
+          </article>
+
           <article className="gov-panel">
             <header className="gov-panel-head">
               <h2>الخدمات المتاحة إلكترونياً</h2>
@@ -400,33 +475,6 @@ export function LandingPage() {
             </ul>
           </article>
 
-          <article className="gov-panel gov-verify-panel">
-            <header className="gov-panel-head">
-              <h2>تحقق من وثيقة</h2>
-              <p>أدخل معرّف التحقق المطبوع على الوثيقة أو امسح رمز QR</p>
-            </header>
-            <form
-              className="gov-verify-form"
-              onSubmit={event => {
-                event.preventDefault()
-                if (verifyId.trim()) navigate(`/verify/${encodeURIComponent(verifyId.trim())}`)
-              }}
-            >
-              <input
-                value={verifyId}
-                onChange={event => setVerifyId(event.target.value)}
-                placeholder="مثال: TQD-XXXXXXXXXXXXXXXX"
-                dir="ltr"
-                aria-label="معرّف التحقق"
-              />
-              <button type="submit" className="gov-btn primary" disabled={!verifyId.trim()}>
-                <CheckCircle2 size={16} /> تحقق
-              </button>
-            </form>
-            <Link href="/verify" className="gov-verify-scan">
-              <QrCode /> مسح رمز QR بالكاميرا
-            </Link>
-          </article>
         </section>
       </main>
       <Footer />
