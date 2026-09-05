@@ -1,4 +1,7 @@
 import type {
+  CatalogService,
+  CatalogSummary,
+  ServiceChannel,
   AdminCitizenDirectoryItem,
   Citizen,
   CitizenFeedback,
@@ -228,31 +231,62 @@ export const api = {
       generatedAt: string
     }>('/api/employee/work-queue-summary'),
   listCitizenServiceRequests: () => request<CitizenServiceRequest[]>('/api/citizen/service-requests'),
-  listEmployeeServiceRequests: () => request<CitizenServiceRequest[]>('/api/employee/service-requests'),
+  listEmployeeServiceRequests: (status?: string) =>
+    request<{ items: CitizenServiceRequest[]; scope: string; message?: string }>(
+      `/api/employee/service-requests${status ? `?status=${encodeURIComponent(status)}` : ''}`
+    ),
+  getEmployeeServiceRequest: (reference: string) =>
+    request<CitizenServiceRequest>(`/api/employee/service-requests/${encodeURIComponent(reference)}`),
+  reviewServiceRequestDocument: (
+    reference: string,
+    documentKey: string,
+    payload: { status: 'VERIFIED' | 'REJECTED'; note?: string }
+  ) =>
+    request<CitizenServiceRequest>(
+      `/api/employee/service-requests/${encodeURIComponent(reference)}/documents/${encodeURIComponent(documentKey)}`,
+      { method: 'PATCH', body: JSON.stringify(payload) }
+    ),
   updateEmployeeServiceRequest: (
     reference: string,
     payload: {
       status: 'UNDER_REVIEW' | 'ACTION_REQUIRED' | 'APPROVED' | 'REJECTED'
-      currentAction: string
+      currentAction?: string
       decisionNote?: string
       requiredDocument?: string
+      appointmentDate?: string
+      appointmentNote?: string
     }
   ) =>
-    request<CitizenServiceRequest>(`/api/employee/service-requests/${reference}`, {
+    request<CitizenServiceRequest>(`/api/employee/service-requests/${encodeURIComponent(reference)}`, {
       method: 'PATCH',
       body: JSON.stringify(payload),
     }),
-  createServiceRequestWithFace: async (
-    serviceKey: string,
-    data: Record<string, string>,
-    faceVideo: File,
+  listServices: (filter: { q?: string; category?: string; department?: string; channel?: ServiceChannel } = {}) => {
+    const params = new URLSearchParams()
+    if (filter.q) params.set('q', filter.q)
+    if (filter.category) params.set('category', filter.category)
+    if (filter.department) params.set('department', filter.department)
+    if (filter.channel) params.set('channel', filter.channel)
+    const query = params.toString()
+    return request<{ items: CatalogService[] }>(`/api/services${query ? `?${query}` : ''}`).then(body => body.items)
+  },
+  getService: (key: string) => request<CatalogService>(`/api/services/${encodeURIComponent(key)}`),
+  getServicesSummary: () => request<CatalogSummary>('/api/services/summary'),
+  createServiceRequest: async (input: {
+    serviceKey: string
+    data: Record<string, string>
+    faceVideo: File
     faceConsent: boolean
-  ) => {
+    documents: Record<string, File>
+    documentConsent: boolean
+  }) => {
     const form = new FormData()
-    form.append('serviceKey', serviceKey)
-    form.append('data', JSON.stringify(data))
-    form.append('faceConsent', String(faceConsent))
-    form.append('faceVideo', faceVideo)
+    form.append('serviceKey', input.serviceKey)
+    form.append('data', JSON.stringify(input.data))
+    form.append('faceConsent', String(input.faceConsent))
+    form.append('documentConsent', String(input.documentConsent))
+    form.append('faceVideo', input.faceVideo)
+    for (const [key, file] of Object.entries(input.documents)) form.append(`doc__${key}`, file, file.name)
     const response = await fetch('/api/service-requests', { method: 'POST', credentials: 'include', body: form })
     if (!response.ok) {
       const body = await response.json().catch(() => ({ message: 'تعذر تسجيل طلب الخدمة.' }))
@@ -270,11 +304,16 @@ export const api = {
       createdAt: string
     }>
   },
-  uploadServiceRequestDocument: async (reference: string, documentName: string, document: File) => {
+  uploadServiceRequestDocument: async (
+    reference: string,
+    target: { documentKey?: string; documentName?: string },
+    document: File
+  ) => {
     const form = new FormData()
-    form.append('documentName', documentName)
+    if (target.documentKey) form.append('documentKey', target.documentKey)
+    if (target.documentName) form.append('documentName', target.documentName)
     form.append('document', document)
-    const response = await fetch(`/api/citizen/service-requests/${reference}/upload-document`, {
+    const response = await fetch(`/api/citizen/service-requests/${encodeURIComponent(reference)}/upload-document`, {
       method: 'POST',
       credentials: 'include',
       body: form,

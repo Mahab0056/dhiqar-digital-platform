@@ -5,7 +5,8 @@ import { fileURLToPath } from 'node:url'
 import { createApp } from './http/app.js'
 import { errorHandler } from './http/error-handler.js'
 import { installRealtime } from './realtime.js'
-import { seedPlatformServiceCatalog } from './seed.js'
+import { seedServiceCatalog } from './services/catalog.js'
+import { registerServicesRoutes } from './routes/services.js'
 import { seedVerifiedGovernmentServices } from './government-service-seed.js'
 import { registerPublicRoutes } from './routes/public.js'
 import { registerAuthRoutes } from './routes/auth.js'
@@ -28,7 +29,7 @@ import { purgeExpiredSessions } from './auth/session.js'
 export function createPlatformServer(options: { serveStatic?: boolean } = {}) {
   seedVerifiedGovernmentServices()
   seedDepartments()
-  seedPlatformServiceCatalog()
+  seedServiceCatalog()
   bootstrapStaffAccounts()
   purgeExpiredSessions()
   scheduleBackups()
@@ -41,6 +42,7 @@ export function createPlatformServer(options: { serveStatic?: boolean } = {}) {
   registerAuthRoutes(app)
   registerCitizenRoutes(app)
   registerFeedbackRoutes(app)
+  registerServicesRoutes(app)
   registerServiceRequestsRoutes(app)
   registerOnboardingRoutes(app)
   registerApplicationsRoutes(app)

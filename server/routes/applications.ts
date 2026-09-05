@@ -8,26 +8,42 @@ import { notifyCitizen, employeeWorkQueueRealtime } from '../realtime.js'
 import { addAudit, addEvent, db, getApplicationByReference, getApplications } from '../db.js'
 import { storeEncryptedMedia } from '../media.js'
 import { createIssuedDocument } from '../issued-documents.js'
+import { departmentById } from '../department-registry.js'
 
 export function registerApplicationsRoutes(app: express.Express) {
   app.get(
     '/api/employee/work-queue-summary',
     requireSession('EMPLOYEE', 'IDENTITY_REVIEWER', 'SUPER_ADMIN'),
     (_req, res) => {
+      const session = currentSession(res)
+      const scoped = session.role === 'EMPLOYEE' && session.departmentId ? session.departmentId : null
+      const scopedName = scoped ? departmentById.get(scoped)?.name || '' : null
       const applications = Number(
         (
-          db
-            .prepare(`SELECT COUNT(*) AS count FROM applications WHERE status IN ('UNDER_REVIEW', 'SUBMITTED')`)
-            .get() as { count: number }
+          (scopedName !== null
+            ? db
+                .prepare(
+                  `SELECT COUNT(*) AS count FROM applications WHERE status IN ('UNDER_REVIEW', 'SUBMITTED') AND department = ?`
+                )
+                .get(scopedName)
+            : db
+                .prepare(`SELECT COUNT(*) AS count FROM applications WHERE status IN ('UNDER_REVIEW', 'SUBMITTED')`)
+                .get()) as { count: number }
         ).count
       )
       const serviceRequests = Number(
         (
-          db
-            .prepare(
-              `SELECT COUNT(*) AS count FROM service_requests WHERE status IN ('SUBMITTED', 'UNDER_REVIEW', 'REQUESTED', 'APPOINTMENT_REQUESTED')`
-            )
-            .get() as { count: number }
+          (scoped
+            ? db
+                .prepare(
+                  `SELECT COUNT(*) AS count FROM service_requests WHERE status IN ('SUBMITTED', 'UNDER_REVIEW', 'APPOINTMENT_REQUESTED') AND department_id = ?`
+                )
+                .get(scoped)
+            : db
+                .prepare(
+                  `SELECT COUNT(*) AS count FROM service_requests WHERE status IN ('SUBMITTED', 'UNDER_REVIEW', 'APPOINTMENT_REQUESTED')`
+                )
+                .get()) as { count: number }
         ).count
       )
       const identityReviews = Number(
@@ -47,7 +63,12 @@ export function registerApplicationsRoutes(app: express.Express) {
     }
   )
 
-  app.get('/api/applications', requireSession('EMPLOYEE', 'SUPER_ADMIN'), (_req, res) => res.json(getApplications()))
+  app.get('/api/applications', requireSession('EMPLOYEE', 'SUPER_ADMIN'), (_req, res) => {
+    const session = currentSession(res)
+    const scopedName =
+      session.role === 'EMPLOYEE' && session.departmentId ? departmentById.get(session.departmentId)?.name : undefined
+    res.json(getApplications(scopedName))
+  })
 
   app.get('/api/applications/:reference', requireSession('CITIZEN', 'EMPLOYEE', 'SUPER_ADMIN'), (req, res) => {
     const item = getApplicationByReference(param(req, 'reference'))

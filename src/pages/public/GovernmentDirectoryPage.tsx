@@ -1,66 +1,148 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'wouter'
-import { ArrowLeft, Building2, ExternalLink, Network, Search, X } from 'lucide-react'
-import { availabilityLabels, entityTypeLabels, governmentEntities, integrationStatusLabels } from '../../government-directory'
+import {
+  ArrowLeft,
+  Building2,
+  CalendarClock,
+  ExternalLink,
+  FileCheck2,
+  Globe2,
+  Info,
+  LayoutGrid,
+  Search,
+  X,
+} from 'lucide-react'
+import { api } from '../../api'
+import type { CatalogService, CatalogSummary, DepartmentSummary, ServiceChannel } from '../../types'
 import { Footer } from '../../components/public/Footer'
 import { OfficialGovernmentServiceCatalog } from '../../components/public/OfficialGovernmentServiceCatalog'
 import { PublicHeader } from '../../components/public/PublicHeader'
 
+const channelMeta: Record<ServiceChannel, { label: string; short: string; icon: typeof Globe2 }> = {
+  ONLINE_SUBMISSION: { label: 'تقديم إلكتروني كامل', short: 'إلكترونية', icon: Globe2 },
+  APPOINTMENT_REQUIRED: { label: 'تقديم إلكتروني ثم حضور لإكمال الإجراء', short: 'إلكترونية + حضور', icon: CalendarClock },
+  INFORMATION_ONLY: { label: 'خدمة معلوماتية', short: 'معلوماتية', icon: Info },
+}
+
+const channelOrder: ServiceChannel[] = ['ONLINE_SUBMISSION', 'APPOINTMENT_REQUIRED', 'INFORMATION_ONLY']
+
+function readParams() {
+  const params = new URLSearchParams(window.location.search)
+  return {
+    q: params.get('q') || '',
+    category: params.get('category') || '',
+    department: params.get('department') || '',
+    channel: (params.get('channel') as ServiceChannel | null) || ('' as const),
+  }
+}
+
 export function GovernmentDirectoryPage() {
-  const [query, setQuery] = useState(() => new URLSearchParams(window.location.search).get('q') || '')
-  const [typeFilter, setTypeFilter] = useState<'ALL' | import('../../government-directory').GovernmentEntityType>('ALL')
-  const normalizedQuery = query.trim().toLowerCase()
-  const entities = useMemo(
-    () =>
-      governmentEntities
-        .filter(entity => typeFilter === 'ALL' || entity.type === typeFilter)
-        .filter(
-          entity =>
-            !normalizedQuery ||
-            `${entity.name} ${entity.nameEn} ${entity.parentAuthority} ${entity.district} ${entity.summary} ${entity.services.flatMap(service => [service.name, service.description, ...service.keywords]).join(' ')}`
-              .toLowerCase()
-              .includes(normalizedQuery)
-        ),
-    [normalizedQuery, typeFilter]
-  )
-  const matchingServices = useMemo(
-    () =>
-      entities.flatMap(entity =>
-        entity.services
-          .filter(
-            service =>
-              !normalizedQuery ||
-              `${entity.name} ${service.name} ${service.description} ${service.keywords.join(' ')}`
-                .toLowerCase()
-                .includes(normalizedQuery)
-          )
-          .map(service => ({ entity, service }))
-      ),
-    [entities, normalizedQuery]
-  )
+  const [initial] = useState(readParams)
+  const [query, setQuery] = useState(initial.q)
+  const [category, setCategory] = useState(initial.category)
+  const [department, setDepartment] = useState(initial.department)
+  const [channel, setChannel] = useState<ServiceChannel | ''>(initial.channel as ServiceChannel | '')
+  const [services, setServices] = useState<CatalogService[]>([])
+  const [summary, setSummary] = useState<CatalogSummary | null>(null)
+  const [departments, setDepartments] = useState<DepartmentSummary[]>([])
+  const [loading, setLoading] = useState(true)
+  const [visible, setVisible] = useState(60)
+
+  useEffect(() => {
+    let active = true
+    Promise.all([
+      api.listServices(),
+      api.getServicesSummary(),
+      api.listDepartments().then(body => body.items).catch(() => [] as DepartmentSummary[]),
+    ])
+      .then(([items, stats, dept]) => {
+        if (!active) return
+        setServices(items)
+        setSummary(stats)
+        setDepartments(dept)
+      })
+      .catch(() => {
+        if (active) setServices([])
+      })
+      .finally(() => {
+        if (active) setLoading(false)
+      })
+    return () => {
+      active = false
+    }
+  }, [])
+
+  useEffect(() => {
+    const params = new URLSearchParams()
+    if (query.trim()) params.set('q', query.trim())
+    if (category) params.set('category', category)
+    if (department) params.set('department', department)
+    if (channel) params.set('channel', channel)
+    const next = params.toString()
+    window.history.replaceState(null, '', `${window.location.pathname}${next ? `?${next}` : ''}`)
+    setVisible(60)
+  }, [query, category, department, channel])
+
+  const normalize = (value: string) =>
+    value
+      .toLowerCase()
+      .replace(/[ً-ْ]/g, '')
+      .replace(/[أإآ]/g, 'ا')
+      .replace(/ى/g, 'ي')
+      .replace(/ة/g, 'ه')
+      .replace(/[^\p{L}\p{N}]+/gu, ' ')
+      .trim()
+
+  const results = useMemo(() => {
+    const tokens = normalize(query)
+      .split(' ')
+      .filter(token => token.length > 1)
+    const filtered = services.filter(item => {
+      if (category && item.category !== category) return false
+      if (department && item.departmentId !== department) return false
+      if (channel && item.channel !== channel) return false
+      if (!tokens.length) return true
+      const text = normalize(
+        `${item.title} ${item.description} ${item.departmentName} ${item.category} ${item.requiredDocuments.map(doc => doc.label).join(' ')}`
+      )
+      return tokens.every(token => text.includes(token))
+    })
+    const channelRank: Record<ServiceChannel, number> = { ONLINE_SUBMISSION: 0, APPOINTMENT_REQUIRED: 1, INFORMATION_ONLY: 2 }
+    const qualityRank = { OFFICIAL: 0, RELIABLE: 1, UNVERIFIED: 2 }
+    return filtered.sort(
+      (a, b) =>
+        channelRank[a.channel] - channelRank[b.channel] ||
+        qualityRank[a.sourceQuality] - qualityRank[b.sourceQuality] ||
+        a.title.localeCompare(b.title, 'ar')
+    )
+  }, [services, query, category, department, channel])
+
+  const departmentName = departments.find(item => item.id === department)?.name
+  const activeFilters = [category, department, channel].filter(Boolean).length + (query.trim() ? 1 : 0)
+
   return (
-    <div className="public-shell directory-page">
+    <div className="public-shell directory-page gov-directory-page">
       <PublicHeader />
       <main>
-        <section className="directory-hero">
-          <div className="container">
-            <span className="eyebrow">
-              <Network size={16} /> دليل الخدمات والجهات الحكومية
+        <section className="gov-directory-hero">
+          <div className="gov-container">
+            <span className="gov-eyebrow">
+              <LayoutGrid size={15} /> دليل الخدمات الحكومية في ذي قار
             </span>
-            <h1>
-              الوصول إلى الخدمة الحكومية
-              <br />
-              <em>بمسار واضح.</em>
-            </h1>
+            <h1>ابحث عن الخدمة، اعرف المستمسكات، وقدّم إلكترونياً</h1>
             <p>
-              ابحث باسم الخدمة أو الجهة الحكومية. يوضح الدليل الجهة المسؤولة، وحالة الإتاحة، والمسار الإلكتروني المناسب.
+              {summary
+                ? `${summary.total.toLocaleString('en-US')} خدمة من ${departments.length.toLocaleString('en-US')} جهة حكومية — ${(
+                    summary.channels.ONLINE_SUBMISSION || 0
+                  ).toLocaleString('en-US')} خدمة تُقدَّم إلكترونياً بالكامل و${(summary.channels.APPOINTMENT_REQUIRED || 0).toLocaleString('en-US')} خدمة تُقدَّم إلكترونياً ثم تُستكمل بالحضور.`
+                : 'ابحث باسم الخدمة أو الجهة أو المستمسك.'}
             </p>
-            <div className="directory-search">
+            <div className="gov-directory-search">
               <Search />
               <input
                 value={query}
                 onChange={event => setQuery(event.target.value)}
-                placeholder="مثال: إجازة بناء، خدمات المياه، البطاقة الوطنية، طلب قطعة أرض"
+                placeholder="مثال: إجازة بناء، جواز، تقاعد، رخصة سياقة، عقد إيجار…"
                 aria-label="البحث في دليل خدمات ذي قار"
               />
               {query && (
@@ -69,158 +151,164 @@ export function GovernmentDirectoryPage() {
                 </button>
               )}
             </div>
-            <div className="directory-search-hints">
-              <span>أمثلة للبحث:</span>
-              {['خدمات المياه', 'خدمات المجاري', 'إجازة فتح محل', 'إجازة بناء', 'البطاقة الوطنية'].map(hint => (
-                <button key={hint} onClick={() => setQuery(hint)}>
-                  {hint}
+            <div className="gov-directory-channels" role="group" aria-label="طريقة التقديم">
+              <button className={channel === '' ? 'active' : ''} onClick={() => setChannel('')}>
+                الكل
+              </button>
+              {channelOrder.map(item => (
+                <button className={channel === item ? 'active' : ''} onClick={() => setChannel(item)} key={item}>
+                  {channelMeta[item].short}
+                  {summary?.channels[item] ? <b>{summary.channels[item]?.toLocaleString('en-US')}</b> : null}
                 </button>
               ))}
             </div>
           </div>
         </section>
-        <section className="section container directory-body">
-          <div className="directory-overview">
-            <div>
-              <span className="section-kicker">دليل موحد</span>
-              <h2>الخدمات مرتبة حسب الجهة والقطاع</h2>
-              <p>
-                يجمع الدليل الجهات المحلية والاتحادية والهيئات المستقلة المسجلة في المحافظة، مع بيان الجهة الأم لكل سجل.
-              </p>
-            </div>
-            <div className="directory-count">
-              <strong>{governmentEntities.length.toLocaleString('en-US')}</strong>
-              <span>جهة مسجلة في الدليل</span>
-            </div>
-          </div>
-          <nav className="directory-filters" aria-label="تصفية الجهات">
-            <button className={typeFilter === 'ALL' ? 'active' : ''} onClick={() => setTypeFilter('ALL')}>
-              الكل
-            </button>
-            {(Object.keys(entityTypeLabels) as Array<import('../../government-directory').GovernmentEntityType>).map(
-              type => (
-                <button className={typeFilter === type ? 'active' : ''} onClick={() => setTypeFilter(type)} key={type}>
-                  {entityTypeLabels[type]}
+
+        <section className="gov-container gov-directory-body">
+          <aside className="gov-directory-side">
+            <h2>القطاعات</h2>
+            <ul>
+              <li>
+                <button className={category === '' ? 'active' : ''} onClick={() => setCategory('')}>
+                  كل القطاعات <b>{summary?.total.toLocaleString('en-US')}</b>
                 </button>
-              )
-            )}
-          </nav>
-          {normalizedQuery && (
-            <section className="directory-results">
-              <header>
-                <span className="section-kicker">نتائج حسب الحاجة</span>
-                <h2>{matchingServices.length ? 'هذه المسارات تناسب بحثك' : 'لم نجد مساراً مطابقاً بعد'}</h2>
-                <p>
-                  {matchingServices.length
-                    ? 'اختر الخدمة لبدء المسار المتاح، أو راجع مصدر الجهة للخدمات التي تنتظر الربط.'
-                    : 'جرّب وصفاً أقصر للمشكلة أو اسم الجهة. ستظهر الخدمات المعتمدة مع توسع الدليل.'}
-                </p>
-              </header>
-              {matchingServices.length > 0 && (
-                <div className="directory-result-list">
-                  {matchingServices.map(({ entity, service }) => (
-                    <article key={`${entity.id}-${service.name}`}>
-                      <span className={`availability ${service.availability.toLowerCase()}`}>
-                        {availabilityLabels[service.availability]}
-                      </span>
-                      <div>
-                        <small>
-                          {entity.name} • {entityTypeLabels[entity.type]}
-                        </small>
-                        <h3>{service.name}</h3>
-                        <p>{service.description}</p>
-                      </div>
-                      {service.serviceKey ? (
-                        <Link href={`/service/${service.serviceKey}`} className="button primary">
-                          ابدأ المسار <ArrowLeft />
-                        </Link>
-                      ) : (
-                        <a href={entity.sourceUrl} target="_blank" rel="noreferrer" className="button outline">
-                          المصدر الرسمي <ExternalLink />
-                        </a>
-                      )}
-                    </article>
-                  ))}
-                </div>
-              )}
-            </section>
-          )}
-          <OfficialGovernmentServiceCatalog query={query} />
-          <section className="directory-entity-section">
-            <div className="section-heading">
+              </li>
+              {summary?.categories.map(item => (
+                <li key={item.label}>
+                  <button className={category === item.label ? 'active' : ''} onClick={() => setCategory(item.label)}>
+                    {item.label} <b>{item.total.toLocaleString('en-US')}</b>
+                  </button>
+                </li>
+              ))}
+            </ul>
+            <h2>الجهة</h2>
+            <select value={department} onChange={event => setDepartment(event.target.value)} aria-label="تصفية حسب الجهة">
+              <option value="">كل الجهات</option>
+              {departments.map(item => (
+                <option value={item.id} key={item.id}>
+                  {item.name}
+                </option>
+              ))}
+            </select>
+            <Link href="/departments" className="gov-link">
+              دليل الجهات الحكومية <ArrowLeft size={14} />
+            </Link>
+          </aside>
+
+          <div className="gov-directory-results">
+            <header className="gov-directory-results-head">
               <div>
-                <span className="section-kicker">الجهات الحكومية</span>
-                <h2>استعرض الجهات حسب الاختصاص</h2>
+                <h2>
+                  {loading ? 'جاري التحميل…' : `${results.length.toLocaleString('en-US')} خدمة`}
+                  {departmentName ? ` — ${departmentName}` : category ? ` — ${category}` : ''}
+                </h2>
+                <p>
+                  {channel ? channelMeta[channel].label : 'كل طرق التقديم'}
+                  {query.trim() ? ` · نتائج البحث عن «${query.trim()}»` : ''}
+                </p>
               </div>
-              <p>تعرض تفاصيل الخدمة والرسوم والمستمسكات عند توفر مصدر موثق من الجهة المختصة.</p>
-            </div>
-            {entities.length ? (
-              <div className="directory-entity-grid">
-                {entities.map(entity => (
-                  <article className="directory-entity-card" key={entity.id}>
-                    <header>
-                      <span className="entity-mark">
-                        <Building2 />
+              {activeFilters > 0 && (
+                <button
+                  className="gov-btn outline small"
+                  onClick={() => {
+                    setQuery('')
+                    setCategory('')
+                    setDepartment('')
+                    setChannel('')
+                  }}
+                >
+                  <X size={14} /> إزالة التصفية
+                </button>
+              )}
+            </header>
+
+            {!loading && results.length === 0 && (
+              <div className="gov-directory-empty">
+                <Building2 />
+                <h3>لا توجد خدمة مطابقة</h3>
+                <p>جرّب كلمة أقصر أو أزل التصفية. إذا كانت الخدمة غير مسجلة بعد، راجع صفحة الجهة أو أرسل مقترحاً.</p>
+                <Link href="/citizen/feedback" className="gov-btn outline">
+                  اقترح إضافة خدمة
+                </Link>
+              </div>
+            )}
+
+            <ul className="gov-service-cards">
+              {results.slice(0, visible).map(item => {
+                const Icon = channelMeta[item.channel].icon
+                const requiredCount = item.requiredDocuments.filter(doc => doc.required).length
+                return (
+                  <li key={item.key} className={`gov-service-card channel-${item.channel.toLowerCase()}`}>
+                    <div className="gov-service-card-top">
+                      <span className={`gov-chip channel-${item.channel.toLowerCase()}`}>
+                        <Icon size={13} /> {channelMeta[item.channel].short}
                       </span>
-                      <div>
-                        <span
-                          className={`directory-verification ${entity.verification === 'VERIFIED_SOURCE' ? 'verified' : 'pending'}`}
-                        >
-                          {entity.verification === 'VERIFIED_SOURCE' ? 'مصدر موثق' : 'بيانات قيد التحقق'}
-                        </span>
-                        <h3>{entity.name}</h3>
-                        <small>{entity.nameEn}</small>
-                      </div>
-                    </header>
+                      {item.sourceQuality === 'OFFICIAL' && <span className="gov-chip official">مصدر رسمي</span>}
+                      {item.sourceQuality === 'UNVERIFIED' && <span className="gov-chip muted">بانتظار تأكيد الدائرة</span>}
+                    </div>
+                    <h3>
+                      <Link href={`/service/${item.key}`}>{item.title}</Link>
+                    </h3>
+                    <p>{item.description}</p>
                     <dl>
                       <div>
-                        <dt>نوع الجهة</dt>
-                        <dd>{entityTypeLabels[entity.type]}</dd>
+                        <dt>الجهة</dt>
+                        <dd>
+                          <Link href={`/departments/${item.departmentId}`}>{item.departmentName}</Link>
+                        </dd>
                       </div>
                       <div>
-                        <dt>الجهة الأم</dt>
-                        <dd>{entity.parentAuthority}</dd>
+                        <dt>المستمسكات</dt>
+                        <dd>
+                          {requiredCount ? `${requiredCount.toLocaleString('en-US')} مطلوبة` : 'لا تحتاج مستمسكات'}
+                        </dd>
                       </div>
-                      <div>
-                        <dt>النطاق</dt>
-                        <dd>{entity.district}</dd>
-                      </div>
+                      {item.feeStatus === 'OFFICIAL' && item.feeIqd ? (
+                        <div>
+                          <dt>الرسوم</dt>
+                          <dd>{item.feeIqd.toLocaleString('en-US')} د.ع</dd>
+                        </div>
+                      ) : null}
+                      {item.estimatedDuration && (
+                        <div>
+                          <dt>المدة</dt>
+                          <dd>{item.estimatedDuration}</dd>
+                        </div>
+                      )}
                     </dl>
-                    <p>{entity.summary}</p>
-                    <div className="directory-card-services">
-                      {entity.services.map(service => (
-                        <span key={service.name}>{service.name}</span>
-                      ))}
-                    </div>
                     <footer>
-                      <span className="integration-status">{integrationStatusLabels[entity.integrationStatus]}</span>
-                      <div>
-                        {entity.services.some(service => service.serviceKey) && (
-                          <Link href={`/service/${entity.services.find(service => service.serviceKey)?.serviceKey}`}>
-                            عرض الخدمة <ArrowLeft />
-                          </Link>
-                        )}
-                        <a
-                          href={entity.sourceUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          aria-label={`فتح مصدر ${entity.name}`}
-                        >
-                          <ExternalLink />
+                      <Link href={`/service/${item.key}`} className="gov-btn primary small">
+                        {item.channel === 'INFORMATION_ONLY' ? 'التفاصيل' : 'ابدأ الطلب'} <ArrowLeft size={14} />
+                      </Link>
+                      {item.sourceUrl && (
+                        <a href={item.sourceUrl} target="_blank" rel="noreferrer" className="gov-link" aria-label={`المصدر الرسمي: ${item.title}`}>
+                          <ExternalLink size={14} /> المصدر
                         </a>
-                      </div>
+                      )}
                     </footer>
-                  </article>
-                ))}
-              </div>
-            ) : (
-              <div className="directory-empty">
-                <Building2 />
-                <h3>لا توجد جهة مطابقة</h3>
-                <p>غيّر كلمة البحث أو أزل التصفية لعرض الدليل كاملاً.</p>
+                  </li>
+                )
+              })}
+            </ul>
+            {results.length > visible && (
+              <div className="gov-center">
+                <button className="gov-btn outline" onClick={() => setVisible(value => value + 60)}>
+                  عرض المزيد ({(results.length - visible).toLocaleString('en-US')} خدمة أخرى)
+                </button>
               </div>
             )}
-          </section>
+            <div className="gov-directory-note">
+              <FileCheck2 />
+              <span>
+                الرسوم تُعرض فقط عندما تكون موثقة من مصدر رسمي. الخدمات المعلَّمة «بانتظار تأكيد الدائرة» جُمعت من مصادر عامة
+                وستُحدَّث عند اعتماد الدائرة لها داخل المنصة.
+              </span>
+            </div>
+          </div>
+        </section>
+        <section className="gov-container">
+          <OfficialGovernmentServiceCatalog query={query} />
         </section>
       </main>
       <Footer />

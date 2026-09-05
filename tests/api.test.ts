@@ -291,3 +291,172 @@ describe('identity review permissions', () => {
     expect(asAdmin.status).toBe(404)
   })
 })
+
+describe('catalog-driven online services', () => {
+  const jpeg = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.alloc(64, 1)])
+  const pdf = Buffer.concat([Buffer.from('%PDF-1.4\n'), Buffer.alloc(64, 1)])
+  const webm = Buffer.concat([Buffer.from([0x1a, 0x45, 0xdf, 0xa3]), Buffer.alloc(64, 1)])
+  const serviceKey = 'muni-dir-complaint-against-municipality'
+  let reference = ''
+  let otherDepartmentEmployee = ''
+
+  it('exposes the public catalog with documents and honest fee status', async () => {
+    const summary = await request(app).get('/api/services/summary')
+    expect(summary.status).toBe(200)
+    expect(summary.body.total).toBeGreaterThan(300)
+    const service = await request(app).get(`/api/services/${serviceKey}`)
+    expect(service.status).toBe(200)
+    expect(service.body.departmentId).toBe('dhiqar-municipalities')
+    expect(service.body.requiredDocuments.some((doc: { key: string }) => doc.key === 'national-id')).toBe(true)
+    expect(['OFFICIAL', 'UNVERIFIED', 'NOT_REQUIRED']).toContain(service.body.feeStatus)
+    if (service.body.feeStatus !== 'OFFICIAL') expect(service.body.feeIqd).toBeNull()
+    const search = await request(app).get('/api/services?q=' + encodeURIComponent('شكوى خدمية بلدية'))
+    expect(search.body.items.some((item: { key: string }) => item.key === serviceKey)).toBe(true)
+    expect((await request(app).get('/api/services/does-not-exist')).status).toBe(404)
+  })
+
+  it('rejects a submission missing a required document', async () => {
+    const response = await request(app)
+      .post('/api/service-requests')
+      .set('Cookie', citizen)
+      .field('serviceKey', serviceKey)
+      .field(
+        'data',
+        JSON.stringify({
+          phone: '07801234567',
+          district: 'الناصرية',
+          municipality: 'الناصرية',
+          details: 'تأخر رفع النفايات',
+        })
+      )
+      .field('faceConsent', 'true')
+      .field('documentConsent', 'true')
+      .attach('faceVideo', webm, { filename: 'face.webm', contentType: 'video/webm' })
+    expect(response.status).toBe(400)
+    expect(response.body.message).toContain('مطلوب')
+  })
+
+  it('accepts a complete submission and routes it to the department queue', async () => {
+    const response = await request(app)
+      .post('/api/service-requests')
+      .set('Cookie', citizen)
+      .field('serviceKey', serviceKey)
+      .field(
+        'data',
+        JSON.stringify({
+          phone: '07801234567',
+          district: 'الناصرية',
+          municipality: 'الناصرية',
+          details: 'تأخر رفع النفايات',
+        })
+      )
+      .field('faceConsent', 'true')
+      .field('documentConsent', 'true')
+      .attach('doc__national-id', jpeg, { filename: 'id.jpg', contentType: 'image/jpeg' })
+      .attach('doc__supporting-evidence', pdf, { filename: 'evidence.pdf', contentType: 'application/pdf' })
+      .attach('faceVideo', webm, { filename: 'face.webm', contentType: 'video/webm' })
+    expect(response.status).toBe(201)
+    reference = response.body.reference
+    expect(reference).toMatch(/^TQS-/)
+    expect(response.body.department).toContain('بلديات')
+    const mine = await request(app).get('/api/citizen/service-requests').set('Cookie', citizen)
+    const item = mine.body.find((entry: { reference: string }) => entry.reference === reference)
+    expect(item.formData.fullName).toBeTruthy()
+    expect(item.checklist.find((doc: { key: string }) => doc.key === 'national-id').status).toBe('UPLOADED')
+    expect(item.checklist.find((doc: { key: string }) => doc.key === 'transaction-ref').status).toBe('MISSING')
+  })
+
+  it('scopes the employee queue to the employee department', async () => {
+    otherDepartmentEmployee = await createStaff('EMPLOYEE', 'emp.health', 'dhiqar-health')
+    const own = await request(app).get('/api/employee/service-requests').set('Cookie', employee)
+    expect(own.status).toBe(200)
+    expect(own.body.scope).toBe('dhiqar-municipalities')
+    expect(own.body.items.some((item: { reference: string }) => item.reference === reference)).toBe(true)
+    const other = await request(app).get('/api/employee/service-requests').set('Cookie', otherDepartmentEmployee)
+    expect(other.body.items.some((item: { reference: string }) => item.reference === reference)).toBe(false)
+    const forbidden = await request(app)
+      .get(`/api/employee/service-requests/${reference}`)
+      .set('Cookie', otherDepartmentEmployee)
+    expect(forbidden.status).toBe(403)
+    const all = await request(app).get('/api/employee/service-requests').set('Cookie', admin)
+    expect(all.body.scope).toBe('ALL')
+  })
+
+  it('blocks approval until every required document is verified, then issues a document', async () => {
+    const early = await request(app)
+      .patch(`/api/employee/service-requests/${reference}`)
+      .set('Cookie', employee)
+      .send({ status: 'APPROVED' })
+    expect(early.status).toBe(409)
+    const rejectNoNote = await request(app)
+      .patch(`/api/employee/service-requests/${reference}/documents/national-id`)
+      .set('Cookie', employee)
+      .send({ status: 'REJECTED' })
+    expect(rejectNoNote.status).toBe(400)
+    const rejected = await request(app)
+      .patch(`/api/employee/service-requests/${reference}/documents/national-id`)
+      .set('Cookie', employee)
+      .send({ status: 'REJECTED', note: 'الصورة غير واضحة' })
+    expect(rejected.status).toBe(200)
+    expect(rejected.body.status).toBe('UNDER_REVIEW')
+    const sendBack = await request(app)
+      .patch(`/api/employee/service-requests/${reference}`)
+      .set('Cookie', employee)
+      .send({ status: 'ACTION_REQUIRED' })
+    expect(sendBack.status).toBe(200)
+    expect(sendBack.body.status).toBe('ACTION_REQUIRED')
+    expect(sendBack.body.currentAction).toContain('غير واضحة')
+    const reupload = await request(app)
+      .post(`/api/citizen/service-requests/${reference}/upload-document`)
+      .set('Cookie', citizen)
+      .field('documentKey', 'national-id')
+      .attach('document', jpeg, { filename: 'id2.jpg', contentType: 'image/jpeg' })
+    expect(reupload.status).toBe(200)
+    expect(reupload.body.status).toBe('UNDER_REVIEW')
+    const verified = await request(app)
+      .patch(`/api/employee/service-requests/${reference}/documents/national-id`)
+      .set('Cookie', employee)
+      .send({ status: 'VERIFIED' })
+    expect(verified.status).toBe(200)
+    const media = verified.body.checklist.find((doc: { key: string }) => doc.key === 'national-id').mediaId
+    const view = await request(app)
+      .get(`/api/employee/service-requests/${reference}/media/${media}`)
+      .set('Cookie', employee)
+    expect(view.status).toBe(200)
+    const viewForbidden = await request(app)
+      .get(`/api/employee/service-requests/${reference}/media/${media}`)
+      .set('Cookie', otherDepartmentEmployee)
+    expect(viewForbidden.status).toBe(403)
+    const approved = await request(app)
+      .patch(`/api/employee/service-requests/${reference}`)
+      .set('Cookie', employee)
+      .send({ status: 'APPROVED' })
+    expect(approved.status).toBe(200)
+    expect(approved.body.status).toBe('APPROVED')
+    expect(approved.body.decidedBy).toContain('emp.one')
+    const documents = await request(app).get('/api/citizen/issued-documents').set('Cookie', citizen)
+    expect(
+      documents.body.some((doc: { serviceRequestReference: string }) => doc.serviceRequestReference === reference)
+    ).toBe(true)
+    const closed = await request(app)
+      .post(`/api/citizen/service-requests/${reference}/upload-document`)
+      .set('Cookie', citizen)
+      .field('documentKey', 'national-id')
+      .attach('document', jpeg, { filename: 'id3.jpg', contentType: 'image/jpeg' })
+    expect(closed.status).toBe(409)
+  })
+
+  it('refuses information-only services and inactive services', async () => {
+    const info = await request(app).get('/api/services?channel=INFORMATION_ONLY')
+    const key = info.body.items[0]?.key
+    expect(key).toBeTruthy()
+    const response = await request(app)
+      .post('/api/service-requests')
+      .set('Cookie', citizen)
+      .field('serviceKey', key)
+      .field('data', '{}')
+      .field('faceConsent', 'true')
+      .attach('faceVideo', webm, { filename: 'face.webm', contentType: 'video/webm' })
+    expect(response.status).toBe(409)
+  })
+})

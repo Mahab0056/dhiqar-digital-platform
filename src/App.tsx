@@ -9,6 +9,7 @@ import './App.css'
 import './styles/staff.css'
 import './styles/departments.css'
 import './styles/home.css'
+import './styles/services.css'
 
 const LandingPage = lazy(() => import('./pages/public/LandingPage').then(m => ({ default: m.LandingPage })))
 const GovernmentDirectoryPage = lazy(() =>

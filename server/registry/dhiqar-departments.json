@@ -89,11 +89,7 @@
     "gisStatus": "COORDINATES_VERIFIED",
     "dataStatus": "VERIFIED_SOURCE",
     "sourceUrl": "https://mapcarta.com/N5154746121",
-    "services": [
-      "تصديق المعاملات الإدارية",
-      "شكاوى المواطنين",
-      "متابعة الخدمات في القضاء"
-    ],
+    "services": ["تصديق المعاملات الإدارية", "شكاوى المواطنين", "متابعة الخدمات في القضاء"],
     "notes": "الإحداثيات من OSM (mapcarta)."
   },
   {
@@ -112,11 +108,7 @@
     "gisStatus": "AWAITING_OFFICIAL_COORDINATES",
     "dataStatus": "VERIFIED_SOURCE",
     "sourceUrl": "https://thiqar.gov.iq/الأقضية-والنواحي/قائممقام-قضاء-سوق-الشيوخ-ومدير-بلديـة-قضاء-سوق-الشيوخ-يصادقان-على-التصميم-الخاص",
-    "services": [
-      "تصديق المعاملات الإدارية",
-      "شكاوى المواطنين",
-      "متابعة الخدمات في القضاء"
-    ],
+    "services": ["تصديق المعاملات الإدارية", "شكاوى المواطنين", "متابعة الخدمات في القضاء"],
     "notes": "مذكورة في أخبار الموقع الرسمي للمحافظة؛ لا إحداثيات."
   },
   {
@@ -135,11 +127,7 @@
     "gisStatus": "COORDINATES_VERIFIED",
     "dataStatus": "VERIFIED_SOURCE",
     "sourceUrl": "https://mapcarta.com/N5082492421",
-    "services": [
-      "تصديق المعاملات الإدارية",
-      "شكاوى المواطنين",
-      "متابعة الخدمات في القضاء"
-    ],
+    "services": ["تصديق المعاملات الإدارية", "شكاوى المواطنين", "متابعة الخدمات في القضاء"],
     "notes": "الإحداثيات من OSM (mapcarta)."
   },
   {
@@ -158,11 +146,7 @@
     "gisStatus": "AWAITING_OFFICIAL_COORDINATES",
     "dataStatus": "NEEDS_VERIFICATION",
     "sourceUrl": "https://ar.wikipedia.org/wiki/محافظة_ذي_قار",
-    "services": [
-      "تصديق المعاملات الإدارية",
-      "شكاوى المواطنين",
-      "متابعة الخدمات في القضاء"
-    ],
+    "services": ["تصديق المعاملات الإدارية", "شكاوى المواطنين", "متابعة الخدمات في القضاء"],
     "notes": "القضاء مذكور في ويكيبيديا؛ لم يُعثر على صفحة رسمية أو نقطة OSM."
   },
   {
@@ -181,10 +165,7 @@
     "gisStatus": "AWAITING_OFFICIAL_COORDINATES",
     "dataStatus": "NEEDS_VERIFICATION",
     "sourceUrl": "https://ar.wikipedia.org/wiki/محافظة_ذي_قار",
-    "services": [
-      "تصديق المعاملات الإدارية",
-      "شكاوى المواطنين"
-    ],
+    "services": ["تصديق المعاملات الإدارية", "شكاوى المواطنين"],
     "notes": "قضاء مستحدث حسب ويكيبيديا."
   },
   {
@@ -203,10 +184,7 @@
     "gisStatus": "AWAITING_OFFICIAL_COORDINATES",
     "dataStatus": "NEEDS_VERIFICATION",
     "sourceUrl": "https://ar.wikipedia.org/wiki/محافظة_ذي_قار",
-    "services": [
-      "تصديق المعاملات الإدارية",
-      "شكاوى المواطنين"
-    ],
+    "services": ["تصديق المعاملات الإدارية", "شكاوى المواطنين"],
     "notes": "قضاء مستحدث حسب ويكيبيديا."
   },
   {
@@ -225,10 +203,7 @@
     "gisStatus": "COORDINATES_VERIFIED",
     "dataStatus": "VERIFIED_SOURCE",
     "sourceUrl": "https://mapcarta.com/N7282329485",
-    "services": [
-      "تصديق المعاملات الإدارية",
-      "شكاوى المواطنين"
-    ],
+    "services": ["تصديق المعاملات الإدارية", "شكاوى المواطنين"],
     "notes": "نقطة OSM باسم قائممقامية قضاء النصر (موسومة كمركز شرطة في OSM). كذلك 'مديرية ناحية النصر' 31.536175,46.121136."
   },
   {
@@ -247,10 +222,7 @@
     "gisStatus": "AWAITING_OFFICIAL_COORDINATES",
     "dataStatus": "NEEDS_VERIFICATION",
     "sourceUrl": "https://ar.wikipedia.org/wiki/محافظة_ذي_قار",
-    "services": [
-      "تصديق المعاملات الإدارية",
-      "شكاوى المواطنين"
-    ],
+    "services": ["تصديق المعاملات الإدارية", "شكاوى المواطنين"],
     "notes": "قضاء مستحدث حسب ويكيبيديا."
   },
   {
@@ -269,10 +241,7 @@
     "gisStatus": "AWAITING_OFFICIAL_COORDINATES",
     "dataStatus": "NEEDS_VERIFICATION",
     "sourceUrl": "https://ar.wikipedia.org/wiki/محافظة_ذي_قار",
-    "services": [
-      "تصديق المعاملات الإدارية",
-      "شكاوى المواطنين"
-    ],
+    "services": ["تصديق المعاملات الإدارية", "شكاوى المواطنين"],
     "notes": "قضاء مستحدث حسب ويكيبيديا."
   },
   {
@@ -291,10 +260,7 @@
     "gisStatus": "AWAITING_OFFICIAL_COORDINATES",
     "dataStatus": "NEEDS_VERIFICATION",
     "sourceUrl": "https://ar.wikipedia.org/wiki/محافظة_ذي_قار",
-    "services": [
-      "تصديق المعاملات الإدارية",
-      "شكاوى المواطنين"
-    ],
+    "services": ["تصديق المعاملات الإدارية", "شكاوى المواطنين"],
     "notes": "قضاء مستحدث حسب ويكيبيديا."
   },
   {
@@ -313,10 +279,7 @@
     "gisStatus": "AWAITING_OFFICIAL_COORDINATES",
     "dataStatus": "NEEDS_VERIFICATION",
     "sourceUrl": "https://ar.wikipedia.org/wiki/محافظة_ذي_قار",
-    "services": [
-      "تصديق المعاملات الإدارية",
-      "شكاوى المواطنين"
-    ],
+    "services": ["تصديق المعاملات الإدارية", "شكاوى المواطنين"],
     "notes": "قضاء مستحدث حسب ويكيبيديا."
   },
   {
@@ -335,10 +298,7 @@
     "gisStatus": "COORDINATES_VERIFIED",
     "dataStatus": "VERIFIED_SOURCE",
     "sourceUrl": "https://mapcarta.com/N10718724205",
-    "services": [
-      "تصديق المعاملات الإدارية",
-      "شكاوى المواطنين"
-    ],
+    "services": ["تصديق المعاملات الإدارية", "شكاوى المواطنين"],
     "notes": "الإحداثيات من OSM (mapcarta)."
   },
   {
@@ -357,10 +317,7 @@
     "gisStatus": "AWAITING_OFFICIAL_COORDINATES",
     "dataStatus": "NEEDS_VERIFICATION",
     "sourceUrl": "https://ar.wikipedia.org/wiki/محافظة_ذي_قار",
-    "services": [
-      "تصديق المعاملات الإدارية",
-      "شكاوى المواطنين"
-    ],
+    "services": ["تصديق المعاملات الإدارية", "شكاوى المواطنين"],
     "notes": "الفجر ناحية تابعة للرفاعي في ويكيبيديا؛ يشار إليها محلياً كقضاء. تحتاج تأكيد الصفة الإدارية."
   },
   {
@@ -379,10 +336,7 @@
     "gisStatus": "AWAITING_OFFICIAL_COORDINATES",
     "dataStatus": "NEEDS_VERIFICATION",
     "sourceUrl": "https://ar.wikipedia.org/wiki/محافظة_ذي_قار",
-    "services": [
-      "تصديق المعاملات الإدارية",
-      "شكاوى المواطنين"
-    ],
+    "services": ["تصديق المعاملات الإدارية", "شكاوى المواطنين"],
     "notes": "العكيكة ناحية تابعة لقضاء سوق الشيوخ حسب ويكيبيديا (ليست قضاءً)."
   },
   {
@@ -453,12 +407,7 @@
     "gisStatus": "AWAITING_OFFICIAL_COORDINATES",
     "dataStatus": "NEEDS_VERIFICATION",
     "sourceUrl": "https://ar.nasiriyah.org/taxonomy/term/149",
-    "services": [
-      "إجازات البناء",
-      "الأملاك والإيجارات",
-      "النظافة والتبليط",
-      "الشكاوى الخدمية"
-    ],
+    "services": ["إجازات البناء", "الأملاك والإيجارات", "النظافة والتبليط", "الشكاوى الخدمية"],
     "notes": "مذكورة في الأخبار المحلية؛ لا صفحة رسمية."
   },
   {
@@ -477,12 +426,7 @@
     "gisStatus": "COORDINATES_VERIFIED",
     "dataStatus": "VERIFIED_SOURCE",
     "sourceUrl": "https://mapcarta.com/N5625692421",
-    "services": [
-      "إجازات البناء",
-      "الأملاك والإيجارات",
-      "النظافة والتبليط",
-      "الشكاوى الخدمية"
-    ],
+    "services": ["إجازات البناء", "الأملاك والإيجارات", "النظافة والتبليط", "الشكاوى الخدمية"],
     "notes": "النقطة من OSM باسم 'المجلس البلدي في سوق الشيوخ' وليست بالضرورة مبنى المديرية. مذكورة رسمياً في thiqar.gov.iq."
   },
   {
@@ -501,11 +445,7 @@
     "gisStatus": "AWAITING_OFFICIAL_COORDINATES",
     "dataStatus": "NEEDS_VERIFICATION",
     "sourceUrl": "https://mapcarta.com/N5082492026",
-    "services": [
-      "إجازات البناء",
-      "الأملاك والإيجارات",
-      "النظافة والتبليط"
-    ],
+    "services": ["إجازات البناء", "الأملاك والإيجارات", "النظافة والتبليط"],
     "notes": "OSM يظهر 'المجلس البلدي في قضاء الرفاعي' غرب القائممقامية؛ لم تُستخرج إحداثياته."
   },
   {
@@ -524,11 +464,7 @@
     "gisStatus": "AWAITING_OFFICIAL_COORDINATES",
     "dataStatus": "NEEDS_VERIFICATION",
     "sourceUrl": "https://nasiriyah.org/ar/post/80056/",
-    "services": [
-      "إجازات البناء",
-      "النظافة",
-      "الشكاوى الخدمية"
-    ],
+    "services": ["إجازات البناء", "النظافة", "الشكاوى الخدمية"],
     "notes": "مذكورة ضمن أخبار مشاريع ماء الجبايش."
   },
   {
@@ -547,11 +483,7 @@
     "gisStatus": "COORDINATES_VERIFIED",
     "dataStatus": "VERIFIED_SOURCE",
     "sourceUrl": "https://mapcarta.com/N7282329385",
-    "services": [
-      "إجازات البناء",
-      "الأملاك والإيجارات",
-      "النظافة"
-    ],
+    "services": ["إجازات البناء", "الأملاك والإيجارات", "النظافة"],
     "notes": "نقطة OSM باسم 'مبنى بلدية النصر'."
   },
   {
@@ -645,12 +577,7 @@
     "gisStatus": "COORDINATES_VERIFIED",
     "dataStatus": "VERIFIED_SOURCE",
     "sourceUrl": "https://ur.gov.iq/index/show-eservice/51675/11018/org",
-    "services": [
-      "بلاغات وشكاوى شبكات الصرف الصحي",
-      "متابعة حالة البلاغ",
-      "ربط الاشتراكات",
-      "صيانة الشبكات"
-    ],
+    "services": ["بلاغات وشكاوى شبكات الصرف الصحي", "متابعة حالة البلاغ", "ربط الاشتراكات", "صيانة الشبكات"],
     "notes": "خدمة البلاغات موثقة في بوابة أور. إحداثيات OSM node/4271076500."
   },
   {
@@ -669,13 +596,7 @@
     "gisStatus": "COORDINATES_VERIFIED",
     "dataStatus": "VERIFIED_SOURCE",
     "sourceUrl": "https://www.facebook.com/Electric.thi.qar",
-    "services": [
-      "اشتراكات الكهرباء",
-      "تسديد الأجور",
-      "بلاغات الأعطال",
-      "الشكاوى",
-      "نصب المقاييس"
-    ],
+    "services": ["اشتراكات الكهرباء", "تسديد الأجور", "بلاغات الأعطال", "الشكاوى", "نصب المقاييس"],
     "notes": "النقطة من OSM/GeoView باسم 'دائرة صيانة كهرباء الناصرية' (iq.geoview.info 13119654304n). أخبار الفرع على thiqar.gov.iq."
   },
   {
@@ -694,11 +615,7 @@
     "gisStatus": "COORDINATES_VERIFIED",
     "dataStatus": "VERIFIED_SOURCE",
     "sourceUrl": "https://mapcarta.com/N4637166524",
-    "services": [
-      "صيانة الطرق الخارجية والجسور",
-      "بلاغات الأضرار في الطرق",
-      "الإجازات لأعمال على الطرق الخارجية"
-    ],
+    "services": ["صيانة الطرق الخارجية والجسور", "بلاغات الأضرار في الطرق", "الإجازات لأعمال على الطرق الخارجية"],
     "notes": "إحداثيات OSM node/4637166524."
   },
   {
@@ -742,12 +659,7 @@
     "gisStatus": "AWAITING_OFFICIAL_COORDINATES",
     "dataStatus": "NEEDS_VERIFICATION",
     "sourceUrl": "https://nasiriyah.org/ar/post/79956/",
-    "services": [
-      "التلقيحات البيطرية",
-      "مكافحة الأمراض الحيوانية",
-      "الفحص الصحي للمجازر",
-      "الشهادات البيطرية"
-    ],
+    "services": ["التلقيحات البيطرية", "مكافحة الأمراض الحيوانية", "الفحص الصحي للمجازر", "الشهادات البيطرية"],
     "notes": "تغطية إخبارية فقط."
   },
   {
@@ -766,13 +678,7 @@
     "gisStatus": "AWAITING_OFFICIAL_COORDINATES",
     "dataStatus": "NEEDS_VERIFICATION",
     "sourceUrl": "https://www.moj.gov.iq/registration/",
-    "services": [
-      "نقل ملكية العقارات",
-      "إصدار سندات الطابو",
-      "الإفراز والتوحيد",
-      "الرهن والحجز",
-      "صور القيد"
-    ],
+    "services": ["نقل ملكية العقارات", "إصدار سندات الطابو", "الإفراز والتوحيد", "الرهن والحجز", "صور القيد"],
     "notes": "تسمية 'الأولى' مستنتجة من وجود 'الثانية' رسمياً."
   },
   {
@@ -791,12 +697,7 @@
     "gisStatus": "AWAITING_OFFICIAL_COORDINATES",
     "dataStatus": "VERIFIED_SOURCE",
     "sourceUrl": "https://thiqar.gov.iq/المحافظ/محافظ-ذي-قار-يتفقد-مديرية-التسجيل-العقاري-الثانية-في-صوب-الجزيرة-ويوجه-برفدها-بالمنتسبين-وتخصيص-بناية-جديدة-للدائرة",
-    "services": [
-      "نقل ملكية العقارات",
-      "إصدار سندات الطابو",
-      "الإفراز والتوحيد",
-      "صور القيد"
-    ],
+    "services": ["نقل ملكية العقارات", "إصدار سندات الطابو", "الإفراز والتوحيد", "صور القيد"],
     "notes": "الموقع الرسمي للمحافظة يذكرها في صوب الجزيرة مع تخصيص بناية جديدة."
   },
   {
@@ -841,12 +742,7 @@
     "gisStatus": "AWAITING_OFFICIAL_COORDINATES",
     "dataStatus": "VERIFIED_SOURCE",
     "sourceUrl": "https://nasiriyah.org/ar/post/78251/",
-    "services": [
-      "إصدار البطاقة الوطنية",
-      "تجديد البطاقة",
-      "الحجز الإلكتروني",
-      "استلام البطاقات المنجزة"
-    ],
+    "services": ["إصدار البطاقة الوطنية", "تجديد البطاقة", "الحجز الإلكتروني", "استلام البطاقات المنجزة"],
     "notes": "انتقلت الدائرة إلى مقر جديد في آب 2026؛ نقطة OSM القديمة (31.057992,46.248966) لم تعد صالحة، لذا الإحداثيات فارغة."
   },
   {
@@ -865,12 +761,7 @@
     "gisStatus": "COORDINATES_VERIFIED",
     "dataStatus": "VERIFIED_SOURCE",
     "sourceUrl": "https://mapcarta.com/W467592940",
-    "services": [
-      "إصدار جواز السفر الإلكتروني",
-      "تجديد الجواز",
-      "بدل فاقد/تالف",
-      "الحجز الإلكتروني"
-    ],
+    "services": ["إصدار جواز السفر الإلكتروني", "تجديد الجواز", "بدل فاقد/تالف", "الحجز الإلكتروني"],
     "notes": "إحداثيات OSM way/467592940."
   },
   {
@@ -889,11 +780,7 @@
     "gisStatus": "COORDINATES_VERIFIED",
     "dataStatus": "VERIFIED_SOURCE",
     "sourceUrl": "https://mapcarta.com/N4904891621",
-    "services": [
-      "البطاقة الوطنية",
-      "شهادة الجنسية",
-      "تصحيح القيود"
-    ],
+    "services": ["البطاقة الوطنية", "شهادة الجنسية", "تصحيح القيود"],
     "notes": "نقطة OSM باسم 'احوال الشطرة اطلس'."
   },
   {
@@ -937,12 +824,7 @@
     "gisStatus": "COORDINATES_VERIFIED",
     "dataStatus": "VERIFIED_SOURCE",
     "sourceUrl": "https://mapcarta.com/N4622127984",
-    "services": [
-      "الإطفاء والإنقاذ",
-      "شهادات السلامة للمحال والمشاريع",
-      "فحص منظومات الإطفاء",
-      "التوعية الوقائية"
-    ],
+    "services": ["الإطفاء والإنقاذ", "شهادات السلامة للمحال والمشاريع", "فحص منظومات الإطفاء", "التوعية الوقائية"],
     "notes": "نقطة OSM node/4622127984 ونقطة أخرى N13119654296 باسم Dhi Qar Civil Defense Directorate."
   },
   {
@@ -961,10 +843,7 @@
     "gisStatus": "COORDINATES_VERIFIED",
     "dataStatus": "VERIFIED_SOURCE",
     "sourceUrl": "https://mapcarta.com/N5405092823",
-    "services": [
-      "الإطفاء والإنقاذ",
-      "شهادات السلامة"
-    ],
+    "services": ["الإطفاء والإنقاذ", "شهادات السلامة"],
     "notes": "إحداثيات OSM."
   },
   {
@@ -983,13 +862,7 @@
     "gisStatus": "AWAITING_OFFICIAL_COORDINATES",
     "dataStatus": "VERIFIED_SOURCE",
     "sourceUrl": "https://thiqar.gov.iq/أخبار-عامّة/مرور-ذي-قار-تباشر-بحملة-لتنظيم-حركة-السير-والمرور-وفك-الاختناقات",
-    "services": [
-      "إجازات السياقة",
-      "تسجيل المركبات واللوحات",
-      "نقل الملكية",
-      "الغرامات المرورية",
-      "الفحص الفني"
-    ],
+    "services": ["إجازات السياقة", "تسجيل المركبات واللوحات", "نقل الملكية", "الغرامات المرورية", "الفحص الفني"],
     "notes": "لا نقطة OSM موثقة للمقر."
   },
   {
@@ -1008,11 +881,7 @@
     "gisStatus": "COORDINATES_VERIFIED",
     "dataStatus": "VERIFIED_SOURCE",
     "sourceUrl": "https://mapcarta.com/N5137648730",
-    "services": [
-      "شهادة عدم المحكومية",
-      "التسجيل الجنائي",
-      "البصمة"
-    ],
+    "services": ["شهادة عدم المحكومية", "التسجيل الجنائي", "البصمة"],
     "notes": "إحداثيات OSM."
   },
   {
@@ -1031,10 +900,7 @@
     "gisStatus": "COORDINATES_VERIFIED",
     "dataStatus": "VERIFIED_SOURCE",
     "sourceUrl": "https://mapcarta.com/W1423042297",
-    "services": [
-      "البلاغات الأمنية",
-      "مراكز الشرطة"
-    ],
+    "services": ["البلاغات الأمنية", "مراكز الشرطة"],
     "notes": "إحداثيات OSM."
   },
   {
@@ -1078,9 +944,7 @@
     "gisStatus": "COORDINATES_VERIFIED",
     "dataStatus": "VERIFIED_SOURCE",
     "sourceUrl": "https://www.sjc.iq/view.69338/",
-    "services": [
-      "الدعاوى الجزائية (الجنايات)"
-    ],
+    "services": ["الدعاوى الجزائية (الجنايات)"],
     "notes": "افتُتح المبنى الجديد في 8-3-2022 حسب sjc.iq؛ إحداثيات OSM N8528021517."
   },
   {
@@ -1099,12 +963,7 @@
     "gisStatus": "AWAITING_OFFICIAL_COORDINATES",
     "dataStatus": "NEEDS_VERIFICATION",
     "sourceUrl": "https://mapy.com/en/?id=112591159",
-    "services": [
-      "عقود الزواج",
-      "الطلاق والنفقة",
-      "الحضانة",
-      "القسامات الشرعية"
-    ],
+    "services": ["عقود الزواج", "الطلاق والنفقة", "الحضانة", "القسامات الشرعية"],
     "notes": "مصدر خرائطي فقط (mapy.com) دون إحداثيات مستخرجة."
   },
   {
@@ -1149,11 +1008,7 @@
     "gisStatus": "AWAITING_OFFICIAL_COORDINATES",
     "dataStatus": "VERIFIED_SOURCE",
     "sourceUrl": "https://mapcarta.com/N8184909617",
-    "services": [
-      "ضريبة الدخل",
-      "براءة الذمة الضريبية",
-      "ضريبة العقار"
-    ],
+    "services": ["ضريبة الدخل", "براءة الذمة الضريبية", "ضريبة العقار"],
     "notes": "نقطة OSM 'دائرة ضريبة الشطرة' موجودة؛ لم تُستخرج إحداثياتها."
   },
   {
@@ -1172,11 +1027,7 @@
     "gisStatus": "COORDINATES_VERIFIED",
     "dataStatus": "VERIFIED_SOURCE",
     "sourceUrl": "https://mapcarta.com/W467592781",
-    "services": [
-      "الإبلاغ عن الفساد",
-      "الشكاوى ضد الموظفين",
-      "الكشف عن الذمة المالية"
-    ],
+    "services": ["الإبلاغ عن الفساد", "الشكاوى ضد الموظفين", "الكشف عن الذمة المالية"],
     "notes": "إحداثيات OSM way/467592781."
   },
   {
@@ -1220,11 +1071,7 @@
     "gisStatus": "AWAITING_OFFICIAL_COORDINATES",
     "dataStatus": "VERIFIED_SOURCE",
     "sourceUrl": "https://spa.gov.iq/umbrella/m-thiqar.aspx",
-    "services": [
-      "الإعانة الاجتماعية",
-      "تحديث البيانات",
-      "الاعتراضات"
-    ],
+    "services": ["الإعانة الاجتماعية", "تحديث البيانات", "الاعتراضات"],
     "notes": "العنوان من الصفحة الرسمية."
   },
   {
@@ -1317,12 +1164,7 @@
     "gisStatus": "AWAITING_OFFICIAL_COORDINATES",
     "dataStatus": "VERIFIED_SOURCE",
     "sourceUrl": "https://toc.oil.gov.iq/?article=623",
-    "services": [
-      "التعيينات والتدريب",
-      "المنفعة الاجتماعية للمناطق النفطية",
-      "العقود والمقاولات",
-      "الشكاوى البيئية"
-    ],
+    "services": ["التعيينات والتدريب", "المنفعة الاجتماعية للمناطق النفطية", "العقود والمقاولات", "الشكاوى البيئية"],
     "notes": "صفحة وزارة النفط أعادت 403 وقت الفحص؛ التأسيس موثق على thiqar.gov.iq."
   },
   {
@@ -1341,12 +1183,7 @@
     "gisStatus": "AWAITING_OFFICIAL_COORDINATES",
     "dataStatus": "NEEDS_VERIFICATION",
     "sourceUrl": "https://opdc.oil.gov.iq/",
-    "services": [
-      "توزيع الغاز السائل",
-      "النفط الأبيض",
-      "البنزين ومحطات الوقود",
-      "إجازات محطات التعبئة"
-    ],
+    "services": ["توزيع الغاز السائل", "النفط الأبيض", "البنزين ومحطات الوقود", "إجازات محطات التعبئة"],
     "notes": "لم يُعثر على صفحة خاصة بالفرع."
   },
   {
@@ -1389,10 +1226,7 @@
     "gisStatus": "AWAITING_OFFICIAL_COORDINATES",
     "dataStatus": "VERIFIED_SOURCE",
     "sourceUrl": "https://ar.wikipedia.org/wiki/متحف_الناصرية",
-    "services": [
-      "زيارة المتحف",
-      "الفعاليات الثقافية"
-    ],
+    "services": ["زيارة المتحف", "الفعاليات الثقافية"],
     "notes": "ويكيبيديا؛ لا إحداثيات مستخرجة."
   },
   {
@@ -1411,12 +1245,7 @@
     "gisStatus": "AWAITING_OFFICIAL_COORDINATES",
     "dataStatus": "VERIFIED_SOURCE",
     "sourceUrl": "https://thiqar.gov.iq/أخبار-عامّة/مديرية-شباب-ورياضة-ذي-قار-وبالتعاون-مع-مكتب-شؤون-العشائر-في-المحافظة-تقيم-ورشة-عن-السلم",
-    "services": [
-      "المنتديات والمراكز الشبابية",
-      "الملاعب الرياضية",
-      "الدورات والفعاليات",
-      "دعم الأندية"
-    ],
+    "services": ["المنتديات والمراكز الشبابية", "الملاعب الرياضية", "الدورات والفعاليات", "دعم الأندية"],
     "notes": "العنوان مستنتج من صفحة هيئة الحج 'حي أور شارع المصطفى مجاور دائرة الشباب والرياضة'."
   },
   {
@@ -1435,12 +1264,7 @@
     "gisStatus": "COORDINATES_VERIFIED",
     "dataStatus": "VERIFIED_SOURCE",
     "sourceUrl": "https://nominatim.openstreetmap.org/ui/details.html?osmtype=N&osmid=5206209930&class=office",
-    "services": [
-      "الموافقات البيئية للمشاريع",
-      "الشكاوى البيئية",
-      "الرقابة على الملوثات",
-      "التوعية البيئية"
-    ],
+    "services": ["الموافقات البيئية للمشاريع", "الشكاوى البيئية", "الرقابة على الملوثات", "التوعية البيئية"],
     "notes": "إحداثيات OSM node/5206209930."
   },
   {
@@ -1459,12 +1283,7 @@
     "gisStatus": "AWAITING_OFFICIAL_COORDINATES",
     "dataStatus": "VERIFIED_SOURCE",
     "sourceUrl": "https://cosit.gov.iq/ar/1216-16-6-2021",
-    "services": [
-      "التعداد السكاني",
-      "الموجز الإحصائي للمحافظة",
-      "المسوح الميدانية",
-      "تزويد البيانات"
-    ],
+    "services": ["التعداد السكاني", "الموجز الإحصائي للمحافظة", "المسوح الميدانية", "تزويد البيانات"],
     "notes": "الموجز الإحصائي لذي قار على موقع الجهاز المركزي. شعب فرعية في الشطرة (OSM N6126088786) والرفاعي (31.7227,46.1136)."
   },
   {
@@ -1483,12 +1302,7 @@
     "gisStatus": "AWAITING_OFFICIAL_COORDINATES",
     "dataStatus": "VERIFIED_SOURCE",
     "sourceUrl": "https://thiqar.gov.iq/النائب-الثاني/نائب-محافظ-ذي-قار-يزور-دائرة-التخطيط-العمراني-ويتابع-الخرائط-التي-اعدتها-البلديات",
-    "services": [
-      "التصاميم الأساسية للمدن",
-      "خرائط السكن العشوائي",
-      "الموافقات التخطيطية",
-      "تغيير جنس الأراضي"
-    ],
+    "services": ["التصاميم الأساسية للمدن", "خرائط السكن العشوائي", "الموافقات التخطيطية", "تغيير جنس الأراضي"],
     "notes": "مذكورة على الموقع الرسمي للمحافظة."
   },
   {
@@ -1507,12 +1321,7 @@
     "gisStatus": "COORDINATES_VERIFIED",
     "dataStatus": "VERIFIED_SOURCE",
     "sourceUrl": "https://mapcarta.com/N7229551886",
-    "services": [
-      "قروض الإسكان",
-      "استلام الصكوك",
-      "متابعة الأقساط",
-      "براءة الذمة"
-    ],
+    "services": ["قروض الإسكان", "استلام الصكوك", "متابعة الأقساط", "براءة الذمة"],
     "notes": "إحداثيات OSM N7229551886. أخبار الصكوك: nasiriyah.org/ar/post/78954/"
   },
   {
@@ -1531,12 +1340,7 @@
     "gisStatus": "COORDINATES_VERIFIED",
     "dataStatus": "VERIFIED_SOURCE",
     "sourceUrl": "https://mapcarta.com/N4150679911",
-    "services": [
-      "البريد والطرود",
-      "صندوق التوفير",
-      "الحوالات",
-      "صناديق البريد"
-    ],
+    "services": ["البريد والطرود", "صندوق التوفير", "الحوالات", "صناديق البريد"],
     "notes": "إحداثيات OSM N4150679911. مكاتب بريد أخرى في الرفاعي والبطحاء وسوق الشيوخ حسب OSM."
   },
   {
@@ -1555,11 +1359,7 @@
     "gisStatus": "COORDINATES_VERIFIED",
     "dataStatus": "VERIFIED_SOURCE",
     "sourceUrl": "https://mapcarta.com/N5119865821",
-    "services": [
-      "اشتراكات الإنترنت الأرضي",
-      "الهاتف الأرضي",
-      "الشكاوى"
-    ],
+    "services": ["اشتراكات الإنترنت الأرضي", "الهاتف الأرضي", "الشكاوى"],
     "notes": "إحداثيات OSM N5119865821."
   },
   {
@@ -1578,11 +1378,7 @@
     "gisStatus": "AWAITING_OFFICIAL_COORDINATES",
     "dataStatus": "NEEDS_VERIFICATION",
     "sourceUrl": "https://www.facebook.com/sed.gov.iq/posts/1097317245802472/",
-    "services": [
-      "إدارة المساجد والحسينيات",
-      "الأملاك الوقفية والإيجارات",
-      "شؤون الأئمة والخطباء"
-    ],
+    "services": ["إدارة المساجد والحسينيات", "الأملاك الوقفية والإيجارات", "شؤون الأئمة والخطباء"],
     "notes": "منشور رسمي لديوان الوقف الشيعي عن ذي قار."
   },
   {
@@ -1601,10 +1397,7 @@
     "gisStatus": "AWAITING_OFFICIAL_COORDINATES",
     "dataStatus": "VERIFIED_SOURCE",
     "sourceUrl": "http://sunniaffairs.gov.iq/ar/ملاحظية-الوقف-السني-في-ذي-قار-تستقبل-وف",
-    "services": [
-      "إدارة المساجد",
-      "الأملاك الوقفية"
-    ],
+    "services": ["إدارة المساجد", "الأملاك الوقفية"],
     "notes": "مذكورة على الموقع الرسمي لديوان الوقف السني."
   },
   {
@@ -1648,11 +1441,7 @@
     "gisStatus": "AWAITING_OFFICIAL_COORDINATES",
     "dataStatus": "VERIFIED_SOURCE",
     "sourceUrl": "https://sci.uos.edu.iq/",
-    "services": [
-      "القبول والتسجيل",
-      "تصديق الوثائق",
-      "الدراسات العليا"
-    ],
+    "services": ["القبول والتسجيل", "تصديق الوثائق", "الدراسات العليا"],
     "notes": "الكليات لها مواقع فرعية على uos.edu.iq. كلية القانون قرب النصر حسب OSM."
   },
   {
@@ -1671,10 +1460,7 @@
     "gisStatus": "AWAITING_OFFICIAL_COORDINATES",
     "dataStatus": "VERIFIED_SOURCE",
     "sourceUrl": "https://shu.edu.iq/news/details/209",
-    "services": [
-      "القبول والتسجيل",
-      "تصديق الوثائق"
-    ],
+    "services": ["القبول والتسجيل", "تصديق الوثائق"],
     "notes": "العنوان من الموقع الرسمي."
   },
   {
@@ -1693,11 +1479,7 @@
     "gisStatus": "AWAITING_OFFICIAL_COORDINATES",
     "dataStatus": "VERIFIED_SOURCE",
     "sourceUrl": "https://www.stu.edu.iq/المعهد-التقني-الناصرية/",
-    "services": [
-      "القبول والتسجيل",
-      "الدبلوم التقني",
-      "تصديق الوثائق"
-    ],
+    "services": ["القبول والتسجيل", "الدبلوم التقني", "تصديق الوثائق"],
     "notes": "صفحة رسمية؛ العنوان المعروض على الصفحة هو عنوان رئاسة الجامعة في البصرة."
   },
   {
@@ -1716,10 +1498,7 @@
     "gisStatus": "AWAITING_OFFICIAL_COORDINATES",
     "dataStatus": "VERIFIED_SOURCE",
     "sourceUrl": "https://www.stu.edu.iq/المعهد-التقني-الشطرة/",
-    "services": [
-      "القبول والتسجيل",
-      "الدبلوم التقني"
-    ],
+    "services": ["القبول والتسجيل", "الدبلوم التقني"],
     "notes": "صفحة رسمية."
   },
   {
@@ -1738,12 +1517,7 @@
     "gisStatus": "COORDINATES_VERIFIED",
     "dataStatus": "VERIFIED_SOURCE",
     "sourceUrl": "https://mapcarta.com/N5493884837",
-    "services": [
-      "الإطلاقات المائية والري",
-      "إجازات المضخات والمآخذ",
-      "إزالة التجاوزات على الأنهر",
-      "كري الجداول"
-    ],
+    "services": ["الإطلاقات المائية والري", "إجازات المضخات والمآخذ", "إزالة التجاوزات على الأنهر", "كري الجداول"],
     "notes": "إحداثيات OSM N5493884837. دائرة صيانة الموارد المائية قرب بلديات ذي قار (OSM W566040781)."
   },
   {
@@ -1762,10 +1536,7 @@
     "gisStatus": "COORDINATES_VERIFIED",
     "dataStatus": "VERIFIED_SOURCE",
     "sourceUrl": "https://mapcarta.com/W1266830906",
-    "services": [
-      "تشغيل وصيانة المصب العام",
-      "شبكات البزل"
-    ],
+    "services": ["تشغيل وصيانة المصب العام", "شبكات البزل"],
     "notes": "إحداثيات OSM W1266830906. جسر المصب العام مذكور على thiqar.gov.iq."
   },
   {
@@ -1784,10 +1555,7 @@
     "gisStatus": "COORDINATES_VERIFIED",
     "dataStatus": "VERIFIED_SOURCE",
     "sourceUrl": "https://en.wikipedia.org/wiki/Nasiriyah_Airport",
-    "services": [
-      "الرحلات المدنية (عند التشغيل)",
-      "الشحن الجوي"
-    ],
+    "services": ["الرحلات المدنية (عند التشغيل)", "الشحن الجوي"],
     "notes": "الإحداثيات من ويكيبيديا. الافتتاح المدني موضع أخبار محلية متكررة."
   },
   {
@@ -1806,11 +1574,7 @@
     "gisStatus": "COORDINATES_VERIFIED",
     "dataStatus": "VERIFIED_SOURCE",
     "sourceUrl": "https://mapcarta.com/N10683823305",
-    "services": [
-      "البطاقة التموينية",
-      "نقل وإضافة الأفراد",
-      "الوكلاء ومفردات الحصة"
-    ],
+    "services": ["البطاقة التموينية", "نقل وإضافة الأفراد", "الوكلاء ومفردات الحصة"],
     "notes": "إحداثيات OSM N10683823305."
   },
   {
@@ -1829,11 +1593,7 @@
     "gisStatus": "COORDINATES_VERIFIED",
     "dataStatus": "VERIFIED_SOURCE",
     "sourceUrl": "https://mapcarta.com/N4150679896",
-    "services": [
-      "هوية غرفة التجارة",
-      "تصديق الفواتير والمستندات",
-      "تسجيل التجار"
-    ],
+    "services": ["هوية غرفة التجارة", "تصديق الفواتير والمستندات", "تسجيل التجار"],
     "notes": "إحداثيات OSM N4150679896."
   },
   {
@@ -1852,11 +1612,7 @@
     "gisStatus": "AWAITING_OFFICIAL_COORDINATES",
     "dataStatus": "VERIFIED_SOURCE",
     "sourceUrl": "https://hajj.gov.iq/branchs/view/details?id=6",
-    "services": [
-      "التسجيل في قرعة الحج",
-      "العمرة",
-      "الاستعلام عن الحملات"
-    ],
+    "services": ["التسجيل في قرعة الحج", "العمرة", "الاستعلام عن الحملات"],
     "notes": "العنوان من الموقع الرسمي؛ الهاتف المنشور 000000 (غير صالح)."
   },
   {
@@ -1875,11 +1631,7 @@
     "gisStatus": "AWAITING_OFFICIAL_COORDINATES",
     "dataStatus": "VERIFIED_SOURCE",
     "sourceUrl": "https://www.ppf.gov.iq/2024/12/03/39089/",
-    "services": [
-      "شمول السجناء السياسيين",
-      "الرواتب والامتيازات",
-      "قطع الأراضي"
-    ],
+    "services": ["شمول السجناء السياسيين", "الرواتب والامتيازات", "قطع الأراضي"],
     "notes": "مذكورة على الموقع الرسمي للمؤسسة."
   }
 ]

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'wouter'
 import {
   AlertTriangle,
@@ -23,12 +23,26 @@ import { getServiceDefinition } from '../../service-forms'
 import type {
   Citizen,
   CitizenNotification,
+  CatalogService,
   CitizenServiceRequest,
   GovernmentApplication,
   IssuedDocument,
 } from '../../types'
 import { CitizenPdfActions } from '../../components/citizen/CitizenPdfActions'
 import { PortalLayout } from '../../components/citizen/PortalLayout'
+
+const serviceRequestStatusLabel = (status: string) =>
+  status === 'ACTION_REQUIRED'
+    ? 'مطلوب استكمال'
+    : status === 'APPROVED'
+      ? 'تمت المعاملة'
+      : status === 'REJECTED'
+        ? 'مرفوض'
+        : status === 'UNDER_REVIEW'
+          ? 'قيد التدقيق'
+          : status === 'APPOINTMENT_REQUESTED'
+            ? 'طلب موعد'
+            : 'تم التقديم'
 
 export function CitizenDashboard() {
   const [citizen, setCitizen] = useState<Citizen | null>(null)
@@ -60,16 +74,16 @@ export function CitizenDashboard() {
   const readAllNotifications = async () => applyNotifications(await api.markAllNotificationsRead())
   const [uploadingServiceReference, setUploadingServiceReference] = useState<string | null>(null)
   const [serviceUploadError, setServiceUploadError] = useState('')
-  const uploadServiceDocument = async (item: CitizenServiceRequest, file: File | null) => {
+  const uploadServiceDocument = async (
+    item: CitizenServiceRequest,
+    target: { documentKey?: string; documentName?: string },
+    file: File | null
+  ) => {
     if (!file) return
-    setUploadingServiceReference(item.reference)
+    setUploadingServiceReference(`${item.reference}:${target.documentKey || 'extra'}`)
     setServiceUploadError('')
     try {
-      const updated = await api.uploadServiceRequestDocument(
-        item.reference,
-        item.requiredDocument || 'المستند المطلوب',
-        file
-      )
+      const updated = await api.uploadServiceRequestDocument(item.reference, target, file)
       setServiceRequests(current =>
         current.map(request => (request.reference === updated.reference ? updated : request))
       )
@@ -86,9 +100,47 @@ export function CitizenDashboard() {
   const nextRequest = serviceRequests[0]
   const serviceActionRequired = serviceRequests.find(request => request.status === 'ACTION_REQUIRED')
   const citizenActionRequired = actionRequired || serviceActionRequired
-  const availableServices = services
+  const [catalog, setCatalog] = useState<CatalogService[] | null>(null)
+  useEffect(() => {
+    let active = true
+    api
+      .listServices()
+      .then(items => {
+        if (active) setCatalog(items)
+      })
+      .catch(() => {
+        if (active) setCatalog([])
+      })
+    return () => {
+      active = false
+    }
+  }, [])
+  const availableServices = useMemo(
+    () =>
+      catalog && catalog.length
+        ? catalog.map(item => ({
+            key: item.key,
+            title: item.title,
+            department: item.departmentName,
+            category: item.category,
+            description: item.description,
+            channel: item.channel,
+            mode: item.mode,
+          }))
+        : services.map(item => ({
+            key: item.key,
+            title: item.title,
+            department: item.department,
+            category: item.category,
+            description: item.description,
+            channel: 'ONLINE_SUBMISSION' as const,
+            mode: getServiceDefinition(item.key)?.mode || ('GENERIC' as const),
+          })),
+    [catalog]
+  )
   const [serviceCategory, setServiceCategory] = useState('الكل')
   const [serviceSearch, setServiceSearch] = useState('')
+  const [serviceLimit, setServiceLimit] = useState(24)
   const serviceCategories = ['الكل', ...Array.from(new Set(availableServices.map(service => service.category)))]
   const filteredAvailableServices = availableServices.filter(
     service =>
@@ -97,6 +149,7 @@ export function CitizenDashboard() {
         .toLowerCase()
         .includes(serviceSearch.trim().toLowerCase())
   )
+  const shownServices = filteredAvailableServices.slice(0, serviceLimit)
   return (
     <PortalLayout>
       <div className="citizen-v2">
@@ -197,7 +250,7 @@ export function CitizenDashboard() {
               <h2>{citizenActionRequired ? citizenActionRequired.currentAction : 'لا يوجد إجراء مطلوب منك حالياً'}</h2>
               <p>
                 {citizenActionRequired
-                  ? `${actionRequired?.serviceName || getServiceDefinition(serviceActionRequired?.serviceKey || '')?.title || 'طلب خدمة'} • ${citizenActionRequired.reference}`
+                  ? `${actionRequired?.serviceName || serviceActionRequired?.serviceName || 'طلب خدمة'} • ${citizenActionRequired.reference}`
                   : 'توصلك الإشعارات مباشرة عند وصول تحديث جديد من الدائرة.'}
               </p>
             </div>
@@ -241,8 +294,8 @@ export function CitizenDashboard() {
               <span className="section-kicker">دليل الخدمات الرقمية</span>
               <h2>اختر خدمتك من القائمة الكاملة</h2>
               <p>
-                تظهر هنا {availableServices.length.toLocaleString('en-US')} خدمة ومسار فعلي. كل بطاقة تفتح الاستمارة
-                الخاصة بها، بينما الخدمات الوطنية تفتح بوابتها الرسمية فقط.
+                {availableServices.length.toLocaleString('en-US')} خدمة من دوائر المحافظة. كل بطاقة تعرض المستمسكات
+                المطلوبة وتفتح الاستمارة الخاصة بها، والخدمات الوطنية تفتح بوابتها الرسمية فقط.
               </p>
             </div>
             <Link href="/directory">
@@ -251,7 +304,7 @@ export function CitizenDashboard() {
           </header>
           <div className="service-catalog-direct-note">
             <BriefcaseBusiness />
-            <span>كل بطاقة مرتبطة باستمارتها أو ببوابتها الرسمية؛ لا يُحوّل أي اختيار إلى إجازة المحل تلقائياً.</span>
+            <span>ترفع المستمسكات داخل الاستمارة مباشرةً، ويدقّقها موظف الدائرة المختصة مستمسكاً مستمسكاً.</span>
           </div>
           <div className="citizen-service-controls">
             <label>
@@ -279,8 +332,8 @@ export function CitizenDashboard() {
           </div>
           {filteredAvailableServices.length ? (
             <div className="citizen-service-deck">
-              {filteredAvailableServices.map(service => {
-                const mode = getServiceDefinition(service.key)?.mode
+              {shownServices.map(service => {
+                const mode = service.mode
                 return (
                   <Link
                     href={`/service/${service.key}`}
@@ -298,17 +351,28 @@ export function CitizenDashboard() {
                     <p>{service.description}</p>
                     <footer>
                       <span>
-                        {mode === 'EXTERNAL'
-                          ? 'فتح بوابة رسمية'
+                        {mode === 'EXTERNAL' || service.channel === 'INFORMATION_ONLY'
+                          ? 'التفاصيل والرابط الرسمي'
                           : mode === 'APPOINTMENT'
                             ? 'طلب موعد'
-                            : 'فتح الاستمارة'}
+                            : service.channel === 'APPOINTMENT_REQUIRED'
+                              ? 'تقديم إلكتروني ثم حضور'
+                              : 'فتح الاستمارة'}
                       </span>
                       <ArrowLeft />
                     </footer>
                   </Link>
                 )
               })}
+              {filteredAvailableServices.length > serviceLimit && (
+                <button
+                  className="button outline citizen-service-more"
+                  type="button"
+                  onClick={() => setServiceLimit(value => value + 24)}
+                >
+                  عرض المزيد ({(filteredAvailableServices.length - serviceLimit).toLocaleString('en-US')})
+                </button>
+              )}
             </div>
           ) : (
             <div className="citizen-empty service-filter-empty">
@@ -341,7 +405,7 @@ export function CitizenDashboard() {
                 اختر خدمة <Plus />
               </Link>
             </header>
-            {applications.length === 0 ? (
+            {applications.length === 0 && serviceRequests.length === 0 ? (
               <div className="citizen-empty">
                 <FileText />
                 <div>
@@ -351,6 +415,29 @@ export function CitizenDashboard() {
                 <Link className="button primary" href="#services">
                   اختر خدمة
                 </Link>
+              </div>
+            ) : applications.length === 0 ? (
+              <div className="citizen-application-list">
+                {serviceRequests.slice(0, 4).map(item => (
+                  <a href="#general-requests" className="citizen-application-row" key={item.reference}>
+                    <span className={`citizen-application-icon ${item.status.toLowerCase()}`}>
+                      <BriefcaseBusiness />
+                    </span>
+                    <div>
+                      <div>
+                        <strong>{item.serviceName || item.serviceKey}</strong>
+                        <em className={`status ${item.status.toLowerCase()}`}>
+                          {serviceRequestStatusLabel(item.status)}
+                        </em>
+                      </div>
+                      <small>
+                        {item.reference} • {item.departmentName || item.department}
+                      </small>
+                      <p>{item.currentAction}</p>
+                    </div>
+                    <ChevronLeft />
+                  </a>
+                ))}
               </div>
             ) : (
               <div className="citizen-application-list">
@@ -485,7 +572,7 @@ export function CitizenDashboard() {
             <header className="citizen-section-heading compact">
               <div>
                 <span className="section-kicker">متابعة الخدمات</span>
-                <h2>طلبات الخدمات الأخرى</h2>
+                <h2>طلبات الخدمات الإلكترونية</h2>
                 <p>تابع القرار، سبب الرفض، أو ارفع النواقص مباشرة من هنا.</p>
               </div>
             </header>
@@ -495,68 +582,137 @@ export function CitizenDashboard() {
               </div>
             )}
             <div className="citizen-service-request-list">
-              {serviceRequests.map(item => (
-                <article key={item.reference} className={`citizen-service-request ${item.status.toLowerCase()}`}>
-                  <div className="citizen-service-request-top">
-                    <span className="citizen-application-icon">
-                      <BriefcaseBusiness />
-                    </span>
-                    <div>
-                      <small>{item.reference}</small>
-                      <h3>{item.serviceName || getServiceDefinition(item.serviceKey)?.title || item.serviceKey}</h3>
-                      <p>{item.currentAction}</p>
-                    </div>
-                    <em className={`status ${item.status.toLowerCase()}`}>
-                      {item.status === 'ACTION_REQUIRED'
-                        ? 'مطلوب استكمال'
-                        : item.status === 'APPROVED'
-                          ? 'تمت المعاملة'
-                          : item.status === 'REJECTED'
-                            ? 'مرفوض'
-                            : item.status === 'UNDER_REVIEW'
-                              ? 'قيد التدقيق'
-                              : 'تم التقديم'}
-                    </em>
-                  </div>
-                  {item.decisionNote && (
-                    <div className="service-decision-note">
-                      <AlertTriangle />
-                      <span>
-                        <small>{item.status === 'REJECTED' ? 'سبب الرفض' : 'ملاحظة الموظف'}</small>
-                        <strong>{item.decisionNote}</strong>
+              {serviceRequests.map(item => {
+                const checklist = item.checklist || []
+                const closed = ['APPROVED', 'REJECTED'].includes(item.status)
+                const needsUpload = checklist.filter(doc => doc.status === 'MISSING' || doc.status === 'REJECTED')
+                const extraRequested = item.status === 'ACTION_REQUIRED' && item.requiredDocument && !needsUpload.length
+                return (
+                  <article key={item.reference} className={`citizen-service-request ${item.status.toLowerCase()}`}>
+                    <div className="citizen-service-request-top">
+                      <span className="citizen-application-icon">
+                        <BriefcaseBusiness />
                       </span>
-                    </div>
-                  )}
-                  {item.status === 'ACTION_REQUIRED' && (
-                    <div className="service-required-upload">
                       <div>
-                        <FileText />
+                        <small>
+                          {item.reference} • {item.departmentName || item.department}
+                        </small>
+                        <h3>{item.serviceName || item.serviceKey}</h3>
+                        <p>{item.currentAction}</p>
+                      </div>
+                      <em className={`status ${item.status.toLowerCase()}`}>
+                        {serviceRequestStatusLabel(item.status)}
+                      </em>
+                    </div>
+                    {item.appointment && (
+                      <div className="service-decision-note">
+                        <CalendarDays />
                         <span>
-                          <small>المطلوب منك</small>
-                          <strong>{item.requiredDocument || 'مستند إضافي'}</strong>
+                          <small>
+                            {item.appointment.status === 'CONFIRMED' ? 'موعد مؤكد' : 'موعد بانتظار التأكيد'}
+                          </small>
+                          <strong>
+                            {item.appointment.preferredDate} — {item.appointment.preferredTime}
+                            {item.appointment.note ? ` — ${item.appointment.note}` : ''}
+                          </strong>
                         </span>
                       </div>
-                      <label className="button primary">
-                        <Camera />{' '}
-                        {uploadingServiceReference === item.reference ? 'جاري الرفع...' : 'تصوير / رفع المستند'}
-                        <input
-                          hidden
-                          type="file"
-                          accept="image/*,application/pdf"
-                          capture="environment"
-                          disabled={uploadingServiceReference === item.reference}
-                          onChange={event => void uploadServiceDocument(item, event.target.files?.[0] || null)}
-                        />
-                      </label>
-                    </div>
-                  )}
-                  {item.attachments && item.attachments.length > 0 && (
-                    <div className="service-request-attachment-summary">
-                      <FileArchive /> {item.attachments.length.toLocaleString('en-US')} مرفق محفوظ ضمن الطلب
-                    </div>
-                  )}
-                </article>
-              ))}
+                    )}
+                    {item.decisionNote && (
+                      <div className="service-decision-note">
+                        <AlertTriangle />
+                        <span>
+                          <small>{item.status === 'REJECTED' ? 'سبب الرفض' : 'ملاحظة الدائرة'}</small>
+                          <strong>{item.decisionNote}</strong>
+                        </span>
+                      </div>
+                    )}
+                    {checklist.length > 0 && (
+                      <ul className="citizen-checklist">
+                        {checklist.map(doc => {
+                          const uploading = uploadingServiceReference === `${item.reference}:${doc.key}`
+                          const canUpload = !closed && (doc.status === 'MISSING' || doc.status === 'REJECTED')
+                          return (
+                            <li key={doc.key} className={`checklist-${doc.status.toLowerCase()}`}>
+                              <span className={`checklist-badge ${doc.status.toLowerCase()}`}>
+                                {doc.status === 'VERIFIED'
+                                  ? 'مدقق'
+                                  : doc.status === 'UPLOADED'
+                                    ? 'بانتظار التدقيق'
+                                    : doc.status === 'REJECTED'
+                                      ? 'أعد الرفع'
+                                      : doc.required
+                                        ? 'مطلوب'
+                                        : 'اختياري'}
+                              </span>
+                              <div>
+                                <strong>{doc.label}</strong>
+                                {doc.status === 'REJECTED' && doc.note && <small>سبب الرفض: {doc.note}</small>}
+                              </div>
+                              {canUpload && (
+                                <label className="button outline small">
+                                  <Camera />{' '}
+                                  {uploading ? 'جاري الرفع...' : doc.status === 'REJECTED' ? 'إعادة الرفع' : 'رفع'}
+                                  <input
+                                    hidden
+                                    type="file"
+                                    accept={doc.accepts.includes('pdf') ? 'image/*,application/pdf' : 'image/*'}
+                                    capture="environment"
+                                    disabled={uploading}
+                                    onChange={event =>
+                                      void uploadServiceDocument(
+                                        item,
+                                        { documentKey: doc.key },
+                                        event.target.files?.[0] || null
+                                      )
+                                    }
+                                  />
+                                </label>
+                              )}
+                            </li>
+                          )
+                        })}
+                      </ul>
+                    )}
+                    {extraRequested && (
+                      <div className="service-required-upload">
+                        <div>
+                          <FileText />
+                          <span>
+                            <small>المطلوب منك</small>
+                            <strong>{item.requiredDocument}</strong>
+                          </span>
+                        </div>
+                        <label className="button primary">
+                          <Camera />{' '}
+                          {uploadingServiceReference === `${item.reference}:extra`
+                            ? 'جاري الرفع...'
+                            : 'تصوير / رفع المستند'}
+                          <input
+                            hidden
+                            type="file"
+                            accept="image/*,application/pdf"
+                            capture="environment"
+                            disabled={uploadingServiceReference === `${item.reference}:extra`}
+                            onChange={event =>
+                              void uploadServiceDocument(
+                                item,
+                                { documentName: item.requiredDocument || 'المستند المطلوب' },
+                                event.target.files?.[0] || null
+                              )
+                            }
+                          />
+                        </label>
+                      </div>
+                    )}
+                    {item.attachments && item.attachments.length > 0 && (
+                      <div className="service-request-attachment-summary">
+                        <FileArchive /> {item.attachments.length.toLocaleString('en-US')} مرفق محفوظ مشفراً ضمن الطلب
+                      </div>
+                    )}
+                  </article>
+                )
+              })}
             </div>
           </section>
         )}
@@ -567,7 +723,7 @@ export function CitizenDashboard() {
             </span>
             <div>
               <small>آخر طلب مسجل</small>
-              <strong>{getServiceDefinition(nextRequest.serviceKey)?.title || nextRequest.serviceKey}</strong>
+              <strong>{nextRequest.serviceName || nextRequest.serviceKey}</strong>
               <p>{nextRequest.currentAction}</p>
             </div>
             <Link className="button outline" href="/service/online-appointment">

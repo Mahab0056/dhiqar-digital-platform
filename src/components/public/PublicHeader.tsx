@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { Link, useLocation } from 'wouter'
-import { Menu, PlusCircle, UserRound, X } from 'lucide-react'
+import { LayoutDashboard, Menu, PlusCircle, UserRound, X } from 'lucide-react'
 import { CivicUtilityBar } from './CivicUtilityBar'
+import { useSession } from '../../lib/session'
 
 const navItems = [
   { label: 'الرئيسية', href: '/', match: (path: string) => path === '/' },
@@ -15,6 +16,17 @@ const navItems = [
 export function PublicHeader() {
   const [open, setOpen] = useState(false)
   const [location] = useLocation()
+  const { session } = useSession()
+  const portalHref =
+    session?.role === 'CITIZEN'
+      ? '/citizen'
+      : session?.role === 'SUPER_ADMIN'
+        ? '/super-admin'
+        : session?.role === 'OPERATIONS'
+          ? '/operations'
+          : session
+            ? '/employee'
+            : null
   return (
     <>
       <CivicUtilityBar />
@@ -40,12 +52,20 @@ export function PublicHeader() {
               </Link>
             ))}
             <div className="gov-nav-actions">
-              <Link href="/login" className="gov-btn outline" onClick={() => setOpen(false)}>
-                <UserRound size={16} /> تسجيل الدخول
-              </Link>
-              <Link href="/onboarding" className="gov-btn primary" onClick={() => setOpen(false)}>
-                <PlusCircle size={16} /> ابدأ معاملتك
-              </Link>
+              {portalHref ? (
+                <Link href={portalHref} className="gov-btn primary" onClick={() => setOpen(false)}>
+                  <LayoutDashboard size={16} /> {session?.role === 'CITIZEN' ? 'حسابي ومعاملاتي' : 'لوحة العمل'}
+                </Link>
+              ) : (
+                <>
+                  <Link href="/login" className="gov-btn outline" onClick={() => setOpen(false)}>
+                    <UserRound size={16} /> تسجيل الدخول
+                  </Link>
+                  <Link href="/onboarding" className="gov-btn primary" onClick={() => setOpen(false)}>
+                    <PlusCircle size={16} /> ابدأ معاملتك
+                  </Link>
+                </>
+              )}
             </div>
           </nav>
           <button

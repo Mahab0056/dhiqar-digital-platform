@@ -116,6 +116,81 @@ export interface IssuedDocument {
   pdfDownloadUrl: string
 }
 
+export type ServiceChannel = 'ONLINE_SUBMISSION' | 'APPOINTMENT_REQUIRED' | 'INFORMATION_ONLY'
+export type ServiceMode = 'SPECIALIZED' | 'GENERIC' | 'APPOINTMENT' | 'EXTERNAL' | 'CATALOG'
+
+export interface CatalogDocument {
+  key: string
+  label: string
+  description: string
+  required: boolean
+  accepts: Array<'image' | 'pdf'>
+}
+
+export interface CatalogField {
+  key: string
+  label: string
+  type: 'text' | 'textarea' | 'select' | 'date' | 'time' | 'tel' | 'number' | 'email'
+  required: boolean
+  placeholder?: string
+  options?: string[]
+  maxLength?: number
+}
+
+export interface CatalogService {
+  key: string
+  departmentId: string
+  departmentName: string
+  title: string
+  description: string
+  category: string
+  applicantType: 'CITIZEN' | 'BUSINESS' | 'BOTH'
+  channel: ServiceChannel
+  mode: ServiceMode
+  requiredDocuments: CatalogDocument[]
+  fields: CatalogField[]
+  feeIqd: number | null
+  feeStatus: 'OFFICIAL' | 'UNVERIFIED' | 'NOT_REQUIRED'
+  feeSource: string | null
+  estimatedDuration: string | null
+  sourceUrl: string
+  sourceQuality: 'OFFICIAL' | 'RELIABLE' | 'UNVERIFIED'
+  notes: string
+  active: boolean
+  updatedAt: string
+}
+
+export interface CatalogSummary {
+  total: number
+  categories: Array<{ label: string; total: number }>
+  channels: Partial<Record<ServiceChannel, number>>
+}
+
+export type ChecklistStatus = 'MISSING' | 'UPLOADED' | 'VERIFIED' | 'REJECTED'
+
+export interface ChecklistItem {
+  key: string
+  label: string
+  description: string
+  required: boolean
+  accepts: Array<'image' | 'pdf'>
+  status: ChecklistStatus
+  mediaId: string | null
+  note: string | null
+  updatedAt: string | null
+}
+
+export interface ServiceRequestAttachment {
+  id: string
+  mediaId: string
+  label: string
+  documentKey?: string | null
+  originalName: string
+  mimeType: string
+  sizeBytes: number
+  available: boolean
+}
+
 export interface CitizenServiceRequest {
   id: number
   reference: string
@@ -123,21 +198,19 @@ export interface CitizenServiceRequest {
   serviceName?: string
   departmentId: string
   department?: string
+  departmentName?: string
   status: string
   formData: Record<string, string>
+  formEntries?: Array<{ key: string; label: string; value: string }>
   currentAction: string
   decisionNote?: string | null
   requiredDocument?: string | null
+  decidedBy?: string | null
+  decidedAt?: string | null
   citizenName?: string
-  attachments?: Array<{
-    id: string
-    mediaId: string
-    label: string
-    originalName: string
-    mimeType: string
-    sizeBytes: number
-    available: boolean
-  }>
+  citizenPhone?: string | null
+  checklist?: ChecklistItem[]
+  attachments?: ServiceRequestAttachment[]
   createdAt: string
   updatedAt: string
   appointment?: {

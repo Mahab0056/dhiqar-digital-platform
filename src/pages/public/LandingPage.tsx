@@ -33,7 +33,7 @@ import { CircleMarker, MapContainer, TileLayer, Tooltip as LeafletTooltip, ZoomC
 import { api } from '../../api'
 import { services } from '../../data'
 import { dhiqarNews } from '../../news'
-import type { DepartmentSummary } from '../../types'
+import type { CatalogService, DepartmentSummary } from '../../types'
 import { Footer } from '../../components/public/Footer'
 import { PublicHeader } from '../../components/public/PublicHeader'
 
@@ -80,15 +80,15 @@ const quickActions = [
 ] as const
 
 const homeCategories = [
-  { label: 'الأعمال والتجارة', icon: BriefcaseBusiness, query: 'المحلات والأعمال' },
-  { label: 'السكن والعقار', icon: Home, query: 'السكن والأراضي' },
-  { label: 'الطاقة والماء', icon: Zap, query: 'الماء' },
-  { label: 'البلديات', icon: Building2, query: 'البلديات' },
-  { label: 'الزراعة', icon: Leaf, query: 'الزراعة' },
-  { label: 'النقل', icon: Bus, query: 'السياقة' },
-  { label: 'التعليم', icon: GraduationCap, query: 'التربية والتعليم' },
-  { label: 'الصحة', icon: HeartPulse, query: 'الصحة' },
-  { label: 'الخدمات الشخصية', icon: UserRound, query: 'الوثائق الحكومية' },
+  { label: 'الأعمال والتجارة', icon: BriefcaseBusiness, href: '/directory?category=المحلات والأعمال' },
+  { label: 'السكن والعقار', icon: Home, href: '/directory?category=السكن والأراضي' },
+  { label: 'الماء والكهرباء', icon: Zap, href: '/directory?q=ماء' },
+  { label: 'البلديات', icon: Building2, href: '/directory?category=البناء والبلديات' },
+  { label: 'الزراعة', icon: Leaf, href: '/directory?category=الزراعة' },
+  { label: 'المرور والنقل', icon: Bus, href: '/directory?category=الأمن والمرور' },
+  { label: 'التعليم', icon: GraduationCap, href: '/directory?q=تعليم' },
+  { label: 'الصحة', icon: HeartPulse, href: '/directory?category=الصحة' },
+  { label: 'الوثائق الشخصية', icon: UserRound, href: '/directory?category=الوثائق الحكومية' },
 ]
 
 const journeySteps = ['اختر الخدمة', 'قدّم الطلب', 'التدقيق', 'الموافقة', 'استلم النتيجة']
@@ -143,18 +143,28 @@ export function LandingPage() {
       .catch(() => setDepartments([]))
   }, [])
 
+  const [catalog, setCatalog] = useState<CatalogService[]>([])
+  useEffect(() => {
+    api
+      .listServices()
+      .then(setCatalog)
+      .catch(() => setCatalog([]))
+  }, [])
+
   const results = useMemo(() => {
     const tokens = normalizeArabic(query)
       .split(' ')
       .filter(token => token.length > 1)
     if (!tokens.length) return []
-    return services
+    return catalog
       .filter(service => {
-        const text = normalizeArabic(`${service.title} ${service.description} ${service.department} ${service.category}`)
+        const text = normalizeArabic(
+          `${service.title} ${service.description} ${service.departmentName} ${service.category} ${service.requiredDocuments.map(doc => doc.label).join(' ')}`
+        )
         return tokens.every(token => text.includes(token))
       })
       .slice(0, 6)
-  }, [query])
+  }, [query, catalog])
 
   const suggestions = [
     { label: 'إجازة بناء', href: '/service/building-permit' },
@@ -234,7 +244,7 @@ export function LandingPage() {
                         <Link href={`/service/${service.key}`} onClick={() => setQuery('')}>
                           <strong>{service.title}</strong>
                           <small>
-                            {service.department} • {service.category}
+                            {service.departmentName} • {service.category}
                           </small>
                           <ChevronLeft size={16} />
                         </Link>
@@ -294,7 +304,7 @@ export function LandingPage() {
           <div className="gov-categories">
             {homeCategories.map((item, index) => (
               <Link
-                href={`/directory?q=${encodeURIComponent(item.query)}`}
+                href={item.href}
                 className={index === 1 ? 'gov-category is-active' : 'gov-category'}
                 key={item.label}
               >

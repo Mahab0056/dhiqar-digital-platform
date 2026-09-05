@@ -3,11 +3,10 @@ import { Link } from 'wouter'
 import { ArrowRight, Building2, ExternalLink, Gauge, Globe, MapPin, Phone, ShieldCheck } from 'lucide-react'
 import { CircleMarker, MapContainer, TileLayer } from 'react-leaflet'
 import { api } from '../../api'
-import type { DepartmentSummary } from '../../types'
+import type { CatalogService, DepartmentSummary } from '../../types'
 import { useSession } from '../../lib/session'
 import { PublicHeader } from '../../components/public/PublicHeader'
 import { Footer } from '../../components/public/Footer'
-import { services as platformServices } from '../../data'
 
 export function DepartmentPublicPage({ id }: { id: string }) {
   const [item, setItem] = useState<DepartmentSummary | null>(null)
@@ -21,7 +20,21 @@ export function DepartmentPublicPage({ id }: { id: string }) {
       .catch(err => setError((err as Error).message))
   }, [id])
 
-  const digitalServices = item ? platformServices.filter(service => service.department === item.name) : []
+  const [digitalServices, setDigitalServices] = useState<CatalogService[]>([])
+  useEffect(() => {
+    let active = true
+    api
+      .listServices({ department: id })
+      .then(items => {
+        if (active) setDigitalServices(items)
+      })
+      .catch(() => {
+        if (active) setDigitalServices([])
+      })
+    return () => {
+      active = false
+    }
+  }, [id])
   const canOpenDashboard =
     session &&
     session.role !== 'CITIZEN' &&
@@ -64,25 +77,40 @@ export function DepartmentPublicPage({ id }: { id: string }) {
 
             <section className="department-columns">
               <div className="department-main">
-                <article className="department-block">
-                  <h2>الخدمات التي تقدمها الدائرة</h2>
-                  <ul className="department-services">
-                    {item.services.map(service => (
-                      <li key={service}>{service}</li>
-                    ))}
-                  </ul>
-                </article>
-                {digitalServices.length > 0 && (
+                {digitalServices.length > 0 ? (
                   <article className="department-block">
-                    <h2>خدمات متاحة رقمياً عبر المنصة</h2>
+                    <h2>
+                      خدمات الدائرة على المنصة <small>({digitalServices.length.toLocaleString('en-US')})</small>
+                    </h2>
                     <div className="department-digital-services">
                       {digitalServices.map(service => (
                         <Link href={`/service/${service.key}`} key={service.key}>
                           <strong>{service.title}</strong>
-                          <small>{service.description}</small>
+                          <small>
+                            {service.channel === 'ONLINE_SUBMISSION'
+                              ? 'تقديم إلكتروني'
+                              : service.channel === 'APPOINTMENT_REQUIRED'
+                                ? 'تقديم إلكتروني ثم حضور'
+                                : 'معلوماتية'}
+                            {service.requiredDocuments.length
+                              ? ` • ${service.requiredDocuments.filter(doc => doc.required).length.toLocaleString('en-US')} مستمسك مطلوب`
+                              : ''}
+                          </small>
                         </Link>
                       ))}
                     </div>
+                    <Link href={`/directory?department=${encodeURIComponent(id)}`} className="gov-link">
+                      عرضها في دليل الخدمات مع التصفية
+                    </Link>
+                  </article>
+                ) : (
+                  <article className="department-block">
+                    <h2>الخدمات التي تقدمها الدائرة</h2>
+                    <ul className="department-services">
+                      {item.services.map(service => (
+                        <li key={service}>{service}</li>
+                      ))}
+                    </ul>
                   </article>
                 )}
                 {item.notes && (

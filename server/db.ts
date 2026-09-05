@@ -619,6 +619,19 @@ ensureColumn('departments', 'facebook', 'TEXT')
 ensureColumn('departments', 'gis_status', 'TEXT')
 ensureColumn('departments', 'services_json', 'TEXT')
 ensureColumn('departments', 'notes', 'TEXT')
+ensureColumn('service_catalog', 'fee_source', 'TEXT')
+ensureColumn('service_catalog', 'document_schema', 'TEXT')
+ensureColumn('service_catalog', 'applicant_type', "TEXT NOT NULL DEFAULT 'BOTH'")
+ensureColumn('service_catalog', 'channel', "TEXT NOT NULL DEFAULT 'ONLINE_SUBMISSION'")
+ensureColumn('service_catalog', 'mode', "TEXT NOT NULL DEFAULT 'CATALOG'")
+ensureColumn('service_catalog', 'source_quality', "TEXT NOT NULL DEFAULT 'UNVERIFIED'")
+ensureColumn('service_catalog', 'notes', 'TEXT')
+ensureColumn('service_requests', 'document_checklist', 'TEXT')
+ensureColumn('service_requests', 'required_document', 'TEXT')
+ensureColumn('service_requests', 'decided_by', 'TEXT')
+ensureColumn('service_requests', 'decided_at', 'TEXT')
+ensureColumn('service_requests', 'review_started_at', 'TEXT')
+ensureColumn('service_request_media', 'document_key', 'TEXT')
 db.exec(
   'CREATE UNIQUE INDEX IF NOT EXISTS idx_citizens_account_key ON citizens(account_key) WHERE account_key IS NOT NULL'
 )
@@ -846,8 +859,12 @@ export function listCitizensForSuperAdmin(
   }))
 }
 
-export function getApplications() {
-  const rows = db.prepare('SELECT * FROM applications ORDER BY id DESC').all() as Array<Record<string, unknown>>
+export function getApplications(departmentName?: string) {
+  const rows = (
+    departmentName
+      ? db.prepare('SELECT * FROM applications WHERE department = ? ORDER BY id DESC').all(departmentName)
+      : db.prepare('SELECT * FROM applications ORDER BY id DESC').all()
+  ) as Array<Record<string, unknown>>
   return rows.map(mapApplication)
 }
 

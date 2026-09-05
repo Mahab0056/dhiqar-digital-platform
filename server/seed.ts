@@ -1,6 +1,5 @@
 import { db } from './db.js'
 import { departmentRegistry } from './department-registry.js'
-import { serviceDefinitions } from '../src/service-forms.js'
 
 export function ensureDepartmentRecord(name: string) {
   const item = departmentRegistry.find(entry => entry.name === name)
@@ -24,31 +23,4 @@ export function ensureDepartmentRecord(name: string) {
     timestamp
   )
   return item
-}
-
-export function seedPlatformServiceCatalog() {
-  const timestamp = new Date().toISOString()
-  for (const definition of serviceDefinitions) {
-    const department = ensureDepartmentRecord(definition.department)
-    if (!department) continue
-    db.prepare(
-      `INSERT INTO service_catalog (id, department_id, name, category, description, fee_iqd, fee_status, estimated_duration, form_schema, required_documents, payment_mode, active, source_url, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'DISABLED', 1, ?, ?, ?)
-      ON CONFLICT(id) DO UPDATE SET department_id = excluded.department_id, name = excluded.name, category = excluded.category, description = excluded.description, fee_iqd = excluded.fee_iqd, estimated_duration = excluded.estimated_duration, form_schema = excluded.form_schema, source_url = excluded.source_url, updated_at = excluded.updated_at`
-    ).run(
-      definition.key,
-      department.id,
-      definition.title,
-      definition.category,
-      definition.description,
-      definition.fee,
-      definition.fee > 0 ? 'UNVERIFIED' : 'NOT_REQUIRED',
-      definition.estimatedTime,
-      JSON.stringify(definition.fields),
-      JSON.stringify(definition.requirements),
-      department.sourceUrl,
-      timestamp,
-      timestamp
-    )
-  }
 }
