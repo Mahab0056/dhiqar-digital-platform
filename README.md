@@ -68,7 +68,7 @@ server/
   auth/              session, staff accounts, password (scrypt), totp
   routes/            auth, staff-admin, departments, applications, onboarding, documents, ...
   departments.ts     لوحات الدوائر وسجل الدوائر
-  data/dhiqar-departments.json   سجل 80 جهة مع المصادر
+  registry/dhiqar-departments.json   سجل 80 جهة مع المصادر
   db.ts              المخطط وطبقة البيانات (SQLite)
   db-ops/backup.ts   النسخ الاحتياطي والسلامة
 tests/               اختبارات API

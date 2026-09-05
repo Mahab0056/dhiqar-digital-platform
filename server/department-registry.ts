@@ -1,4 +1,4 @@
-import registryData from './data/dhiqar-departments.json' with { type: 'json' }
+import registryData from './registry/dhiqar-departments.json' with { type: 'json' }
 
 export type DepartmentRegistryItem = {
   id: string
