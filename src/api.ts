@@ -18,6 +18,9 @@ import type {
   StaffSession,
   StaffSessionItem,
   AuditLogEntry,
+  DepartmentDashboard,
+  DepartmentDirectoryResponse,
+  DepartmentSummary,
 } from './types'
 
 const readableRequestError = (status: number, message?: string) => {
@@ -76,6 +79,18 @@ export const api = {
   revokeSession: (id: string) =>
     request<{ success: boolean }>(`/api/auth/staff/sessions/${encodeURIComponent(id)}`, { method: 'DELETE' }),
   logout: () => request<{ success: boolean }>('/api/auth/logout', { method: 'POST' }),
+  // ---- departments ----
+  listDepartments: (params: { query?: string; category?: string; district?: string } = {}) => {
+    const search = new URLSearchParams()
+    if (params.query) search.set('q', params.query)
+    if (params.category) search.set('category', params.category)
+    if (params.district) search.set('district', params.district)
+    return request<DepartmentDirectoryResponse>(`/api/departments${search.size ? `?${search}` : ''}`)
+  },
+  getDepartment: (id: string) => request<DepartmentSummary>(`/api/departments/${encodeURIComponent(id)}`),
+  getDepartmentDashboard: (id: string) =>
+    request<DepartmentDashboard>(`/api/departments/${encodeURIComponent(id)}/dashboard`),
+  getMyDepartment: () => request<{ department: DepartmentSummary | null }>('/api/me/department'),
   // ---- staff administration (super admin) ----
   listStaffAccounts: () =>
     request<{ accounts: StaffAccount[]; roles: StaffRole[]; departments: Array<{ id: string; name: string }> }>(

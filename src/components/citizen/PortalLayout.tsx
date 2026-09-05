@@ -213,6 +213,8 @@ export function PortalLayout({
           { icon: KeyRound, label: 'الأمان والحساب', href: '/staff/security' },
         ]
   const { session } = useSession()
+  if (role === 'employee' && session?.departmentId)
+    nav.splice(1, 0, { icon: Building2, label: 'لوحة دائرتي', href: `/department/${session.departmentId}` })
   const staffName = session && session.role !== 'CITIZEN' ? session.displayName || session.username || 'موظف' : null
   const staffRoleLabel =
     session?.role === 'SUPER_ADMIN'

@@ -15,7 +15,8 @@ export function PublicHeader() {
           <nav className={open ? 'nav-links is-open' : 'nav-links'}>
             <Link href="/">الرئيسية</Link>
             <Link href="/#services">الخدمات الحكومية</Link>
-            <Link href="/directory">الجهات الحكومية</Link>
+            <Link href="/departments">دليل الدوائر</Link>
+            <Link href="/directory">الخدمات الحكومية</Link>
             <Link href="/citizen#my-requests">متابعة المعاملات</Link>
             <Link href="/citizen/feedback">الشكاوى والمقترحات</Link>
             <Link href="/#about">عن المنصة</Link>

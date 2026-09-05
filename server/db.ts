@@ -610,6 +610,12 @@ ensureColumn('identity_reviews', 'location_lat', 'REAL')
 ensureColumn('identity_reviews', 'location_lng', 'REAL')
 ensureColumn('identity_reviews', 'location_accuracy_m', 'REAL')
 ensureColumn('identity_reviews', 'location_consent_at', 'TEXT')
+ensureColumn('departments', 'name_en', 'TEXT')
+ensureColumn('departments', 'parent_ministry', 'TEXT')
+ensureColumn('departments', 'facebook', 'TEXT')
+ensureColumn('departments', 'gis_status', 'TEXT')
+ensureColumn('departments', 'services_json', 'TEXT')
+ensureColumn('departments', 'notes', 'TEXT')
 db.exec(
   'CREATE UNIQUE INDEX IF NOT EXISTS idx_citizens_account_key ON citizens(account_key) WHERE account_key IS NOT NULL'
 )

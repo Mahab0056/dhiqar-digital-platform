@@ -1,0 +1,567 @@
+/* ---- public departments directory --------------------------------------------------------- */
+.departments-page main,
+.department-page main {
+  padding: 28px 0 60px;
+  display: grid;
+  gap: 22px;
+}
+.departments-hero {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr;
+  gap: 24px;
+  align-items: end;
+  padding: 34px;
+  border-radius: 22px;
+  color: #fff;
+  background:
+    radial-gradient(circle at 15% 20%, rgba(38, 217, 128, 0.22), transparent 45%),
+    linear-gradient(135deg, #063a24, #08502e 60%, #0a6b3c);
+}
+.departments-hero .section-kicker {
+  color: #9be6bf;
+}
+.departments-hero h1 {
+  margin: 10px 0 8px;
+  font-size: clamp(24px, 3vw, 36px);
+  line-height: 1.35;
+}
+.departments-hero p {
+  margin: 0;
+  color: #cfe9da;
+  line-height: 1.8;
+  max-width: 62ch;
+}
+.departments-hero-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+.departments-hero-stats div {
+  padding: 16px 12px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  text-align: center;
+}
+.departments-hero-stats strong {
+  display: block;
+  font-size: 26px;
+}
+.departments-hero-stats small {
+  color: #b8d9c7;
+}
+.departments-toolbar {
+  display: grid;
+  grid-template-columns: 1fr auto auto auto;
+  gap: 12px;
+  align-items: end;
+  padding: 16px;
+  border-radius: 16px;
+  background: #fff;
+  border: 1px solid var(--line-government, #d6dfd8);
+}
+.departments-toolbar label {
+  display: grid;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 800;
+  color: #244437;
+}
+.departments-toolbar select,
+.departments-search input {
+  border: 1px solid #d4dfd9;
+  border-radius: 12px;
+  padding: 11px 12px;
+  font: inherit;
+  background: #f8faf9;
+}
+.departments-search {
+  position: relative;
+}
+.departments-search svg {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  width: 18px;
+  height: 18px;
+  color: #68776f;
+}
+.departments-search input {
+  width: 100%;
+  padding-right: 40px;
+}
+.departments-count {
+  font-weight: 800;
+  color: #68776f;
+  font-size: 13px;
+  padding-bottom: 12px;
+}
+.departments-map-card {
+  border-radius: 18px;
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid var(--line-government, #d6dfd8);
+}
+.departments-map {
+  height: 380px;
+  width: 100%;
+}
+.departments-map-card small {
+  display: block;
+  padding: 10px 16px;
+  color: #68776f;
+}
+.departments-group header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 10px 0 12px;
+}
+.departments-group h2 {
+  margin: 0;
+  font-size: 20px;
+}
+.departments-group header span {
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: #e8f4ec;
+  color: #0b6b3a;
+  font-weight: 800;
+  font-size: 12px;
+}
+.departments-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 14px;
+}
+.department-card {
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+  border-radius: 16px;
+  background: #fff;
+  border: 1px solid var(--line-government, #d6dfd8);
+  color: inherit;
+  text-decoration: none;
+  transition: 0.18s ease;
+}
+.department-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 16px 36px rgba(10, 54, 37, 0.1);
+  border-color: #9cc8ad;
+}
+.department-card-head {
+  display: grid;
+  grid-template-columns: 42px 1fr;
+  gap: 12px;
+  align-items: start;
+}
+.department-card-icon {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: #e8f4ec;
+  color: var(--brand-700);
+}
+.department-card h3 {
+  margin: 0 0 3px;
+  font-size: 15.5px;
+  line-height: 1.5;
+}
+.department-card small {
+  color: #68776f;
+  font-size: 12px;
+}
+.department-card ul {
+  margin: 0;
+  padding: 0 16px 0 0;
+  color: #3d5247;
+  font-size: 13px;
+  line-height: 1.8;
+}
+.department-card-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.department-card-arrow {
+  margin-inline-start: auto;
+  width: 18px;
+  color: var(--brand-700);
+}
+.departments-note {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 16px 18px;
+  border-radius: 14px;
+  background: #f1f6f3;
+  color: #3d5247;
+  font-size: 13px;
+  line-height: 1.8;
+}
+.departments-note svg {
+  flex: none;
+  width: 18px;
+  margin-top: 4px;
+}
+.departments-note p {
+  margin: 0;
+}
+
+/* ---- department public page ---------------------------------------------------------------- */
+.department-hero {
+  display: grid;
+  grid-template-columns: 64px 1fr auto;
+  gap: 18px;
+  align-items: center;
+  padding: 26px;
+  border-radius: 20px;
+  background: #fff;
+  border: 1px solid var(--line-government, #d6dfd8);
+}
+.department-hero-icon {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, var(--brand-800), var(--brand-600));
+  color: #fff;
+}
+.department-hero h1 {
+  margin: 6px 0 2px;
+  font-size: clamp(22px, 2.6vw, 30px);
+}
+.department-hero-en {
+  margin: 0 0 8px;
+  color: #68776f;
+  direction: ltr;
+  text-align: right;
+  font-size: 13px;
+}
+.department-hero-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  color: #3d5247;
+  font-size: 13px;
+}
+.department-hero-meta > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.department-columns {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  gap: 18px;
+  align-items: start;
+}
+.department-main,
+.department-side {
+  display: grid;
+  gap: 16px;
+}
+.department-block {
+  padding: 22px;
+  border-radius: 16px;
+  background: #fff;
+  border: 1px solid var(--line-government, #d6dfd8);
+}
+.department-block h2 {
+  margin: 0 0 12px;
+  font-size: 17px;
+}
+.department-block.muted-block {
+  background: #f7f9f8;
+}
+.department-services {
+  margin: 0;
+  padding: 0 18px 0 0;
+  line-height: 2;
+  columns: 2;
+}
+.department-digital-services {
+  display: grid;
+  gap: 10px;
+}
+.department-digital-services a {
+  display: grid;
+  gap: 3px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #e8f4ec;
+  color: inherit;
+  text-decoration: none;
+}
+.department-digital-services small {
+  color: #3d5247;
+}
+.department-contact {
+  margin: 0;
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  gap: 8px 12px;
+  font-size: 13.5px;
+}
+.department-contact dt {
+  color: #68776f;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.department-contact dd {
+  margin: 0;
+  word-break: break-word;
+}
+.department-contact a {
+  color: var(--brand-700);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.department-map {
+  height: 220px;
+  border-radius: 12px;
+  margin-bottom: 10px;
+}
+
+/* ---- staff department dashboard ------------------------------------------------------------ */
+.department-dashboard-heading {
+  align-items: center;
+}
+.department-dashboard-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.department-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+  margin-top: 20px;
+}
+.department-kpis > div {
+  display: grid;
+  gap: 4px;
+  padding: 16px;
+  border-radius: 14px;
+  background: #fff;
+  border: 1px solid #d8e2dc;
+}
+.department-kpis span {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: #e8f4ec;
+  color: var(--brand-700);
+  margin-bottom: 4px;
+}
+.department-kpis svg {
+  width: 17px;
+  height: 17px;
+}
+.department-kpis small {
+  color: #68776f;
+  font-size: 12px;
+  font-weight: 700;
+}
+.department-kpis strong {
+  font-size: 24px;
+  line-height: 1.1;
+}
+.department-kpis em {
+  font-style: normal;
+  color: #8a9a91;
+  font-size: 11.5px;
+}
+.department-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 18px;
+}
+.department-panel {
+  display: grid;
+  gap: 14px;
+  align-content: start;
+  padding: 20px;
+  border-radius: 16px;
+  background: #fff;
+  border: 1px solid #d8e2dc;
+  min-width: 0;
+}
+.department-panel > header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+.department-panel > header svg {
+  color: #8a9a91;
+  width: 20px;
+}
+.department-panel h2 {
+  margin: 0 0 3px;
+  font-size: 16px;
+}
+.department-panel > header p {
+  margin: 0;
+  color: #68776f;
+  font-size: 12.5px;
+}
+.department-chart {
+  grid-column: span 2;
+}
+.department-requests {
+  grid-column: span 2;
+}
+.department-chart-legend {
+  display: flex;
+  gap: 16px;
+  font-size: 12.5px;
+  color: #3d5247;
+}
+.department-chart-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.department-chart-legend i {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  display: inline-block;
+}
+.department-staff-list,
+.department-services-list,
+.department-feedback-list,
+.department-activity {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.department-staff-list li {
+  display: grid;
+  grid-template-columns: 12px 1fr;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #f7f9f8;
+}
+.department-staff-list li.disabled {
+  opacity: 0.55;
+}
+.department-staff-list i {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #c7d2cc;
+}
+.department-staff-list i.online {
+  background: #26d980;
+  box-shadow: 0 0 0 4px rgba(38, 217, 128, 0.2);
+}
+.department-staff-list small,
+.department-services-list small,
+.department-feedback-list small,
+.department-activity small {
+  display: block;
+  color: #68776f;
+  font-size: 12px;
+}
+.department-services-list li,
+.department-feedback-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid #e6ede9;
+}
+.department-activity li {
+  padding: 8px 0;
+  border-bottom: 1px solid #edf2ef;
+}
+.department-workforce {
+  margin: 0;
+  font-size: 13px;
+  color: #3d5247;
+}
+.department-workforce small {
+  display: block;
+  color: #8a9a91;
+}
+.department-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  min-width: 720px;
+}
+.department-table th,
+.department-table td {
+  text-align: right;
+  padding: 10px 8px;
+  border-bottom: 1px solid #e6ede9;
+  vertical-align: middle;
+}
+.department-table th {
+  color: #68776f;
+  font-size: 12px;
+}
+.department-table a {
+  color: var(--brand-700);
+  font-weight: 800;
+}
+.status-pill.danger {
+  background: #fbe9ea;
+  color: #b0303a;
+}
+
+@media (max-width: 960px) {
+  .departments-hero,
+  .department-columns,
+  .department-grid {
+    grid-template-columns: 1fr;
+  }
+  .department-chart,
+  .department-requests {
+    grid-column: auto;
+  }
+  .departments-toolbar {
+    grid-template-columns: 1fr 1fr;
+  }
+  .departments-search {
+    grid-column: span 2;
+  }
+  .department-hero {
+    grid-template-columns: 52px 1fr;
+  }
+  .department-hero .button {
+    grid-column: span 2;
+  }
+  .department-services {
+    columns: 1;
+  }
+}
+.department-staff-list li.muted {
+  display: block;
+  line-height: 1.8;
+}
+.department-workbench-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}

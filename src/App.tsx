@@ -7,6 +7,7 @@ import { RouteFallback } from './components/shared/RouteFallback'
 import { LegacyLoginRedirect } from './pages/auth/StaffLoginPage'
 import './App.css'
 import './styles/staff.css'
+import './styles/departments.css'
 
 const LandingPage = lazy(() => import('./pages/public/LandingPage').then(m => ({ default: m.LandingPage })))
 const GovernmentDirectoryPage = lazy(() =>
@@ -17,6 +18,15 @@ const GovernmentServiceDetailPage = lazy(() =>
 )
 const StaffLoginPage = lazy(() => import('./pages/auth/StaffLoginPage').then(m => ({ default: m.StaffLoginPage })))
 const SecurityPage = lazy(() => import('./pages/staff/SecurityPage').then(m => ({ default: m.SecurityPage })))
+const DepartmentsDirectoryPage = lazy(() =>
+  import('./pages/public/DepartmentsDirectoryPage').then(m => ({ default: m.DepartmentsDirectoryPage }))
+)
+const DepartmentPublicPage = lazy(() =>
+  import('./pages/public/DepartmentPublicPage').then(m => ({ default: m.DepartmentPublicPage }))
+)
+const DepartmentDashboardPage = lazy(() =>
+  import('./pages/department/DepartmentDashboardPage').then(m => ({ default: m.DepartmentDashboardPage }))
+)
 const LoginPage = lazy(() => import('./pages/auth/LoginPage').then(m => ({ default: m.LoginPage })))
 const SuperAdminDashboard = lazy(() =>
   import('./pages/super-admin/SuperAdminDashboard').then(m => ({ default: m.SuperAdminDashboard }))
@@ -59,6 +69,15 @@ function App() {
         <Route path="/" component={LandingPage} />
         <Route path="/directory" component={GovernmentDirectoryPage} />
         <Route path="/government-services/:id">{params => <GovernmentServiceDetailPage id={params.id} />}</Route>
+        <Route path="/departments" component={DepartmentsDirectoryPage} />
+        <Route path="/departments/:id">{params => <DepartmentPublicPage id={params.id} />}</Route>
+        <Route path="/department/:id">
+          {params => (
+            <SessionGate role="EMPLOYEE">
+              <DepartmentDashboardPage id={params.id} />
+            </SessionGate>
+          )}
+        </Route>
         <Route path="/login" component={LoginPage} />
         <Route path="/staff/login" component={StaffLoginPage} />
         <Route path="/staff/security">

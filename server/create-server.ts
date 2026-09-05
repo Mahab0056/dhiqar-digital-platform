@@ -19,11 +19,14 @@ import { registerOperationsRoutes } from './routes/operations.js'
 import { registerSuperAdminRoutes } from './routes/super-admin.js'
 import { registerSystemRoutes } from './routes/system.js'
 import { registerStaffAdminRoutes } from './routes/staff-admin.js'
+import { registerDepartmentRoutes } from './routes/departments.js'
+import { seedDepartments } from './departments.js'
 import { bootstrapStaffAccounts } from './auth/staff.js'
 import { purgeExpiredSessions } from './auth/session.js'
 
 export function createPlatformServer(options: { serveStatic?: boolean } = {}) {
   seedVerifiedGovernmentServices()
+  seedDepartments()
   seedPlatformServiceCatalog()
   bootstrapStaffAccounts()
   purgeExpiredSessions()
@@ -43,6 +46,7 @@ export function createPlatformServer(options: { serveStatic?: boolean } = {}) {
   registerOperationsRoutes(app)
   registerSuperAdminRoutes(app)
   registerStaffAdminRoutes(app)
+  registerDepartmentRoutes(app)
   registerSystemRoutes(app)
 
   const currentDir = dirname(fileURLToPath(import.meta.url))

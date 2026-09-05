@@ -24,7 +24,10 @@ export function SessionGate({
         }
         setState(
           session.role === role ||
-            (role === 'EMPLOYEE' && (session.role === 'IDENTITY_REVIEWER' || session.role === 'SUPER_ADMIN')) ||
+            (role === 'EMPLOYEE' &&
+              (session.role === 'IDENTITY_REVIEWER' ||
+                session.role === 'SUPER_ADMIN' ||
+                (session.role === 'OPERATIONS' && window.location.pathname.startsWith('/department/')))) ||
             (role === 'OPERATIONS' && session.role === 'SUPER_ADMIN')
             ? 'allowed'
             : 'denied'

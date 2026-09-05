@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
-import { AlertTriangle, BriefcaseBusiness, CheckCircle2, ExternalLink, FileText, RefreshCw } from 'lucide-react'
+import { Link } from 'wouter'
+import { AlertTriangle, BriefcaseBusiness, CheckCircle2, ExternalLink, FileText, Gauge, RefreshCw } from 'lucide-react'
 import { api } from '../../api'
 import { statusLabels } from '../../data'
 import type { DepartmentWorkbench } from '../../types'
@@ -108,11 +109,16 @@ export function DepartmentManagementPanel() {
                       : 'بيانات الجهة تحتاج تحققاً إضافياً قبل استخدامها كمصدر رسمي.'}
                   </p>
                 </div>
-                {selected.sourceUrl && (
-                  <a className="button outline" href={selected.sourceUrl} target="_blank" rel="noreferrer">
-                    مصدر الدائرة <ExternalLink />
-                  </a>
-                )}
+                <div className="department-workbench-actions">
+                  <Link className="button primary" href={`/department/${selected.id}`}>
+                    <Gauge /> لوحة الدائرة
+                  </Link>
+                  {selected.sourceUrl && (
+                    <a className="button outline" href={selected.sourceUrl} target="_blank" rel="noreferrer">
+                      مصدر الدائرة <ExternalLink />
+                    </a>
+                  )}
+                </div>
               </header>
               <div className="department-workbench-grid">
                 <section>

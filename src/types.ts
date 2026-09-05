@@ -415,3 +415,120 @@ export type AuditLogEntry = {
   metadata: Record<string, unknown> | null
   createdAt: string
 }
+
+export type DepartmentSummary = {
+  id: string
+  name: string
+  nameEn: string | null
+  category: string
+  parentMinistry: string | null
+  district: string
+  address: string | null
+  phone: string | null
+  website: string | null
+  facebook: string | null
+  lat: number | null
+  lng: number | null
+  gisStatus: 'COORDINATES_VERIFIED' | 'AWAITING_OFFICIAL_COORDINATES'
+  dataStatus: 'VERIFIED_SOURCE' | 'NEEDS_VERIFICATION'
+  sourceUrl: string
+  services: string[]
+  notes: string | null
+  digitalServices?: number
+}
+
+export type DepartmentDirectoryResponse = {
+  items: DepartmentSummary[]
+  categories: string[]
+  districts: string[]
+  summary: {
+    total: number
+    verified: number
+    needsVerification: number
+    awaitingCoordinates: number
+    gisComplete: number
+    categories: number
+  }
+}
+
+export type DepartmentDashboard = {
+  department: DepartmentSummary
+  kpis: {
+    total: number
+    open: number
+    underReview: number
+    actionRequired: number
+    completed: number
+    rejected: number
+    todayNew: number
+    weekCompleted: number
+    avgProcessingHours: number | null
+    openFeedback: number
+    staffTotal: number
+    staffOnline: number
+    digitalServices: number
+  }
+  series: Array<{ day: string; created: number; completed: number }>
+  requests: Array<{
+    reference: string
+    kind: 'APPLICATION' | 'SERVICE_REQUEST'
+    citizenName: string
+    serviceName: string
+    status: string
+    currentAction: string
+    createdAt: string
+    updatedAt: string
+  }>
+  services: Array<{
+    id: string
+    name: string
+    category: string
+    feeIqd: number
+    feeStatus: string
+    estimatedDuration: string
+    active: boolean
+    updatedAt: string
+  }>
+  feedback: Array<{
+    reference: string
+    kind: string
+    category: string
+    status: string
+    subject: string
+    createdAt: string
+    updatedAt: string
+  }>
+  staff: Array<{
+    id: string
+    username: string
+    fullName: string
+    role: string
+    status: string
+    lastLoginAt: string | null
+    online: boolean
+  }>
+  workforce: {
+    totalEmployees: number | null
+    presentEmployees: number | null
+    absentEmployees: number | null
+    dataStatus: string
+    sourceName: string | null
+    sourceUrl: string | null
+    observedAt: string | null
+  }
+  cameras: {
+    configured: number
+    enabled: number
+    status: string
+    sourceName: string | null
+    lastCheckedAt: string | null
+  }
+  recentActivity: Array<{
+    actor: string
+    role: string
+    action: string
+    entityType: string
+    entityId: string
+    createdAt: string
+  }>
+}

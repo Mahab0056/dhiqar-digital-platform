@@ -15,7 +15,8 @@ export function Footer() {
         <div>
           <strong>الخدمات والمنصة</strong>
           <Link href="/#services">الخدمات الحكومية</Link>
-          <Link href="/directory">الجهات الحكومية</Link>
+          <Link href="/departments">دليل الدوائر</Link>
+          <Link href="/directory">الخدمات الحكومية</Link>
           <Link href="/citizen#my-requests">متابعة المعاملات</Link>
           <Link href="/citizen/feedback">الشكاوى والمقترحات</Link>
         </div>
