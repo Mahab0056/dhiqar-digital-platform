@@ -587,6 +587,11 @@ export const api = {
     }
     return response.json() as Promise<GovernmentApplication>
   },
+  rejectApplication: (reference: string, reason: string) =>
+    request<GovernmentApplication>(`/api/applications/${reference}/reject`, {
+      method: 'POST',
+      body: JSON.stringify({ reason }),
+    }),
   approveApplication: (reference: string) =>
     request<GovernmentApplication>(`/api/applications/${reference}/approve`, { method: 'POST' }),
   getStats: () => request<DashboardStats>('/api/dashboard/stats'),

@@ -236,6 +236,8 @@ export function registerApplicationsRoutes(app: express.Express) {
     const payload = z.object({ documentName: z.string().min(2) }).parse(req.body)
     const item = getApplicationByReference(param(req, 'reference'))
     if (!item) return res.status(404).json({ message: 'المعاملة غير موجودة.' })
+    if (item.status === 'APPROVED' || item.status === 'REJECTED')
+      return res.status(409).json({ message: 'لا يمكن طلب مستند لمعاملة مغلقة.' })
     const timestamp = new Date().toISOString()
     db.prepare(
       `UPDATE applications SET status = 'ACTION_REQUIRED', current_action = ?, required_document = ?, updated_at = ? WHERE reference = ?`
@@ -337,12 +339,53 @@ export function registerApplicationsRoutes(app: express.Express) {
     }
   )
 
+  app.post('/api/applications/:reference/reject', requireSession('EMPLOYEE', 'SUPER_ADMIN'), (req, res) => {
+    const session = currentSession(res)
+    const payload = z.object({ reason: z.string().trim().min(10).max(1000) }).parse(req.body)
+    const reference = param(req, 'reference')
+    const item = getApplicationByReference(reference)
+    if (!item) return res.status(404).json({ message: 'المعاملة غير موجودة.' })
+    if (item.status === 'APPROVED')
+      return res.status(409).json({ message: 'لا يمكن رفض معاملة صدرت وثيقتها. استخدم مسار الإلغاء الرسمي.' })
+    if (item.status === 'REJECTED') return res.json(item)
+    const timestamp = new Date().toISOString()
+    db.prepare(
+      `UPDATE applications SET status = 'REJECTED', current_action = ?, rejection_reason = ?, decided_by = ?, decided_at = ?, required_document = NULL, updated_at = ? WHERE reference = ?`
+    ).run(`رُفضت المعاملة: ${payload.reason}`, payload.reason, session.actor, timestamp, timestamp, reference)
+    addEvent(item.id as number, {
+      type: 'REJECTED',
+      title: 'تم رفض المعاملة',
+      description: payload.reason,
+      actor: session.actor,
+    })
+    notifyCitizen({
+      citizenId: Number(item.citizenId),
+      type: 'REJECTED',
+      title: 'تم رفض معاملتك',
+      message: `رُفضت المعاملة ${reference}. السبب: ${payload.reason}. يمكنك تقديم طلب جديد بعد معالجة السبب.`,
+      link: `/citizen/application/${reference}`,
+    })
+    employeeWorkQueueRealtime.publish({ entity: 'APPLICATION', action: 'UPDATED', reference })
+    addAudit({
+      actor: session.actor,
+      role: session.role,
+      action: 'APPLICATION_REJECTED',
+      entityType: 'Application',
+      entityId: reference,
+      previousValue: { status: item.status },
+      newValue: { status: 'REJECTED', reason: payload.reason },
+    })
+    res.json(getApplicationByReference(reference))
+  })
+
   app.post('/api/applications/:reference/approve', requireSession('EMPLOYEE', 'SUPER_ADMIN'), async (req, res) => {
     const session = currentSession(res)
     const item = getApplicationByReference(param(req, 'reference'))
     if (!item) return res.status(404).json({ message: 'المعاملة غير موجودة.' })
     if (item.status === 'ACTION_REQUIRED')
       return res.status(409).json({ message: 'لا يمكن الموافقة قبل استكمال المستند المطلوب.' })
+    if (item.status === 'REJECTED')
+      return res.status(409).json({ message: 'هذه المعاملة مرفوضة. على المواطن تقديم طلب جديد.' })
     if (item.status === 'APPROVED') return res.json(item)
     const faceVideo = db
       .prepare(

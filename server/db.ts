@@ -587,6 +587,9 @@ ensureColumn('identity_reviews', 'face_match_score', 'REAL')
 ensureColumn('identity_reviews', 'face_match_provider', 'TEXT')
 ensureColumn('citizens', 'account_key', 'TEXT')
 ensureColumn('service_requests', 'decision_note', 'TEXT')
+ensureColumn('applications', 'rejection_reason', 'TEXT')
+ensureColumn('applications', 'decided_by', 'TEXT')
+ensureColumn('applications', 'decided_at', 'TEXT')
 ensureColumn('service_requests', 'required_document', 'TEXT')
 ensureColumn('government_service_directory', 'existing_service_key', 'TEXT')
 ensureColumn('media_objects', 'retention_policy', "TEXT NOT NULL DEFAULT 'TIME_LIMITED'")
@@ -902,6 +905,9 @@ function mapApplication(row: Record<string, unknown>) {
     requiredDocument: row.required_document,
     documentNumber: row.document_number,
     verificationId: row.verification_id,
+    rejectionReason: row.rejection_reason ?? null,
+    decidedBy: row.decided_by ?? null,
+    decidedAt: row.decided_at ?? null,
     attachments: attachments.map(item => ({
       id: item.id,
       mediaId: item.media_id,

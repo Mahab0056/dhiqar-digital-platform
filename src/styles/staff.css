@@ -417,3 +417,51 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ---- rejection flow ----------------------------------------------------------------------- */
+.reject-form {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 12px;
+  background: #fbf1f2;
+  border: 1px solid #f2c9cc;
+}
+.reject-form label {
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #7a2a31;
+}
+.reject-form textarea {
+  border: 1px solid #e6b5b9;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font: inherit;
+  resize: vertical;
+  background: #fff;
+}
+.reject-form-actions {
+  display: flex;
+  gap: 8px;
+}
+.review-warning.rejected {
+  background: #fbe9ea;
+  color: #7a2a31;
+  border-color: #f2c9cc;
+}
+.current-action.rejected {
+  background: #fbe9ea;
+  border-color: #f2c9cc;
+}
+.current-action.rejected span {
+  background: #f6c8cc;
+  color: #b0303a;
+}
+.rejection-reason {
+  margin: 6px 0 0;
+  font-size: 13px;
+  line-height: 1.7;
+  color: #7a2a31;
+}

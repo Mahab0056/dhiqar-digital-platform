@@ -74,7 +74,9 @@ export function EmployeeDashboard() {
       setMediaError((error as Error).message)
     }
   }
-  const act = async (kind: 'request' | 'approve') => {
+  const [rejectOpen, setRejectOpen] = useState(false)
+  const [rejectReason, setRejectReason] = useState('')
+  const act = async (kind: 'request' | 'approve' | 'reject') => {
     if (!selected) return
     setBusy(true)
     setReviewError('')
@@ -82,6 +84,10 @@ export function EmployeeDashboard() {
       if (kind === 'request') {
         const needsFaceVideo = !selected.attachments.some(item => item.purpose === 'FACE_VIDEO' && item.available)
         await api.requestDocument(selected.reference, needsFaceVideo ? 'فيديو توثيق الوجه القصير' : 'المستند المطلوب')
+      } else if (kind === 'reject') {
+        await api.rejectApplication(selected.reference, rejectReason.trim())
+        setRejectOpen(false)
+        setRejectReason('')
       } else await api.approveApplication(selected.reference)
       await load()
     } catch (error) {
@@ -346,8 +352,54 @@ export function EmployeeDashboard() {
                   </span>
                 </div>
               )}
+              {selected.status === 'REJECTED' && (
+                <div className="review-warning rejected">
+                  <AlertTriangle />
+                  <span>
+                    <strong>معاملة مرفوضة</strong>
+                    <small>
+                      {selected.rejectionReason}
+                      {selected.decidedBy ? ` — بقرار ${selected.decidedBy}` : ''}
+                    </small>
+                  </span>
+                </div>
+              )}
+              {rejectOpen && selected.status !== 'APPROVED' && selected.status !== 'REJECTED' && (
+                <div className="reject-form">
+                  <label>
+                    سبب الرفض (يُرسل للمواطن ويُسجل باسمك)
+                    <textarea
+                      value={rejectReason}
+                      onChange={event => setRejectReason(event.target.value)}
+                      rows={3}
+                      placeholder="مثال: الموقع ضمن منطقة سكنية لا يُسمح فيها بالنشاط التجاري المطلوب وفق ضوابط البلدية."
+                    />
+                  </label>
+                  <div className="reject-form-actions">
+                    <button
+                      className="button danger"
+                      disabled={busy || rejectReason.trim().length < 10}
+                      onClick={() => void act('reject')}
+                    >
+                      تأكيد الرفض
+                    </button>
+                    <button className="button ghost" onClick={() => setRejectOpen(false)} disabled={busy}>
+                      إلغاء
+                    </button>
+                  </div>
+                </div>
+              )}
               <div className="review-actions">
-                <button className="button outline danger" onClick={() => void act('request')} disabled={busy}>
+                {!rejectOpen && selected.status !== 'APPROVED' && selected.status !== 'REJECTED' && (
+                  <button className="button ghost" onClick={() => setRejectOpen(true)} disabled={busy}>
+                    <X /> رفض مسبب
+                  </button>
+                )}
+                <button
+                  className="button outline danger"
+                  onClick={() => void act('request')}
+                  disabled={busy || selected.status === 'APPROVED' || selected.status === 'REJECTED'}
+                >
                   <Bell /> {missingFaceVerification ? 'طلب استكمال التوثيق' : 'طلب مستند'}
                 </button>
                 <button
@@ -358,17 +410,20 @@ export function EmployeeDashboard() {
                     missingFaceVerification ||
                     selected.status === 'ACTION_REQUIRED' ||
                     selected.status === 'PAYMENT_REQUIRED' ||
-                    selected.status === 'APPROVED'
+                    selected.status === 'APPROVED' ||
+                    selected.status === 'REJECTED'
                   }
                 >
                   <CheckCircle2 />{' '}
                   {selected.status === 'APPROVED'
                     ? 'تمت الموافقة'
-                    : selected.status === 'PAYMENT_REQUIRED'
-                      ? 'بانتظار الدفع'
-                      : missingFaceVerification
-                        ? 'بانتظار فيديو الوجه'
-                        : 'موافقة وإصدار الوثيقة'}
+                    : selected.status === 'REJECTED'
+                      ? 'مرفوضة'
+                      : selected.status === 'PAYMENT_REQUIRED'
+                        ? 'بانتظار الدفع'
+                        : missingFaceVerification
+                          ? 'بانتظار فيديو الوجه'
+                          : 'موافقة وإصدار الوثيقة'}
                 </button>
               </div>
             </>

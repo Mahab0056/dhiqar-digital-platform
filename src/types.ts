@@ -78,6 +78,9 @@ export interface GovernmentApplication {
   requiredDocument?: string | null
   documentNumber?: string | null
   verificationId?: string | null
+  rejectionReason?: string | null
+  decidedBy?: string | null
+  decidedAt?: string | null
   documentTitle?: string | null
   issuedAt?: string | null
   pdfAvailable?: boolean

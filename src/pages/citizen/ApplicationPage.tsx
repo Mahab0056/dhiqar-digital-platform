@@ -80,11 +80,13 @@ export function ApplicationPage({ reference }: { reference: string }) {
             ? 'current-action warning'
             : app.status === 'APPROVED'
               ? 'current-action success'
-              : 'current-action'
+              : app.status === 'REJECTED'
+                ? 'current-action rejected'
+                : 'current-action'
         }
       >
         <span>
-          {app.status === 'ACTION_REQUIRED' ? (
+          {app.status === 'ACTION_REQUIRED' || app.status === 'REJECTED' ? (
             <AlertTriangle />
           ) : app.status === 'APPROVED' ? (
             <BadgeCheck />
@@ -93,8 +95,15 @@ export function ApplicationPage({ reference }: { reference: string }) {
           )}
         </span>
         <div>
-          <small>المطلوب منك الآن</small>
-          <strong>{app.currentAction}</strong>
+          <small>{app.status === 'REJECTED' ? 'قرار الدائرة' : 'المطلوب منك الآن'}</small>
+          <strong>{app.status === 'REJECTED' ? 'تم رفض المعاملة' : app.currentAction}</strong>
+          {app.status === 'REJECTED' && (
+            <p className="rejection-reason">
+              السبب: {app.rejectionReason}
+              {app.decidedAt ? ` — بتاريخ ${new Date(app.decidedAt).toLocaleDateString('en-GB')}` : ''}. يمكنك تقديم طلب
+              جديد بعد معالجة السبب.
+            </p>
+          )}
         </div>
       </section>
       {app.status === 'ACTION_REQUIRED' && (
