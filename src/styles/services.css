@@ -1218,3 +1218,30 @@
 .smart-search .gov-search-results {
   z-index: 40;
 }
+
+/* ---- mobile fixes (hero overflow came from the input's intrinsic width) -------------------- */
+.gov-search input {
+  width: 0;
+}
+.gov-hero-center {
+  min-width: 0;
+  max-width: 100%;
+}
+@media (max-width: 1200px) {
+  .gov-hero-inner {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 600px) {
+  .smart-search .gov-search-voice {
+    width: 38px;
+    height: 38px;
+    margin-inline-end: 4px;
+  }
+  .gov-hero h1 {
+    font-size: 30px;
+  }
+  .gov-hero-center > p {
+    font-size: 14.5px;
+  }
+}

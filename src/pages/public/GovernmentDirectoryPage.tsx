@@ -1,3 +1,4 @@
+import type React from 'react'
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'wouter'
 import {
@@ -246,6 +247,18 @@ export function GovernmentDirectoryPage() {
               )}
             </header>
 
+            {loading && (
+              <ul className="gov-service-cards" aria-hidden="true">
+                {Array.from({ length: 6 }).map((_, index) => (
+                  <li className="gov-service-card" key={index}>
+                    <div className="skeleton" style={{ width: '40%' }} />
+                    <div className="skeleton" style={{ width: '85%', minHeight: 20 }} />
+                    <div className="skeleton" style={{ width: '100%', minHeight: 44 }} />
+                    <div className="skeleton" style={{ width: '60%' }} />
+                  </li>
+                ))}
+              </ul>
+            )}
             {!loading && results.length === 0 && (
               <div className="gov-directory-empty">
                 <Building2 />
@@ -258,11 +271,15 @@ export function GovernmentDirectoryPage() {
             )}
 
             <ul className="gov-service-cards">
-              {results.slice(0, visible).map(item => {
+              {results.slice(0, visible).map((item, index) => {
                 const Icon = channelMeta[item.channel].icon
                 const requiredCount = item.requiredDocuments.filter(doc => doc.required).length
                 return (
-                  <li key={item.key} className={`gov-service-card channel-${item.channel.toLowerCase()}`}>
+                  <li
+                    key={item.key}
+                    className={`gov-service-card channel-${item.channel.toLowerCase()}`}
+                    style={{ '--i': index } as React.CSSProperties}
+                  >
                     <div className="gov-service-card-top">
                       <span className={`gov-chip channel-${item.channel.toLowerCase()}`}>
                         <Icon size={13} /> {channelMeta[item.channel].short}

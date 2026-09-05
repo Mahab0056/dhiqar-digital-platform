@@ -35,6 +35,7 @@ import { services } from '../../data'
 import { dhiqarNews } from '../../news'
 import type { DepartmentSummary } from '../../types'
 import { SmartSearch } from '../../components/public/SmartSearch'
+import { useRevealOnScroll } from '../../lib/reveal'
 import { Footer } from '../../components/public/Footer'
 import { PublicHeader } from '../../components/public/PublicHeader'
 
@@ -122,6 +123,7 @@ function MapFocus({ target }: { target: DepartmentSummary | null }) {
 }
 
 export function LandingPage() {
+  useRevealOnScroll()
   const [, navigate] = useLocation()
   const [query, setQuery] = useState('')
   const [departments, setDepartments] = useState<DepartmentSummary[]>([])
@@ -231,7 +233,7 @@ export function LandingPage() {
         </section>
 
         {/* ---- categories ------------------------------------------------------------ */}
-        <section className="gov-section gov-container" id="services">
+        <section className="gov-section gov-container" id="services" data-reveal>
           <header className="gov-section-head">
             <div>
               <h2>ماذا تريد أن تنجز اليوم؟</h2>
@@ -247,6 +249,8 @@ export function LandingPage() {
                 href={item.href}
                 className={index === 1 ? 'gov-category is-active' : 'gov-category'}
                 key={item.label}
+                data-reveal="scale"
+                data-reveal-delay={String(index * 40)}
               >
                 <item.icon />
                 <span>{item.label}</span>
@@ -257,7 +261,7 @@ export function LandingPage() {
 
         {/* ---- capabilities / journey / map ------------------------------------------ */}
         {/* ---- GIS explorer ---------------------------------------------------------- */}
-        <section className="gov-band gov-band-green" id="gis">
+        <section className="gov-band gov-band-green" id="gis" data-reveal>
           <div className="gov-container">
             <header className="gov-band-head">
               <h2>اكتشف ذي قار رقمياً</h2>
@@ -398,7 +402,7 @@ export function LandingPage() {
         </section>
 
         {/* ---- journey ----------------------------------------------------------------- */}
-        <section className="gov-band" id="journey">
+        <section className="gov-band" id="journey" data-reveal>
           <div className="gov-container gov-journey-section">
             <span className="gov-eyebrow-center">من الطلب إلى الإنجاز</span>
             <h2>معاملتك الحكومية بخطوات واضحة</h2>
@@ -414,7 +418,7 @@ export function LandingPage() {
         </section>
 
         {/* ---- verification ------------------------------------------------------------ */}
-        <section className="gov-band gov-band-mint" id="verify">
+        <section className="gov-band gov-band-mint" id="verify" data-reveal>
           <div className="gov-container gov-verify">
             <div className="gov-verify-copy">
               <h2>التحقق من وثيقة حكومية</h2>
@@ -464,7 +468,7 @@ export function LandingPage() {
         </section>
 
         {/* ---- services ----------------------------------------------------------------- */}
-        <section className="gov-band" id="e-services">
+        <section className="gov-band" id="e-services" data-reveal>
           <div className="gov-container">
             <header className="gov-band-head">
               <h2>خدمات حكومية إلكترونية</h2>
@@ -496,7 +500,7 @@ export function LandingPage() {
         </section>
 
         {/* ---- trust strip ---------------------------------------------------------------- */}
-        <section className="gov-band gov-band-neutral gov-trust">
+        <section className="gov-band gov-band-neutral gov-trust" data-reveal="fade">
           <ul className="gov-container gov-trust-list">
             {trustItems.map(item => (
               <li key={item.label}>
@@ -508,7 +512,7 @@ export function LandingPage() {
         </section>
 
         {/* ---- news ---------------------------------------------------------------------- */}
-        <section className="gov-band" id="news">
+        <section className="gov-band" id="news" data-reveal>
           <div className="gov-container">
             <header className="gov-band-head">
               <h2>آخر أخبار المحافظة</h2>

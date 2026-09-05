@@ -76,3 +76,14 @@
     grid-template-columns: repeat(2, 1fr);
   }
 }
+
+/* off-canvas citizen sidebar: fully hidden when closed (the close button used to peek at the edge) */
+@media (max-width: 900px) {
+  .portal-sidebar:not(.open) {
+    visibility: hidden;
+    box-shadow: none;
+  }
+  .portal-sidebar.open {
+    visibility: visible;
+  }
+}

@@ -1,0 +1,220 @@
+/* =============================================================================================
+   Thi Qar Digital — motion system. Subtle, fast, and fully disabled under prefers-reduced-motion.
+   ============================================================================================= */
+[data-reveal] {
+  opacity: 0;
+  transform: translateY(14px);
+  transition:
+    opacity 0.55s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: opacity, transform;
+}
+[data-reveal='fade'] {
+  transform: none;
+}
+[data-reveal='scale'] {
+  transform: scale(0.97);
+}
+[data-reveal].is-revealed {
+  opacity: 1;
+  transform: none;
+}
+
+/* page enter */
+.gov-home main,
+.gov-directory-page main,
+.public-service-main,
+.citizen-v2 {
+  animation: page-enter 0.4s ease-out both;
+}
+@keyframes page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* micro-interactions */
+.gov-btn,
+.button {
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.15s ease,
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+.gov-btn:active,
+.button:active {
+  transform: translateY(1px) scale(0.985);
+}
+.gov-category {
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    border-color 0.18s ease,
+    background-color 0.18s ease;
+}
+.gov-category:hover {
+  transform: translateY(-3px);
+}
+.gov-category svg {
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.gov-category:hover svg {
+  transform: scale(1.12) rotate(-4deg);
+}
+.gov-service-card,
+.citizen-service-card,
+.gov-quick-action {
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    border-color 0.18s ease;
+}
+.gov-service-card:hover,
+.citizen-service-card:hover,
+.gov-quick-action:hover {
+  transform: translateY(-2px);
+}
+.gov-service-cards > li {
+  animation: card-in 0.35s ease-out both;
+}
+.gov-service-cards > li:nth-child(-n + 12) {
+  animation-delay: calc(var(--i, 0) * 35ms);
+}
+@keyframes card-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.checklist-badge,
+.gov-chip,
+.status {
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
+}
+.gov-doc-slot {
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease,
+    transform 0.2s ease;
+}
+.gov-doc-slot.is-ready {
+  animation: slot-ready 0.35s ease-out;
+}
+@keyframes slot-ready {
+  0% {
+    transform: scale(0.99);
+  }
+  50% {
+    transform: scale(1.01);
+  }
+  100% {
+    transform: none;
+  }
+}
+.service-success > span svg,
+.payment-state.paid > svg {
+  animation: pop-in 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+@keyframes pop-in {
+  from {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+.notification-dot {
+  position: relative;
+}
+.notification-dot::after {
+  content: '';
+  position: absolute;
+  top: -2px;
+  inset-inline-end: -2px;
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  background: var(--gov-red, #c8102e);
+  box-shadow: 0 0 0 2px #fff;
+  animation: dot-pulse 1.6s ease-in-out infinite;
+}
+@keyframes dot-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.25);
+  }
+}
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--gov-line-soft, #eef1ef);
+  border-radius: 8px;
+  min-height: 14px;
+}
+.skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.7), transparent);
+  animation: shimmer 1.3s infinite;
+}
+@keyframes shimmer {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+/* sticky mobile submit for the service form */
+@media (max-width: 720px) {
+  .dynamic-form-submit {
+    position: sticky;
+    bottom: 0;
+    z-index: 30;
+    margin: 0 -16px;
+    padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+    background: rgba(255, 255, 255, 0.92);
+    backdrop-filter: blur(8px);
+    border-top: 1px solid var(--gov-line, #e3e8e5);
+  }
+  .dynamic-form-submit .button {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-reveal],
+  .gov-home main,
+  .gov-directory-page main,
+  .public-service-main,
+  .citizen-v2,
+  .gov-service-cards > li,
+  .service-success > span svg,
+  .payment-state.paid > svg,
+  .notification-dot::after,
+  .skeleton::after,
+  .voice-pulse {
+    animation: none !important;
+    transition: none !important;
+    opacity: 1;
+    transform: none;
+  }
+}
