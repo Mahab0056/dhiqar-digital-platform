@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto'
 import type { IncomingMessage, Server as HttpServer } from 'node:http'
 import { WebSocket, WebSocketServer } from 'ws'
 

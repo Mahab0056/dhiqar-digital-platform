@@ -140,4 +140,5 @@ export const departmentRegistry: DepartmentRegistryItem[] = [
 export const registrySummary = {
   verified: departmentRegistry.filter(item => item.dataStatus === 'VERIFIED_SOURCE').length,
   awaitingCoordinates: departmentRegistry.filter(item => item.gisStatus === 'AWAITING_OFFICIAL_COORDINATES').length,
+  gisComplete: departmentRegistry.filter(item => item.gisStatus !== 'AWAITING_OFFICIAL_COORDINATES').length,
 }

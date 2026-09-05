@@ -1,7 +1,7 @@
 import type { IncomingMessage, Server as HttpServer } from 'node:http'
 import { WebSocket, WebSocketServer } from 'ws'
 
-type NotificationSnapshot = {
+export type NotificationSnapshot = {
   unread: number
   items: Array<{
     id: string
@@ -24,7 +24,7 @@ type RealtimeClient = { socket: WebSocket; lastPongAt: number }
 const pathName = '/ws/citizen-notifications'
 const maxConnectionsPerCitizen = 4
 
-function denyUpgrade(socket: import('node:net').Socket, status: number, message: string) {
+function denyUpgrade(socket: import('node:stream').Duplex, status: number, message: string) {
   socket.write(`HTTP/1.1 ${status} ${message}\r\nConnection: close\r\n\r\n`)
   socket.destroy()
 }

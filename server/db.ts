@@ -823,7 +823,7 @@ export function getApplicationByVerificationId(verificationId: string) {
 function mapApplication(row: Record<string, unknown>) {
   const events = db
     .prepare('SELECT * FROM application_events WHERE application_id = ? ORDER BY id ASC')
-    .all(row.id) as Array<Record<string, unknown>>
+    .all(row.id as number) as Array<Record<string, unknown>>
   const attachments = db
     .prepare(
       `
@@ -832,7 +832,7 @@ function mapApplication(row: Record<string, unknown>) {
     WHERE am.application_id = ? ORDER BY am.created_at ASC
   `
     )
-    .all(row.id) as Array<Record<string, unknown>>
+    .all(row.id as number) as Array<Record<string, unknown>>
   return {
     id: row.id,
     reference: row.reference,
@@ -888,13 +888,13 @@ function mapFeedback(row: Record<string, unknown>) {
     .prepare(
       'SELECT id, status, title, description, actor, created_at FROM feedback_events WHERE feedback_id = ? ORDER BY id ASC'
     )
-    .all(row.id) as Array<Record<string, unknown>>
+    .all(row.id as number) as Array<Record<string, unknown>>
   const attachments = db
     .prepare(
       `SELECT fm.id, fm.label, mo.id AS media_id, mo.original_name, mo.mime_type, mo.size_bytes, mo.deleted_at
     FROM feedback_media fm JOIN media_objects mo ON mo.id = fm.media_id WHERE fm.feedback_id = ? ORDER BY fm.id ASC`
     )
-    .all(row.id) as Array<Record<string, unknown>>
+    .all(row.id as number) as Array<Record<string, unknown>>
   return {
     id: Number(row.id),
     reference: String(row.reference),
