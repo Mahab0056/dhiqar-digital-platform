@@ -1105,3 +1105,116 @@
     justify-content: center;
   }
 }
+
+/* ---- smart search (voice + ranked results) ------------------------------------------------- */
+.smart-search .gov-search-voice {
+  position: relative;
+  align-self: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  border: 1px solid var(--gov-line);
+  background: var(--gov-surface);
+  color: var(--gov-green-800);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  margin-inline-end: 6px;
+  transition:
+    background-color 0.15s ease,
+    transform 0.15s ease;
+}
+.smart-search .gov-search-voice:hover {
+  background: var(--gov-green-050);
+  transform: scale(1.04);
+}
+.smart-search .gov-search-voice.active {
+  background: var(--gov-red);
+  border-color: var(--gov-red);
+  color: #fff;
+}
+.voice-pulse {
+  position: absolute;
+  inset: -4px;
+  border-radius: 999px;
+  border: 2px solid var(--gov-red);
+  animation: voice-pulse 1.2s ease-out infinite;
+  pointer-events: none;
+}
+@keyframes voice-pulse {
+  0% {
+    transform: scale(0.85);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+}
+.smart-search.is-listening {
+  border-color: var(--gov-red);
+  box-shadow: 0 0 0 3px rgba(200, 16, 46, 0.12);
+}
+.smart-search-hint {
+  position: absolute;
+  top: calc(100% + 6px);
+  inset-inline-start: 0;
+  font-size: 12.5px;
+  color: var(--gov-muted);
+}
+.smart-search-hint.error {
+  color: var(--gov-red);
+}
+.gov-search-results li.active a {
+  background: var(--gov-green-050);
+}
+.gov-search-results a {
+  grid-template-columns: auto 1fr auto;
+  grid-template-areas:
+    'chip title arrow'
+    'chip meta arrow';
+  gap: 2px 10px;
+  align-items: center;
+}
+.gov-search-results a .gov-chip {
+  grid-area: chip;
+  font-size: 11px;
+  padding: 3px 8px;
+}
+.gov-search-more a {
+  grid-template-columns: 1fr;
+  grid-template-areas: 'title';
+  justify-items: center;
+  color: var(--gov-green-800);
+  font-weight: 700;
+  font-size: 13px;
+  border-top: 1px solid var(--gov-line-soft);
+  border-radius: 0;
+  margin-top: 4px;
+  padding-top: 10px;
+}
+.smart-search.compact {
+  height: 52px;
+  margin-top: 0;
+  box-shadow: var(--gov-shadow);
+}
+@media (max-width: 640px) {
+  .gov-search-results a {
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      'title arrow'
+      'meta arrow'
+      'chip arrow';
+  }
+}
+/* search dropdown must float above the quick-action cards that follow the hero */
+.gov-hero-inner:has(.smart-search input:focus),
+.gov-hero-inner:has(.gov-search-results) {
+  z-index: 30;
+}
+.smart-search {
+  z-index: 25;
+}
+.smart-search .gov-search-results {
+  z-index: 40;
+}

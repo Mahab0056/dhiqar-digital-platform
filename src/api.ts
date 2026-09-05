@@ -296,6 +296,10 @@ export const api = {
     const query = params.toString()
     return request<{ items: CatalogService[] }>(`/api/services${query ? `?${query}` : ''}`).then(body => body.items)
   },
+  searchServices: (q: string, limit = 12) =>
+    request<{ query: string; tokens: string[]; items: Array<CatalogService & { score: number }> }>(
+      `/api/services/search?q=${encodeURIComponent(q)}&limit=${limit}`
+    ).then(body => body.items),
   getService: (key: string) => request<CatalogService>(`/api/services/${encodeURIComponent(key)}`),
   getServicesSummary: () => request<CatalogSummary>('/api/services/summary'),
   createServiceRequest: async (input: {

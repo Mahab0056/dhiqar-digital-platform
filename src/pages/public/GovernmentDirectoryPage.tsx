@@ -9,7 +9,6 @@ import {
   Globe2,
   Info,
   LayoutGrid,
-  Search,
   X,
 } from 'lucide-react'
 import { api } from '../../api'
@@ -17,6 +16,7 @@ import type { CatalogService, CatalogSummary, DepartmentSummary, ServiceChannel 
 import { Footer } from '../../components/public/Footer'
 import { OfficialGovernmentServiceCatalog } from '../../components/public/OfficialGovernmentServiceCatalog'
 import { PublicHeader } from '../../components/public/PublicHeader'
+import { SmartSearch } from '../../components/public/SmartSearch'
 
 const channelMeta: Record<ServiceChannel, { label: string; short: string; icon: typeof Globe2 }> = {
   ONLINE_SUBMISSION: { label: 'تقديم إلكتروني كامل', short: 'إلكترونية', icon: Globe2 },
@@ -93,14 +93,44 @@ export function GovernmentDirectoryPage() {
       .replace(/[^\p{L}\p{N}]+/gu, ' ')
       .trim()
 
+  const [ranked, setRanked] = useState<CatalogService[] | null>(null)
+  useEffect(() => {
+    const term = query.trim()
+    if (term.length < 2) {
+      setRanked(null)
+      return
+    }
+    let active = true
+    const timer = window.setTimeout(() => {
+      api
+        .searchServices(term, 40)
+        .then(items => {
+          if (active) setRanked(items)
+        })
+        .catch(() => {
+          if (active) setRanked(null)
+        })
+    }, 180)
+    return () => {
+      active = false
+      window.clearTimeout(timer)
+    }
+  }, [query])
+
   const results = useMemo(() => {
     const tokens = normalize(query)
       .split(' ')
       .filter(token => token.length > 1)
-    const filtered = services.filter(item => {
+    const applyFilters = (item: CatalogService) => {
       if (category && item.category !== category) return false
       if (department && item.departmentId !== department) return false
       if (channel && item.channel !== channel) return false
+      return true
+    }
+    // server ranking (synonyms + fuzzy) wins when available; the client filter is the instant fallback
+    if (tokens.length && ranked) return ranked.filter(applyFilters)
+    const filtered = services.filter(item => {
+      if (!applyFilters(item)) return false
       if (!tokens.length) return true
       const text = normalize(
         `${item.title} ${item.description} ${item.departmentName} ${item.category} ${item.requiredDocuments.map(doc => doc.label).join(' ')}`
@@ -115,7 +145,7 @@ export function GovernmentDirectoryPage() {
         qualityRank[a.sourceQuality] - qualityRank[b.sourceQuality] ||
         a.title.localeCompare(b.title, 'ar')
     )
-  }, [services, query, category, department, channel])
+  }, [services, ranked, query, category, department, channel])
 
   const departmentName = departments.find(item => item.id === department)?.name
   const activeFilters = [category, department, channel].filter(Boolean).length + (query.trim() ? 1 : 0)
@@ -137,20 +167,13 @@ export function GovernmentDirectoryPage() {
                   ).toLocaleString('en-US')} خدمة تُقدَّم إلكترونياً بالكامل و${(summary.channels.APPOINTMENT_REQUIRED || 0).toLocaleString('en-US')} خدمة تُقدَّم إلكترونياً ثم تُستكمل بالحضور.`
                 : 'ابحث باسم الخدمة أو الجهة أو المستمسك.'}
             </p>
-            <div className="gov-directory-search">
-              <Search />
-              <input
-                value={query}
-                onChange={event => setQuery(event.target.value)}
-                placeholder="مثال: إجازة بناء، جواز، تقاعد، رخصة سياقة، عقد إيجار…"
-                aria-label="البحث في دليل خدمات ذي قار"
-              />
-              {query && (
-                <button type="button" onClick={() => setQuery('')} aria-label="مسح البحث">
-                  <X />
-                </button>
-              )}
-            </div>
+            <SmartSearch
+              value={query}
+              onChange={setQuery}
+              variant="compact"
+              placeholder="مثال: إجازة بناء، جواز، تقاعد، رخصة سياقة، عقد إيجار… أو اضغط المايك وتكلّم"
+              onSubmitQuery={() => undefined}
+            />
             <div className="gov-directory-channels" role="group" aria-label="طريقة التقديم">
               <button className={channel === '' ? 'active' : ''} onClick={() => setChannel('')}>
                 الكل

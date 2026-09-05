@@ -33,7 +33,8 @@ import { CircleMarker, MapContainer, TileLayer, Tooltip as LeafletTooltip, ZoomC
 import { api } from '../../api'
 import { services } from '../../data'
 import { dhiqarNews } from '../../news'
-import type { CatalogService, DepartmentSummary } from '../../types'
+import type { DepartmentSummary } from '../../types'
+import { SmartSearch } from '../../components/public/SmartSearch'
 import { Footer } from '../../components/public/Footer'
 import { PublicHeader } from '../../components/public/PublicHeader'
 
@@ -143,29 +144,6 @@ export function LandingPage() {
       .catch(() => setDepartments([]))
   }, [])
 
-  const [catalog, setCatalog] = useState<CatalogService[]>([])
-  useEffect(() => {
-    api
-      .listServices()
-      .then(setCatalog)
-      .catch(() => setCatalog([]))
-  }, [])
-
-  const results = useMemo(() => {
-    const tokens = normalizeArabic(query)
-      .split(' ')
-      .filter(token => token.length > 1)
-    if (!tokens.length) return []
-    return catalog
-      .filter(service => {
-        const text = normalizeArabic(
-          `${service.title} ${service.description} ${service.departmentName} ${service.category} ${service.requiredDocuments.map(doc => doc.label).join(' ')}`
-        )
-        return tokens.every(token => text.includes(token))
-      })
-      .slice(0, 6)
-  }, [query, catalog])
-
   const suggestions = [
     { label: 'إجازة بناء', href: '/service/building-permit' },
     { label: 'إجازة محل', href: '/service/store-license' },
@@ -189,12 +167,6 @@ export function LandingPage() {
       return normalizeArabic(`${item.name} ${item.category} ${item.district} ${item.services.join(' ')}`).includes(term)
     })
   }, [departments, entityFilter, entityQuery])
-
-  const submitSearch = (event: React.FormEvent) => {
-    event.preventDefault()
-    if (results.length === 1) navigate(`/service/${results[0].key}`)
-    else navigate(`/directory${query.trim() ? `?q=${encodeURIComponent(query.trim())}` : ''}`)
-  }
 
   return (
     <div className="gov-home">
@@ -220,39 +192,7 @@ export function LandingPage() {
                 <em>في مكان واحد</em>
               </h1>
               <p>قدّم معاملاتك الحكومية، تابع الطلبات، واستلم الوثائق إلكترونياً من خلال منصة حكومية موحدة وآمنة.</p>
-              <form className="gov-search" onSubmit={submitSearch} role="search">
-                <Search className="gov-search-icon" aria-hidden="true" />
-                <input
-                  value={query}
-                  onChange={event => setQuery(event.target.value)}
-                  placeholder="ما الخدمة التي تريد إنجازها؟"
-                  aria-label="ابحث عن خدمة"
-                  autoComplete="off"
-                />
-                {query && (
-                  <button type="button" className="gov-search-clear" onClick={() => setQuery('')} aria-label="مسح">
-                    <X size={16} />
-                  </button>
-                )}
-                <button type="submit" className="gov-search-submit" aria-label="بحث">
-                  <Search />
-                </button>
-                {results.length > 0 && (
-                  <ul className="gov-search-results" role="listbox">
-                    {results.map(service => (
-                      <li key={service.key}>
-                        <Link href={`/service/${service.key}`} onClick={() => setQuery('')}>
-                          <strong>{service.title}</strong>
-                          <small>
-                            {service.departmentName} • {service.category}
-                          </small>
-                          <ChevronLeft size={16} />
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </form>
+              <SmartSearch value={query} onChange={setQuery} autoFocus={false} />
               <div className="gov-suggestions">
                 <span>اقتراحات سريعة:</span>
                 {suggestions.map(item => (

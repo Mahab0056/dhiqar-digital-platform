@@ -1,6 +1,7 @@
 import registryData from '../registry/dhiqar-services.json' with { type: 'json' }
 import { db } from '../db.js'
 import { departmentById, departmentRegistry } from '../department-registry.js'
+import { invalidateSearchIndex } from './search.js'
 import { serviceDefinitions, type ServiceFormField } from '../../src/service-forms.js'
 
 export type CatalogDocument = {
@@ -85,6 +86,7 @@ function legacyDepartmentId(key: string, name: string) {
 
 /** Upserts platform-defined services (with custom flows) and the researched registry into service_catalog. */
 export function seedServiceCatalog() {
+  invalidateSearchIndex()
   const timestamp = new Date().toISOString()
   const statement = db.prepare(
     `INSERT INTO service_catalog (id, department_id, name, category, description, fee_iqd, fee_status, fee_source, estimated_duration, form_schema, required_documents, document_schema, applicant_type, channel, mode, source_quality, notes, payment_mode, active, source_url, created_at, updated_at)
@@ -267,6 +269,8 @@ export function normalizeArabic(value: string) {
     .normalize('NFKD')
     .replace(/[ً-ٰٟ]/g, '')
     .replace(/[أإآ]/g, 'ا')
+    .replace(/ئ/g, 'ي')
+    .replace(/ؤ/g, 'و')
     .replace(/ى/g, 'ي')
     .replace(/ة/g, 'ه')
     .replace(/[^\p{L}\p{N}]+/gu, ' ')

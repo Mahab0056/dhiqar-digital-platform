@@ -1,5 +1,6 @@
 import type { Express } from 'express'
 import { catalogSummary, getCatalogService, listCatalogServices, type ServiceChannel } from '../services/catalog.js'
+import { searchCatalog } from '../services/search.js'
 
 const channels = new Set<ServiceChannel>(['ONLINE_SUBMISSION', 'APPOINTMENT_REQUIRED', 'INFORMATION_ONLY'])
 
@@ -15,6 +16,18 @@ export function registerServicesRoutes(app: Express) {
   })
 
   app.get('/api/services/summary', (_req, res) => res.json(catalogSummary()))
+
+  /** Ranked search (synonyms + fuzzy). Used by the homepage search box, voice search and the directory. */
+  app.get('/api/services/search', (req, res) => {
+    const query = typeof req.query.q === 'string' ? req.query.q.slice(0, 160) : ''
+    const limit = Math.min(40, Math.max(1, Number(req.query.limit) || 12))
+    const { hits, tokens } = searchCatalog(query, limit)
+    res.json({
+      query,
+      tokens,
+      items: hits.map(hit => ({ ...hit.service, score: Math.round(hit.score * 100) / 100 })),
+    })
+  })
 
   app.get('/api/services/:key', (req, res) => {
     const key = String(req.params.key)
