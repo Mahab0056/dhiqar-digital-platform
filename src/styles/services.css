@@ -861,3 +861,176 @@
 .public-service-main .dynamic-fields label b {
   color: var(--gov-red);
 }
+
+/* ---- payment page -------------------------------------------------------------------------- */
+.payment-page {
+  max-width: 760px;
+}
+.payment-card {
+  background: var(--gov-surface, #fff);
+  border: 1px solid var(--gov-line, #e3e8e5);
+  border-top: 4px solid var(--gov-green-800, #075e45);
+  border-radius: var(--gov-radius-lg, 14px);
+  padding: 26px 28px;
+  display: grid;
+  gap: 18px;
+  box-shadow: var(--gov-shadow);
+}
+.payment-head {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+.payment-head h1 {
+  margin: 4px 0 6px;
+  font-size: 22px;
+}
+.payment-head p {
+  margin: 0;
+  color: var(--gov-muted);
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  font-size: 14px;
+}
+.payment-head p svg {
+  width: 16px;
+  height: 16px;
+}
+.payment-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  background: var(--gov-green-050);
+  color: var(--gov-green-800);
+  flex: none;
+}
+.payment-summary {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px 20px;
+  padding: 16px 18px;
+  background: var(--gov-bg);
+  border: 1px solid var(--gov-line-soft);
+  border-radius: var(--gov-radius);
+}
+.payment-summary div {
+  display: grid;
+  gap: 4px;
+}
+.payment-summary dt {
+  font-size: 12px;
+  color: var(--gov-muted);
+}
+.payment-summary dd {
+  margin: 0;
+  font-weight: 700;
+}
+.payment-amount {
+  font-size: 22px;
+  color: var(--gov-green-800);
+}
+.payment-state {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 12px 14px;
+  align-items: center;
+  padding: 16px 18px;
+  border-radius: var(--gov-radius);
+  border: 1px solid var(--gov-green-100);
+  background: var(--gov-green-050);
+}
+.payment-state svg {
+  width: 28px;
+  height: 28px;
+  color: var(--gov-green-700);
+}
+.payment-state div {
+  display: grid;
+  gap: 4px;
+}
+.payment-state span {
+  color: var(--gov-ink-2);
+  font-size: 14px;
+  line-height: 1.7;
+}
+.payment-state .button {
+  grid-column: 1 / -1;
+  justify-self: start;
+}
+.payment-state.failed {
+  background: var(--gov-red-050);
+  border-color: #f2c9cf;
+}
+.payment-state.failed svg {
+  color: var(--gov-red);
+}
+.payment-mode {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 14px;
+  border-radius: var(--gov-radius-sm);
+  font-size: 13px;
+  background: var(--gov-sand-050);
+  border: 1px solid #efe3c9;
+  color: var(--gov-sand-700);
+}
+.payment-mode.live {
+  background: var(--gov-green-050);
+  border-color: var(--gov-green-100);
+  color: var(--gov-green-800);
+}
+.payment-mode svg {
+  width: 18px;
+  height: 18px;
+  flex: none;
+}
+.payment-sandbox {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px dashed var(--gov-line);
+  border-radius: var(--gov-radius);
+}
+.payment-sandbox p {
+  margin: 0;
+  color: var(--gov-ink-2);
+  font-size: 14px;
+  line-height: 1.7;
+}
+.payment-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.payment-note {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 0;
+  font-size: 13px;
+}
+.payment-note svg {
+  width: 16px;
+  height: 16px;
+}
+.service-required-upload.payment-due {
+  border-color: var(--gov-green-100);
+  background: var(--gov-green-050);
+}
+.service-success .button.outline {
+  margin-top: 10px;
+}
+@media (max-width: 640px) {
+  .payment-card {
+    padding: 18px 16px;
+  }
+  .payment-actions .button {
+    width: 100%;
+    justify-content: center;
+  }
+}

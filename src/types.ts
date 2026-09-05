@@ -191,6 +191,32 @@ export interface ServiceRequestAttachment {
   available: boolean
 }
 
+export interface PaymentIntent {
+  id: string
+  reference: string
+  serviceRequestReference: string | null
+  serviceKey: string
+  serviceName: string
+  departmentName: string
+  amountIqd: number
+  status: 'CREATED' | 'PENDING' | 'PAID' | 'FAILED' | 'CANCELLED'
+  mode: string
+  provider: string | null
+  providerReference: string | null
+  receiptNumber: string | null
+  description: string
+  paidAt: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface PaymentConfig {
+  available: boolean
+  provider: string | null
+  mode: 'SANDBOX' | 'LIVE' | 'TEST' | 'UNAVAILABLE'
+  sandboxAllowed: boolean
+}
+
 export interface CitizenServiceRequest {
   id: number
   reference: string
@@ -211,6 +237,7 @@ export interface CitizenServiceRequest {
   citizenPhone?: string | null
   checklist?: ChecklistItem[]
   attachments?: ServiceRequestAttachment[]
+  payments?: PaymentIntent[]
   createdAt: string
   updatedAt: string
   appointment?: {

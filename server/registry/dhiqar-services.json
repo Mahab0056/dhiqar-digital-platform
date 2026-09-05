@@ -37138,5 +37138,5417 @@
     "sourceUrl": "https://pension.gov.iq/",
     "sourceQuality": "UNVERIFIED",
     "notes": "المستمسكات المدرجة هي المجموعة العراقية القياسية بانتظار تأكيدها من الدائرة."
+  },
+  {
+    "key": "health-private-clinic-license",
+    "departmentId": "dhiqar-health",
+    "title": "ترخيص افتتاح عيادة أهلية / تجديد الإجازة السنوية",
+    "description": "التقديم للحصول على إجازة فتح عيادة طبية أهلية (بشرية) أو تجديد إجازتها السنوية وفق ضوابط دائرة صحة ذي قار (شعبة المؤسسات الصحية الأهلية).",
+    "category": "الصحة",
+    "applicantType": "BUSINESS",
+    "channel": "APPOINTMENT_REQUIRED",
+    "requiredDocuments": [
+      {
+        "key": "national-id",
+        "label": "البطاقة الوطنية الموحدة",
+        "description": "وجه وظهر البطاقة، أو هوية الأحوال المدنية + شهادة الجنسية العراقية",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "medical-title",
+        "label": "شهادة التخصص/النقابة الطبية",
+        "description": "صورة عن الشهادة الطبية ووثيقة الانتساب لنقابة الأطباء",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "lease-or-ownership",
+        "label": "سند ملكية أو عقد إيجار المحل",
+        "description": "يثبت حيازة المكان المخصص للعيادة",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "previous-license",
+        "label": "الإجازة السابقة",
+        "description": "عند طلب التجديد فقط",
+        "required": false,
+        "accepts": ["image", "pdf"]
+      }
+    ],
+    "fields": [
+      {
+        "key": "fullName",
+        "label": "الاسم الكامل (الرباعي واللقب)",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "phone",
+        "label": "رقم الهاتف",
+        "type": "tel",
+        "required": true,
+        "maxLength": 15
+      },
+      {
+        "key": "district",
+        "label": "القضاء",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": [
+          "الناصرية",
+          "الشطرة",
+          "سوق الشيوخ",
+          "الرفاعي",
+          "الجبايش",
+          "قلعة سكر",
+          "الفهود",
+          "النصر",
+          "الغراف",
+          "الإصلاح",
+          "الدواية",
+          "سيد دخيل",
+          "البطحاء",
+          "الفجر"
+        ]
+      },
+      {
+        "key": "clinicName",
+        "label": "اسم العيادة المقترح",
+        "type": "text",
+        "required": true,
+        "maxLength": 150
+      },
+      {
+        "key": "clinicType",
+        "label": "نوع الاختصاص",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": ["طب عام", "نسائية وتوليد", "أطفال", "أسنان", "جلدية", "عظام", "باطنية", "عيون", "أخرى"]
+      },
+      {
+        "key": "clinicAddress",
+        "label": "عنوان العيادة",
+        "type": "text",
+        "required": true,
+        "maxLength": 200
+      }
+    ],
+    "feeIqd": null,
+    "feeSource": null,
+    "estimatedDuration": null,
+    "sourceUrl": "https://thiqar.moh.gov.iq/",
+    "sourceQuality": "RELIABLE",
+    "notes": "الترخيص يصدر من شعبة المؤسسات الصحية الأهلية بدائرة صحة ذي قار وفق تعليمات وزارة الصحة؛ لم يُعثر على استمارة إلكترونية موحّدة، والتفاصيل الإجرائية عامة."
+  },
+  {
+    "key": "health-private-lab-license",
+    "departmentId": "dhiqar-health",
+    "title": "ترخيص مختبر تحاليل مرضية أهلي (فتح / تجديد)",
+    "description": "طلب إجازة فتح مختبر تحليلات طبية أهلي أو تجديد إجازته، ويشمل الكشف الفني على المختبر من قبل دائرة الصحة.",
+    "category": "الصحة",
+    "applicantType": "BUSINESS",
+    "channel": "APPOINTMENT_REQUIRED",
+    "requiredDocuments": [
+      {
+        "key": "national-id",
+        "label": "البطاقة الوطنية الموحدة",
+        "description": "وجه وظهر البطاقة، أو هوية الأحوال المدنية + شهادة الجنسية العراقية",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "lab-specialist-cert",
+        "label": "شهادة اختصاصي التحليلات المرضية",
+        "description": "وثيقة التخرج والانتساب النقابي",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "lease-or-ownership",
+        "label": "سند ملكية أو عقد إيجار المحل",
+        "description": "يثبت حيازة مكان المختبر",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      }
+    ],
+    "fields": [
+      {
+        "key": "fullName",
+        "label": "الاسم الكامل (الرباعي واللقب)",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "phone",
+        "label": "رقم الهاتف",
+        "type": "tel",
+        "required": true,
+        "maxLength": 15
+      },
+      {
+        "key": "district",
+        "label": "القضاء",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": [
+          "الناصرية",
+          "الشطرة",
+          "سوق الشيوخ",
+          "الرفاعي",
+          "الجبايش",
+          "قلعة سكر",
+          "الفهود",
+          "النصر",
+          "الغراف",
+          "الإصلاح",
+          "الدواية",
+          "سيد دخيل",
+          "البطحاء",
+          "الفجر"
+        ]
+      },
+      {
+        "key": "labName",
+        "label": "اسم المختبر المقترح",
+        "type": "text",
+        "required": true,
+        "maxLength": 150
+      },
+      {
+        "key": "labAddress",
+        "label": "عنوان المختبر",
+        "type": "text",
+        "required": true,
+        "maxLength": 200
+      }
+    ],
+    "feeIqd": null,
+    "feeSource": null,
+    "estimatedDuration": null,
+    "sourceUrl": "https://thiqar.moh.gov.iq/",
+    "sourceQuality": "UNVERIFIED",
+    "notes": "إجراء عام معمول به عبر شعبة المؤسسات الصحية الأهلية؛ لم يتوفر مصدر رسمي بتفاصيل الرسوم أو المدة."
+  },
+  {
+    "key": "health-private-pharmacy-license",
+    "departmentId": "dhiqar-health",
+    "title": "ترخيص صيدلية أهلية (فتح / تجديد)",
+    "description": "التقديم على إجازة فتح صيدلية أهلية جديدة أو تجديد إجازة صيدلية قائمة، وتشمل موافقة نقابة الصيادلة وكشف دائرة الصحة.",
+    "category": "الصحة",
+    "applicantType": "BUSINESS",
+    "channel": "APPOINTMENT_REQUIRED",
+    "requiredDocuments": [
+      {
+        "key": "national-id",
+        "label": "البطاقة الوطنية الموحدة",
+        "description": "وجه وظهر البطاقة، أو هوية الأحوال المدنية + شهادة الجنسية العراقية",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "pharmacist-syndicate-card",
+        "label": "هوية نقابة الصيادلة",
+        "description": "وجه وظهر",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "lease-or-ownership",
+        "label": "سند ملكية أو عقد إيجار المحل",
+        "description": "يثبت حيازة مكان الصيدلية",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "previous-license",
+        "label": "الإجازة السابقة",
+        "description": "عند طلب التجديد فقط",
+        "required": false,
+        "accepts": ["image", "pdf"]
+      }
+    ],
+    "fields": [
+      {
+        "key": "fullName",
+        "label": "الاسم الكامل (الرباعي واللقب)",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "phone",
+        "label": "رقم الهاتف",
+        "type": "tel",
+        "required": true,
+        "maxLength": 15
+      },
+      {
+        "key": "district",
+        "label": "القضاء",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": [
+          "الناصرية",
+          "الشطرة",
+          "سوق الشيوخ",
+          "الرفاعي",
+          "الجبايش",
+          "قلعة سكر",
+          "الفهود",
+          "النصر",
+          "الغراف",
+          "الإصلاح",
+          "الدواية",
+          "سيد دخيل",
+          "البطحاء",
+          "الفجر"
+        ]
+      },
+      {
+        "key": "pharmacyName",
+        "label": "اسم الصيدلية المقترح",
+        "type": "text",
+        "required": true,
+        "maxLength": 150
+      },
+      {
+        "key": "pharmacyAddress",
+        "label": "عنوان الصيدلية",
+        "type": "text",
+        "required": true,
+        "maxLength": 200
+      }
+    ],
+    "feeIqd": null,
+    "feeSource": null,
+    "estimatedDuration": null,
+    "sourceUrl": "https://thiqar.moh.gov.iq/",
+    "sourceQuality": "UNVERIFIED",
+    "notes": "إجراء عام وفق تعليمات نقابة الصيادلة ووزارة الصحة؛ التفاصيل التفصيلية غير موثقة رسمياً لفرع ذي قار."
+  },
+  {
+    "key": "health-birth-notification",
+    "departmentId": "dhiqar-health",
+    "title": "التبليغ الأولي عن واقعة ولادة (إخبار المستشفى)",
+    "description": "استلام إخبار الولادة الصادر من المستشفى أو المركز الصحي الذي جرت فيه الولادة تمهيداً لتسجيلها في دائرة الأحوال المدنية.",
+    "category": "الصحة",
+    "applicantType": "CITIZEN",
+    "channel": "INFORMATION_ONLY",
+    "requiredDocuments": [
+      {
+        "key": "hospital-birth-notice",
+        "label": "إخبار الولادة من المستشفى",
+        "description": "النموذج الأصلي الصادر عن المؤسسة الصحية عند الولادة",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "national-id",
+        "label": "البطاقة الوطنية الموحدة",
+        "description": "وجه وظهر البطاقة، أو هوية الأحوال المدنية + شهادة الجنسية العراقية",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      }
+    ],
+    "fields": [
+      {
+        "key": "fullName",
+        "label": "الاسم الكامل (الرباعي واللقب)",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "phone",
+        "label": "رقم الهاتف",
+        "type": "tel",
+        "required": true,
+        "maxLength": 15
+      },
+      {
+        "key": "district",
+        "label": "القضاء",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": [
+          "الناصرية",
+          "الشطرة",
+          "سوق الشيوخ",
+          "الرفاعي",
+          "الجبايش",
+          "قلعة سكر",
+          "الفهود",
+          "النصر",
+          "الغراف",
+          "الإصلاح",
+          "الدواية",
+          "سيد دخيل",
+          "البطحاء",
+          "الفجر"
+        ]
+      },
+      {
+        "key": "motherName",
+        "label": "اسم الأم الثلاثي",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "birthDate",
+        "label": "تاريخ الولادة",
+        "type": "text",
+        "required": true,
+        "maxLength": 20,
+        "placeholder": "YYYY-MM-DD"
+      }
+    ],
+    "feeIqd": null,
+    "feeSource": null,
+    "estimatedDuration": null,
+    "sourceUrl": "https://thiqar.moh.gov.iq/",
+    "sourceQuality": "UNVERIFIED",
+    "notes": "إخبار الولادة وثيقة تصدرها المؤسسة الصحية ويقدَّم لاحقاً إلى الأحوال المدنية؛ إجراء عام معروف دون رابط رسمي مخصص."
+  },
+  {
+    "key": "health-death-notification",
+    "departmentId": "dhiqar-health",
+    "title": "التبليغ الأولي عن واقعة وفاة (إخبار الوفاة الطبي)",
+    "description": "إصدار إخبار الوفاة الطبي من المستشفى أو الطبيب الشرعي، وهو مستند أساسي لاستخراج شهادة الوفاة من الأحوال المدنية.",
+    "category": "الصحة",
+    "applicantType": "CITIZEN",
+    "channel": "INFORMATION_ONLY",
+    "requiredDocuments": [
+      {
+        "key": "hospital-death-notice",
+        "label": "إخبار الوفاة الطبي",
+        "description": "صادر عن المستشفى أو الطب العدلي يوضح سبب الوفاة",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "national-id",
+        "label": "البطاقة الوطنية الموحدة",
+        "description": "وجه وظهر البطاقة، أو هوية الأحوال المدنية + شهادة الجنسية العراقية",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      }
+    ],
+    "fields": [
+      {
+        "key": "fullName",
+        "label": "الاسم الكامل (الرباعي واللقب)",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "phone",
+        "label": "رقم الهاتف",
+        "type": "tel",
+        "required": true,
+        "maxLength": 15
+      },
+      {
+        "key": "district",
+        "label": "القضاء",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": [
+          "الناصرية",
+          "الشطرة",
+          "سوق الشيوخ",
+          "الرفاعي",
+          "الجبايش",
+          "قلعة سكر",
+          "الفهود",
+          "النصر",
+          "الغراف",
+          "الإصلاح",
+          "الدواية",
+          "سيد دخيل",
+          "البطحاء",
+          "الفجر"
+        ]
+      },
+      {
+        "key": "deceasedName",
+        "label": "اسم المتوفى الثلاثي",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "deathDate",
+        "label": "تاريخ الوفاة",
+        "type": "text",
+        "required": true,
+        "maxLength": 20,
+        "placeholder": "YYYY-MM-DD"
+      }
+    ],
+    "feeIqd": null,
+    "feeSource": null,
+    "estimatedDuration": null,
+    "sourceUrl": "https://thiqar.moh.gov.iq/",
+    "sourceQuality": "UNVERIFIED",
+    "notes": "إجراء طبي-إداري عام يسبق تسجيل الوفاة في الأحوال المدنية."
+  },
+  {
+    "key": "health-disability-committee",
+    "departmentId": "dhiqar-health",
+    "title": "حجز موعد اللجنة الطبية لتقييم نسبة العجز / الإعاقة",
+    "description": "التقديم لحجز موعد أمام اللجنة الطبية المختصة بتقييم نسبة العجز أو الإعاقة لإصدار تقرير طبي يُستخدم لأغراض الرعاية الاجتماعية أو التقاعد أو الإعفاءات.",
+    "category": "الصحة",
+    "applicantType": "CITIZEN",
+    "channel": "APPOINTMENT_REQUIRED",
+    "requiredDocuments": [
+      {
+        "key": "national-id",
+        "label": "البطاقة الوطنية الموحدة",
+        "description": "وجه وظهر البطاقة، أو هوية الأحوال المدنية + شهادة الجنسية العراقية",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "medical-reports",
+        "label": "التقارير والفحوصات الطبية السابقة",
+        "description": "إن وجدت، تدعم حالة العجز",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      }
+    ],
+    "fields": [
+      {
+        "key": "fullName",
+        "label": "الاسم الكامل (الرباعي واللقب)",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "phone",
+        "label": "رقم الهاتف",
+        "type": "tel",
+        "required": true,
+        "maxLength": 15
+      },
+      {
+        "key": "district",
+        "label": "القضاء",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": [
+          "الناصرية",
+          "الشطرة",
+          "سوق الشيوخ",
+          "الرفاعي",
+          "الجبايش",
+          "قلعة سكر",
+          "الفهود",
+          "النصر",
+          "الغراف",
+          "الإصلاح",
+          "الدواية",
+          "سيد دخيل",
+          "البطحاء",
+          "الفجر"
+        ]
+      },
+      {
+        "key": "committeeType",
+        "label": "نوع اللجنة",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": ["لجنة تقييم الإعاقة", "لجنة العجز الطبي (تقاعد)", "لجنة أخرى"]
+      }
+    ],
+    "feeIqd": null,
+    "feeSource": null,
+    "estimatedDuration": null,
+    "sourceUrl": "https://thiqar.moh.gov.iq/",
+    "sourceQuality": "UNVERIFIED",
+    "notes": "اللجان الطبية تعمل ضمن مستشفيات دائرة صحة ذي قار؛ لا يوجد نظام حجز إلكتروني موثق."
+  },
+  {
+    "key": "health-fitness-certificate",
+    "departmentId": "dhiqar-health",
+    "title": "شهادة اللياقة الصحية (للتوظيف أو السفر أو الدراسة)",
+    "description": "إصدار شهادة تثبت اللياقة الصحية العامة للمواطن لأغراض التوظيف الحكومي أو الأهلي أو السفر أو القبول الدراسي.",
+    "category": "الصحة",
+    "applicantType": "CITIZEN",
+    "channel": "APPOINTMENT_REQUIRED",
+    "requiredDocuments": [
+      {
+        "key": "national-id",
+        "label": "البطاقة الوطنية الموحدة",
+        "description": "وجه وظهر البطاقة، أو هوية الأحوال المدنية + شهادة الجنسية العراقية",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "personal-photos",
+        "label": "صور شخصية",
+        "description": "عدد 2-4 بحسب المعاملة، خلفية بيضاء",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      }
+    ],
+    "fields": [
+      {
+        "key": "fullName",
+        "label": "الاسم الكامل (الرباعي واللقب)",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "phone",
+        "label": "رقم الهاتف",
+        "type": "tel",
+        "required": true,
+        "maxLength": 15
+      },
+      {
+        "key": "district",
+        "label": "القضاء",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": [
+          "الناصرية",
+          "الشطرة",
+          "سوق الشيوخ",
+          "الرفاعي",
+          "الجبايش",
+          "قلعة سكر",
+          "الفهود",
+          "النصر",
+          "الغراف",
+          "الإصلاح",
+          "الدواية",
+          "سيد دخيل",
+          "البطحاء",
+          "الفجر"
+        ]
+      },
+      {
+        "key": "purpose",
+        "label": "الغرض من الشهادة",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": ["توظيف", "سفر", "دراسة", "أخرى"]
+      }
+    ],
+    "feeIqd": null,
+    "feeSource": null,
+    "estimatedDuration": null,
+    "sourceUrl": "https://thiqar.moh.gov.iq/",
+    "sourceQuality": "UNVERIFIED",
+    "notes": "خدمة روتينية تصدرها المراكز الصحية التابعة لدائرة صحة ذي قار."
+  },
+  {
+    "key": "elec-load-increase",
+    "departmentId": "dhiqar-electricity",
+    "title": "طلب زيادة الحمل (الأمبيرات) للاشتراك",
+    "description": "طلب تعديل سعة الاشتراك الكهربائي (زيادة الأمبيرات) لعقار قائم بسبب زيادة الأحمال الكهربائية المستخدمة.",
+    "category": "الكهرباء",
+    "applicantType": "BOTH",
+    "channel": "APPOINTMENT_REQUIRED",
+    "requiredDocuments": [
+      {
+        "key": "national-id",
+        "label": "البطاقة الوطنية الموحدة",
+        "description": "وجه وظهر البطاقة، أو هوية الأحوال المدنية + شهادة الجنسية العراقية",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "residence-card",
+        "label": "بطاقة السكن",
+        "description": "وجه وظهر",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "last-electricity-bill",
+        "label": "آخر وصل تسديد كهرباء",
+        "description": "لإثبات رقم الاشتراك الحالي",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      }
+    ],
+    "fields": [
+      {
+        "key": "fullName",
+        "label": "الاسم الكامل (الرباعي واللقب)",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "phone",
+        "label": "رقم الهاتف",
+        "type": "tel",
+        "required": true,
+        "maxLength": 15
+      },
+      {
+        "key": "district",
+        "label": "القضاء",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": [
+          "الناصرية",
+          "الشطرة",
+          "سوق الشيوخ",
+          "الرفاعي",
+          "الجبايش",
+          "قلعة سكر",
+          "الفهود",
+          "النصر",
+          "الغراف",
+          "الإصلاح",
+          "الدواية",
+          "سيد دخيل",
+          "البطحاء",
+          "الفجر"
+        ]
+      },
+      {
+        "key": "subscriptionNumber",
+        "label": "رقم الاشتراك الحالي",
+        "type": "text",
+        "required": true,
+        "maxLength": 30
+      },
+      {
+        "key": "requestedLoad",
+        "label": "الحمل المطلوب (أمبير)",
+        "type": "number",
+        "required": true,
+        "maxLength": 20
+      }
+    ],
+    "feeIqd": null,
+    "feeSource": null,
+    "estimatedDuration": null,
+    "sourceUrl": "https://www.facebook.com/Electric.thi.qar",
+    "sourceQuality": "RELIABLE",
+    "notes": "تُقدَّم عبر مكتب استعلامات فرع التوزيع ويتبعها كشف فني ميداني قبل الموافقة."
+  },
+  {
+    "key": "elec-commercial-subscription",
+    "departmentId": "dhiqar-electricity",
+    "title": "تحويل نوع الاشتراك من سكني إلى تجاري / صناعي",
+    "description": "طلب تغيير تصنيف اشتراك الكهرباء من سكني إلى تجاري أو صناعي بسبب تغيير استخدام العقار (فتح محل أو ورشة).",
+    "category": "الكهرباء",
+    "applicantType": "BOTH",
+    "channel": "APPOINTMENT_REQUIRED",
+    "requiredDocuments": [
+      {
+        "key": "national-id",
+        "label": "البطاقة الوطنية الموحدة",
+        "description": "وجه وظهر البطاقة، أو هوية الأحوال المدنية + شهادة الجنسية العراقية",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "residence-card",
+        "label": "بطاقة السكن",
+        "description": "وجه وظهر",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "business-license",
+        "label": "إجازة ممارسة المهنة",
+        "description": "صادرة من البلدية أو الغرفة التجارية",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      }
+    ],
+    "fields": [
+      {
+        "key": "fullName",
+        "label": "الاسم الكامل (الرباعي واللقب)",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "phone",
+        "label": "رقم الهاتف",
+        "type": "tel",
+        "required": true,
+        "maxLength": 15
+      },
+      {
+        "key": "district",
+        "label": "القضاء",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": [
+          "الناصرية",
+          "الشطرة",
+          "سوق الشيوخ",
+          "الرفاعي",
+          "الجبايش",
+          "قلعة سكر",
+          "الفهود",
+          "النصر",
+          "الغراف",
+          "الإصلاح",
+          "الدواية",
+          "سيد دخيل",
+          "البطحاء",
+          "الفجر"
+        ]
+      },
+      {
+        "key": "subscriptionNumber",
+        "label": "رقم الاشتراك الحالي",
+        "type": "text",
+        "required": true,
+        "maxLength": 30
+      },
+      {
+        "key": "newCategory",
+        "label": "التصنيف الجديد",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": ["تجاري", "صناعي", "حرفي/ورشة"]
+      }
+    ],
+    "feeIqd": null,
+    "feeSource": null,
+    "estimatedDuration": null,
+    "sourceUrl": "https://www.facebook.com/Electric.thi.qar",
+    "sourceQuality": "RELIABLE",
+    "notes": "يتطلب كشفاً فنياً وتحديثاً في نظام الفوترة بحسب تصنيف الاستهلاك."
+  },
+  {
+    "key": "elec-service-disconnect-request",
+    "departmentId": "dhiqar-electricity",
+    "title": "طلب فصل الخدمة نهائياً (إغلاق الاشتراك)",
+    "description": "طلب إنهاء وإغلاق اشتراك الكهرباء نهائياً لعقار (بيع العقار، هدم، أو توقف الاستخدام) بعد تسديد كامل المتبقي من الأجور.",
+    "category": "الكهرباء",
+    "applicantType": "BOTH",
+    "channel": "APPOINTMENT_REQUIRED",
+    "requiredDocuments": [
+      {
+        "key": "national-id",
+        "label": "البطاقة الوطنية الموحدة",
+        "description": "وجه وظهر البطاقة، أو هوية الأحوال المدنية + شهادة الجنسية العراقية",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "residence-card",
+        "label": "بطاقة السكن",
+        "description": "وجه وظهر",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "last-electricity-bill",
+        "label": "آخر وصل تسديد كهرباء",
+        "description": "لإثبات براءة الذمة",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      }
+    ],
+    "fields": [
+      {
+        "key": "fullName",
+        "label": "الاسم الكامل (الرباعي واللقب)",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "phone",
+        "label": "رقم الهاتف",
+        "type": "tel",
+        "required": true,
+        "maxLength": 15
+      },
+      {
+        "key": "district",
+        "label": "القضاء",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": [
+          "الناصرية",
+          "الشطرة",
+          "سوق الشيوخ",
+          "الرفاعي",
+          "الجبايش",
+          "قلعة سكر",
+          "الفهود",
+          "النصر",
+          "الغراف",
+          "الإصلاح",
+          "الدواية",
+          "سيد دخيل",
+          "البطحاء",
+          "الفجر"
+        ]
+      },
+      {
+        "key": "subscriptionNumber",
+        "label": "رقم الاشتراك",
+        "type": "text",
+        "required": true,
+        "maxLength": 30
+      },
+      {
+        "key": "closeReason",
+        "label": "سبب طلب الإغلاق",
+        "type": "text",
+        "required": true,
+        "maxLength": 150
+      }
+    ],
+    "feeIqd": null,
+    "feeSource": null,
+    "estimatedDuration": null,
+    "sourceUrl": "https://www.facebook.com/Electric.thi.qar",
+    "sourceQuality": "UNVERIFIED",
+    "notes": "يستلزم تسديد براءة ذمة وسحب المقياس من قبل الفرع."
+  },
+  {
+    "key": "elec-line-extension",
+    "departmentId": "dhiqar-electricity",
+    "title": "طلب مد خط كهرباء جديد لمنطقة أو تجمع سكني",
+    "description": "طلب جماعي أو فردي لمد خط توزيع كهربائي جديد يخدم منطقة أو حياً أو تجمعاً سكنياً غير مغطى بالشبكة الحالية.",
+    "category": "الكهرباء",
+    "applicantType": "BOTH",
+    "channel": "APPOINTMENT_REQUIRED",
+    "requiredDocuments": [
+      {
+        "key": "national-id",
+        "label": "البطاقة الوطنية الموحدة",
+        "description": "وجه وظهر البطاقة، أو هوية الأحوال المدنية + شهادة الجنسية العراقية",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "residence-card",
+        "label": "بطاقة السكن",
+        "description": "وجه وظهر",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "area-map-sketch",
+        "label": "كروكي أو تحديد لموقع المنطقة",
+        "description": "رسم تقريبي أو إحداثيات المنطقة المطلوب خدمتها",
+        "required": false,
+        "accepts": ["image", "pdf"]
+      }
+    ],
+    "fields": [
+      {
+        "key": "fullName",
+        "label": "الاسم الكامل (الرباعي واللقب)",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "phone",
+        "label": "رقم الهاتف",
+        "type": "tel",
+        "required": true,
+        "maxLength": 15
+      },
+      {
+        "key": "district",
+        "label": "القضاء",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": [
+          "الناصرية",
+          "الشطرة",
+          "سوق الشيوخ",
+          "الرفاعي",
+          "الجبايش",
+          "قلعة سكر",
+          "الفهود",
+          "النصر",
+          "الغراف",
+          "الإصلاح",
+          "الدواية",
+          "سيد دخيل",
+          "البطحاء",
+          "الفجر"
+        ]
+      },
+      {
+        "key": "areaName",
+        "label": "اسم المنطقة / الحي",
+        "type": "text",
+        "required": true,
+        "maxLength": 150
+      },
+      {
+        "key": "estimatedHouseholds",
+        "label": "عدد الدور التقريبي المستفيد",
+        "type": "number",
+        "required": false,
+        "maxLength": 20
+      }
+    ],
+    "feeIqd": null,
+    "feeSource": null,
+    "estimatedDuration": null,
+    "sourceUrl": "https://www.facebook.com/Electric.thi.qar",
+    "sourceQuality": "UNVERIFIED",
+    "notes": "يخضع لدراسة فنية وتخصيص ضمن الخطة الاستثمارية لفرع التوزيع."
+  },
+  {
+    "key": "elec-agricultural-pump-subscription",
+    "departmentId": "dhiqar-electricity",
+    "title": "اشتراك كهرباء لمضخة سقي زراعية",
+    "description": "طلب فتح اشتراك كهربائي مخصص لتشغيل مضخة ري أو سقي زراعي على أرض زراعية مسجلة.",
+    "category": "الكهرباء",
+    "applicantType": "CITIZEN",
+    "channel": "APPOINTMENT_REQUIRED",
+    "requiredDocuments": [
+      {
+        "key": "national-id",
+        "label": "البطاقة الوطنية الموحدة",
+        "description": "وجه وظهر البطاقة، أو هوية الأحوال المدنية + شهادة الجنسية العراقية",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "agri-land-document",
+        "label": "وثيقة ملكية أو حيازة الأرض الزراعية",
+        "description": "سند زراعي أو عقد إيجار من دائرة الزراعة",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      }
+    ],
+    "fields": [
+      {
+        "key": "fullName",
+        "label": "الاسم الكامل (الرباعي واللقب)",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "phone",
+        "label": "رقم الهاتف",
+        "type": "tel",
+        "required": true,
+        "maxLength": 15
+      },
+      {
+        "key": "district",
+        "label": "القضاء",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": [
+          "الناصرية",
+          "الشطرة",
+          "سوق الشيوخ",
+          "الرفاعي",
+          "الجبايش",
+          "قلعة سكر",
+          "الفهود",
+          "النصر",
+          "الغراف",
+          "الإصلاح",
+          "الدواية",
+          "سيد دخيل",
+          "البطحاء",
+          "الفجر"
+        ]
+      },
+      {
+        "key": "landLocation",
+        "label": "موقع الأرض الزراعية",
+        "type": "text",
+        "required": true,
+        "maxLength": 150
+      },
+      {
+        "key": "pumpPowerHp",
+        "label": "قدرة المضخة (حصان)",
+        "type": "number",
+        "required": false,
+        "maxLength": 20
+      }
+    ],
+    "feeIqd": null,
+    "feeSource": null,
+    "estimatedDuration": null,
+    "sourceUrl": "https://www.facebook.com/Electric.thi.qar",
+    "sourceQuality": "UNVERIFIED",
+    "notes": "يتبع تعرفة زراعية خاصة تحددها وزارة الكهرباء."
+  },
+  {
+    "key": "water-meter-install",
+    "departmentId": "dhiqar-water",
+    "title": "طلب نصب عداد (مقياس) مائي على الاشتراك",
+    "description": "طلب تركيب عداد مياه على اشتراك قائم لم يُنصب عليه عداد بعد، لضبط الاستهلاك والفوترة.",
+    "category": "الماء والمجاري",
+    "applicantType": "CITIZEN",
+    "channel": "APPOINTMENT_REQUIRED",
+    "requiredDocuments": [
+      {
+        "key": "national-id",
+        "label": "البطاقة الوطنية الموحدة",
+        "description": "وجه وظهر البطاقة، أو هوية الأحوال المدنية + شهادة الجنسية العراقية",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "residence-card",
+        "label": "بطاقة السكن",
+        "description": "وجه وظهر",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      }
+    ],
+    "fields": [
+      {
+        "key": "fullName",
+        "label": "الاسم الكامل (الرباعي واللقب)",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "phone",
+        "label": "رقم الهاتف",
+        "type": "tel",
+        "required": true,
+        "maxLength": 15
+      },
+      {
+        "key": "district",
+        "label": "القضاء",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": [
+          "الناصرية",
+          "الشطرة",
+          "سوق الشيوخ",
+          "الرفاعي",
+          "الجبايش",
+          "قلعة سكر",
+          "الفهود",
+          "النصر",
+          "الغراف",
+          "الإصلاح",
+          "الدواية",
+          "سيد دخيل",
+          "البطحاء",
+          "الفجر"
+        ]
+      },
+      {
+        "key": "subscriptionNumber",
+        "label": "رقم اشتراك الماء (إن وجد)",
+        "type": "text",
+        "required": false,
+        "maxLength": 30
+      }
+    ],
+    "feeIqd": null,
+    "feeSource": null,
+    "estimatedDuration": null,
+    "sourceUrl": "https://nasiriyah.org/ar/post/79644/",
+    "sourceQuality": "UNVERIFIED",
+    "notes": "ضمن برنامج تعميم عدادات المياه المعتمد من وزارة الإعمار والإسكان والبلديات."
+  },
+  {
+    "key": "water-quality-complaint",
+    "departmentId": "dhiqar-water",
+    "title": "شكوى تلوث أو تعكر مياه الشرب",
+    "description": "تقديم شكوى بخصوص تعكر أو تلوث أو رائحة أو طعم غير طبيعي في مياه الشرب الواصلة لمنطقة سكنية.",
+    "category": "الماء والمجاري",
+    "applicantType": "CITIZEN",
+    "channel": "INFORMATION_ONLY",
+    "requiredDocuments": [
+      {
+        "key": "water-sample-photo",
+        "label": "صورة لعينة الماء (اختياري)",
+        "description": "توضح لون أو تعكر الماء",
+        "required": false,
+        "accepts": ["image"]
+      }
+    ],
+    "fields": [
+      {
+        "key": "fullName",
+        "label": "الاسم الكامل (الرباعي واللقب)",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "phone",
+        "label": "رقم الهاتف",
+        "type": "tel",
+        "required": true,
+        "maxLength": 15
+      },
+      {
+        "key": "district",
+        "label": "القضاء",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": [
+          "الناصرية",
+          "الشطرة",
+          "سوق الشيوخ",
+          "الرفاعي",
+          "الجبايش",
+          "قلعة سكر",
+          "الفهود",
+          "النصر",
+          "الغراف",
+          "الإصلاح",
+          "الدواية",
+          "سيد دخيل",
+          "البطحاء",
+          "الفجر"
+        ]
+      },
+      {
+        "key": "neighborhood",
+        "label": "الحي / المنطقة",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "complaintDetails",
+        "label": "تفاصيل الشكوى",
+        "type": "text",
+        "required": true,
+        "maxLength": 400
+      }
+    ],
+    "feeIqd": null,
+    "feeSource": null,
+    "estimatedDuration": null,
+    "sourceUrl": "https://nasiriyah.org/ar/post/79644/",
+    "sourceQuality": "RELIABLE",
+    "notes": "يحال البلاغ إلى شعبة السيطرة النوعية بمديرية ماء ذي قار."
+  },
+  {
+    "key": "water-illegal-connection-report",
+    "departmentId": "dhiqar-water",
+    "title": "بلاغ عن تجاوز أو ربط غير نظامي على شبكة الماء",
+    "description": "الإبلاغ عن حالة تجاوز أو ربط عشوائي غير مرخّص على خطوط أنابيب الماء الرئيسية أو الفرعية.",
+    "category": "الماء والمجاري",
+    "applicantType": "CITIZEN",
+    "channel": "INFORMATION_ONLY",
+    "requiredDocuments": [
+      {
+        "key": "violation-photo",
+        "label": "صورة توضح موقع التجاوز",
+        "description": "إن أمكن",
+        "required": false,
+        "accepts": ["image"]
+      }
+    ],
+    "fields": [
+      {
+        "key": "fullName",
+        "label": "الاسم الكامل (الرباعي واللقب)",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "phone",
+        "label": "رقم الهاتف",
+        "type": "tel",
+        "required": true,
+        "maxLength": 15
+      },
+      {
+        "key": "district",
+        "label": "القضاء",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": [
+          "الناصرية",
+          "الشطرة",
+          "سوق الشيوخ",
+          "الرفاعي",
+          "الجبايش",
+          "قلعة سكر",
+          "الفهود",
+          "النصر",
+          "الغراف",
+          "الإصلاح",
+          "الدواية",
+          "سيد دخيل",
+          "البطحاء",
+          "الفجر"
+        ]
+      },
+      {
+        "key": "neighborhood",
+        "label": "الحي / المنطقة",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "locationDescription",
+        "label": "وصف دقيق لموقع التجاوز",
+        "type": "text",
+        "required": true,
+        "maxLength": 250
+      }
+    ],
+    "feeIqd": null,
+    "feeSource": null,
+    "estimatedDuration": null,
+    "sourceUrl": "https://nasiriyah.org/ar/post/79644/",
+    "sourceQuality": "UNVERIFIED",
+    "notes": "يُحال إلى فرق التفتيش الميداني لمديرية الماء لإزالة التجاوز."
+  },
+  {
+    "key": "water-agricultural-subscription",
+    "departmentId": "dhiqar-water",
+    "title": "اشتراك ماء للأغراض الزراعية أو تربية الماشية",
+    "description": "طلب فتح اشتراك مياه مخصص للاستخدام الزراعي أو لسقي المواشي ضمن الأراضي الزراعية القريبة من الشبكة.",
+    "category": "الماء والمجاري",
+    "applicantType": "CITIZEN",
+    "channel": "APPOINTMENT_REQUIRED",
+    "requiredDocuments": [
+      {
+        "key": "national-id",
+        "label": "البطاقة الوطنية الموحدة",
+        "description": "وجه وظهر البطاقة، أو هوية الأحوال المدنية + شهادة الجنسية العراقية",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "agri-land-document",
+        "label": "وثيقة ملكية أو حيازة الأرض الزراعية",
+        "description": "سند زراعي أو عقد إيجار",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      }
+    ],
+    "fields": [
+      {
+        "key": "fullName",
+        "label": "الاسم الكامل (الرباعي واللقب)",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "phone",
+        "label": "رقم الهاتف",
+        "type": "tel",
+        "required": true,
+        "maxLength": 15
+      },
+      {
+        "key": "district",
+        "label": "القضاء",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": [
+          "الناصرية",
+          "الشطرة",
+          "سوق الشيوخ",
+          "الرفاعي",
+          "الجبايش",
+          "قلعة سكر",
+          "الفهود",
+          "النصر",
+          "الغراف",
+          "الإصلاح",
+          "الدواية",
+          "سيد دخيل",
+          "البطحاء",
+          "الفجر"
+        ]
+      },
+      {
+        "key": "landLocation",
+        "label": "موقع الأرض",
+        "type": "text",
+        "required": true,
+        "maxLength": 150
+      }
+    ],
+    "feeIqd": null,
+    "feeSource": null,
+    "estimatedDuration": null,
+    "sourceUrl": "https://nasiriyah.org/ar/post/79644/",
+    "sourceQuality": "UNVERIFIED",
+    "notes": "يخضع لتوفر شبكة قريبة وموافقة فنية من مديرية الماء."
+  },
+  {
+    "key": "sewer-septic-tank-license",
+    "departmentId": "dhiqar-sewerage",
+    "title": "إجازة حفر خزان امتصاصي (سبتك تانك) لعقار غير مرتبط بالشبكة",
+    "description": "طلب موافقة لحفر خزان امتصاصي لعقار يقع خارج نطاق تغطية شبكة الصرف الصحي الحالية.",
+    "category": "الماء والمجاري",
+    "applicantType": "CITIZEN",
+    "channel": "APPOINTMENT_REQUIRED",
+    "requiredDocuments": [
+      {
+        "key": "national-id",
+        "label": "البطاقة الوطنية الموحدة",
+        "description": "وجه وظهر البطاقة، أو هوية الأحوال المدنية + شهادة الجنسية العراقية",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "residence-card",
+        "label": "بطاقة السكن",
+        "description": "وجه وظهر",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      }
+    ],
+    "fields": [
+      {
+        "key": "fullName",
+        "label": "الاسم الكامل (الرباعي واللقب)",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "phone",
+        "label": "رقم الهاتف",
+        "type": "tel",
+        "required": true,
+        "maxLength": 15
+      },
+      {
+        "key": "district",
+        "label": "القضاء",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": [
+          "الناصرية",
+          "الشطرة",
+          "سوق الشيوخ",
+          "الرفاعي",
+          "الجبايش",
+          "قلعة سكر",
+          "الفهود",
+          "النصر",
+          "الغراف",
+          "الإصلاح",
+          "الدواية",
+          "سيد دخيل",
+          "البطحاء",
+          "الفجر"
+        ]
+      },
+      {
+        "key": "neighborhood",
+        "label": "الحي / المنطقة",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      }
+    ],
+    "feeIqd": null,
+    "feeSource": null,
+    "estimatedDuration": null,
+    "sourceUrl": "https://ur.gov.iq/index/show-eservice/51675/11018/org",
+    "sourceQuality": "UNVERIFIED",
+    "notes": "يُشترط تأكد المديرية من عدم مرور خط مجاري رئيسي بمحاذاة العقار."
+  },
+  {
+    "key": "sewer-manhole-repair-request",
+    "departmentId": "dhiqar-sewerage",
+    "title": "طلب صيانة أو استبدال غطاء مجرور (منهول) تالف",
+    "description": "الإبلاغ عن غطاء مجرور مكسور أو مفقود يشكل خطراً على المارة أو المركبات لغرض إصلاحه أو استبداله.",
+    "category": "الماء والمجاري",
+    "applicantType": "CITIZEN",
+    "channel": "INFORMATION_ONLY",
+    "requiredDocuments": [
+      {
+        "key": "manhole-photo",
+        "label": "صورة الموقع",
+        "description": "توضح حالة الغطاء التالف",
+        "required": false,
+        "accepts": ["image"]
+      }
+    ],
+    "fields": [
+      {
+        "key": "fullName",
+        "label": "الاسم الكامل (الرباعي واللقب)",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "phone",
+        "label": "رقم الهاتف",
+        "type": "tel",
+        "required": true,
+        "maxLength": 15
+      },
+      {
+        "key": "district",
+        "label": "القضاء",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": [
+          "الناصرية",
+          "الشطرة",
+          "سوق الشيوخ",
+          "الرفاعي",
+          "الجبايش",
+          "قلعة سكر",
+          "الفهود",
+          "النصر",
+          "الغراف",
+          "الإصلاح",
+          "الدواية",
+          "سيد دخيل",
+          "البطحاء",
+          "الفجر"
+        ]
+      },
+      {
+        "key": "neighborhood",
+        "label": "الحي / المنطقة",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "streetLandmark",
+        "label": "أقرب معلم أو رقم الشارع",
+        "type": "text",
+        "required": true,
+        "maxLength": 150
+      }
+    ],
+    "feeIqd": null,
+    "feeSource": null,
+    "estimatedDuration": null,
+    "sourceUrl": "https://ur.gov.iq/index/show-eservice/51675/11018/org",
+    "sourceQuality": "UNVERIFIED",
+    "notes": "بلاغ يحال إلى الطوارئ الميدانية لمديرية المجاري."
+  },
+  {
+    "key": "edu-kindergarten-license",
+    "departmentId": "dhiqar-education",
+    "title": "ترخيص افتتاح روضة أطفال أهلية",
+    "description": "التقديم للحصول على إجازة افتتاح روضة أطفال أهلية جديدة أو تجديد إجازتها وفق ضوابط وزارة التربية.",
+    "category": "التربية والتعليم",
+    "applicantType": "BUSINESS",
+    "channel": "APPOINTMENT_REQUIRED",
+    "requiredDocuments": [
+      {
+        "key": "national-id",
+        "label": "البطاقة الوطنية الموحدة",
+        "description": "وجه وظهر البطاقة، أو هوية الأحوال المدنية + شهادة الجنسية العراقية",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "building-suitability-report",
+        "label": "تقرير صلاحية البناية",
+        "description": "من لجنة الكشف التربوي/البلدية",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "lease-or-ownership",
+        "label": "سند ملكية أو عقد إيجار البناية",
+        "description": "يثبت حيازة مبنى الروضة",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "staff-qualifications",
+        "label": "وثائق تأهيل الكادر",
+        "description": "شهادات المربيات والمشرفة المسؤولة",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      }
+    ],
+    "fields": [
+      {
+        "key": "fullName",
+        "label": "الاسم الكامل (الرباعي واللقب)",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "phone",
+        "label": "رقم الهاتف",
+        "type": "tel",
+        "required": true,
+        "maxLength": 15
+      },
+      {
+        "key": "district",
+        "label": "القضاء",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": [
+          "الناصرية",
+          "الشطرة",
+          "سوق الشيوخ",
+          "الرفاعي",
+          "الجبايش",
+          "قلعة سكر",
+          "الفهود",
+          "النصر",
+          "الغراف",
+          "الإصلاح",
+          "الدواية",
+          "سيد دخيل",
+          "البطحاء",
+          "الفجر"
+        ]
+      },
+      {
+        "key": "kindergartenName",
+        "label": "اسم الروضة المقترح",
+        "type": "text",
+        "required": true,
+        "maxLength": 150
+      },
+      {
+        "key": "address",
+        "label": "عنوان الروضة",
+        "type": "text",
+        "required": true,
+        "maxLength": 200
+      }
+    ],
+    "feeIqd": null,
+    "feeSource": null,
+    "estimatedDuration": null,
+    "sourceUrl": "https://www.facebook.com/p/اعلام-تربية-ذي-قار-100064405670617/",
+    "sourceQuality": "RELIABLE",
+    "notes": "يصدر الترخيص عن قسم التعليم الأهلي في المديرية العامة للتربية بعد كشف لجنة مختصة."
+  },
+  {
+    "key": "edu-private-school-license",
+    "departmentId": "dhiqar-education",
+    "title": "ترخيص افتتاح مدرسة أهلية",
+    "description": "طلب إجازة تأسيس مدرسة أهلية (ابتدائية/متوسطة/إعدادية) جديدة أو تجديد إجازتها السنوية.",
+    "category": "التربية والتعليم",
+    "applicantType": "BUSINESS",
+    "channel": "APPOINTMENT_REQUIRED",
+    "requiredDocuments": [
+      {
+        "key": "national-id",
+        "label": "البطاقة الوطنية الموحدة",
+        "description": "وجه وظهر البطاقة، أو هوية الأحوال المدنية + شهادة الجنسية العراقية",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "building-suitability-report",
+        "label": "تقرير صلاحية البناية المدرسية",
+        "description": "من لجنة الكشف التربوي",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "lease-or-ownership",
+        "label": "سند ملكية أو عقد إيجار البناية",
+        "description": "يثبت حيازة المبنى المدرسي",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "curriculum-plan",
+        "label": "الخطة الدراسية والكادر التدريسي",
+        "description": "بيان بالمناهج والملاك التدريسي المقترح",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      }
+    ],
+    "fields": [
+      {
+        "key": "fullName",
+        "label": "الاسم الكامل (الرباعي واللقب)",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "phone",
+        "label": "رقم الهاتف",
+        "type": "tel",
+        "required": true,
+        "maxLength": 15
+      },
+      {
+        "key": "district",
+        "label": "القضاء",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": [
+          "الناصرية",
+          "الشطرة",
+          "سوق الشيوخ",
+          "الرفاعي",
+          "الجبايش",
+          "قلعة سكر",
+          "الفهود",
+          "النصر",
+          "الغراف",
+          "الإصلاح",
+          "الدواية",
+          "سيد دخيل",
+          "البطحاء",
+          "الفجر"
+        ]
+      },
+      {
+        "key": "schoolName",
+        "label": "اسم المدرسة المقترح",
+        "type": "text",
+        "required": true,
+        "maxLength": 150
+      },
+      {
+        "key": "stage",
+        "label": "المرحلة الدراسية",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": ["ابتدائية", "متوسطة", "إعدادية", "مختلطة"]
+      }
+    ],
+    "feeIqd": null,
+    "feeSource": null,
+    "estimatedDuration": null,
+    "sourceUrl": "https://www.facebook.com/p/اعلام-تربية-ذي-قار-100064405670617/",
+    "sourceQuality": "RELIABLE",
+    "notes": "يخضع الترخيص لموافقة المديرية العامة للتربية ولجنة التعليم الأهلي المركزية في بعض الحالات."
+  },
+  {
+    "key": "edu-private-institute-license",
+    "departmentId": "dhiqar-education",
+    "title": "ترخيص معهد أو مركز تقوية / دورات تعليمية أهلي",
+    "description": "طلب إجازة فتح مركز تقوية دراسي أو معهد تعليم دورات (لغات، حاسوب) أهلي وفق ضوابط التربية.",
+    "category": "التربية والتعليم",
+    "applicantType": "BUSINESS",
+    "channel": "APPOINTMENT_REQUIRED",
+    "requiredDocuments": [
+      {
+        "key": "national-id",
+        "label": "البطاقة الوطنية الموحدة",
+        "description": "وجه وظهر البطاقة، أو هوية الأحوال المدنية + شهادة الجنسية العراقية",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "lease-or-ownership",
+        "label": "سند ملكية أو عقد إيجار المحل",
+        "description": "يثبت حيازة مقر المركز",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "staff-qualifications",
+        "label": "وثائق تأهيل المدرّسين",
+        "description": "شهادات الكادر التدريسي المقترح",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      }
+    ],
+    "fields": [
+      {
+        "key": "fullName",
+        "label": "الاسم الكامل (الرباعي واللقب)",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "phone",
+        "label": "رقم الهاتف",
+        "type": "tel",
+        "required": true,
+        "maxLength": 15
+      },
+      {
+        "key": "district",
+        "label": "القضاء",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": [
+          "الناصرية",
+          "الشطرة",
+          "سوق الشيوخ",
+          "الرفاعي",
+          "الجبايش",
+          "قلعة سكر",
+          "الفهود",
+          "النصر",
+          "الغراف",
+          "الإصلاح",
+          "الدواية",
+          "سيد دخيل",
+          "البطحاء",
+          "الفجر"
+        ]
+      },
+      {
+        "key": "centerName",
+        "label": "اسم المركز المقترح",
+        "type": "text",
+        "required": true,
+        "maxLength": 150
+      },
+      {
+        "key": "activityType",
+        "label": "نوع النشاط (تقوية/لغات/حاسوب...)",
+        "type": "text",
+        "required": true,
+        "maxLength": 150
+      }
+    ],
+    "feeIqd": null,
+    "feeSource": null,
+    "estimatedDuration": null,
+    "sourceUrl": "https://www.facebook.com/p/اعلام-تربية-ذي-قار-100064405670617/",
+    "sourceQuality": "UNVERIFIED",
+    "notes": "إجراء عام معمول به لدى أقسام التعليم الأهلي في مديريات التربية."
+  },
+  {
+    "key": "edu-document-authentication-travel",
+    "departmentId": "dhiqar-education",
+    "title": "تصديق الوثائق المدرسية لغرض السفر أو التعيين (مصادقات متسلسلة)",
+    "description": "استكمال سلسلة تصديقات الوثيقة المدرسية (المديرية العامة، ثم وزارة التربية) تمهيداً للتصديق من الخارجية لأغراض السفر أو الدراسة أو التعيين خارج العراق.",
+    "category": "التربية والتعليم",
+    "applicantType": "CITIZEN",
+    "channel": "APPOINTMENT_REQUIRED",
+    "requiredDocuments": [
+      {
+        "key": "school-document",
+        "label": "الوثيقة المدرسية الأصلية",
+        "description": "الوثيقة المطلوب تصديقها",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "national-id",
+        "label": "البطاقة الوطنية الموحدة",
+        "description": "وجه وظهر البطاقة، أو هوية الأحوال المدنية + شهادة الجنسية العراقية",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      }
+    ],
+    "fields": [
+      {
+        "key": "fullName",
+        "label": "الاسم الكامل (الرباعي واللقب)",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "phone",
+        "label": "رقم الهاتف",
+        "type": "tel",
+        "required": true,
+        "maxLength": 15
+      },
+      {
+        "key": "district",
+        "label": "القضاء",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": [
+          "الناصرية",
+          "الشطرة",
+          "سوق الشيوخ",
+          "الرفاعي",
+          "الجبايش",
+          "قلعة سكر",
+          "الفهود",
+          "النصر",
+          "الغراف",
+          "الإصلاح",
+          "الدواية",
+          "سيد دخيل",
+          "البطحاء",
+          "الفجر"
+        ]
+      },
+      {
+        "key": "purpose",
+        "label": "الغرض من التصديق",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": ["سفر/هجرة", "تعيين خارج العراق", "معادلة شهادة", "أخرى"]
+      }
+    ],
+    "feeIqd": null,
+    "feeSource": null,
+    "estimatedDuration": null,
+    "sourceUrl": "https://www.facebook.com/p/اعلام-تربية-ذي-قار-100064405670617/",
+    "sourceQuality": "UNVERIFIED",
+    "notes": "يختلف عن خدمة 'إصدار الوثيقة المدرسية' الأساسية؛ هذه الخدمة خاصة بسلسلة المصادقات الإضافية للسفر."
+  },
+  {
+    "key": "edu-exam-record-inquiry",
+    "departmentId": "dhiqar-education",
+    "title": "الاستعلام عن نتائج ودرجات الامتحانات الوزارية",
+    "description": "طلب كتاب رسمي أو إفادة بدرجات الطالب في الامتحانات الوزارية (السادس الابتدائي، الثالث المتوسط، السادس الإعدادي) من سجلات المديرية.",
+    "category": "التربية والتعليم",
+    "applicantType": "CITIZEN",
+    "channel": "APPOINTMENT_REQUIRED",
+    "requiredDocuments": [
+      {
+        "key": "national-id",
+        "label": "البطاقة الوطنية الموحدة",
+        "description": "وجه وظهر البطاقة، أو هوية الأحوال المدنية + شهادة الجنسية العراقية",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "previous-document",
+        "label": "الوثيقة أو الاستمارة الامتحانية السابقة",
+        "description": "إن وجدت",
+        "required": false,
+        "accepts": ["image", "pdf"]
+      }
+    ],
+    "fields": [
+      {
+        "key": "fullName",
+        "label": "الاسم الكامل (الرباعي واللقب)",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "phone",
+        "label": "رقم الهاتف",
+        "type": "tel",
+        "required": true,
+        "maxLength": 15
+      },
+      {
+        "key": "district",
+        "label": "القضاء",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": [
+          "الناصرية",
+          "الشطرة",
+          "سوق الشيوخ",
+          "الرفاعي",
+          "الجبايش",
+          "قلعة سكر",
+          "الفهود",
+          "النصر",
+          "الغراف",
+          "الإصلاح",
+          "الدواية",
+          "سيد دخيل",
+          "البطحاء",
+          "الفجر"
+        ]
+      },
+      {
+        "key": "studentName",
+        "label": "اسم الطالب الثلاثي",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "examYear",
+        "label": "سنة الامتحان",
+        "type": "text",
+        "required": true,
+        "maxLength": 10
+      },
+      {
+        "key": "stage",
+        "label": "المرحلة",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": ["السادس الابتدائي", "الثالث المتوسط", "السادس الإعدادي"]
+      }
+    ],
+    "feeIqd": null,
+    "feeSource": null,
+    "estimatedDuration": null,
+    "sourceUrl": "https://www.facebook.com/p/اعلام-تربية-ذي-قار-100064405670617/",
+    "sourceQuality": "UNVERIFIED",
+    "notes": "تُستخرج من أرشيف قسم الامتحانات في المديرية العامة للتربية."
+  },
+  {
+    "key": "edu-lost-certificate-replacement",
+    "departmentId": "dhiqar-education",
+    "title": "بدل ضائع للوثيقة المدرسية",
+    "description": "التقديم لإصدار بدل ضائع عن وثيقة دراسية (ابتدائية/متوسطة/إعدادية) مفقودة أو تالفة، بعد نشر إعلان الفقدان.",
+    "category": "التربية والتعليم",
+    "applicantType": "CITIZEN",
+    "channel": "APPOINTMENT_REQUIRED",
+    "requiredDocuments": [
+      {
+        "key": "national-id",
+        "label": "البطاقة الوطنية الموحدة",
+        "description": "وجه وظهر البطاقة، أو هوية الأحوال المدنية + شهادة الجنسية العراقية",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "loss-announcement",
+        "label": "إعلان الفقدان في جريدة رسمية",
+        "description": "نسخة من إعلان النشر في إحدى الصحف المحلية",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "police-loss-report",
+        "label": "محضر ضياع من مركز الشرطة",
+        "description": "اختياري في بعض الحالات",
+        "required": false,
+        "accepts": ["image", "pdf"]
+      }
+    ],
+    "fields": [
+      {
+        "key": "fullName",
+        "label": "الاسم الكامل (الرباعي واللقب)",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "phone",
+        "label": "رقم الهاتف",
+        "type": "tel",
+        "required": true,
+        "maxLength": 15
+      },
+      {
+        "key": "district",
+        "label": "القضاء",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": [
+          "الناصرية",
+          "الشطرة",
+          "سوق الشيوخ",
+          "الرفاعي",
+          "الجبايش",
+          "قلعة سكر",
+          "الفهود",
+          "النصر",
+          "الغراف",
+          "الإصلاح",
+          "الدواية",
+          "سيد دخيل",
+          "البطحاء",
+          "الفجر"
+        ]
+      },
+      {
+        "key": "studentName",
+        "label": "اسم الطالب الثلاثي",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "schoolName",
+        "label": "اسم المدرسة",
+        "type": "text",
+        "required": true,
+        "maxLength": 150
+      },
+      {
+        "key": "graduationYear",
+        "label": "سنة التخرج/الحصول على الوثيقة",
+        "type": "text",
+        "required": true,
+        "maxLength": 10
+      }
+    ],
+    "feeIqd": null,
+    "feeSource": null,
+    "estimatedDuration": null,
+    "sourceUrl": "https://www.facebook.com/p/اعلام-تربية-ذي-قار-100064405670617/",
+    "sourceQuality": "UNVERIFIED",
+    "notes": "إجراء بدل الضائع يستلزم عادة نشر إعلان في جريدة محلية قبل التقديم."
+  },
+  {
+    "key": "edu-teacher-transfer",
+    "departmentId": "dhiqar-education",
+    "title": "نقل الموظفين التربويين (المعلمين والمدرسين) بين المدارس أو المحافظات",
+    "description": "طلب نقل موظف تربوي (معلم/مدرس/إداري) من مدرسة إلى أخرى داخل المحافظة أو نقل خارجي إلى محافظة أخرى ضمن حركة النقل السنوية.",
+    "category": "التربية والتعليم",
+    "applicantType": "CITIZEN",
+    "channel": "ONLINE_SUBMISSION",
+    "requiredDocuments": [
+      {
+        "key": "national-id",
+        "label": "البطاقة الوطنية الموحدة",
+        "description": "وجه وظهر البطاقة، أو هوية الأحوال المدنية + شهادة الجنسية العراقية",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "employment-id",
+        "label": "هوية وظيفية",
+        "description": "صادرة من مديرية التربية",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "previous-document",
+        "label": "الوثيقة/المستمسك السابق",
+        "description": "نسخة من الوثيقة أو الإجازة أو المستمسك المطلوب تجديده أو تعديله",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      }
+    ],
+    "fields": [
+      {
+        "key": "fullName",
+        "label": "الاسم الكامل (الرباعي واللقب)",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "phone",
+        "label": "رقم الهاتف",
+        "type": "tel",
+        "required": true,
+        "maxLength": 15
+      },
+      {
+        "key": "district",
+        "label": "القضاء",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": [
+          "الناصرية",
+          "الشطرة",
+          "سوق الشيوخ",
+          "الرفاعي",
+          "الجبايش",
+          "قلعة سكر",
+          "الفهود",
+          "النصر",
+          "الغراف",
+          "الإصلاح",
+          "الدواية",
+          "سيد دخيل",
+          "البطحاء",
+          "الفجر"
+        ]
+      },
+      {
+        "key": "transferType",
+        "label": "نوع النقل",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": ["نقل داخلي (بين مدارس المحافظة)", "نقل خارجي (إلى محافظة أخرى)"]
+      },
+      {
+        "key": "currentSchool",
+        "label": "المدرسة الحالية",
+        "type": "text",
+        "required": true,
+        "maxLength": 150
+      },
+      {
+        "key": "desiredSchool",
+        "label": "المدرسة أو المحافظة المطلوبة",
+        "type": "text",
+        "required": true,
+        "maxLength": 150
+      }
+    ],
+    "feeIqd": null,
+    "feeSource": null,
+    "estimatedDuration": null,
+    "sourceUrl": "https://www.facebook.com/p/اعلام-تربية-ذي-قار-100064405670617/",
+    "sourceQuality": "UNVERIFIED",
+    "notes": "تتم حركة النقل ضمن ضوابط سنوية تصدرها وزارة التربية عبر منصة إلكترونية مركزية (استمارة النقل)."
+  },
+  {
+    "key": "civ-residence-card-new",
+    "departmentId": "dhi-qar-civil-status-directorate",
+    "title": "إصدار بطاقة السكن لأول مرة",
+    "description": "طلب إصدار بطاقة سكن جديدة لعقار أو أسرة لم تُستخرج لها بطاقة سكن من قبل، وهي مستند أساسي لمعظم المعاملات الحكومية.",
+    "category": "الوثائق الحكومية",
+    "applicantType": "CITIZEN",
+    "channel": "APPOINTMENT_REQUIRED",
+    "requiredDocuments": [
+      {
+        "key": "national-id",
+        "label": "البطاقة الوطنية الموحدة",
+        "description": "وجه وظهر البطاقة، أو هوية الأحوال المدنية + شهادة الجنسية العراقية",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "property-ownership-or-lease",
+        "label": "سند ملكية العقار أو عقد إيجار مصدّق",
+        "description": "يثبت إقامة الأسرة في العنوان",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "family-record-statement",
+        "label": "بيان بأفراد الأسرة",
+        "description": "من دفتر العائلة أو هوية الأحوال",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      }
+    ],
+    "fields": [
+      {
+        "key": "fullName",
+        "label": "الاسم الكامل (الرباعي واللقب)",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "phone",
+        "label": "رقم الهاتف",
+        "type": "tel",
+        "required": true,
+        "maxLength": 15
+      },
+      {
+        "key": "district",
+        "label": "القضاء",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": [
+          "الناصرية",
+          "الشطرة",
+          "سوق الشيوخ",
+          "الرفاعي",
+          "الجبايش",
+          "قلعة سكر",
+          "الفهود",
+          "النصر",
+          "الغراف",
+          "الإصلاح",
+          "الدواية",
+          "سيد دخيل",
+          "البطحاء",
+          "الفجر"
+        ]
+      },
+      {
+        "key": "neighborhood",
+        "label": "الحي / المنطقة",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "familyMembers",
+        "label": "عدد أفراد الأسرة",
+        "type": "number",
+        "required": true,
+        "maxLength": 20
+      }
+    ],
+    "feeIqd": null,
+    "feeSource": null,
+    "estimatedDuration": null,
+    "sourceUrl": "http://www.nid-moi.gov.iq/",
+    "sourceQuality": "OFFICIAL",
+    "notes": "تصدر بطاقة السكن من مديرية الأحوال المدنية بعد تدقيق العنوان."
+  },
+  {
+    "key": "civ-residence-card-transfer",
+    "departmentId": "dhi-qar-civil-status-directorate",
+    "title": "نقل بطاقة السكن (تغيير محل السكن)",
+    "description": "طلب نقل بطاقة السكن من عنوان إلى آخر ضمن المحافظة أو من محافظة أخرى بعد تغيير محل الإقامة الفعلي.",
+    "category": "الوثائق الحكومية",
+    "applicantType": "CITIZEN",
+    "channel": "APPOINTMENT_REQUIRED",
+    "requiredDocuments": [
+      {
+        "key": "national-id",
+        "label": "البطاقة الوطنية الموحدة",
+        "description": "وجه وظهر البطاقة، أو هوية الأحوال المدنية + شهادة الجنسية العراقية",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "residence-card",
+        "label": "بطاقة السكن",
+        "description": "وجه وظهر",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "new-property-ownership-or-lease",
+        "label": "سند ملكية أو عقد إيجار العنوان الجديد",
+        "description": "يثبت الإقامة في العنوان الجديد",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      }
+    ],
+    "fields": [
+      {
+        "key": "fullName",
+        "label": "الاسم الكامل (الرباعي واللقب)",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "phone",
+        "label": "رقم الهاتف",
+        "type": "tel",
+        "required": true,
+        "maxLength": 15
+      },
+      {
+        "key": "district",
+        "label": "القضاء",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": [
+          "الناصرية",
+          "الشطرة",
+          "سوق الشيوخ",
+          "الرفاعي",
+          "الجبايش",
+          "قلعة سكر",
+          "الفهود",
+          "النصر",
+          "الغراف",
+          "الإصلاح",
+          "الدواية",
+          "سيد دخيل",
+          "البطحاء",
+          "الفجر"
+        ]
+      },
+      {
+        "key": "oldAddress",
+        "label": "العنوان القديم",
+        "type": "text",
+        "required": true,
+        "maxLength": 200
+      },
+      {
+        "key": "newAddress",
+        "label": "العنوان الجديد",
+        "type": "text",
+        "required": true,
+        "maxLength": 200
+      }
+    ],
+    "feeIqd": null,
+    "feeSource": null,
+    "estimatedDuration": null,
+    "sourceUrl": "http://www.nid-moi.gov.iq/",
+    "sourceQuality": "OFFICIAL",
+    "notes": "إجراء شائع يتطلب كشفاً سكنياً أحياناً للتأكد من العنوان الجديد."
+  },
+  {
+    "key": "civ-family-record-book",
+    "departmentId": "dhi-qar-civil-status-directorate",
+    "title": "إصدار دفتر العائلة (كتاب العائلة)",
+    "description": "طلب إصدار أو بدل ضائع لدفتر العائلة الذي يوثّق أفراد الأسرة وأرقامهم في السجل المدني.",
+    "category": "الوثائق الحكومية",
+    "applicantType": "CITIZEN",
+    "channel": "APPOINTMENT_REQUIRED",
+    "requiredDocuments": [
+      {
+        "key": "national-id",
+        "label": "البطاقة الوطنية الموحدة",
+        "description": "وجه وظهر البطاقة، أو هوية الأحوال المدنية + شهادة الجنسية العراقية",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "marriage-contract",
+        "label": "عقد الزواج",
+        "description": "لإثبات تكوين الأسرة",
+        "required": false,
+        "accepts": ["image", "pdf"]
+      }
+    ],
+    "fields": [
+      {
+        "key": "fullName",
+        "label": "الاسم الكامل (الرباعي واللقب)",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "phone",
+        "label": "رقم الهاتف",
+        "type": "tel",
+        "required": true,
+        "maxLength": 15
+      },
+      {
+        "key": "district",
+        "label": "القضاء",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": [
+          "الناصرية",
+          "الشطرة",
+          "سوق الشيوخ",
+          "الرفاعي",
+          "الجبايش",
+          "قلعة سكر",
+          "الفهود",
+          "النصر",
+          "الغراف",
+          "الإصلاح",
+          "الدواية",
+          "سيد دخيل",
+          "البطحاء",
+          "الفجر"
+        ]
+      },
+      {
+        "key": "familyMembers",
+        "label": "عدد أفراد الأسرة",
+        "type": "number",
+        "required": true,
+        "maxLength": 20
+      }
+    ],
+    "feeIqd": null,
+    "feeSource": null,
+    "estimatedDuration": null,
+    "sourceUrl": "http://www.nid-moi.gov.iq/",
+    "sourceQuality": "OFFICIAL",
+    "notes": "مستند تقليدي مكمّل لهوية الأحوال المدنية."
+  },
+  {
+    "key": "civ-divorce-registration",
+    "departmentId": "dhi-qar-civil-status-directorate",
+    "title": "تسجيل حالة طلاق في القيد المدني",
+    "description": "تحديث السجل المدني لأحد الزوجين بعد صدور حجة الطلاق من محكمة الأحوال الشخصية.",
+    "category": "الوثائق الحكومية",
+    "applicantType": "CITIZEN",
+    "channel": "APPOINTMENT_REQUIRED",
+    "requiredDocuments": [
+      {
+        "key": "national-id",
+        "label": "البطاقة الوطنية الموحدة",
+        "description": "وجه وظهر البطاقة، أو هوية الأحوال المدنية + شهادة الجنسية العراقية",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "divorce-deed",
+        "label": "حجة الطلاق الشرعية",
+        "description": "صادرة من محكمة الأحوال الشخصية",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      }
+    ],
+    "fields": [
+      {
+        "key": "fullName",
+        "label": "الاسم الكامل (الرباعي واللقب)",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "phone",
+        "label": "رقم الهاتف",
+        "type": "tel",
+        "required": true,
+        "maxLength": 15
+      },
+      {
+        "key": "district",
+        "label": "القضاء",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": [
+          "الناصرية",
+          "الشطرة",
+          "سوق الشيوخ",
+          "الرفاعي",
+          "الجبايش",
+          "قلعة سكر",
+          "الفهود",
+          "النصر",
+          "الغراف",
+          "الإصلاح",
+          "الدواية",
+          "سيد دخيل",
+          "البطحاء",
+          "الفجر"
+        ]
+      }
+    ],
+    "feeIqd": null,
+    "feeSource": null,
+    "estimatedDuration": null,
+    "sourceUrl": "http://www.nid-moi.gov.iq/",
+    "sourceQuality": "OFFICIAL",
+    "notes": "يتبع صدور حجة الطلاق من المحكمة مباشرة."
+  },
+  {
+    "key": "civ-death-registration",
+    "departmentId": "dhi-qar-civil-status-directorate",
+    "title": "تسجيل حالة وفاة في القيد المدني",
+    "description": "تسجيل واقعة الوفاة رسمياً في السجل المدني بعد استلام إخبار الوفاة الطبي من المؤسسة الصحية.",
+    "category": "الوثائق الحكومية",
+    "applicantType": "CITIZEN",
+    "channel": "APPOINTMENT_REQUIRED",
+    "requiredDocuments": [
+      {
+        "key": "national-id",
+        "label": "البطاقة الوطنية الموحدة",
+        "description": "وجه وظهر البطاقة، أو هوية الأحوال المدنية + شهادة الجنسية العراقية",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "hospital-death-notice",
+        "label": "إخبار الوفاة الطبي",
+        "description": "صادر من المستشفى أو الطب العدلي",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      }
+    ],
+    "fields": [
+      {
+        "key": "fullName",
+        "label": "الاسم الكامل (الرباعي واللقب)",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "phone",
+        "label": "رقم الهاتف",
+        "type": "tel",
+        "required": true,
+        "maxLength": 15
+      },
+      {
+        "key": "district",
+        "label": "القضاء",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": [
+          "الناصرية",
+          "الشطرة",
+          "سوق الشيوخ",
+          "الرفاعي",
+          "الجبايش",
+          "قلعة سكر",
+          "الفهود",
+          "النصر",
+          "الغراف",
+          "الإصلاح",
+          "الدواية",
+          "سيد دخيل",
+          "البطحاء",
+          "الفجر"
+        ]
+      }
+    ],
+    "feeIqd": null,
+    "feeSource": null,
+    "estimatedDuration": null,
+    "sourceUrl": "http://www.nid-moi.gov.iq/",
+    "sourceQuality": "OFFICIAL",
+    "notes": "خطوة لاحقة لإخبار الوفاة الطبي، وتؤدي إلى إصدار شهادة الوفاة."
+  },
+  {
+    "key": "civ-family-record-update",
+    "departmentId": "dhi-qar-civil-status-directorate",
+    "title": "تحديث دفتر العائلة (إضافة/حذف فرد)",
+    "description": "طلب تحديث دفتر العائلة بإضافة مولود جديد أو زوجة أو حذف فرد بسبب الوفاة أو الطلاق.",
+    "category": "الوثائق الحكومية",
+    "applicantType": "CITIZEN",
+    "channel": "APPOINTMENT_REQUIRED",
+    "requiredDocuments": [
+      {
+        "key": "national-id",
+        "label": "البطاقة الوطنية الموحدة",
+        "description": "وجه وظهر البطاقة، أو هوية الأحوال المدنية + شهادة الجنسية العراقية",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "family-record-book",
+        "label": "دفتر العائلة الحالي",
+        "description": "النسخة المطلوب تحديثها",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "supporting-document",
+        "label": "المستند المؤيد للتحديث",
+        "description": "شهادة ولادة، عقد زواج، أو حجة طلاق بحسب الحالة",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      }
+    ],
+    "fields": [
+      {
+        "key": "fullName",
+        "label": "الاسم الكامل (الرباعي واللقب)",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "phone",
+        "label": "رقم الهاتف",
+        "type": "tel",
+        "required": true,
+        "maxLength": 15
+      },
+      {
+        "key": "district",
+        "label": "القضاء",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": [
+          "الناصرية",
+          "الشطرة",
+          "سوق الشيوخ",
+          "الرفاعي",
+          "الجبايش",
+          "قلعة سكر",
+          "الفهود",
+          "النصر",
+          "الغراف",
+          "الإصلاح",
+          "الدواية",
+          "سيد دخيل",
+          "البطحاء",
+          "الفجر"
+        ]
+      },
+      {
+        "key": "updateType",
+        "label": "نوع التحديث",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": ["إضافة مولود", "إضافة زوجة", "حذف فرد (وفاة/طلاق)"]
+      }
+    ],
+    "feeIqd": null,
+    "feeSource": null,
+    "estimatedDuration": null,
+    "sourceUrl": "http://www.nid-moi.gov.iq/",
+    "sourceQuality": "UNVERIFIED",
+    "notes": "إجراء روتيني مكمّل لتسجيل الوقائع الحيوية."
+  },
+  {
+    "key": "shat-civ-residence-card",
+    "departmentId": "shatrah-civil-status-office",
+    "title": "إصدار بطاقة السكن (قضاء الشطرة)",
+    "description": "طلب إصدار بطاقة سكن جديدة لأسرة مقيمة في قضاء الشطرة وتوابعه.",
+    "category": "الوثائق الحكومية",
+    "applicantType": "CITIZEN",
+    "channel": "APPOINTMENT_REQUIRED",
+    "requiredDocuments": [
+      {
+        "key": "national-id",
+        "label": "البطاقة الوطنية الموحدة",
+        "description": "وجه وظهر البطاقة، أو هوية الأحوال المدنية + شهادة الجنسية العراقية",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "property-ownership-or-lease",
+        "label": "سند ملكية العقار أو عقد إيجار مصدّق",
+        "description": "يثبت إقامة الأسرة في العنوان",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      }
+    ],
+    "fields": [
+      {
+        "key": "fullName",
+        "label": "الاسم الكامل (الرباعي واللقب)",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "phone",
+        "label": "رقم الهاتف",
+        "type": "tel",
+        "required": true,
+        "maxLength": 15
+      },
+      {
+        "key": "district",
+        "label": "القضاء",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": [
+          "الناصرية",
+          "الشطرة",
+          "سوق الشيوخ",
+          "الرفاعي",
+          "الجبايش",
+          "قلعة سكر",
+          "الفهود",
+          "النصر",
+          "الغراف",
+          "الإصلاح",
+          "الدواية",
+          "سيد دخيل",
+          "البطحاء",
+          "الفجر"
+        ]
+      },
+      {
+        "key": "neighborhood",
+        "label": "الحي / المنطقة",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      }
+    ],
+    "feeIqd": null,
+    "feeSource": null,
+    "estimatedDuration": null,
+    "sourceUrl": "https://mapcarta.com/N4904891621",
+    "sourceQuality": "UNVERIFIED",
+    "notes": "تُقدَّم في دائرة أحوال الشطرة التابعة لمديرية أحوال ذي قار."
+  },
+  {
+    "key": "shat-civ-record-correction",
+    "departmentId": "shatrah-civil-status-office",
+    "title": "تصحيح القيود المدنية (الشطرة)",
+    "description": "طلب تصحيح خطأ في الاسم أو اللقب أو تاريخ الولادة أو غيرها من البيانات ضمن السجل المدني لمواطني قضاء الشطرة.",
+    "category": "الوثائق الحكومية",
+    "applicantType": "CITIZEN",
+    "channel": "APPOINTMENT_REQUIRED",
+    "requiredDocuments": [
+      {
+        "key": "national-id",
+        "label": "البطاقة الوطنية الموحدة",
+        "description": "وجه وظهر البطاقة، أو هوية الأحوال المدنية + شهادة الجنسية العراقية",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "supporting-document",
+        "label": "مستند مؤيد للتصحيح",
+        "description": "وثيقة مدرسية، شهادة ميلاد قديمة، أو أي مستند رسمي يثبت البيانات الصحيحة",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      }
+    ],
+    "fields": [
+      {
+        "key": "fullName",
+        "label": "الاسم الكامل (الرباعي واللقب)",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "phone",
+        "label": "رقم الهاتف",
+        "type": "tel",
+        "required": true,
+        "maxLength": 15
+      },
+      {
+        "key": "district",
+        "label": "القضاء",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": [
+          "الناصرية",
+          "الشطرة",
+          "سوق الشيوخ",
+          "الرفاعي",
+          "الجبايش",
+          "قلعة سكر",
+          "الفهود",
+          "النصر",
+          "الغراف",
+          "الإصلاح",
+          "الدواية",
+          "سيد دخيل",
+          "البطحاء",
+          "الفجر"
+        ]
+      },
+      {
+        "key": "fieldToCorrect",
+        "label": "الحقل المطلوب تصحيحه",
+        "type": "text",
+        "required": true,
+        "maxLength": 150
+      },
+      {
+        "key": "correctValue",
+        "label": "القيمة الصحيحة",
+        "type": "text",
+        "required": true,
+        "maxLength": 150
+      }
+    ],
+    "feeIqd": null,
+    "feeSource": null,
+    "estimatedDuration": null,
+    "sourceUrl": "https://mapcarta.com/N4904891621",
+    "sourceQuality": "UNVERIFIED",
+    "notes": "يخضع لموافقة لجنة تصحيح القيود بحسب نوع الخطأ."
+  },
+  {
+    "key": "nid-appointment-reschedule",
+    "departmentId": "nasiriyah-national-id-office",
+    "title": "إلغاء أو تعديل موعد حجز البطاقة الوطنية",
+    "description": "طلب تعديل أو إلغاء موعد سبق حجزه لإصدار أو تجديد البطاقة الوطنية الموحدة عبر نظام الحجز الإلكتروني.",
+    "category": "الوثائق الحكومية",
+    "applicantType": "CITIZEN",
+    "channel": "ONLINE_SUBMISSION",
+    "requiredDocuments": [
+      {
+        "key": "national-id",
+        "label": "البطاقة الوطنية الموحدة",
+        "description": "وجه وظهر البطاقة، أو هوية الأحوال المدنية + شهادة الجنسية العراقية",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      }
+    ],
+    "fields": [
+      {
+        "key": "fullName",
+        "label": "الاسم الكامل (الرباعي واللقب)",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "phone",
+        "label": "رقم الهاتف",
+        "type": "tel",
+        "required": true,
+        "maxLength": 15
+      },
+      {
+        "key": "district",
+        "label": "القضاء",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": [
+          "الناصرية",
+          "الشطرة",
+          "سوق الشيوخ",
+          "الرفاعي",
+          "الجبايش",
+          "قلعة سكر",
+          "الفهود",
+          "النصر",
+          "الغراف",
+          "الإصلاح",
+          "الدواية",
+          "سيد دخيل",
+          "البطحاء",
+          "الفجر"
+        ]
+      },
+      {
+        "key": "bookingReference",
+        "label": "رقم الحجز أو الموعد الحالي",
+        "type": "text",
+        "required": true,
+        "maxLength": 50
+      }
+    ],
+    "feeIqd": null,
+    "feeSource": null,
+    "estimatedDuration": null,
+    "sourceUrl": "http://www.nid-moi.gov.iq/",
+    "sourceQuality": "OFFICIAL",
+    "notes": "يتم عادة عبر نفس منصة الحجز الإلكتروني nid-moi.gov.iq."
+  },
+  {
+    "key": "pass-minor-first",
+    "departmentId": "dhi-qar-passports-directorate",
+    "title": "إصدار جواز سفر للقاصر (لأول مرة)",
+    "description": "التقديم لإصدار جواز سفر إلكتروني لأول مرة لطفل أو قاصر لم يتجاوز السن القانونية، بموافقة ولي الأمر.",
+    "category": "الوثائق الحكومية",
+    "applicantType": "CITIZEN",
+    "channel": "APPOINTMENT_REQUIRED",
+    "requiredDocuments": [
+      {
+        "key": "minor-birth-certificate",
+        "label": "شهادة ميلاد القاصر",
+        "description": "صورة قيد الولادة أو شهادة الجنسية للقاصر",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "national-id",
+        "label": "البطاقة الوطنية الموحدة",
+        "description": "وجه وظهر البطاقة، أو هوية الأحوال المدنية + شهادة الجنسية العراقية",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "personal-photos",
+        "label": "صور شخصية",
+        "description": "عدد 2-4 بحسب المعاملة، خلفية بيضاء",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "guardian-consent",
+        "label": "إقرار موافقة ولي الأمر",
+        "description": "مصدّق أصولياً",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      }
+    ],
+    "fields": [
+      {
+        "key": "fullName",
+        "label": "الاسم الكامل (الرباعي واللقب)",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "phone",
+        "label": "رقم الهاتف",
+        "type": "tel",
+        "required": true,
+        "maxLength": 15
+      },
+      {
+        "key": "district",
+        "label": "القضاء",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": [
+          "الناصرية",
+          "الشطرة",
+          "سوق الشيوخ",
+          "الرفاعي",
+          "الجبايش",
+          "قلعة سكر",
+          "الفهود",
+          "النصر",
+          "الغراف",
+          "الإصلاح",
+          "الدواية",
+          "سيد دخيل",
+          "البطحاء",
+          "الفجر"
+        ]
+      },
+      {
+        "key": "minorName",
+        "label": "اسم القاصر الثلاثي",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "guardianName",
+        "label": "اسم ولي الأمر",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      }
+    ],
+    "feeIqd": null,
+    "feeSource": null,
+    "estimatedDuration": null,
+    "sourceUrl": "https://mapcarta.com/W467592940",
+    "sourceQuality": "UNVERIFIED",
+    "notes": "يشترط حضور ولي الأمر مع القاصر لاستكمال البصمة والتوقيع."
+  },
+  {
+    "key": "pass-data-correction",
+    "departmentId": "dhi-qar-passports-directorate",
+    "title": "تصحيح بيانات جواز السفر بعد تصحيح القيد المدني",
+    "description": "طلب تحديث بيانات جواز السفر (الاسم، تاريخ الولادة) بعد صدور قرار تصحيح مقابل في السجل المدني.",
+    "category": "الوثائق الحكومية",
+    "applicantType": "CITIZEN",
+    "channel": "APPOINTMENT_REQUIRED",
+    "requiredDocuments": [
+      {
+        "key": "national-id",
+        "label": "البطاقة الوطنية الموحدة",
+        "description": "وجه وظهر البطاقة، أو هوية الأحوال المدنية + شهادة الجنسية العراقية",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "previous-document",
+        "label": "الوثيقة/المستمسك السابق",
+        "description": "نسخة من الوثيقة أو الإجازة أو المستمسك المطلوب تجديده أو تعديله",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "civil-status-correction-order",
+        "label": "أمر تصحيح القيد المدني",
+        "description": "صادر عن مديرية الأحوال المدنية",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      }
+    ],
+    "fields": [
+      {
+        "key": "fullName",
+        "label": "الاسم الكامل (الرباعي واللقب)",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "phone",
+        "label": "رقم الهاتف",
+        "type": "tel",
+        "required": true,
+        "maxLength": 15
+      },
+      {
+        "key": "district",
+        "label": "القضاء",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": [
+          "الناصرية",
+          "الشطرة",
+          "سوق الشيوخ",
+          "الرفاعي",
+          "الجبايش",
+          "قلعة سكر",
+          "الفهود",
+          "النصر",
+          "الغراف",
+          "الإصلاح",
+          "الدواية",
+          "سيد دخيل",
+          "البطحاء",
+          "الفجر"
+        ]
+      }
+    ],
+    "feeIqd": null,
+    "feeSource": null,
+    "estimatedDuration": null,
+    "sourceUrl": "https://mapcarta.com/W467592940",
+    "sourceQuality": "UNVERIFIED",
+    "notes": "يستلزم إصدار جواز جديد يعكس البيانات المصححة."
+  },
+  {
+    "key": "traffic-annual-inspection",
+    "departmentId": "dhi-qar-traffic-directorate",
+    "title": "الفحص الفني (الكشف الفني) السنوي للمركبة",
+    "description": "إجراء الكشف الفني السنوي الإلزامي على المركبة (الفرامل، الإطارات، الأضواء) كشرط لتجديد السنوية المرورية.",
+    "category": "الأمن والمرور",
+    "applicantType": "CITIZEN",
+    "channel": "APPOINTMENT_REQUIRED",
+    "requiredDocuments": [
+      {
+        "key": "national-id",
+        "label": "البطاقة الوطنية الموحدة",
+        "description": "وجه وظهر البطاقة، أو هوية الأحوال المدنية + شهادة الجنسية العراقية",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "vehicle-registration",
+        "label": "هوية تسجيل المركبة (السنوية)",
+        "description": "وجه وظهر",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      }
+    ],
+    "fields": [
+      {
+        "key": "fullName",
+        "label": "الاسم الكامل (الرباعي واللقب)",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "phone",
+        "label": "رقم الهاتف",
+        "type": "tel",
+        "required": true,
+        "maxLength": 15
+      },
+      {
+        "key": "district",
+        "label": "القضاء",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": [
+          "الناصرية",
+          "الشطرة",
+          "سوق الشيوخ",
+          "الرفاعي",
+          "الجبايش",
+          "قلعة سكر",
+          "الفهود",
+          "النصر",
+          "الغراف",
+          "الإصلاح",
+          "الدواية",
+          "سيد دخيل",
+          "البطحاء",
+          "الفجر"
+        ]
+      },
+      {
+        "key": "plateNumber",
+        "label": "رقم اللوحة",
+        "type": "text",
+        "required": true,
+        "maxLength": 20
+      },
+      {
+        "key": "vehicleType",
+        "label": "نوع ونوعية المركبة",
+        "type": "text",
+        "required": true,
+        "maxLength": 100
+      }
+    ],
+    "feeIqd": null,
+    "feeSource": null,
+    "estimatedDuration": null,
+    "sourceUrl": "https://www.facebook.com/p/إعلام-مديرية-مرور-ذي-قار-100064632914355/",
+    "sourceQuality": "RELIABLE",
+    "notes": "يجرى الفحص في مفارز الفحص الفني التابعة لمديرية المرور قبل تجديد السنوية."
+  },
+  {
+    "key": "traffic-driving-license-replacement",
+    "departmentId": "dhi-qar-traffic-directorate",
+    "title": "بدل فاقد أو تالف لإجازة السياقة",
+    "description": "طلب إصدار بدل ضائع أو تالف عن إجازة سياقة سارية المفعول بعد فقدانها أو تلفها.",
+    "category": "الأمن والمرور",
+    "applicantType": "CITIZEN",
+    "channel": "APPOINTMENT_REQUIRED",
+    "requiredDocuments": [
+      {
+        "key": "national-id",
+        "label": "البطاقة الوطنية الموحدة",
+        "description": "وجه وظهر البطاقة، أو هوية الأحوال المدنية + شهادة الجنسية العراقية",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "personal-photos",
+        "label": "صور شخصية",
+        "description": "عدد 2-4 بحسب المعاملة، خلفية بيضاء",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "police-loss-report",
+        "label": "محضر ضياع من مركز الشرطة",
+        "description": "في حال الفقدان",
+        "required": false,
+        "accepts": ["image", "pdf"]
+      }
+    ],
+    "fields": [
+      {
+        "key": "fullName",
+        "label": "الاسم الكامل (الرباعي واللقب)",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "phone",
+        "label": "رقم الهاتف",
+        "type": "tel",
+        "required": true,
+        "maxLength": 15
+      },
+      {
+        "key": "district",
+        "label": "القضاء",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": [
+          "الناصرية",
+          "الشطرة",
+          "سوق الشيوخ",
+          "الرفاعي",
+          "الجبايش",
+          "قلعة سكر",
+          "الفهود",
+          "النصر",
+          "الغراف",
+          "الإصلاح",
+          "الدواية",
+          "سيد دخيل",
+          "البطحاء",
+          "الفجر"
+        ]
+      },
+      {
+        "key": "licenseNumber",
+        "label": "رقم إجازة السياقة (إن كان معروفاً)",
+        "type": "text",
+        "required": false,
+        "maxLength": 30
+      }
+    ],
+    "feeIqd": null,
+    "feeSource": null,
+    "estimatedDuration": null,
+    "sourceUrl": "https://www.facebook.com/p/إعلام-مديرية-مرور-ذي-قار-100064632914355/",
+    "sourceQuality": "UNVERIFIED",
+    "notes": "إجراء منفصل عن التجديد الاعتيادي، ويستلزم غالباً إعلان فقدان."
+  },
+  {
+    "key": "traffic-driving-license-international",
+    "departmentId": "dhi-qar-traffic-directorate",
+    "title": "إصدار إجازة سياقة دولية",
+    "description": "التقديم للحصول على إجازة سياقة دولية معتمدة للاستخدام أثناء القيادة خارج العراق، بناءً على إجازة سياقة محلية سارية.",
+    "category": "الأمن والمرور",
+    "applicantType": "CITIZEN",
+    "channel": "APPOINTMENT_REQUIRED",
+    "requiredDocuments": [
+      {
+        "key": "national-id",
+        "label": "البطاقة الوطنية الموحدة",
+        "description": "وجه وظهر البطاقة، أو هوية الأحوال المدنية + شهادة الجنسية العراقية",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "previous-document",
+        "label": "الوثيقة/المستمسك السابق",
+        "description": "نسخة من الوثيقة أو الإجازة أو المستمسك المطلوب تجديده أو تعديله",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "personal-photos",
+        "label": "صور شخصية",
+        "description": "عدد 2-4 بحسب المعاملة، خلفية بيضاء",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      }
+    ],
+    "fields": [
+      {
+        "key": "fullName",
+        "label": "الاسم الكامل (الرباعي واللقب)",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "phone",
+        "label": "رقم الهاتف",
+        "type": "tel",
+        "required": true,
+        "maxLength": 15
+      },
+      {
+        "key": "district",
+        "label": "القضاء",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": [
+          "الناصرية",
+          "الشطرة",
+          "سوق الشيوخ",
+          "الرفاعي",
+          "الجبايش",
+          "قلعة سكر",
+          "الفهود",
+          "النصر",
+          "الغراف",
+          "الإصلاح",
+          "الدواية",
+          "سيد دخيل",
+          "البطحاء",
+          "الفجر"
+        ]
+      }
+    ],
+    "feeIqd": null,
+    "feeSource": null,
+    "estimatedDuration": null,
+    "sourceUrl": "https://www.facebook.com/p/إعلام-مديرية-مرور-ذي-قار-100064632914355/",
+    "sourceQuality": "UNVERIFIED",
+    "notes": "تصدر بناءً على إجازة سياقة محلية سارية المفعول."
+  },
+  {
+    "key": "traffic-used-vehicle-registration",
+    "departmentId": "dhi-qar-traffic-directorate",
+    "title": "تسجيل مركبة منقولة (مستعملة) من محافظة أخرى",
+    "description": "طلب تسجيل مركبة تم شراؤها أو نقل ملكيتها من محافظة أخرى ضمن سجلات مديرية مرور ذي قار وإصدار لوحات جديدة أو تثبيت الحالية.",
+    "category": "الأمن والمرور",
+    "applicantType": "CITIZEN",
+    "channel": "APPOINTMENT_REQUIRED",
+    "requiredDocuments": [
+      {
+        "key": "national-id",
+        "label": "البطاقة الوطنية الموحدة",
+        "description": "وجه وظهر البطاقة، أو هوية الأحوال المدنية + شهادة الجنسية العراقية",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "vehicle-registration",
+        "label": "هوية تسجيل المركبة الأصلية",
+        "description": "من المحافظة السابقة",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "ownership-transfer-document",
+        "label": "مستند نقل الملكية",
+        "description": "عقد بيع مصدّق أو كتاب نقل ملكية",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      }
+    ],
+    "fields": [
+      {
+        "key": "fullName",
+        "label": "الاسم الكامل (الرباعي واللقب)",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "phone",
+        "label": "رقم الهاتف",
+        "type": "tel",
+        "required": true,
+        "maxLength": 15
+      },
+      {
+        "key": "district",
+        "label": "القضاء",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": [
+          "الناصرية",
+          "الشطرة",
+          "سوق الشيوخ",
+          "الرفاعي",
+          "الجبايش",
+          "قلعة سكر",
+          "الفهود",
+          "النصر",
+          "الغراف",
+          "الإصلاح",
+          "الدواية",
+          "سيد دخيل",
+          "البطحاء",
+          "الفجر"
+        ]
+      },
+      {
+        "key": "plateNumber",
+        "label": "رقم اللوحة الحالي",
+        "type": "text",
+        "required": false,
+        "maxLength": 20
+      },
+      {
+        "key": "previousProvince",
+        "label": "المحافظة السابقة للتسجيل",
+        "type": "text",
+        "required": true,
+        "maxLength": 100
+      }
+    ],
+    "feeIqd": null,
+    "feeSource": null,
+    "estimatedDuration": null,
+    "sourceUrl": "https://www.facebook.com/p/إعلام-مديرية-مرور-ذي-قار-100064632914355/",
+    "sourceQuality": "UNVERIFIED",
+    "notes": "يتطلب براءة ذمة ضريبية وكشفاً فنياً على المركبة قبل التسجيل."
+  },
+  {
+    "key": "traffic-motorcycle-registration",
+    "departmentId": "dhi-qar-traffic-directorate",
+    "title": "تسجيل دراجة نارية لأول مرة",
+    "description": "طلب تسجيل دراجة نارية جديدة وإصدار سنويتها ولوحاتها لأول مرة لدى مديرية مرور ذي قار.",
+    "category": "الأمن والمرور",
+    "applicantType": "CITIZEN",
+    "channel": "APPOINTMENT_REQUIRED",
+    "requiredDocuments": [
+      {
+        "key": "national-id",
+        "label": "البطاقة الوطنية الموحدة",
+        "description": "وجه وظهر البطاقة، أو هوية الأحوال المدنية + شهادة الجنسية العراقية",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "purchase-invoice",
+        "label": "فاتورة أو عقد شراء الدراجة",
+        "description": "صادر من المعرض أو البائع",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      }
+    ],
+    "fields": [
+      {
+        "key": "fullName",
+        "label": "الاسم الكامل (الرباعي واللقب)",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "phone",
+        "label": "رقم الهاتف",
+        "type": "tel",
+        "required": true,
+        "maxLength": 15
+      },
+      {
+        "key": "district",
+        "label": "القضاء",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": [
+          "الناصرية",
+          "الشطرة",
+          "سوق الشيوخ",
+          "الرفاعي",
+          "الجبايش",
+          "قلعة سكر",
+          "الفهود",
+          "النصر",
+          "الغراف",
+          "الإصلاح",
+          "الدواية",
+          "سيد دخيل",
+          "البطحاء",
+          "الفجر"
+        ]
+      },
+      {
+        "key": "motorcycleModel",
+        "label": "موديل ونوع الدراجة",
+        "type": "text",
+        "required": true,
+        "maxLength": 100
+      }
+    ],
+    "feeIqd": null,
+    "feeSource": null,
+    "estimatedDuration": null,
+    "sourceUrl": "https://www.facebook.com/p/إعلام-مديرية-مرور-ذي-قار-100064632914355/",
+    "sourceQuality": "UNVERIFIED",
+    "notes": "يخضع لكشف فني وتسديد الرسوم القانونية قبل إصدار اللوحة."
+  },
+  {
+    "key": "pension-transfer-file",
+    "departmentId": "dhi-qar-pension-directorate",
+    "title": "نقل ملف تقاعدي من محافظة أخرى",
+    "description": "طلب نقل الملف التقاعدي لمتقاعد انتقل لمحل إقامته الدائم إلى محافظة ذي قار، لمتابعة صرف الراتب محلياً.",
+    "category": "الرعاية والعمل",
+    "applicantType": "CITIZEN",
+    "channel": "APPOINTMENT_REQUIRED",
+    "requiredDocuments": [
+      {
+        "key": "national-id",
+        "label": "البطاقة الوطنية الموحدة",
+        "description": "وجه وظهر البطاقة، أو هوية الأحوال المدنية + شهادة الجنسية العراقية",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "previous-pension-file",
+        "label": "الملف التقاعدي أو أمر إحالة التقاعد",
+        "description": "من الدائرة التقاعدية السابقة",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "residence-card",
+        "label": "بطاقة السكن",
+        "description": "وجه وظهر",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      }
+    ],
+    "fields": [
+      {
+        "key": "fullName",
+        "label": "الاسم الكامل (الرباعي واللقب)",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "phone",
+        "label": "رقم الهاتف",
+        "type": "tel",
+        "required": true,
+        "maxLength": 15
+      },
+      {
+        "key": "district",
+        "label": "القضاء",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": [
+          "الناصرية",
+          "الشطرة",
+          "سوق الشيوخ",
+          "الرفاعي",
+          "الجبايش",
+          "قلعة سكر",
+          "الفهود",
+          "النصر",
+          "الغراف",
+          "الإصلاح",
+          "الدواية",
+          "سيد دخيل",
+          "البطحاء",
+          "الفجر"
+        ]
+      },
+      {
+        "key": "pensionNumber",
+        "label": "الرقم التقاعدي",
+        "type": "text",
+        "required": true,
+        "maxLength": 30
+      }
+    ],
+    "feeIqd": null,
+    "feeSource": null,
+    "estimatedDuration": null,
+    "sourceUrl": "https://pension.gov.iq/",
+    "sourceQuality": "OFFICIAL",
+    "notes": "يتم عبر نظام دوائر التقاعد الموحد التابع لهيئة التقاعد الوطنية."
+  },
+  {
+    "key": "pension-disability-pension",
+    "departmentId": "dhi-qar-pension-directorate",
+    "title": "تقاعد العجز والإصابة",
+    "description": "طلب إحالة موظف على التقاعد بسبب العجز الصحي أو إصابة عمل مثبتة بتقرير من اللجنة الطبية المختصة.",
+    "category": "الرعاية والعمل",
+    "applicantType": "CITIZEN",
+    "channel": "APPOINTMENT_REQUIRED",
+    "requiredDocuments": [
+      {
+        "key": "national-id",
+        "label": "البطاقة الوطنية الموحدة",
+        "description": "وجه وظهر البطاقة، أو هوية الأحوال المدنية + شهادة الجنسية العراقية",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "medical-committee-report",
+        "label": "تقرير اللجنة الطبية العليا",
+        "description": "يثبت نسبة العجز أو الإصابة",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "employment-service-record",
+        "label": "بيان الخدمة الوظيفية",
+        "description": "من جهة العمل",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      }
+    ],
+    "fields": [
+      {
+        "key": "fullName",
+        "label": "الاسم الكامل (الرباعي واللقب)",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "phone",
+        "label": "رقم الهاتف",
+        "type": "tel",
+        "required": true,
+        "maxLength": 15
+      },
+      {
+        "key": "district",
+        "label": "القضاء",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": [
+          "الناصرية",
+          "الشطرة",
+          "سوق الشيوخ",
+          "الرفاعي",
+          "الجبايش",
+          "قلعة سكر",
+          "الفهود",
+          "النصر",
+          "الغراف",
+          "الإصلاح",
+          "الدواية",
+          "سيد دخيل",
+          "البطحاء",
+          "الفجر"
+        ]
+      }
+    ],
+    "feeIqd": null,
+    "feeSource": null,
+    "estimatedDuration": null,
+    "sourceUrl": "https://pension.gov.iq/",
+    "sourceQuality": "UNVERIFIED",
+    "notes": "يستلزم تقرير لجنة طبية معتمد قبل إحالة الملف للتقاعد."
+  },
+  {
+    "key": "pension-early-retirement",
+    "departmentId": "dhi-qar-pension-directorate",
+    "title": "التقاعد المبكر (الإحالة على التقاعد بطلب من الموظف)",
+    "description": "تقديم طلب إحالة على التقاعد المبكر بناءً على رغبة الموظف مع استكمال الحد الأدنى من سنوات الخدمة المقررة قانوناً.",
+    "category": "الرعاية والعمل",
+    "applicantType": "CITIZEN",
+    "channel": "APPOINTMENT_REQUIRED",
+    "requiredDocuments": [
+      {
+        "key": "national-id",
+        "label": "البطاقة الوطنية الموحدة",
+        "description": "وجه وظهر البطاقة، أو هوية الأحوال المدنية + شهادة الجنسية العراقية",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "employment-service-record",
+        "label": "بيان الخدمة الوظيفية",
+        "description": "من جهة العمل يوضح سنوات الخدمة",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      }
+    ],
+    "fields": [
+      {
+        "key": "fullName",
+        "label": "الاسم الكامل (الرباعي واللقب)",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "phone",
+        "label": "رقم الهاتف",
+        "type": "tel",
+        "required": true,
+        "maxLength": 15
+      },
+      {
+        "key": "district",
+        "label": "القضاء",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": [
+          "الناصرية",
+          "الشطرة",
+          "سوق الشيوخ",
+          "الرفاعي",
+          "الجبايش",
+          "قلعة سكر",
+          "الفهود",
+          "النصر",
+          "الغراف",
+          "الإصلاح",
+          "الدواية",
+          "سيد دخيل",
+          "البطحاء",
+          "الفجر"
+        ]
+      },
+      {
+        "key": "serviceYears",
+        "label": "عدد سنوات الخدمة",
+        "type": "number",
+        "required": true,
+        "maxLength": 20
+      }
+    ],
+    "feeIqd": null,
+    "feeSource": null,
+    "estimatedDuration": null,
+    "sourceUrl": "https://pension.gov.iq/",
+    "sourceQuality": "UNVERIFIED",
+    "notes": "يخضع لضوابط قانون التقاعد الموحد بشأن الحد الأدنى لسنوات الخدمة والعمر."
+  },
+  {
+    "key": "spa-family-composition-update",
+    "departmentId": "social-protection-dhi-qar",
+    "title": "إضافة فرد جديد (زواج / مولود) إلى ملف الرعاية الاجتماعية",
+    "description": "طلب تحديث تركيبة الأسرة المستفيدة من الإعانة الاجتماعية بإضافة زوج/زوجة جديدة أو مولود إلى الملف.",
+    "category": "الرعاية والعمل",
+    "applicantType": "CITIZEN",
+    "channel": "ONLINE_SUBMISSION",
+    "requiredDocuments": [
+      {
+        "key": "national-id",
+        "label": "البطاقة الوطنية الموحدة",
+        "description": "وجه وظهر البطاقة، أو هوية الأحوال المدنية + شهادة الجنسية العراقية",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "supporting-document",
+        "label": "مستند مؤيد للإضافة",
+        "description": "عقد زواج أو شهادة ميلاد المولود",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      }
+    ],
+    "fields": [
+      {
+        "key": "fullName",
+        "label": "الاسم الكامل (الرباعي واللقب)",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "phone",
+        "label": "رقم الهاتف",
+        "type": "tel",
+        "required": true,
+        "maxLength": 15
+      },
+      {
+        "key": "district",
+        "label": "القضاء",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": [
+          "الناصرية",
+          "الشطرة",
+          "سوق الشيوخ",
+          "الرفاعي",
+          "الجبايش",
+          "قلعة سكر",
+          "الفهود",
+          "النصر",
+          "الغراف",
+          "الإصلاح",
+          "الدواية",
+          "سيد دخيل",
+          "البطحاء",
+          "الفجر"
+        ]
+      },
+      {
+        "key": "additionType",
+        "label": "نوع الإضافة",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": ["زوج/زوجة جديدة", "مولود جديد"]
+      }
+    ],
+    "feeIqd": null,
+    "feeSource": null,
+    "estimatedDuration": null,
+    "sourceUrl": "https://spa.gov.iq/umbrella/m-thiqar.aspx",
+    "sourceQuality": "OFFICIAL",
+    "notes": "تتم عبر منصة مظلتي spa.gov.iq الخاصة بهيئة الحماية الاجتماعية."
+  },
+  {
+    "key": "spa-north-objection",
+    "departmentId": "social-protection-north-dhi-qar",
+    "title": "الاعتراض على قرار رفض أو قطع الإعانة الاجتماعية (شمال ذي قار)",
+    "description": "تقديم اعتراض على قرار رفض شمول أو قطع الإعانة الاجتماعية للمستفيدين ضمن قسم شمال ذي قار (الرفاعي وتوابعه).",
+    "category": "الرعاية والعمل",
+    "applicantType": "CITIZEN",
+    "channel": "ONLINE_SUBMISSION",
+    "requiredDocuments": [
+      {
+        "key": "national-id",
+        "label": "البطاقة الوطنية الموحدة",
+        "description": "وجه وظهر البطاقة، أو هوية الأحوال المدنية + شهادة الجنسية العراقية",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "rejection-notice",
+        "label": "إشعار الرفض أو القطع",
+        "description": "إن وجد، من منصة مظلتي",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      }
+    ],
+    "fields": [
+      {
+        "key": "fullName",
+        "label": "الاسم الكامل (الرباعي واللقب)",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "phone",
+        "label": "رقم الهاتف",
+        "type": "tel",
+        "required": true,
+        "maxLength": 15
+      },
+      {
+        "key": "district",
+        "label": "القضاء",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": [
+          "الناصرية",
+          "الشطرة",
+          "سوق الشيوخ",
+          "الرفاعي",
+          "الجبايش",
+          "قلعة سكر",
+          "الفهود",
+          "النصر",
+          "الغراف",
+          "الإصلاح",
+          "الدواية",
+          "سيد دخيل",
+          "البطحاء",
+          "الفجر"
+        ]
+      },
+      {
+        "key": "objectionReason",
+        "label": "سبب الاعتراض",
+        "type": "text",
+        "required": true,
+        "maxLength": 300
+      }
+    ],
+    "feeIqd": null,
+    "feeSource": null,
+    "estimatedDuration": null,
+    "sourceUrl": "https://spa.gov.iq/umbrella/m-thiqar.aspx",
+    "sourceQuality": "OFFICIAL",
+    "notes": "تعالج الاعتراضات عبر منصة مظلتي spa.gov.iq."
+  },
+  {
+    "key": "labor-work-injury-compensation",
+    "departmentId": "labor-vocational-training-dhi-qar",
+    "title": "طلب تعويض إصابة عمل (الضمان الاجتماعي)",
+    "description": "التقديم للحصول على تعويض عن إصابة عمل لحقت بعامل مشمول بالضمان الاجتماعي أثناء تأدية عمله.",
+    "category": "الرعاية والعمل",
+    "applicantType": "CITIZEN",
+    "channel": "APPOINTMENT_REQUIRED",
+    "requiredDocuments": [
+      {
+        "key": "national-id",
+        "label": "البطاقة الوطنية الموحدة",
+        "description": "وجه وظهر البطاقة، أو هوية الأحوال المدنية + شهادة الجنسية العراقية",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "injury-report",
+        "label": "تقرير إصابة العمل",
+        "description": "من جهة العمل والمستشفى المعالج",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "social-security-card",
+        "label": "بطاقة الضمان الاجتماعي",
+        "description": "وجه وظهر",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      }
+    ],
+    "fields": [
+      {
+        "key": "fullName",
+        "label": "الاسم الكامل (الرباعي واللقب)",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "phone",
+        "label": "رقم الهاتف",
+        "type": "tel",
+        "required": true,
+        "maxLength": 15
+      },
+      {
+        "key": "district",
+        "label": "القضاء",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": [
+          "الناصرية",
+          "الشطرة",
+          "سوق الشيوخ",
+          "الرفاعي",
+          "الجبايش",
+          "قلعة سكر",
+          "الفهود",
+          "النصر",
+          "الغراف",
+          "الإصلاح",
+          "الدواية",
+          "سيد دخيل",
+          "البطحاء",
+          "الفجر"
+        ]
+      },
+      {
+        "key": "employerName",
+        "label": "اسم جهة العمل",
+        "type": "text",
+        "required": true,
+        "maxLength": 150
+      },
+      {
+        "key": "injuryDate",
+        "label": "تاريخ الإصابة",
+        "type": "text",
+        "required": true,
+        "maxLength": 20,
+        "placeholder": "YYYY-MM-DD"
+      }
+    ],
+    "feeIqd": null,
+    "feeSource": null,
+    "estimatedDuration": null,
+    "sourceUrl": "https://www.facebook.com/p/دائرة-العمل-والتدريب-المهني-ذي-قار-100064618062699/",
+    "sourceQuality": "RELIABLE",
+    "notes": "يخضع لتحقيق لجنة إصابات العمل التابعة لدائرة العمل والضمان الاجتماعي."
+  },
+  {
+    "key": "labor-employer-registration",
+    "departmentId": "labor-vocational-training-dhi-qar",
+    "title": "تسجيل صاحب عمل ومنشأة لدى دائرة العمل",
+    "description": "طلب تسجيل منشأة أو صاحب عمل جديد لدى دائرة العمل والتدريب المهني تمهيداً لشمول العاملين لديه بالضمان الاجتماعي.",
+    "category": "الرعاية والعمل",
+    "applicantType": "BUSINESS",
+    "channel": "APPOINTMENT_REQUIRED",
+    "requiredDocuments": [
+      {
+        "key": "national-id",
+        "label": "البطاقة الوطنية الموحدة",
+        "description": "وجه وظهر البطاقة، أو هوية الأحوال المدنية + شهادة الجنسية العراقية",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "business-license",
+        "label": "إجازة ممارسة المهنة أو السجل التجاري",
+        "description": "صادرة من البلدية أو الغرفة التجارية",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      }
+    ],
+    "fields": [
+      {
+        "key": "fullName",
+        "label": "الاسم الكامل (الرباعي واللقب)",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "phone",
+        "label": "رقم الهاتف",
+        "type": "tel",
+        "required": true,
+        "maxLength": 15
+      },
+      {
+        "key": "district",
+        "label": "القضاء",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": [
+          "الناصرية",
+          "الشطرة",
+          "سوق الشيوخ",
+          "الرفاعي",
+          "الجبايش",
+          "قلعة سكر",
+          "الفهود",
+          "النصر",
+          "الغراف",
+          "الإصلاح",
+          "الدواية",
+          "سيد دخيل",
+          "البطحاء",
+          "الفجر"
+        ]
+      },
+      {
+        "key": "businessName",
+        "label": "اسم المنشأة",
+        "type": "text",
+        "required": true,
+        "maxLength": 150
+      },
+      {
+        "key": "employeesCount",
+        "label": "عدد العاملين",
+        "type": "number",
+        "required": false,
+        "maxLength": 20
+      }
+    ],
+    "feeIqd": null,
+    "feeSource": null,
+    "estimatedDuration": null,
+    "sourceUrl": "https://www.facebook.com/p/دائرة-العمل-والتدريب-المهني-ذي-قار-100064618062699/",
+    "sourceQuality": "RELIABLE",
+    "notes": "خطوة أساسية قبل تسجيل العاملين في نظام الضمان الاجتماعي."
+  },
+  {
+    "key": "tax-real-estate-rental-tax",
+    "departmentId": "tax-authority-dhi-qar-branch",
+    "title": "ضريبة إيرادات العقار المؤجر (ضريبة الإيجارات)",
+    "description": "التحاسب السنوي على ضريبة الدخل الناتجة عن إيجار عقار (محل تجاري، شقة، دار) يملكه المكلف.",
+    "category": "الضرائب والمالية",
+    "applicantType": "CITIZEN",
+    "channel": "APPOINTMENT_REQUIRED",
+    "requiredDocuments": [
+      {
+        "key": "national-id",
+        "label": "البطاقة الوطنية الموحدة",
+        "description": "وجه وظهر البطاقة، أو هوية الأحوال المدنية + شهادة الجنسية العراقية",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "lease-contract",
+        "label": "عقد الإيجار",
+        "description": "مصدّق أصولياً",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "property-ownership",
+        "label": "سند ملكية العقار المؤجر",
+        "description": "وجه وظهر",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      }
+    ],
+    "fields": [
+      {
+        "key": "fullName",
+        "label": "الاسم الكامل (الرباعي واللقب)",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "phone",
+        "label": "رقم الهاتف",
+        "type": "tel",
+        "required": true,
+        "maxLength": 15
+      },
+      {
+        "key": "district",
+        "label": "القضاء",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": [
+          "الناصرية",
+          "الشطرة",
+          "سوق الشيوخ",
+          "الرفاعي",
+          "الجبايش",
+          "قلعة سكر",
+          "الفهود",
+          "النصر",
+          "الغراف",
+          "الإصلاح",
+          "الدواية",
+          "سيد دخيل",
+          "البطحاء",
+          "الفجر"
+        ]
+      },
+      {
+        "key": "propertyAddress",
+        "label": "عنوان العقار المؤجر",
+        "type": "text",
+        "required": true,
+        "maxLength": 200
+      },
+      {
+        "key": "annualRentIqd",
+        "label": "بدل الإيجار السنوي (دينار)",
+        "type": "number",
+        "required": false,
+        "maxLength": 20
+      }
+    ],
+    "feeIqd": null,
+    "feeSource": null,
+    "estimatedDuration": null,
+    "sourceUrl": "https://tax.mof.gov.iq/محافظة-ذي-قار/",
+    "sourceQuality": "OFFICIAL",
+    "notes": "يقدَّم التحاسب سنوياً وفق قانون ضريبة الدخل النافذ."
+  },
+  {
+    "key": "tax-inheritance-tax",
+    "departmentId": "tax-authority-dhi-qar-branch",
+    "title": "ضريبة التركات",
+    "description": "التحاسب الضريبي على تركة متوفى قبل إتمام إجراءات انتقال أمواله وعقاراته إلى الورثة.",
+    "category": "الضرائب والمالية",
+    "applicantType": "CITIZEN",
+    "channel": "APPOINTMENT_REQUIRED",
+    "requiredDocuments": [
+      {
+        "key": "national-id",
+        "label": "البطاقة الوطنية الموحدة",
+        "description": "وجه وظهر البطاقة، أو هوية الأحوال المدنية + شهادة الجنسية العراقية",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "inheritance-deed",
+        "label": "حجة حصر الإرث",
+        "description": "صادرة من المحكمة الشرعية",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "estate-assets-list",
+        "label": "بيان بأموال وعقارات المتوفى",
+        "description": "قائمة تفصيلية بالتركة",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      }
+    ],
+    "fields": [
+      {
+        "key": "fullName",
+        "label": "الاسم الكامل (الرباعي واللقب)",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "phone",
+        "label": "رقم الهاتف",
+        "type": "tel",
+        "required": true,
+        "maxLength": 15
+      },
+      {
+        "key": "district",
+        "label": "القضاء",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": [
+          "الناصرية",
+          "الشطرة",
+          "سوق الشيوخ",
+          "الرفاعي",
+          "الجبايش",
+          "قلعة سكر",
+          "الفهود",
+          "النصر",
+          "الغراف",
+          "الإصلاح",
+          "الدواية",
+          "سيد دخيل",
+          "البطحاء",
+          "الفجر"
+        ]
+      },
+      {
+        "key": "deceasedName",
+        "label": "اسم المتوفى الثلاثي",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      }
+    ],
+    "feeIqd": null,
+    "feeSource": null,
+    "estimatedDuration": null,
+    "sourceUrl": "https://tax.mof.gov.iq/محافظة-ذي-قار/",
+    "sourceQuality": "OFFICIAL",
+    "notes": "خطوة لازمة قبل تسجيل انتقال العقارات بالإرث في التسجيل العقاري."
+  },
+  {
+    "key": "tax-shatrah-income-tax-individual",
+    "departmentId": "tax-authority-shatrah-branch",
+    "title": "ضريبة الدخل للأفراد وأصحاب المهن (فرع الشطرة)",
+    "description": "التحاسب الضريبي السنوي على دخل الأفراد وأصحاب المهن والمحال التجارية ضمن نطاق فرع ضريبة الشطرة.",
+    "category": "الضرائب والمالية",
+    "applicantType": "CITIZEN",
+    "channel": "APPOINTMENT_REQUIRED",
+    "requiredDocuments": [
+      {
+        "key": "national-id",
+        "label": "البطاقة الوطنية الموحدة",
+        "description": "وجه وظهر البطاقة، أو هوية الأحوال المدنية + شهادة الجنسية العراقية",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "business-license",
+        "label": "إجازة ممارسة المهنة",
+        "description": "إن وجدت",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "previous-tax-receipt",
+        "label": "وصل التحاسب الضريبي السابق",
+        "description": "إن وجد",
+        "required": false,
+        "accepts": ["image", "pdf"]
+      }
+    ],
+    "fields": [
+      {
+        "key": "fullName",
+        "label": "الاسم الكامل (الرباعي واللقب)",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "phone",
+        "label": "رقم الهاتف",
+        "type": "tel",
+        "required": true,
+        "maxLength": 15
+      },
+      {
+        "key": "district",
+        "label": "القضاء",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": [
+          "الناصرية",
+          "الشطرة",
+          "سوق الشيوخ",
+          "الرفاعي",
+          "الجبايش",
+          "قلعة سكر",
+          "الفهود",
+          "النصر",
+          "الغراف",
+          "الإصلاح",
+          "الدواية",
+          "سيد دخيل",
+          "البطحاء",
+          "الفجر"
+        ]
+      },
+      {
+        "key": "profession",
+        "label": "المهنة أو نوع النشاط",
+        "type": "text",
+        "required": true,
+        "maxLength": 150
+      }
+    ],
+    "feeIqd": null,
+    "feeSource": null,
+    "estimatedDuration": null,
+    "sourceUrl": "https://tax.mof.gov.iq/محافظة-ذي-قار/",
+    "sourceQuality": "OFFICIAL",
+    "notes": "يغطي فرع الشطرة مكلفي قضاء الشطرة وتوابعه."
+  },
+  {
+    "key": "re1-mortgage-registration",
+    "departmentId": "real-estate-registration-first-dhi-qar",
+    "title": "تسجيل الرهن العقاري لضمان قرض",
+    "description": "تسجيل إشارة رهن على عقار كضمان لقرض مصرفي أو قرض من صندوق الإسكان أو جهة إقراض معتمدة.",
+    "category": "السكن والأراضي",
+    "applicantType": "CITIZEN",
+    "channel": "APPOINTMENT_REQUIRED",
+    "requiredDocuments": [
+      {
+        "key": "national-id",
+        "label": "البطاقة الوطنية الموحدة",
+        "description": "وجه وظهر البطاقة، أو هوية الأحوال المدنية + شهادة الجنسية العراقية",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "property-deed",
+        "label": "سند الطابو (صحيفة العقار)",
+        "description": "وجه وظهر",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "loan-approval-letter",
+        "label": "كتاب موافقة الجهة المقرضة",
+        "description": "يوضح مبلغ القرض والضمان المطلوب",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      }
+    ],
+    "fields": [
+      {
+        "key": "fullName",
+        "label": "الاسم الكامل (الرباعي واللقب)",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "phone",
+        "label": "رقم الهاتف",
+        "type": "tel",
+        "required": true,
+        "maxLength": 15
+      },
+      {
+        "key": "district",
+        "label": "القضاء",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": [
+          "الناصرية",
+          "الشطرة",
+          "سوق الشيوخ",
+          "الرفاعي",
+          "الجبايش",
+          "قلعة سكر",
+          "الفهود",
+          "النصر",
+          "الغراف",
+          "الإصلاح",
+          "الدواية",
+          "سيد دخيل",
+          "البطحاء",
+          "الفجر"
+        ]
+      },
+      {
+        "key": "propertyNumber",
+        "label": "رقم العقار/القطعة",
+        "type": "text",
+        "required": true,
+        "maxLength": 50
+      }
+    ],
+    "feeIqd": null,
+    "feeSource": null,
+    "estimatedDuration": null,
+    "sourceUrl": "https://www.moj.gov.iq/registration/",
+    "sourceQuality": "OFFICIAL",
+    "notes": "إجراء قانوني لتوثيق الرهن في صحيفة العقار لدى دائرة التسجيل العقاري."
+  },
+  {
+    "key": "re1-lien-removal",
+    "departmentId": "real-estate-registration-first-dhi-qar",
+    "title": "رفع الحجز أو إشارة الرهن عن العقار",
+    "description": "طلب رفع إشارة حجز أو رهن مسجلة على عقار بعد زوال سببها (تسديد القرض، فك الحجز القضائي).",
+    "category": "السكن والأراضي",
+    "applicantType": "CITIZEN",
+    "channel": "APPOINTMENT_REQUIRED",
+    "requiredDocuments": [
+      {
+        "key": "national-id",
+        "label": "البطاقة الوطنية الموحدة",
+        "description": "وجه وظهر البطاقة، أو هوية الأحوال المدنية + شهادة الجنسية العراقية",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "property-deed",
+        "label": "سند الطابو (صحيفة العقار)",
+        "description": "وجه وظهر",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "clearance-letter",
+        "label": "كتاب براءة الذمة أو قرار رفع الحجز",
+        "description": "من الجهة الدائنة أو المحكمة",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      }
+    ],
+    "fields": [
+      {
+        "key": "fullName",
+        "label": "الاسم الكامل (الرباعي واللقب)",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "phone",
+        "label": "رقم الهاتف",
+        "type": "tel",
+        "required": true,
+        "maxLength": 15
+      },
+      {
+        "key": "district",
+        "label": "القضاء",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": [
+          "الناصرية",
+          "الشطرة",
+          "سوق الشيوخ",
+          "الرفاعي",
+          "الجبايش",
+          "قلعة سكر",
+          "الفهود",
+          "النصر",
+          "الغراف",
+          "الإصلاح",
+          "الدواية",
+          "سيد دخيل",
+          "البطحاء",
+          "الفجر"
+        ]
+      },
+      {
+        "key": "propertyNumber",
+        "label": "رقم العقار/القطعة",
+        "type": "text",
+        "required": true,
+        "maxLength": 50
+      }
+    ],
+    "feeIqd": null,
+    "feeSource": null,
+    "estimatedDuration": null,
+    "sourceUrl": "https://www.moj.gov.iq/registration/",
+    "sourceQuality": "OFFICIAL",
+    "notes": "يستكمل بعد الحصول على براءة الذمة من الجهة المستفيدة من الرهن أو الحجز."
+  },
+  {
+    "key": "re2-mortgage-registration",
+    "departmentId": "real-estate-registration-second-dhi-qar",
+    "title": "تسجيل الرهن العقاري لضمان قرض",
+    "description": "تسجيل إشارة رهن على عقار كضمان لقرض مصرفي أو قرض من صندوق الإسكان ضمن اختصاص المديرية الثانية (صوب الجزيرة).",
+    "category": "السكن والأراضي",
+    "applicantType": "CITIZEN",
+    "channel": "APPOINTMENT_REQUIRED",
+    "requiredDocuments": [
+      {
+        "key": "national-id",
+        "label": "البطاقة الوطنية الموحدة",
+        "description": "وجه وظهر البطاقة، أو هوية الأحوال المدنية + شهادة الجنسية العراقية",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "property-deed",
+        "label": "سند الطابو (صحيفة العقار)",
+        "description": "وجه وظهر",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "loan-approval-letter",
+        "label": "كتاب موافقة الجهة المقرضة",
+        "description": "يوضح مبلغ القرض والضمان المطلوب",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      }
+    ],
+    "fields": [
+      {
+        "key": "fullName",
+        "label": "الاسم الكامل (الرباعي واللقب)",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "phone",
+        "label": "رقم الهاتف",
+        "type": "tel",
+        "required": true,
+        "maxLength": 15
+      },
+      {
+        "key": "district",
+        "label": "القضاء",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": [
+          "الناصرية",
+          "الشطرة",
+          "سوق الشيوخ",
+          "الرفاعي",
+          "الجبايش",
+          "قلعة سكر",
+          "الفهود",
+          "النصر",
+          "الغراف",
+          "الإصلاح",
+          "الدواية",
+          "سيد دخيل",
+          "البطحاء",
+          "الفجر"
+        ]
+      },
+      {
+        "key": "propertyNumber",
+        "label": "رقم العقار/القطعة",
+        "type": "text",
+        "required": true,
+        "maxLength": 50
+      }
+    ],
+    "feeIqd": null,
+    "feeSource": null,
+    "estimatedDuration": null,
+    "sourceUrl": "https://thiqar.gov.iq/المحافظ/محافظ-ذي-قار-يتفقد-مديرية-التسجيل-العقاري-الثانية-في-صوب-الجزيرة-ويوجه-برفدها-بالمنتسبين-وتخصيص-بناية-جديدة-للدائرة",
+    "sourceQuality": "UNVERIFIED",
+    "notes": "نفس إجراء المديرية الأولى، ضمن اختصاص صوب الجزيرة."
+  },
+  {
+    "key": "hf-renovation-loan",
+    "departmentId": "housing-fund-dhi-qar-branch",
+    "title": "طلب قرض ترميم أو إكمال بناء دار",
+    "description": "التقديم للحصول على قرض ميسر من صندوق الإسكان لغرض ترميم دار سكنية قائمة أو إكمال بنائها.",
+    "category": "السكن والأراضي",
+    "applicantType": "CITIZEN",
+    "channel": "APPOINTMENT_REQUIRED",
+    "requiredDocuments": [
+      {
+        "key": "national-id",
+        "label": "البطاقة الوطنية الموحدة",
+        "description": "وجه وظهر البطاقة، أو هوية الأحوال المدنية + شهادة الجنسية العراقية",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "residence-card",
+        "label": "بطاقة السكن",
+        "description": "وجه وظهر",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "property-deed",
+        "label": "سند ملكية العقار",
+        "description": "وجه وظهر",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "engineering-estimate",
+        "label": "تخمين هندسي لكلفة الترميم/الإكمال",
+        "description": "من مهندس مجاز",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      }
+    ],
+    "fields": [
+      {
+        "key": "fullName",
+        "label": "الاسم الكامل (الرباعي واللقب)",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "phone",
+        "label": "رقم الهاتف",
+        "type": "tel",
+        "required": true,
+        "maxLength": 15
+      },
+      {
+        "key": "district",
+        "label": "القضاء",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": [
+          "الناصرية",
+          "الشطرة",
+          "سوق الشيوخ",
+          "الرفاعي",
+          "الجبايش",
+          "قلعة سكر",
+          "الفهود",
+          "النصر",
+          "الغراف",
+          "الإصلاح",
+          "الدواية",
+          "سيد دخيل",
+          "البطحاء",
+          "الفجر"
+        ]
+      },
+      {
+        "key": "requestedAmountIqd",
+        "label": "مبلغ القرض المطلوب (دينار)",
+        "type": "number",
+        "required": false,
+        "maxLength": 20
+      }
+    ],
+    "feeIqd": null,
+    "feeSource": null,
+    "estimatedDuration": null,
+    "sourceUrl": "https://www.facebook.com/Housingtheqar/",
+    "sourceQuality": "RELIABLE",
+    "notes": "يخضع لسقوف الإقراض وشروط الأهلية التي يحددها صندوق الإسكان مركزياً."
+  },
+  {
+    "key": "supply-agent-change",
+    "departmentId": "main-supply-center-dhi-qar",
+    "title": "تغيير الوكيل (الوكالة التموينية)",
+    "description": "طلب نقل استلام الحصة التموينية من وكيل تمويني إلى وكيل آخر بسبب تغيير السكن أو عدم الرضا عن الخدمة.",
+    "category": "الوثائق الحكومية",
+    "applicantType": "CITIZEN",
+    "channel": "ONLINE_SUBMISSION",
+    "requiredDocuments": [
+      {
+        "key": "ration-card",
+        "label": "البطاقة التموينية",
+        "description": "وجه وظهر، أو رقم العائلة التمويني",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "national-id",
+        "label": "البطاقة الوطنية الموحدة",
+        "description": "وجه وظهر البطاقة، أو هوية الأحوال المدنية + شهادة الجنسية العراقية",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      }
+    ],
+    "fields": [
+      {
+        "key": "fullName",
+        "label": "الاسم الكامل (الرباعي واللقب)",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "phone",
+        "label": "رقم الهاتف",
+        "type": "tel",
+        "required": true,
+        "maxLength": 15
+      },
+      {
+        "key": "district",
+        "label": "القضاء",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": [
+          "الناصرية",
+          "الشطرة",
+          "سوق الشيوخ",
+          "الرفاعي",
+          "الجبايش",
+          "قلعة سكر",
+          "الفهود",
+          "النصر",
+          "الغراف",
+          "الإصلاح",
+          "الدواية",
+          "سيد دخيل",
+          "البطحاء",
+          "الفجر"
+        ]
+      },
+      {
+        "key": "currentAgent",
+        "label": "اسم الوكيل الحالي",
+        "type": "text",
+        "required": false,
+        "maxLength": 120
+      },
+      {
+        "key": "desiredAgent",
+        "label": "اسم الوكيل الجديد المطلوب",
+        "type": "text",
+        "required": false,
+        "maxLength": 120
+      }
+    ],
+    "feeIqd": null,
+    "feeSource": null,
+    "estimatedDuration": null,
+    "sourceUrl": "https://mapcarta.com/N10683823305",
+    "sourceQuality": "UNVERIFIED",
+    "notes": "يتم غالباً عبر تطبيق البطاقة التموينية الإلكتروني أو مراجعة مركز التموين."
+  },
+  {
+    "key": "supply-remove-deceased-member",
+    "departmentId": "main-supply-center-dhi-qar",
+    "title": "حذف فرد متوفى من البطاقة التموينية",
+    "description": "طلب حذف اسم فرد متوفى من قيد البطاقة التموينية للعائلة لتحديث عدد المستفيدين والحصص.",
+    "category": "الوثائق الحكومية",
+    "applicantType": "CITIZEN",
+    "channel": "ONLINE_SUBMISSION",
+    "requiredDocuments": [
+      {
+        "key": "ration-card",
+        "label": "البطاقة التموينية",
+        "description": "وجه وظهر، أو رقم العائلة التمويني",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "death-certificate",
+        "label": "شهادة الوفاة",
+        "description": "صورة قيد الوفاة الرسمية",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      }
+    ],
+    "fields": [
+      {
+        "key": "fullName",
+        "label": "الاسم الكامل (الرباعي واللقب)",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "phone",
+        "label": "رقم الهاتف",
+        "type": "tel",
+        "required": true,
+        "maxLength": 15
+      },
+      {
+        "key": "district",
+        "label": "القضاء",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": [
+          "الناصرية",
+          "الشطرة",
+          "سوق الشيوخ",
+          "الرفاعي",
+          "الجبايش",
+          "قلعة سكر",
+          "الفهود",
+          "النصر",
+          "الغراف",
+          "الإصلاح",
+          "الدواية",
+          "سيد دخيل",
+          "البطحاء",
+          "الفجر"
+        ]
+      },
+      {
+        "key": "deceasedName",
+        "label": "اسم المتوفى الثلاثي",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      }
+    ],
+    "feeIqd": null,
+    "feeSource": null,
+    "estimatedDuration": null,
+    "sourceUrl": "https://mapcarta.com/N10683823305",
+    "sourceQuality": "UNVERIFIED",
+    "notes": "يستكمل بعد استخراج شهادة الوفاة من الأحوال المدنية."
+  },
+  {
+    "key": "police-criminal-record-external",
+    "departmentId": "dhi-qar-police-command",
+    "title": "شهادة عدم محكومية لأغراض السفر أو التوظيف خارج العراق",
+    "description": "استخراج شهادة عدم محكومية مصادقة ومهيأة للاستخدام خارج العراق (سفر، هجرة، توظيف لدى جهة أجنبية)، وتختلف عن الشهادة المحلية العادية بإجراءات تصديق إضافية.",
+    "category": "الأمن والمرور",
+    "applicantType": "CITIZEN",
+    "channel": "APPOINTMENT_REQUIRED",
+    "requiredDocuments": [
+      {
+        "key": "national-id",
+        "label": "البطاقة الوطنية الموحدة",
+        "description": "وجه وظهر البطاقة، أو هوية الأحوال المدنية + شهادة الجنسية العراقية",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "personal-photos",
+        "label": "صور شخصية",
+        "description": "عدد 2-4 بحسب المعاملة، خلفية بيضاء",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      }
+    ],
+    "fields": [
+      {
+        "key": "fullName",
+        "label": "الاسم الكامل (الرباعي واللقب)",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "phone",
+        "label": "رقم الهاتف",
+        "type": "tel",
+        "required": true,
+        "maxLength": 15
+      },
+      {
+        "key": "district",
+        "label": "القضاء",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": [
+          "الناصرية",
+          "الشطرة",
+          "سوق الشيوخ",
+          "الرفاعي",
+          "الجبايش",
+          "قلعة سكر",
+          "الفهود",
+          "النصر",
+          "الغراف",
+          "الإصلاح",
+          "الدواية",
+          "سيد دخيل",
+          "البطحاء",
+          "الفجر"
+        ]
+      },
+      {
+        "key": "purpose",
+        "label": "الغرض من الشهادة",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": ["سفر/هجرة", "توظيف خارج العراق", "أخرى"]
+      },
+      {
+        "key": "destinationCountry",
+        "label": "الدولة المقصودة (إن وجدت)",
+        "type": "text",
+        "required": false,
+        "maxLength": 100
+      }
+    ],
+    "feeIqd": null,
+    "feeSource": null,
+    "estimatedDuration": null,
+    "sourceUrl": "https://www.facebook.com/DhiQarPolice/",
+    "sourceQuality": "RELIABLE",
+    "notes": "تصدر عن قسم الأدلة الجنائية وتُستكمل لاحقاً بتصديق وزارة الداخلية والخارجية."
+  },
+  {
+    "key": "police-firearm-license",
+    "departmentId": "dhi-qar-police-command",
+    "title": "إجازة حيازة سلاح شخصي (مسدس / بندقية صيد)",
+    "description": "التقديم للحصول على إجازة حيازة سلاح ناري شخصي (مسدس أو بندقية صيد) وفق ضوابط وزارة الداخلية.",
+    "category": "الأمن والمرور",
+    "applicantType": "CITIZEN",
+    "channel": "APPOINTMENT_REQUIRED",
+    "requiredDocuments": [
+      {
+        "key": "national-id",
+        "label": "البطاقة الوطنية الموحدة",
+        "description": "وجه وظهر البطاقة، أو هوية الأحوال المدنية + شهادة الجنسية العراقية",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "non-conviction-certificate",
+        "label": "شهادة عدم محكومية",
+        "description": "حديثة الإصدار",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "medical-fitness-certificate",
+        "label": "شهادة اللياقة الصحية والنفسية",
+        "description": "تثبت اللياقة لحيازة السلاح",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      }
+    ],
+    "fields": [
+      {
+        "key": "fullName",
+        "label": "الاسم الكامل (الرباعي واللقب)",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "phone",
+        "label": "رقم الهاتف",
+        "type": "tel",
+        "required": true,
+        "maxLength": 15
+      },
+      {
+        "key": "district",
+        "label": "القضاء",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": [
+          "الناصرية",
+          "الشطرة",
+          "سوق الشيوخ",
+          "الرفاعي",
+          "الجبايش",
+          "قلعة سكر",
+          "الفهود",
+          "النصر",
+          "الغراف",
+          "الإصلاح",
+          "الدواية",
+          "سيد دخيل",
+          "البطحاء",
+          "الفجر"
+        ]
+      },
+      {
+        "key": "weaponType",
+        "label": "نوع السلاح",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": ["مسدس", "بندقية صيد", "أخرى"]
+      }
+    ],
+    "feeIqd": null,
+    "feeSource": null,
+    "estimatedDuration": null,
+    "sourceUrl": "https://www.facebook.com/DhiQarPolice/",
+    "sourceQuality": "RELIABLE",
+    "notes": "يخضع لتدقيق أمني من قيادة الشرطة قبل منح الإجازة."
+  },
+  {
+    "key": "police-vehicle-loss-report",
+    "departmentId": "dhi-qar-police-command",
+    "title": "بلاغ فقدان أو سرقة مركبة",
+    "description": "تقديم بلاغ رسمي عن فقدان أو سرقة مركبة لدى أقرب مركز شرطة، وهو مستند لازم لأي إجراءات تأمينية أو مرورية لاحقة.",
+    "category": "الأمن والمرور",
+    "applicantType": "CITIZEN",
+    "channel": "INFORMATION_ONLY",
+    "requiredDocuments": [
+      {
+        "key": "national-id",
+        "label": "البطاقة الوطنية الموحدة",
+        "description": "وجه وظهر البطاقة، أو هوية الأحوال المدنية + شهادة الجنسية العراقية",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "vehicle-registration",
+        "label": "هوية تسجيل المركبة (السنوية)",
+        "description": "إن توفرت نسخة منها",
+        "required": false,
+        "accepts": ["image", "pdf"]
+      }
+    ],
+    "fields": [
+      {
+        "key": "fullName",
+        "label": "الاسم الكامل (الرباعي واللقب)",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "phone",
+        "label": "رقم الهاتف",
+        "type": "tel",
+        "required": true,
+        "maxLength": 15
+      },
+      {
+        "key": "district",
+        "label": "القضاء",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": [
+          "الناصرية",
+          "الشطرة",
+          "سوق الشيوخ",
+          "الرفاعي",
+          "الجبايش",
+          "قلعة سكر",
+          "الفهود",
+          "النصر",
+          "الغراف",
+          "الإصلاح",
+          "الدواية",
+          "سيد دخيل",
+          "البطحاء",
+          "الفجر"
+        ]
+      },
+      {
+        "key": "plateNumber",
+        "label": "رقم اللوحة",
+        "type": "text",
+        "required": true,
+        "maxLength": 20
+      },
+      {
+        "key": "theftLocation",
+        "label": "مكان وزمان السرقة/الفقدان",
+        "type": "text",
+        "required": true,
+        "maxLength": 250
+      }
+    ],
+    "feeIqd": null,
+    "feeSource": null,
+    "estimatedDuration": null,
+    "sourceUrl": "https://www.facebook.com/DhiQarPolice/",
+    "sourceQuality": "RELIABLE",
+    "notes": "يُحرَّر محضر رسمي في مركز الشرطة المختص بمكان الحادثة."
+  },
+  {
+    "key": "nas-muni-signboard-permit",
+    "departmentId": "nasiriyah-municipality",
+    "title": "إجازة لافتة إعلانية / يافطة محل",
+    "description": "طلب إجازة نصب لافتة إعلانية أو يافطة محل تجاري على واجهة العقار ضمن حدود بلدية الناصرية.",
+    "category": "البناء والبلديات",
+    "applicantType": "BUSINESS",
+    "channel": "APPOINTMENT_REQUIRED",
+    "requiredDocuments": [
+      {
+        "key": "national-id",
+        "label": "البطاقة الوطنية الموحدة",
+        "description": "وجه وظهر البطاقة، أو هوية الأحوال المدنية + شهادة الجنسية العراقية",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "business-license",
+        "label": "إجازة ممارسة المهنة للمحل",
+        "description": "صادرة من البلدية",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "signboard-design",
+        "label": "تصميم أو مخطط اللافتة المقترحة",
+        "description": "يوضح الأبعاد والمحتوى",
+        "required": false,
+        "accepts": ["image", "pdf"]
+      }
+    ],
+    "fields": [
+      {
+        "key": "fullName",
+        "label": "الاسم الكامل (الرباعي واللقب)",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "phone",
+        "label": "رقم الهاتف",
+        "type": "tel",
+        "required": true,
+        "maxLength": 15
+      },
+      {
+        "key": "district",
+        "label": "القضاء",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": [
+          "الناصرية",
+          "الشطرة",
+          "سوق الشيوخ",
+          "الرفاعي",
+          "الجبايش",
+          "قلعة سكر",
+          "الفهود",
+          "النصر",
+          "الغراف",
+          "الإصلاح",
+          "الدواية",
+          "سيد دخيل",
+          "البطحاء",
+          "الفجر"
+        ]
+      },
+      {
+        "key": "shopName",
+        "label": "اسم المحل",
+        "type": "text",
+        "required": true,
+        "maxLength": 150
+      },
+      {
+        "key": "shopAddress",
+        "label": "عنوان المحل",
+        "type": "text",
+        "required": true,
+        "maxLength": 200
+      }
+    ],
+    "feeIqd": null,
+    "feeSource": null,
+    "estimatedDuration": null,
+    "sourceUrl": "https://nasiriyah-municipality.gov.iq/",
+    "sourceQuality": "OFFICIAL",
+    "notes": "تخضع اللافتات لضوابط الأبعاد والمحتوى التي تحددها البلدية."
+  },
+  {
+    "key": "nas-muni-demolition-permit",
+    "departmentId": "nasiriyah-municipality",
+    "title": "إجازة هدم بناء آيل للسقوط أو غير صالح للاستخدام",
+    "description": "طلب إجازة هدم بناء قديم أو آيل للسقوط تمهيداً لإعادة البناء أو تحرير الأرض، وفق كشف هندسي من البلدية.",
+    "category": "البناء والبلديات",
+    "applicantType": "CITIZEN",
+    "channel": "APPOINTMENT_REQUIRED",
+    "requiredDocuments": [
+      {
+        "key": "national-id",
+        "label": "البطاقة الوطنية الموحدة",
+        "description": "وجه وظهر البطاقة، أو هوية الأحوال المدنية + شهادة الجنسية العراقية",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "property-ownership",
+        "label": "سند ملكية العقار",
+        "description": "وجه وظهر",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "engineering-report",
+        "label": "تقرير هندسي عن حالة البناء",
+        "description": "يثبت تصدع أو تلف البناء",
+        "required": false,
+        "accepts": ["image", "pdf"]
+      }
+    ],
+    "fields": [
+      {
+        "key": "fullName",
+        "label": "الاسم الكامل (الرباعي واللقب)",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "phone",
+        "label": "رقم الهاتف",
+        "type": "tel",
+        "required": true,
+        "maxLength": 15
+      },
+      {
+        "key": "district",
+        "label": "القضاء",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": [
+          "الناصرية",
+          "الشطرة",
+          "سوق الشيوخ",
+          "الرفاعي",
+          "الجبايش",
+          "قلعة سكر",
+          "الفهود",
+          "النصر",
+          "الغراف",
+          "الإصلاح",
+          "الدواية",
+          "سيد دخيل",
+          "البطحاء",
+          "الفجر"
+        ]
+      },
+      {
+        "key": "propertyAddress",
+        "label": "عنوان العقار",
+        "type": "text",
+        "required": true,
+        "maxLength": 200
+      }
+    ],
+    "feeIqd": null,
+    "feeSource": null,
+    "estimatedDuration": null,
+    "sourceUrl": "https://nasiriyah-municipality.gov.iq/",
+    "sourceQuality": "OFFICIAL",
+    "notes": "يسبق عادة إجازة البناء الجديد للعقار."
+  },
+  {
+    "key": "muni-dir-cemetery-plot",
+    "departmentId": "dhiqar-municipalities",
+    "title": "تخصيص قطعة دفن في مقبرة عامة",
+    "description": "طلب تخصيص قطعة أرض لدفن متوفى ضمن إحدى المقابر العامة الخاضعة لإشراف مديرية بلديات ذي قار.",
+    "category": "البناء والبلديات",
+    "applicantType": "CITIZEN",
+    "channel": "APPOINTMENT_REQUIRED",
+    "requiredDocuments": [
+      {
+        "key": "national-id",
+        "label": "البطاقة الوطنية الموحدة",
+        "description": "وجه وظهر البطاقة، أو هوية الأحوال المدنية + شهادة الجنسية العراقية",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "death-certificate",
+        "label": "شهادة الوفاة",
+        "description": "صورة قيد الوفاة",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      }
+    ],
+    "fields": [
+      {
+        "key": "fullName",
+        "label": "الاسم الكامل (الرباعي واللقب)",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "phone",
+        "label": "رقم الهاتف",
+        "type": "tel",
+        "required": true,
+        "maxLength": 15
+      },
+      {
+        "key": "district",
+        "label": "القضاء",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": [
+          "الناصرية",
+          "الشطرة",
+          "سوق الشيوخ",
+          "الرفاعي",
+          "الجبايش",
+          "قلعة سكر",
+          "الفهود",
+          "النصر",
+          "الغراف",
+          "الإصلاح",
+          "الدواية",
+          "سيد دخيل",
+          "البطحاء",
+          "الفجر"
+        ]
+      },
+      {
+        "key": "deceasedName",
+        "label": "اسم المتوفى الثلاثي",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "cemeteryName",
+        "label": "اسم المقبرة المطلوبة",
+        "type": "text",
+        "required": false,
+        "maxLength": 150
+      }
+    ],
+    "feeIqd": null,
+    "feeSource": null,
+    "estimatedDuration": null,
+    "sourceUrl": "https://mapcarta.com/W467592669",
+    "sourceQuality": "UNVERIFIED",
+    "notes": "تختلف الإجراءات والرسوم بحسب المقبرة ونظام إدارتها (بلدية أو وقفية)."
+  },
+  {
+    "key": "suq-muni-realty-transaction-statement",
+    "departmentId": "suq-al-shuyukh-municipality",
+    "title": "بيان عقاري / إتمام المعاملات التصرفية العقارية (سوق الشيوخ)",
+    "description": "استخراج بيان بلدي عن عقار ضمن حدود بلدية سوق الشيوخ لغرض استكمال معاملات البيع أو النقل في التسجيل العقاري.",
+    "category": "السكن والأراضي",
+    "applicantType": "CITIZEN",
+    "channel": "APPOINTMENT_REQUIRED",
+    "requiredDocuments": [
+      {
+        "key": "national-id",
+        "label": "البطاقة الوطنية الموحدة",
+        "description": "وجه وظهر البطاقة، أو هوية الأحوال المدنية + شهادة الجنسية العراقية",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "property-ownership",
+        "label": "سند ملكية العقار أو رقم القطعة",
+        "description": "وجه وظهر",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      }
+    ],
+    "fields": [
+      {
+        "key": "fullName",
+        "label": "الاسم الكامل (الرباعي واللقب)",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "phone",
+        "label": "رقم الهاتف",
+        "type": "tel",
+        "required": true,
+        "maxLength": 15
+      },
+      {
+        "key": "district",
+        "label": "القضاء",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": [
+          "الناصرية",
+          "الشطرة",
+          "سوق الشيوخ",
+          "الرفاعي",
+          "الجبايش",
+          "قلعة سكر",
+          "الفهود",
+          "النصر",
+          "الغراف",
+          "الإصلاح",
+          "الدواية",
+          "سيد دخيل",
+          "البطحاء",
+          "الفجر"
+        ]
+      },
+      {
+        "key": "propertyNumber",
+        "label": "رقم العقار/القطعة",
+        "type": "text",
+        "required": true,
+        "maxLength": 50
+      }
+    ],
+    "feeIqd": null,
+    "feeSource": null,
+    "estimatedDuration": null,
+    "sourceUrl": "https://mapcarta.com/N5625692421",
+    "sourceQuality": "UNVERIFIED",
+    "notes": "مطلوب عادة كمرفق لمعاملات التسجيل العقاري."
   }
 ]

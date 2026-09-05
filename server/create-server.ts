@@ -7,6 +7,7 @@ import { errorHandler } from './http/error-handler.js'
 import { installRealtime } from './realtime.js'
 import { seedServiceCatalog } from './services/catalog.js'
 import { registerServicesRoutes } from './routes/services.js'
+import { registerPaymentRoutes } from './routes/payments.js'
 import { seedVerifiedGovernmentServices } from './government-service-seed.js'
 import { registerPublicRoutes } from './routes/public.js'
 import { registerAuthRoutes } from './routes/auth.js'
@@ -44,6 +45,7 @@ export function createPlatformServer(options: { serveStatic?: boolean } = {}) {
   registerFeedbackRoutes(app)
   registerServicesRoutes(app)
   registerServiceRequestsRoutes(app)
+  registerPaymentRoutes(app)
   registerOnboardingRoutes(app)
   registerApplicationsRoutes(app)
   registerDocumentsRoutes(app)

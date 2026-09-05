@@ -10,6 +10,8 @@ import {
   Camera,
   CheckCircle2,
   ChevronLeft,
+  CreditCard,
+  ReceiptText,
   FileArchive,
   FileCheck2,
   FileText,
@@ -42,7 +44,9 @@ const serviceRequestStatusLabel = (status: string) =>
           ? 'قيد التدقيق'
           : status === 'APPOINTMENT_REQUESTED'
             ? 'طلب موعد'
-            : 'تم التقديم'
+            : status === 'PAYMENT_PENDING'
+              ? 'بانتظار الدفع'
+              : 'تم التقديم'
 
 export function CitizenDashboard() {
   const [citizen, setCitizen] = useState<Citizen | null>(null)
@@ -98,7 +102,9 @@ export function CitizenDashboard() {
   const actionRequired = applications.find(app => app.status === 'ACTION_REQUIRED')
   const activeApplications = applications.filter(app => !['APPROVED', 'REJECTED'].includes(app.status))
   const nextRequest = serviceRequests[0]
-  const serviceActionRequired = serviceRequests.find(request => request.status === 'ACTION_REQUIRED')
+  const serviceActionRequired = serviceRequests.find(
+    request => request.status === 'ACTION_REQUIRED' || request.status === 'PAYMENT_PENDING'
+  )
   const citizenActionRequired = actionRequired || serviceActionRequired
   const [catalog, setCatalog] = useState<CatalogService[] | null>(null)
   useEffect(() => {
@@ -625,6 +631,38 @@ export function CitizenDashboard() {
                             {item.appointment.note ? ` — ${item.appointment.note}` : ''}
                           </strong>
                         </span>
+                      </div>
+                    )}
+                    {item.status === 'PAYMENT_PENDING' &&
+                      item.payments?.find(payment => payment.status === 'PENDING') && (
+                        <div className="service-required-upload payment-due">
+                          <div>
+                            <CreditCard />
+                            <span>
+                              <small>رسم الخدمة</small>
+                              <strong>
+                                {item.payments
+                                  .find(payment => payment.status === 'PENDING')!
+                                  .amountIqd.toLocaleString('en-US')}{' '}
+                                د.ع
+                              </strong>
+                            </span>
+                          </div>
+                          <Link
+                            className="button primary"
+                            href={`/citizen/pay/${item.payments.find(payment => payment.status === 'PENDING')!.reference}`}
+                          >
+                            <CreditCard /> سدّد الرسم الآن
+                          </Link>
+                        </div>
+                      )}
+                    {item.payments?.some(payment => payment.status === 'PAID') && (
+                      <div className="service-request-attachment-summary">
+                        <ReceiptText /> إيصال الدفع:{' '}
+                        {item.payments
+                          .filter(payment => payment.status === 'PAID')
+                          .map(payment => `${payment.receiptNumber} (${payment.amountIqd.toLocaleString('en-US')} د.ع)`)
+                          .join('، ')}
                       </div>
                     )}
                     {item.decisionNote && (

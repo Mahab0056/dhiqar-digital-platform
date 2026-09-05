@@ -460,3 +460,111 @@ describe('catalog-driven online services', () => {
     expect(response.status).toBe(409)
   })
 })
+
+describe('fee payment before the department queue', () => {
+  const jpeg = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.alloc(64, 1)])
+  const webm = Buffer.concat([Buffer.from([0x1a, 0x45, 0xdf, 0xa3]), Buffer.alloc(64, 1)])
+  const serviceKey = 'health-birth-certificate'
+  let reference = ''
+  let paymentReference = ''
+  let healthEmployee = ''
+
+  it('sandbox gateway is active outside production', async () => {
+    const config = await request(app).get('/api/payments/config')
+    expect(config.body.available).toBe(true)
+    expect(config.body.provider).toBe('sandbox')
+  })
+
+  it('a service with an official fee is held in PAYMENT_PENDING until paid', async () => {
+    let req = request(app)
+      .post('/api/service-requests')
+      .set('Cookie', citizen)
+      .field('serviceKey', serviceKey)
+      .field(
+        'data',
+        JSON.stringify({
+          newbornName: 'علي حسين',
+          birthDate: '2026-08-01',
+          birthPlace: 'مستشفى الحبوبي',
+          requestType: 'شهادة ولادة',
+          district: 'الناصرية',
+          phone: '07801234567',
+        })
+      )
+      .field('faceConsent', 'true')
+      .field('documentConsent', 'true')
+    for (const key of ['hospital-birth-report', 'father-id', 'mother-id', 'marriage-contract', 'residence-card'])
+      req = req.attach(`doc__${key}`, jpeg, { filename: `${key}.jpg`, contentType: 'image/jpeg' })
+    const response = await req.attach('faceVideo', webm, { filename: 'face.webm', contentType: 'video/webm' })
+    expect(response.status).toBe(201)
+    expect(response.body.status).toBe('PAYMENT_PENDING')
+    expect(response.body.payment.amountIqd).toBe(5000)
+    reference = response.body.reference
+    paymentReference = response.body.payment.reference
+    // not yet visible in the department queue
+    healthEmployee = await createStaff('EMPLOYEE', 'emp.health2', 'dhiqar-health')
+    const queue = await request(app)
+      .get('/api/employee/service-requests?status=SUBMITTED')
+      .set('Cookie', healthEmployee)
+    expect(queue.body.items.some((item: { reference: string }) => item.reference === reference)).toBe(false)
+    const approve = await request(app)
+      .patch(`/api/employee/service-requests/${reference}`)
+      .set('Cookie', healthEmployee)
+      .send({ status: 'APPROVED' })
+    expect(approve.status).toBe(409)
+  })
+
+  it('citizen pays (sandbox) → receipt issued → request reaches the department as SUBMITTED', async () => {
+    const intent = await request(app).get(`/api/citizen/payments/${paymentReference}`).set('Cookie', citizen)
+    expect(intent.status).toBe(200)
+    expect(intent.body.status).toBe('PENDING')
+    const checkout = await request(app)
+      .post(`/api/citizen/payments/${paymentReference}/checkout`)
+      .set('Cookie', citizen)
+    expect(checkout.status).toBe(200)
+    expect(checkout.body.checkoutUrl).toContain('/sandbox')
+    const failed = await request(app)
+      .post(`/api/citizen/payments/${paymentReference}/sandbox-confirm`)
+      .set('Cookie', citizen)
+      .send({ outcome: 'FAILED' })
+    expect(failed.body.status).toBe('FAILED')
+    const paid = await request(app)
+      .post(`/api/citizen/payments/${paymentReference}/sandbox-confirm`)
+      .set('Cookie', citizen)
+      .send({ outcome: 'PAID' })
+    expect(paid.status).toBe(200)
+    expect(paid.body.status).toBe('PAID')
+    expect(paid.body.receiptNumber).toMatch(/^RCPT-/)
+    const again = await request(app).post(`/api/citizen/payments/${paymentReference}/checkout`).set('Cookie', citizen)
+    expect(again.status).toBe(409)
+    const queue = await request(app).get('/api/employee/service-requests').set('Cookie', healthEmployee)
+    const item = queue.body.items.find((entry: { reference: string }) => entry.reference === reference)
+    expect(item.status).toBe('SUBMITTED')
+    expect(item.payments[0].status).toBe('PAID')
+    const notifications = await request(app).get('/api/citizen/notifications').set('Cookie', citizen)
+    expect(JSON.stringify(notifications.body)).toContain('تم تأكيد الدفع')
+  })
+
+  it('employee can request an additional fee; approval waits for it', async () => {
+    const requested = await request(app)
+      .patch(`/api/employee/service-requests/${reference}`)
+      .set('Cookie', healthEmployee)
+      .send({ status: 'PAYMENT_REQUIRED', amountIqd: 2000, decisionNote: 'رسم نسخة إضافية' })
+    expect(requested.status).toBe(200)
+    expect(requested.body.status).toBe('PAYMENT_PENDING')
+    const pending = requested.body.payments.find((entry: { status: string }) => entry.status === 'PENDING')
+    expect(pending.amountIqd).toBe(2000)
+    const other = await request(app)
+      .get(`/api/citizen/payments/${pending.reference}`)
+      .set('Cookie', cookieOf(await request(app).post('/api/onboarding/request-otp').send({ phone: '07701112233' })))
+    expect([401, 404]).toContain(other.status)
+    const paid = await request(app)
+      .post(`/api/citizen/payments/${pending.reference}/sandbox-confirm`)
+      .set('Cookie', citizen)
+      .send({ outcome: 'PAID' })
+    expect(paid.body.status).toBe('PAID')
+    const view = await request(app).get(`/api/employee/service-requests/${reference}`).set('Cookie', healthEmployee)
+    expect(view.body.status).toBe('UNDER_REVIEW')
+    expect(view.body.payments.filter((entry: { status: string }) => entry.status === 'PAID').length).toBe(2)
+  })
+})

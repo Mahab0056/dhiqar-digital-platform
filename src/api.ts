@@ -1,6 +1,8 @@
 import type {
   CatalogService,
   CatalogSummary,
+  PaymentConfig,
+  PaymentIntent,
   ServiceChannel,
   AdminCitizenDirectoryItem,
   Citizen,
@@ -249,17 +251,30 @@ export const api = {
   updateEmployeeServiceRequest: (
     reference: string,
     payload: {
-      status: 'UNDER_REVIEW' | 'ACTION_REQUIRED' | 'APPROVED' | 'REJECTED'
+      status: 'UNDER_REVIEW' | 'ACTION_REQUIRED' | 'APPROVED' | 'REJECTED' | 'PAYMENT_REQUIRED'
       currentAction?: string
       decisionNote?: string
       requiredDocument?: string
       appointmentDate?: string
       appointmentNote?: string
+      amountIqd?: number
     }
   ) =>
     request<CitizenServiceRequest>(`/api/employee/service-requests/${encodeURIComponent(reference)}`, {
       method: 'PATCH',
       body: JSON.stringify(payload),
+    }),
+  getPaymentConfig: () => request<PaymentConfig>('/api/payments/config'),
+  getPayment: (reference: string) => request<PaymentIntent>(`/api/citizen/payments/${encodeURIComponent(reference)}`),
+  startCheckout: (reference: string) =>
+    request<{ checkoutUrl: string; mode: string; provider: string }>(
+      `/api/citizen/payments/${encodeURIComponent(reference)}/checkout`,
+      { method: 'POST', body: '{}' }
+    ),
+  sandboxConfirmPayment: (reference: string, outcome: 'PAID' | 'FAILED' | 'CANCELLED') =>
+    request<PaymentIntent>(`/api/citizen/payments/${encodeURIComponent(reference)}/sandbox-confirm`, {
+      method: 'POST',
+      body: JSON.stringify({ outcome }),
     }),
   listServices: (filter: { q?: string; category?: string; department?: string; channel?: ServiceChannel } = {}) => {
     const params = new URLSearchParams()
@@ -301,6 +316,7 @@ export const api = {
       status: string
       currentAction: string
       appointment: { id: string; preferredDate: string; preferredTime: string; status: string } | null
+      payment: { reference: string; amountIqd: number; mode: string } | null
       createdAt: string
     }>
   },

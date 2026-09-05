@@ -632,6 +632,11 @@ ensureColumn('service_requests', 'decided_by', 'TEXT')
 ensureColumn('service_requests', 'decided_at', 'TEXT')
 ensureColumn('service_requests', 'review_started_at', 'TEXT')
 ensureColumn('service_request_media', 'document_key', 'TEXT')
+ensureColumn('service_requests', 'payment_status', "TEXT NOT NULL DEFAULT 'NOT_REQUIRED'")
+ensureColumn('payment_intents', 'service_request_id', 'INTEGER')
+ensureColumn('payment_intents', 'checkout_url', 'TEXT')
+ensureColumn('payment_intents', 'description', 'TEXT')
+ensureColumn('payment_intents', 'requested_by', 'TEXT')
 db.exec(
   'CREATE UNIQUE INDEX IF NOT EXISTS idx_citizens_account_key ON citizens(account_key) WHERE account_key IS NOT NULL'
 )

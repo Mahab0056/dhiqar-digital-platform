@@ -10,6 +10,8 @@ import { readDecryptedMedia, storeEncryptedMedia } from '../media.js'
 import { createIssuedDocument } from '../issued-documents.js'
 import { departmentById } from '../department-registry.js'
 import { getCatalogService, type CatalogDocument } from '../services/catalog.js'
+import { createPaymentForRequest, listPaymentsForRequest } from '../payments/intents.js'
+import { paymentProvider } from '../payments/providers.js'
 
 /** Per-request document checklist persisted on service_requests.document_checklist */
 export type ChecklistItem = {
@@ -31,6 +33,7 @@ export const serviceRequestStatuses = [
   'APPROVED',
   'REJECTED',
   'APPOINTMENT_REQUESTED',
+  'PAYMENT_PENDING',
 ] as const
 
 const parseChecklist = (value: unknown): ChecklistItem[] => {
@@ -113,6 +116,7 @@ const serializeServiceRequestForEmployee = (row: Record<string, unknown>) => {
     decidedAt: row.decided_at ? String(row.decided_at) : null,
     checklist: parseChecklist(row.document_checklist),
     attachments: serviceRequestAttachments(Number(row.id)),
+    payments: listPaymentsForRequest(Number(row.id)),
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at),
   }
@@ -140,6 +144,7 @@ const serializeServiceRequestForCitizen = (row: Record<string, unknown>) => {
     decidedAt: row.decided_at ? String(row.decided_at) : null,
     checklist: parseChecklist(row.document_checklist),
     attachments: serviceRequestAttachments(Number(row.id)),
+    payments: listPaymentsForRequest(Number(row.id)),
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at),
     appointment: appointment
@@ -297,13 +302,20 @@ export function registerServiceRequestsRoutes(app: express.Express) {
       (db.prepare('SELECT COUNT(*) AS count FROM service_requests').get() as { count: number }).count + 1
     ).padStart(5, '0')
     const reference = `TQS-${new Date().getFullYear()}-${serial}`
-    const currentAction =
-      service.mode === 'APPOINTMENT'
+    // Official fee + working gateway → the request waits for payment before it reaches the department.
+    const feeDue = service.feeStatus === 'OFFICIAL' && (service.feeIqd || 0) > 0 && Boolean(paymentProvider())
+    const currentAction = feeDue
+      ? `بانتظار سداد رسم الخدمة (${(service.feeIqd || 0).toLocaleString('en-US')} د.ع). يُحال الطلب إلى الدائرة فور تأكيد الدفع.`
+      : service.mode === 'APPOINTMENT'
         ? 'أُرسل طلب الموعد إلى الدائرة وبانتظار التأكيد.'
         : service.channel === 'APPOINTMENT_REQUIRED'
           ? 'أُرسل الطلب والمستمسكات للتدقيق الأولي؛ ستحدد الدائرة موعد الحضور لإكمال الإجراء.'
           : 'أُرسل الطلب والمستمسكات إلى الدائرة المختصة للتدقيق.'
-    const initialStatus = service.mode === 'APPOINTMENT' ? 'APPOINTMENT_REQUESTED' : 'SUBMITTED'
+    const initialStatus = feeDue
+      ? 'PAYMENT_PENDING'
+      : service.mode === 'APPOINTMENT'
+        ? 'APPOINTMENT_REQUESTED'
+        : 'SUBMITTED'
 
     db.exec('BEGIN')
     let serviceRequestId = 0
@@ -397,14 +409,29 @@ export function registerServiceRequestsRoutes(app: express.Express) {
       throw error
     }
 
+    const payment = feeDue
+      ? createPaymentForRequest({
+          serviceRequestId,
+          citizenId: citizen.id,
+          serviceId: service.key,
+          departmentId: department.id,
+          amountIqd: service.feeIqd || 0,
+          description: `رسم ${service.title}`,
+          requestedBy: 'catalog-fee',
+        })
+      : null
     notifyCitizen({
       citizenId: citizen.id,
-      type: isAppointment ? 'APPOINTMENT_REQUESTED' : 'SERVICE_REQUEST_CREATED',
-      title: service.mode === 'APPOINTMENT' ? 'تم إرسال طلب الموعد' : 'تم تسجيل طلبك',
+      type: feeDue ? 'PAYMENT_REQUIRED' : isAppointment ? 'APPOINTMENT_REQUESTED' : 'SERVICE_REQUEST_CREATED',
+      title: feeDue
+        ? 'سدّد رسم الخدمة لإكمال طلبك'
+        : service.mode === 'APPOINTMENT'
+          ? 'تم إرسال طلب الموعد'
+          : 'تم تسجيل طلبك',
       message: `${service.title} — ${reference}. ${currentAction}`,
-      link: '/citizen#my-requests',
+      link: payment ? `/citizen/pay/${payment.reference}` : '/citizen#my-requests',
     })
-    employeeWorkQueueRealtime.publish({ entity: 'SERVICE_REQUEST', action: 'CREATED', reference })
+    if (!feeDue) employeeWorkQueueRealtime.publish({ entity: 'SERVICE_REQUEST', action: 'CREATED', reference })
     addAudit({
       actor: citizen.fullName,
       role: 'CITIZEN',
@@ -427,6 +454,7 @@ export function registerServiceRequestsRoutes(app: express.Express) {
       status: initialStatus,
       currentAction,
       checklist,
+      payment: payment ? { reference: payment.reference, amountIqd: payment.amountIqd, mode: payment.mode } : null,
       createdAt: timestamp,
     })
   })
@@ -656,15 +684,60 @@ export function registerServiceRequestsRoutes(app: express.Express) {
         return res.status(409).json({ message: 'صدر قرار نهائي سابق لهذا الطلب.' })
       const parsed = z
         .object({
-          status: z.enum(['UNDER_REVIEW', 'ACTION_REQUIRED', 'APPROVED', 'REJECTED']),
+          status: z.enum(['UNDER_REVIEW', 'ACTION_REQUIRED', 'APPROVED', 'REJECTED', 'PAYMENT_REQUIRED']),
           currentAction: z.string().trim().min(6).max(500).optional(),
           decisionNote: z.string().trim().max(1500).optional(),
           requiredDocument: z.string().trim().max(160).optional(),
           appointmentDate: z.string().trim().optional(),
           appointmentNote: z.string().trim().max(300).optional(),
+          amountIqd: z.number().int().min(250).max(50_000_000).optional(),
         })
         .safeParse(req.body)
       if (!parsed.success) return res.status(400).json({ message: 'تحقق من الحالة ووصف الإجراء قبل الحفظ.' })
+      const pendingPayments = listPaymentsForRequest(Number(row.id)).filter(item => item.status === 'PENDING')
+
+      // ---- fee determined by the department → citizen pays, then the request comes back ------
+      if (parsed.data.status === 'PAYMENT_REQUIRED') {
+        if (!parsed.data.amountIqd) return res.status(400).json({ message: 'حدد مبلغ الرسم بالدينار العراقي.' })
+        if (!paymentProvider())
+          return res.status(503).json({ message: 'بوابة الدفع غير مفعّلة؛ لا يمكن طلب الدفع إلكترونياً الآن.' })
+        if (pendingPayments.length)
+          return res.status(409).json({ message: `يوجد رسم بانتظار السداد مسبقاً (${pendingPayments[0].reference}).` })
+        const timestamp = new Date().toISOString()
+        const intent = createPaymentForRequest({
+          serviceRequestId: Number(row.id),
+          citizenId: Number(row.citizen_id),
+          serviceId: String(row.service_id),
+          departmentId: String(row.department_id),
+          amountIqd: parsed.data.amountIqd,
+          description: parsed.data.decisionNote || `رسم ${String(row.service_name)}`,
+          requestedBy: session.actor,
+        })
+        const action = `حددت الدائرة رسم الخدمة: ${parsed.data.amountIqd.toLocaleString('en-US')} د.ع${parsed.data.decisionNote ? ` — ${parsed.data.decisionNote}` : ''}. سدّد الرسم إلكترونياً لاستكمال المعاملة.`
+        db.prepare(
+          `UPDATE service_requests SET status = 'PAYMENT_PENDING', current_action = ?, decision_note = ?, payment_status = 'PENDING', review_started_at = COALESCE(review_started_at, ?), updated_at = ? WHERE id = ?`
+        ).run(action, parsed.data.decisionNote || null, timestamp, timestamp, Number(row.id))
+        notifyCitizen({
+          citizenId: Number(row.citizen_id),
+          type: 'PAYMENT_REQUIRED',
+          title: 'مطلوب سداد رسم الخدمة',
+          message: `${String(row.reference)} — ${action}`,
+          link: `/citizen/pay/${intent.reference}`,
+        })
+        addAudit({
+          actor: session.actor,
+          role: session.role,
+          action: 'PAYMENT_REQUIRED',
+          entityType: 'ServiceRequest',
+          entityId: String(row.reference),
+          newValue: { amountIqd: parsed.data.amountIqd, payment: intent.reference },
+        })
+        return res.json(serializeServiceRequestForEmployee(loadRequest(String(row.reference))!))
+      }
+      if (parsed.data.status === 'APPROVED' && pendingPayments.length)
+        return res.status(409).json({
+          message: `لا يمكن الموافقة قبل سداد الرسم المطلوب (${pendingPayments[0].reference}).`,
+        })
       const checklist = parseChecklist(row.document_checklist)
       const rejectedDocs = checklist.filter(item => item.status === 'REJECTED')
       const missingDocs = checklist.filter(item => item.required && (item.status === 'MISSING' || !item.mediaId))

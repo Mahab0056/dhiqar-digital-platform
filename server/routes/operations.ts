@@ -1,5 +1,6 @@
 import type express from 'express'
 import { requireSession } from '../auth/session.js'
+import { paymentsSummary } from '../payments/intents.js'
 import { db } from '../db.js'
 import { registrySummary } from '../department-registry.js'
 import { getRegistryDepartments } from '../departments.js'
@@ -33,9 +34,7 @@ export function registerOperationsRoutes(app: express.Express) {
         `SELECT COUNT(DISTINCT session_subject) AS total FROM live_presence WHERE role IN ('EMPLOYEE', 'IDENTITY_REVIEWER') AND last_seen_at >= ?`
       )
       .get(activeSince) as { total: number }
-    const payments = db
-      .prepare(`SELECT COALESCE(SUM(amount), 0) AS collected FROM payments WHERE status = 'SETTLED'`)
-      .get() as { collected: number }
+    const payments = { collected: paymentsSummary().collectedToday }
     const dateRows = db
       .prepare(
         `SELECT day, COUNT(*) AS applications, SUM(CASE WHEN status = 'APPROVED' THEN 1 ELSE 0 END) AS completed FROM (

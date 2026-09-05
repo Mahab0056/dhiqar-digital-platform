@@ -38,6 +38,7 @@ const OnboardingPage = lazy(() => import('./pages/citizen/OnboardingPage').then(
 const CitizenNotificationsPage = lazy(() =>
   import('./pages/citizen/CitizenNotificationsPage').then(m => ({ default: m.CitizenNotificationsPage }))
 )
+const PaymentPage = lazy(() => import('./pages/citizen/PaymentPage').then(m => ({ default: m.PaymentPage })))
 const CitizenFeedbackPage = lazy(() =>
   import('./pages/citizen/CitizenFeedbackPage').then(m => ({ default: m.CitizenFeedbackPage }))
 )
@@ -114,6 +115,20 @@ function App() {
           {params => (
             <SessionGate role="CITIZEN">
               <CitizenFeedbackDetailPage reference={params.reference} />
+            </SessionGate>
+          )}
+        </Route>
+        <Route path="/citizen/pay/:reference/sandbox">
+          {params => (
+            <SessionGate role="CITIZEN">
+              <PaymentPage reference={params.reference} sandbox />
+            </SessionGate>
+          )}
+        </Route>
+        <Route path="/citizen/pay/:reference">
+          {params => (
+            <SessionGate role="CITIZEN">
+              <PaymentPage reference={params.reference} />
             </SessionGate>
           )}
         </Route>

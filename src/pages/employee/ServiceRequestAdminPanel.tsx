@@ -8,6 +8,7 @@ import {
   FileCheck2,
   FileWarning,
   Info,
+  ReceiptText,
   RefreshCw,
   XCircle,
 } from 'lucide-react'
@@ -22,6 +23,7 @@ const requestStatus: Record<string, string> = {
   ACTION_REQUIRED: 'بانتظار المواطن',
   APPROVED: 'تمت الموافقة',
   REJECTED: 'مرفوض',
+  PAYMENT_PENDING: 'بانتظار الدفع',
 }
 
 const checklistStatus: Record<ChecklistItem['status'], string> = {
@@ -31,7 +33,7 @@ const checklistStatus: Record<ChecklistItem['status'], string> = {
   REJECTED: 'مرفوض — يُعاد رفعه',
 }
 
-type Decision = 'UNDER_REVIEW' | 'ACTION_REQUIRED' | 'APPROVED' | 'REJECTED'
+type Decision = 'UNDER_REVIEW' | 'ACTION_REQUIRED' | 'APPROVED' | 'REJECTED' | 'PAYMENT_REQUIRED'
 
 export function ServiceRequestAdminPanel({
   departmentId,
@@ -54,6 +56,7 @@ export function ServiceRequestAdminPanel({
   const [requiredDocument, setRequiredDocument] = useState('')
   const [appointmentDate, setAppointmentDate] = useState('')
   const [appointmentNote, setAppointmentNote] = useState('')
+  const [amountIqd, setAmountIqd] = useState('')
   const [docNotes, setDocNotes] = useState<Record<string, string>>({})
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -72,6 +75,7 @@ export function ServiceRequestAdminPanel({
       setRequiredDocument('')
       setAppointmentDate('')
       setAppointmentNote('')
+      setAmountIqd('')
       setDocNotes({})
     }
   }, [])
@@ -139,6 +143,8 @@ export function ServiceRequestAdminPanel({
   const save = async () => {
     if (!selected) return
     if (status === 'REJECTED' && decisionNote.trim().length < 6) return setError('اكتب سبب الرفض للمواطن.')
+    if (status === 'PAYMENT_REQUIRED' && !(Number(amountIqd) >= 250))
+      return setError('أدخل مبلغ الرسم بالدينار (250 د.ع فأكثر).')
     if (status === 'APPROVED' && pendingRequired.length)
       return setError(`دقّق كل المستمسكات المطلوبة قبل الموافقة: ${pendingRequired.map(doc => doc.label).join('، ')}.`)
     setBusy(true)
@@ -151,6 +157,7 @@ export function ServiceRequestAdminPanel({
         requiredDocument: status === 'ACTION_REQUIRED' && requiredDocument.trim() ? requiredDocument.trim() : undefined,
         appointmentDate: status === 'APPROVED' && appointmentDate ? appointmentDate : undefined,
         appointmentNote: status === 'APPROVED' && appointmentNote.trim() ? appointmentNote.trim() : undefined,
+        amountIqd: status === 'PAYMENT_REQUIRED' ? Math.round(Number(amountIqd)) : undefined,
       })
       await load(updated.reference)
     } catch (saveError) {
@@ -164,6 +171,8 @@ export function ServiceRequestAdminPanel({
   const pendingRequired = checklist.filter(item => item.required && item.status !== 'VERIFIED')
   const rejectedDocs = checklist.filter(item => item.status === 'REJECTED')
   const closed = selected ? ['APPROVED', 'REJECTED'].includes(selected.status) : false
+  const pendingPayment = selected?.payments?.find(payment => payment.status === 'PENDING')
+  const paidPayments = selected?.payments?.filter(payment => payment.status === 'PAID') || []
   const visibleItems = items.filter(item => filter === 'ALL' || !['APPROVED', 'REJECTED'].includes(item.status))
   const openCount = items.filter(item => !['APPROVED', 'REJECTED'].includes(item.status)).length
   const attachmentFor = (item: ChecklistItem) =>
@@ -284,6 +293,16 @@ export function ServiceRequestAdminPanel({
                 </div>
               )}
 
+              {(pendingPayment || paidPayments.length > 0) && (
+                <div className={`service-request-current-action ${pendingPayment ? '' : 'closed'}`}>
+                  <ReceiptText />
+                  <span>
+                    {pendingPayment
+                      ? `بانتظار سداد ${pendingPayment.amountIqd.toLocaleString('en-US')} د.ع (${pendingPayment.reference}) — لا يمكن الموافقة قبل التسديد.`
+                      : `الرسوم مسددة: ${paidPayments.map(payment => `${payment.receiptNumber} — ${payment.amountIqd.toLocaleString('en-US')} د.ع`).join('، ')}`}
+                  </span>
+                </div>
+              )}
               <section className="service-request-form-data">
                 <h4>بيانات الاستمارة</h4>
                 {(selected.formEntries?.length || Object.keys(selected.formData).length) > 0 ? (
@@ -394,9 +413,24 @@ export function ServiceRequestAdminPanel({
                       <option value="APPROVED" disabled={pendingRequired.length > 0}>
                         موافقة {pendingRequired.length ? `(بقي ${pendingRequired.length} مستمسك)` : ''}
                       </option>
+                      <option value="PAYMENT_REQUIRED" disabled={pendingPayment !== undefined}>
+                        طلب سداد رسم {pendingPayment ? '(يوجد رسم بانتظار السداد)' : ''}
+                      </option>
                       <option value="REJECTED">رفض الطلب</option>
                     </select>
                   </label>
+                  {status === 'PAYMENT_REQUIRED' && (
+                    <label>
+                      مبلغ الرسم (د.ع)
+                      <input
+                        inputMode="numeric"
+                        value={amountIqd}
+                        onChange={event => setAmountIqd(event.target.value.replace(/[^\d]/g, ''))}
+                        placeholder="مثال: 25000"
+                      />
+                      <small>يُرسل للمواطن رابط الدفع الإلكتروني ويعود الطلب إليك بعد التسديد.</small>
+                    </label>
+                  )}
                   {status === 'ACTION_REQUIRED' && (
                     <>
                       {rejectedDocs.length > 0 && (
@@ -436,7 +470,11 @@ export function ServiceRequestAdminPanel({
                     </div>
                   )}
                   <label>
-                    {status === 'REJECTED' ? 'سبب الرفض (يصل المواطن نصاً)' : 'ملاحظة للمواطن'}{' '}
+                    {status === 'REJECTED'
+                      ? 'سبب الرفض (يصل المواطن نصاً)'
+                      : status === 'PAYMENT_REQUIRED'
+                        ? 'بيان الرسم (يظهر للمواطن مع رابط الدفع)'
+                        : 'ملاحظة للمواطن'}{' '}
                     {status !== 'REJECTED' && <small>اختيارية</small>}
                     <textarea
                       value={decisionNote}

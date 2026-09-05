@@ -10,6 +10,7 @@ import {
   CalendarClock,
   CheckCircle2,
   Clock3,
+  CreditCard,
   ExternalLink,
   FileCheck2,
   Fingerprint,
@@ -50,7 +51,7 @@ function FeeLine({ service }: { service: CatalogService }) {
   if (service.feeStatus === 'OFFICIAL' && service.feeIqd)
     return (
       <span>
-        <ReceiptText /> {service.feeIqd.toLocaleString('en-US')} د.ع{' '}
+        <ReceiptText /> {service.feeIqd.toLocaleString('en-US')} د.ع — يُسدَّد إلكترونياً بعد التقديم{' '}
         {service.feeSource && (
           <a href={service.feeSource} target="_blank" rel="noreferrer" className="gov-inline-source">
             (المصدر الرسمي)
@@ -93,6 +94,7 @@ export function DynamicServiceFormPage({ serviceKey }: { serviceKey: string }) {
     currentAction: string
     department: string
     appointment: { preferredDate: string; preferredTime: string; status: string } | null
+    payment?: { reference: string; amountIqd: number; mode: string } | null
   } | null>(null)
 
   useEffect(() => {
@@ -317,7 +319,13 @@ export function DynamicServiceFormPage({ serviceKey }: { serviceKey: string }) {
             <CheckCircle2 />
           </span>
           <div className="section-kicker">تم تسجيل الطلب</div>
-          <h1>{isAppointmentFlow ? 'تم إرسال طلب الموعد' : 'تم إرسال الطلب والمستمسكات إلى الدائرة'}</h1>
+          <h1>
+            {result.payment
+              ? 'سُجّل الطلب — بقي سداد الرسم'
+              : isAppointmentFlow
+                ? 'تم إرسال طلب الموعد'
+                : 'تم إرسال الطلب والمستمسكات إلى الدائرة'}
+          </h1>
           <p>{result.currentAction}</p>
           <div className="service-success-data">
             <span>
@@ -343,12 +351,29 @@ export function DynamicServiceFormPage({ serviceKey }: { serviceKey: string }) {
               </>
             )}
           </div>
-          <p className="gov-muted">
-            ستصلك إشعارات المنصة عند بدء التدقيق أو عند طلب أي استكمال. يمكنك متابعة الطلب ورفع النواقص من حساب المواطن.
-          </p>
-          <Link className="button primary" href="/citizen#my-requests">
-            متابعة الطلب في حساب المواطن <ArrowLeft />
-          </Link>
+          {result.payment ? (
+            <>
+              <p className="gov-muted">
+                يبقى الطلب محجوزاً باسمك ولا يُحال إلى الدائرة إلا بعد سداد الرسم. يصدر إيصال إلكتروني فور الدفع.
+              </p>
+              <Link className="button primary" href={`/citizen/pay/${result.payment.reference}`}>
+                <CreditCard /> سدّد الرسم الآن ({result.payment.amountIqd.toLocaleString('en-US')} د.ع)
+              </Link>
+              <Link className="button outline" href="/citizen#my-requests">
+                الدفع لاحقاً من حساب المواطن
+              </Link>
+            </>
+          ) : (
+            <>
+              <p className="gov-muted">
+                ستصلك إشعارات المنصة عند بدء التدقيق أو عند طلب أي استكمال. يمكنك متابعة الطلب ورفع النواقص من حساب
+                المواطن.
+              </p>
+              <Link className="button primary" href="/citizen#my-requests">
+                متابعة الطلب في حساب المواطن <ArrowLeft />
+              </Link>
+            </>
+          )}
         </section>
       </PublicServiceFrame>
     )
