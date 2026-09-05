@@ -134,7 +134,7 @@ export function registerApplicationsRoutes(app: express.Express) {
       const serial = String(
         (db.prepare('SELECT COUNT(*) AS count FROM applications').get() as { count: number }).count + 1
       ).padStart(4, '0')
-      const reference = `TQD-2026-${serial}`
+      const reference = `TQD-${new Date().getFullYear()}-${serial}`
       const result = db
         .prepare(
           `

@@ -51,13 +51,23 @@ function rateLimitCount(column: 'phone_hash' | 'created_ip_hash', value: string)
   ).count
 }
 
+/**
+ * Local/testing mode: no SMS is sent and a fixed code is accepted.
+ * Never active in production, regardless of configuration.
+ */
+export function otpDevMode() {
+  return process.env.NODE_ENV !== 'production' && process.env.OTP_DEV_MODE === 'true'
+}
+const devCode = () => (process.env.OTP_DEV_CODE?.trim() || '246810').padStart(6, '0').slice(0, 6)
+
 export async function createOtpChallenge(input: { phone: string; requesterIp: string }) {
   const apiKey = process.env.OTPIQ_API_KEY?.trim()
-  if (!apiKey) throw new Error('خدمة OTP غير مهيأة حالياً.')
+  const dev = otpDevMode()
+  if (!apiKey && !dev) throw new Error('خدمة OTP غير مهيأة حالياً.')
 
   const phone = normalizeIraqiPhone(input.phone)
   const challengeId = `otp_${randomUUID().replaceAll('-', '')}`
-  const code = randomInt(100000, 1000000).toString()
+  const code = dev ? devCode() : randomInt(100000, 1000000).toString()
   const phoneHash = digest(`phone:${phone}`)
   const ipHash = digest(`ip:${input.requesterIp}`)
 
@@ -87,6 +97,12 @@ export async function createOtpChallenge(input: { phone: string; requesterIp: st
     ipHash,
     createdAt.toISOString()
   )
+
+  if (dev) {
+    db.prepare(`UPDATE otp_challenges SET delivery_status = 'DEV_MODE' WHERE id = ?`).run(challengeId)
+    console.log(`[otp] DEV MODE — code for ${maskPhone(phone)} is ${code}`)
+    return { challengeId, phoneMasked: maskPhone(phone), expiresInSeconds: OTP_TTL_MINUTES * 60, deliveryStatus: 'DEV_MODE' }
+  }
 
   const webhookSecret = process.env.OTPIQ_WEBHOOK_SECRET?.trim()
   const publicBaseUrl = process.env.PUBLIC_BASE_URL?.replace(/\/$/, '')
