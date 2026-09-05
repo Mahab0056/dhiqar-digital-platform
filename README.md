@@ -22,6 +22,9 @@
 - لكل خدمة: الجهة، القطاع، طريقة التقديم (`ONLINE_SUBMISSION` / `APPOINTMENT_REQUIRED` / `INFORMATION_ONLY`)، الحقول، المستمسكات (مفتاح + إلزامي/اختياري + صورة/PDF)، الرسوم **فقط إن كانت موثقة بمصدر رسمي**، وجودة المصدر (`OFFICIAL` / `RELIABLE` / `UNVERIFIED` — تظهر للمواطن بوسم «بانتظار تأكيد الدائرة»).
 - المسار: المواطن الموثق يرفع المستمسكات داخل الاستمارة (`doc__<key>`) + فيديو الوجه → `service_requests.document_checklist` → قائمة دائرة الموظف → تدقيق كل مستمسك → قرار. الواجهات: `GET /api/services`, `GET /api/services/:key`, `POST /api/service-requests`, `PATCH /api/employee/service-requests/:ref/documents/:key`, `PATCH /api/employee/service-requests/:ref`.
 - تعديل الخدمات: عدّل ملف السجل ثم أعد التشغيل (upsert). لا تُخترع رسوم أو مدد؛ اترك `feeIqd: null` بلا مصدر.
+- **الدفع:** الخدمة ذات الرسم الرسمي تُحجز بحالة `PAYMENT_PENDING` حتى يسدد المواطن (`/citizen/pay/:ref`) ثم تُحال للدائرة؛ الموظف يستطيع طلب رسم إضافي (`PAYMENT_REQUIRED` + المبلغ). البوابة: `server/payments/providers.ts` (sandbox / ZainCash؛ إضافة بوابة = تنفيذ `PaymentProvider`).
+- **البحث الذكي:** `GET /api/services/search?q=` (تطبيع عربي، مرادفات عراقية، مطابقة تقريبية) + بحث صوتي في الواجهة (Web Speech API).
+- **الإشعارات:** داخل المنصة (WebSocket لحظي) + Web Push للهاتف (`VAPID_*`)؛ عند الموافقة يصل المواطن إشعار برابط PDF الوثيقة مباشرة.
 
 ## التشغيل المحلي
 
@@ -59,7 +62,7 @@ GitHub Actions (`.github/workflows/ci.yml`) يشغّل lint/format/typecheck/tes
 pnpm build && pnpm start
 ```
 
-المتغيرات المطلوبة في الإنتاج: `SESSION_SECRET`, `MEDIA_ENCRYPTION_KEY`, `OTP_HASH_SECRET`, `STAFF_BOOTSTRAP_*` (لأول مرة فقط)، `OTPIQ_API_KEY`، و`PUBLIC_BASE_URL`. تفاصيل النشر: [`docs/DEPLOY_RAILWAY.md`](./docs/DEPLOY_RAILWAY.md).
+المتغيرات المطلوبة في الإنتاج: `SESSION_SECRET`, `MEDIA_ENCRYPTION_KEY`, `OTP_HASH_SECRET`, `STAFF_BOOTSTRAP_*` (لأول مرة فقط)، `OTPIQ_API_KEY`، `PUBLIC_BASE_URL`، `VAPID_PUBLIC_KEY/VAPID_PRIVATE_KEY` للإشعارات، ومتغيرات `PAYMENT_*`/`ZAINCASH_*` للدفع. تفاصيل النشر: [`docs/DEPLOY_RAILWAY.md`](./docs/DEPLOY_RAILWAY.md).
 
 ## هيكل المشروع
 
