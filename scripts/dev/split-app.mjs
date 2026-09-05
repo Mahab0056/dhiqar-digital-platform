@@ -107,14 +107,17 @@ const groups = {
 const symbolFile = new Map()
 for (const [file, names] of Object.entries(groups)) for (const n of names) symbolFile.set(n, file)
 for (const name of chunks.keys()) {
-  if (!symbolFile.has(name) && name !== 'App' && name !== '__exportDefault') throw new Error(`unassigned symbol ${name}`)
+  if (!symbolFile.has(name) && name !== 'App' && name !== '__exportDefault')
+    throw new Error(`unassigned symbol ${name}`)
 }
 
 const isType = name => chunks.get(name)?.startsWith('type ')
 const usesWord = (body, word) => new RegExp(`(?<![\\w$.])${word.replace('$', '\\$')}(?![\\w$])`).test(body)
 
 function relImport(fromFile, toFile) {
-  let rel = relative(dirname(fromFile), toFile).replace(/\\/g, '/').replace(/\.tsx?$/, '')
+  let rel = relative(dirname(fromFile), toFile)
+    .replace(/\\/g, '/')
+    .replace(/\.tsx?$/, '')
   if (!rel.startsWith('.')) rel = `./${rel}`
   return rel
 }
@@ -203,7 +206,10 @@ const lazyPages = [
 ]
 let appChunk = chunks.get('App')
 const lazyImports = lazyPages
-  .map(name => `const ${name} = lazy(() => import('./${symbolFile.get(name).replace(/\.tsx$/, '')}').then(m => ({ default: m.${name} })))`)
+  .map(
+    name =>
+      `const ${name} = lazy(() => import('./${symbolFile.get(name).replace(/\.tsx$/, '')}').then(m => ({ default: m.${name} })))`
+  )
   .join('\n')
 const appFile = `import { lazy, Suspense } from 'react'
 import { Route, Switch } from 'wouter'

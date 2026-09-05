@@ -101,7 +101,12 @@ export async function createOtpChallenge(input: { phone: string; requesterIp: st
   if (dev) {
     db.prepare(`UPDATE otp_challenges SET delivery_status = 'DEV_MODE' WHERE id = ?`).run(challengeId)
     console.log(`[otp] DEV MODE — code for ${maskPhone(phone)} is ${code}`)
-    return { challengeId, phoneMasked: maskPhone(phone), expiresInSeconds: OTP_TTL_MINUTES * 60, deliveryStatus: 'DEV_MODE' }
+    return {
+      challengeId,
+      phoneMasked: maskPhone(phone),
+      expiresInSeconds: OTP_TTL_MINUTES * 60,
+      deliveryStatus: 'DEV_MODE',
+    }
   }
 
   const webhookSecret = process.env.OTPIQ_WEBHOOK_SECRET?.trim()

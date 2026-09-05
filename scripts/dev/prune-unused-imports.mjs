@@ -3,7 +3,11 @@ import { execSync } from 'node:child_process'
 import { readFileSync, writeFileSync } from 'node:fs'
 const project = process.argv[2] || 'tsconfig.app.json'
 let out = ''
-try { execSync(`npx tsc -p ${project}`, { encoding: 'utf8' }) } catch (e) { out = e.stdout }
+try {
+  execSync(`npx tsc -p ${project}`, { encoding: 'utf8' })
+} catch (e) {
+  out = e.stdout
+}
 const byFile = new Map()
 for (const m of out.matchAll(/^(.+?)\((\d+),\d+\): error TS6133: '([\w$]+)' is declared/gm)) {
   const [, file, line, name] = m

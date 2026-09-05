@@ -32,17 +32,20 @@ function fileFor(chunk) {
     return helperMap[chunk.name]
   }
   const r = chunk.route
-  if (r === '/api/health' || r.startsWith('/api/government-services') || r.startsWith('/api/platform-services')) return 'public'
+  if (r === '/api/health' || r.startsWith('/api/government-services') || r.startsWith('/api/platform-services'))
+    return 'public'
   if (r.startsWith('/api/verify')) return 'documents'
   if (r.includes('issued-documents')) return 'documents'
   if (r.startsWith('/api/auth')) return 'auth'
   if (r.startsWith('/api/citizen/feedback') || r.startsWith('/api/admin/feedback')) return 'feedback'
   if (r.startsWith('/api/service-requests') || r.includes('/service-requests')) return 'service-requests'
-  if (r.startsWith('/api/onboarding') || r.startsWith('/api/webhooks') || r.startsWith('/api/admin/')) return 'onboarding'
+  if (r.startsWith('/api/onboarding') || r.startsWith('/api/webhooks') || r.startsWith('/api/admin/'))
+    return 'onboarding'
   if (r === '/api/citizen/location' || r === '/api/citizen/profile-photo') return 'onboarding'
   if (r.startsWith('/api/citizen')) return 'citizen'
   if (r.startsWith('/api/applications') || r === '/api/employee/work-queue-summary') return 'applications'
-  if (r.startsWith('/api/presence') || r.startsWith('/api/dashboard') || r.startsWith('/api/operations')) return 'operations'
+  if (r.startsWith('/api/presence') || r.startsWith('/api/dashboard') || r.startsWith('/api/operations'))
+    return 'operations'
   if (r.startsWith('/api/super-admin')) return 'super-admin'
   if (r.startsWith('/api/system')) return 'system'
   throw new Error(`unmapped route ${r}`)
@@ -90,9 +93,17 @@ for (const [file, list] of files) {
     })
     .filter(Boolean)
     .join('\n\n')
-  const helpers = list.filter(c => c.name).map(c => c.text).join('\n\n')
+  const helpers = list
+    .filter(c => c.name)
+    .map(c => c.text)
+    .join('\n\n')
   const header = importStatements
-    .filter(s => !/from '(express|cors|helmet|express-rate-limit|multer|node:fs|node:http|node:path|node:url|node:crypto|zod)'/.test(s))
+    .filter(
+      s =>
+        !/from '(express|cors|helmet|express-rate-limit|multer|node:fs|node:http|node:path|node:url|node:crypto|zod)'/.test(
+          s
+        )
+    )
     .map(s => s.replace(/from '\.\//g, "from '../").replace(/from '\.\.\/src\//g, "from '../../src/"))
     .join('\n')
   const out = `${localHelperImports}\n${header}\n\n${helpers ? helpers + '\n\n' : ''}export function register${camel(file[0].toUpperCase() + file.slice(1))}Routes(app: express.Express) {\n${body}\n}\n`
