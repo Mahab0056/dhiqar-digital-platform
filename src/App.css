@@ -11329,6 +11329,7 @@ body {
 /* Government operations system: evidence-first, restrained dark surfaces */
 .ops-shell {
   background: #091f17;
+  padding-left: 246px;
 }
 .ops-sidebar {
   width: 246px;
@@ -11781,6 +11782,9 @@ body {
   border-bottom-color: rgba(224, 234, 226, 0.12);
 }
 @media (max-width: 900px) {
+  .ops-shell {
+    padding-left: 0;
+  }
   .ops-sidebar {
     width: 100%;
   }

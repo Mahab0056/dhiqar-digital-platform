@@ -1,0 +1,78 @@
+/* =============================================================================================
+   Thi Qar Digital — token unification.
+   The citizen/employee/operations portals predate the approved public design system and carry
+   three older palettes (--brand-*, --reed-*, --gov-navy/--gov-green). This file (imported last)
+   maps those legacy tokens onto the approved tokens so every surface shares one green, one ink,
+   one border and one paper colour without touching component CSS.
+   ============================================================================================= */
+:root {
+  /* legacy citizen palette */
+  --brand-950: #04301f;
+  --brand-900: #064a36;
+  --brand-800: #075e45;
+  --brand-700: #087a55;
+  --brand-600: #0a8f63;
+  --brand-500: #17a06f;
+  --ink: #101828;
+  --text: #101828;
+  --muted: #667085;
+  --border: #e3e8e5;
+  --paper: #f8faf9;
+  --shadow: 0 1px 2px rgba(16, 39, 30, 0.06), 0 12px 28px rgba(16, 39, 30, 0.08);
+  /* legacy "reed" portal palette */
+  --limestone: #f8faf9;
+  --limestone-deep: #eef1ef;
+  --reed: #087a55;
+  --reed-deep: #075e45;
+  --ink-government: #101828;
+  --line-government: #e3e8e5;
+  --shadow-government: 0 1px 2px rgba(16, 39, 30, 0.06), 0 12px 28px rgba(16, 39, 30, 0.08);
+  /* legacy operations palette */
+  --gov-green: #087a55;
+  --gov-green-dark: #075e45;
+  --gov-paper: #f8faf9;
+  --gov-muted-surface: #f1f4f2;
+  --gov-text: #101828;
+}
+:root[data-gov-theme='dark'] {
+  --paper: #0f1714;
+  --limestone: #0f1714;
+  --limestone-deep: #16211c;
+  --gov-paper: #0f1714;
+  --gov-muted-surface: #16211c;
+  --text: #e6ebe8;
+  --ink: #e6ebe8;
+  --ink-government: #e6ebe8;
+  --gov-text: #e6ebe8;
+  --muted: #9aa8a1;
+  --border: #253129;
+  --line-government: #253129;
+}
+
+/* list columns: light paper instead of the old grey-green fill */
+.service-requests-admin-list,
+.feedback-admin-list,
+.identity-review-list,
+.service-request-admin-row,
+.feedback-admin-row,
+.identity-review-row {
+  background: var(--gov-bg, #f8faf9);
+}
+.service-requests-admin-list {
+  border-inline-start: 1px solid var(--gov-line, #e3e8e5);
+}
+
+/* operations KPIs: no orphan tile on a second row */
+.ops-kpis {
+  grid-template-columns: repeat(7, 1fr);
+}
+@media (max-width: 1200px) {
+  .ops-kpis {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+@media (max-width: 600px) {
+  .ops-kpis {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
