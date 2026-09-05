@@ -4,6 +4,8 @@ import { Link, useLocation } from 'wouter'
 import {
   Activity,
   ArrowLeft,
+  KeyRound,
+  LogOut,
   Bell,
   BriefcaseBusiness,
   Building2,
@@ -21,6 +23,7 @@ import {
   X,
 } from 'lucide-react'
 import { api } from '../../api'
+import { logoutAndRedirect, useSession } from '../../lib/session'
 import { services } from '../../data'
 import type { CitizenNotification } from '../../types'
 import { Brand } from '../public/Brand'
@@ -59,7 +62,7 @@ export function PortalLayout({
   children: React.ReactNode
   role?: 'citizen' | 'employee'
 }) {
-  const [location] = useLocation()
+  const [location, navigate] = useLocation()
   const [mobileNav, setMobileNav] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [liveUnread, setLiveUnread] = useState(0)
@@ -207,7 +210,18 @@ export function PortalLayout({
           { icon: CalendarDays, label: 'الكشوفات', href: '/employee#employee-service-requests' },
           { icon: FileArchive, label: 'الأرشيف', href: '/employee#employee-archive' },
           { icon: Activity, label: 'سجل الإجراءات', href: '/employee#employee-activity' },
+          { icon: KeyRound, label: 'الأمان والحساب', href: '/staff/security' },
         ]
+  const { session } = useSession()
+  const staffName = session && session.role !== 'CITIZEN' ? session.displayName || session.username || 'موظف' : null
+  const staffRoleLabel =
+    session?.role === 'SUPER_ADMIN'
+      ? 'مدير النظام'
+      : session?.role === 'IDENTITY_REVIEWER'
+        ? 'مراجع الهوية'
+        : session?.role === 'OPERATIONS'
+          ? 'غرفة العمليات'
+          : session?.departmentName || 'التدقيق والمعاملات'
   return (
     <div className="portal-shell">
       <CivicUtilityBar />
@@ -238,9 +252,19 @@ export function PortalLayout({
           <span>جلسة محمية</span>
           <small>آخر نشاط: الآن</small>
         </div>
-        <Link href="/login" className="sidebar-logout">
-          <LogIn /> تبديل البوابة
-        </Link>
+        {role === 'employee' ? (
+          <button
+            type="button"
+            className="sidebar-logout"
+            onClick={() => void logoutAndRedirect(path => navigate(path), '/staff/login')}
+          >
+            <LogOut /> تسجيل الخروج
+          </button>
+        ) : (
+          <Link href="/login" className="sidebar-logout">
+            <LogIn /> تبديل البوابة
+          </Link>
+        )}
       </aside>
       <div className="portal-main">
         <header className="portal-topbar">
@@ -286,10 +310,16 @@ export function PortalLayout({
                 <b className="realtime-unread-badge">{liveUnread > 99 ? '99+' : liveUnread.toLocaleString('en-US')}</b>
               )}
             </Link>
-            {role === 'citizen' ? <CitizenProfileAvatar /> : <div className="user-avatar">م</div>}
+            {role === 'citizen' ? (
+              <CitizenProfileAvatar />
+            ) : (
+              <div className="user-avatar" aria-hidden="true">
+                {(staffName || 'م').slice(0, 1)}
+              </div>
+            )}
             <div>
-              <strong>{role === 'citizen' ? 'حساب المواطن' : 'حساب الموظف'}</strong>
-              <small>{role === 'citizen' ? 'الخدمات والإشعارات' : 'التدقيق والمعاملات'}</small>
+              <strong>{role === 'citizen' ? 'حساب المواطن' : staffName || 'حساب الموظف'}</strong>
+              <small>{role === 'citizen' ? 'الخدمات والإشعارات' : staffRoleLabel}</small>
             </div>
           </div>
         </header>

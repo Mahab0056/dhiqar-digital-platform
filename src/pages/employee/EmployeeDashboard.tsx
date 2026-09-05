@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { useLocation } from 'wouter'
 import {
   Activity,
   AlertTriangle,
@@ -11,7 +12,6 @@ import {
   FileArchive,
   FileText,
   Fingerprint,
-  LockKeyhole,
   RefreshCw,
   Search,
   ShieldCheck,
@@ -26,15 +26,13 @@ import { IdentityReviewPanel } from './IdentityReviewPanel'
 import { ServiceRequestAdminPanel } from './ServiceRequestAdminPanel'
 
 export function EmployeeDashboard() {
+  const [, navigate] = useLocation()
   const todayLabel = new Date().toLocaleDateString('en-GB')
   const [apps, setApps] = useState<GovernmentApplication[]>([])
   const [selected, setSelected] = useState<GovernmentApplication | null>(null)
   const [workQueue, setWorkQueue] = useState({ applications: 0, serviceRequests: 0, identityReviews: 0, total: 0 })
   const [busy, setBusy] = useState(false)
   const [authenticated, setAuthenticated] = useState<boolean | null>(null)
-  const [employeeCode, setEmployeeCode] = useState('')
-  const [authError, setAuthError] = useState('')
-  const [reviewAccessCode, setReviewAccessCode] = useState('')
   const [openedMedia, setOpenedMedia] = useState<{ url: string; mimeType: string; label: string } | null>(null)
   const [mediaError, setMediaError] = useState('')
   const [reviewError, setReviewError] = useState('')
@@ -52,12 +50,14 @@ export function EmployeeDashboard() {
     api
       .getSession()
       .then(session => {
-        const allowed = session.role === 'EMPLOYEE' || session.role === 'IDENTITY_REVIEWER'
+        const allowed =
+          session.role === 'EMPLOYEE' || session.role === 'IDENTITY_REVIEWER' || session.role === 'SUPER_ADMIN'
         setAuthenticated(allowed)
         if (allowed) void load()
+        else navigate('/staff/login?next=%2Femployee')
       })
-      .catch(() => setAuthenticated(false))
-  }, [load])
+      .catch(() => navigate('/staff/login?next=%2Femployee'))
+  }, [load, navigate])
   useEffect(() => {
     const refreshQueue = () => {
       void load()
@@ -65,25 +65,10 @@ export function EmployeeDashboard() {
     window.addEventListener('employee-work-queue-updated', refreshQueue)
     return () => window.removeEventListener('employee-work-queue-updated', refreshQueue)
   }, [load])
-  const loginEmployee = async () => {
-    setBusy(true)
-    setAuthError('')
-    try {
-      await api.loginEmployee(employeeCode)
-      setReviewAccessCode(employeeCode)
-      setAuthenticated(true)
-      await load()
-    } catch (error) {
-      setAuthError((error as Error).message)
-    } finally {
-      setBusy(false)
-    }
-  }
   const openAttachment = async (mediaId: string, label: string) => {
-    if (!reviewAccessCode.trim()) return setMediaError('أدخل رمز وصول المراجعة أولاً.')
     setMediaError('')
     try {
-      const item = await api.loadReviewMedia(mediaId, reviewAccessCode)
+      const item = await api.loadReviewMedia(mediaId)
       setOpenedMedia({ ...item, label })
     } catch (error) {
       setMediaError((error as Error).message)
@@ -117,43 +102,7 @@ export function EmployeeDashboard() {
         </div>
       </PortalLayout>
     )
-  if (!authenticated)
-    return (
-      <PortalLayout role="employee">
-        <section className="employee-login-gate">
-          <div className="employee-login-icon">
-            <LockKeyhole />
-          </div>
-          <span className="section-kicker">دخول موظف محمي</span>
-          <h1>دخول الموظف</h1>
-          <p>أدخل رمز الوصول الحكومي. تُنشأ جلسة مشفرة محدودة المدة ولا تُحمّل أي معاملة قبل نجاح التحقق.</p>
-          <label>
-            رمز الوصول
-            <input
-              type="password"
-              value={employeeCode}
-              onChange={event => setEmployeeCode(event.target.value)}
-              autoComplete="current-password"
-              onKeyDown={event => {
-                if (event.key === 'Enter' && employeeCode.length >= 8) void loginEmployee()
-              }}
-            />
-          </label>
-          {authError && (
-            <div className="form-error">
-              <AlertTriangle /> {authError}
-            </div>
-          )}
-          <button className="button primary full" onClick={loginEmployee} disabled={busy || employeeCode.length < 8}>
-            {busy ? 'جاري التحقق...' : 'دخول آمن'}
-          </button>
-          <div className="employee-login-note">
-            <ShieldCheck />
-            <span>تُسجل محاولات الدخول والإجراءات الحساسة في سجل التدقيق.</span>
-          </div>
-        </section>
-      </PortalLayout>
-    )
+  if (!authenticated) return null
   return (
     <PortalLayout role="employee">
       <section className="employee-heading" id="workboard">
@@ -323,16 +272,6 @@ export function EmployeeDashboard() {
               </div>
               <div className="review-section">
                 <h3>المستندات والمرفقات</h3>
-                <label className="review-access-field">
-                  رمز وصول المراجعة
-                  <input
-                    value={reviewAccessCode}
-                    onChange={event => setReviewAccessCode(event.target.value)}
-                    type="password"
-                    placeholder="رمز المراجع"
-                    autoComplete="current-password"
-                  />
-                </label>
                 {selected.attachments.length === 0 ? (
                   <div className="review-document empty">
                     <FileText />
@@ -445,7 +384,7 @@ export function EmployeeDashboard() {
         <ServiceRequestAdminPanel />
       </section>
       <section id="employee-feedback" className="employee-anchor-section">
-        <FeedbackAdminPanel reviewAccessCode={reviewAccessCode} />
+        <FeedbackAdminPanel />
       </section>
       <section id="employee-archive" className="employee-anchor-section employee-archive-section">
         <header className="employee-anchor-heading">

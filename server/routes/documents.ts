@@ -84,7 +84,7 @@ export function registerDocumentsRoutes(app: express.Express) {
     if (!row) return res.status(404).json({ message: 'الوثيقة المؤرشفة غير موجودة.' })
     const session = res.locals.session as SessionData
     addAudit({
-      actor: session.role === 'SUPER_ADMIN' ? 'مدير النظام' : 'موظف مختص',
+      actor: session.actor,
       role: session.role,
       action: 'ISSUED_DOCUMENT_OPENED',
       entityType: 'IssuedDocument',

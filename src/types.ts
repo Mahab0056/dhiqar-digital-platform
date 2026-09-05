@@ -358,3 +358,60 @@ export interface DepartmentWorkbench {
     updatedAt: string
   }>
 }
+
+export type StaffRole = 'EMPLOYEE' | 'IDENTITY_REVIEWER' | 'OPERATIONS' | 'SUPER_ADMIN'
+export type SessionRole = 'CITIZEN' | StaffRole
+
+export type StaffSession = {
+  authenticated: true
+  role: SessionRole
+  subject: string
+  expiresAt: string
+  displayName: string | null
+  username: string | null
+  departmentId: string | null
+  departmentName: string | null
+  mustChangePassword: boolean
+  mfaEnabled: boolean
+}
+
+export type StaffLoginResponse =
+  | { mfaRequired: true; challengeToken: string; expiresInSeconds: number }
+  | (StaffSession & { mfaRequired?: false; expiresInSeconds: number })
+
+export type StaffSessionItem = {
+  id: string
+  current: boolean
+  createdAt: string
+  lastSeenAt: string
+  expiresAt: string
+  userAgent: string | null
+}
+
+export type StaffAccount = {
+  id: string
+  username: string
+  fullName: string
+  role: StaffRole
+  departmentId: string | null
+  departmentName: string | null
+  mustChangePassword: boolean
+  totpEnabled: boolean
+  status: 'ACTIVE' | 'DISABLED'
+  failedAttempts: number
+  lockedUntil: string | null
+  lastLoginAt: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export type AuditLogEntry = {
+  id: number
+  actor: string
+  role: string
+  action: string
+  entityType: string
+  entityId: string
+  metadata: Record<string, unknown> | null
+  createdAt: string
+}

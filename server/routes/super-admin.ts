@@ -3,7 +3,7 @@ import { param } from '../http/params.js'
 import { randomUUID } from 'node:crypto'
 import { z } from 'zod'
 import { sensitiveLimiter } from '../http/rate-limit.js'
-import { requireSession } from '../auth/session.js'
+import { requireSession, currentSession } from '../auth/session.js'
 import { ensureDepartmentRecord } from '../seed.js'
 import { addAudit, db, listCitizensForSuperAdmin } from '../db.js'
 import { departmentRegistry, registrySummary } from '../department-registry.js'
@@ -80,6 +80,7 @@ export function registerSuperAdminRoutes(app: express.Express) {
   })
 
   app.patch('/api/super-admin/platform-services/:key', requireSession('SUPER_ADMIN'), sensitiveLimiter, (req, res) => {
+    const session = currentSession(res)
     const payload = z
       .object({
         requiredDocuments: z.array(z.string().trim().min(2).max(240)).min(1).max(24).optional(),
@@ -100,7 +101,7 @@ export function registerSuperAdminRoutes(app: express.Express) {
       param(req, 'key')
     )
     addAudit({
-      actor: 'مدير النظام',
+      actor: session.actor,
       role: 'SUPER_ADMIN',
       action: 'PLATFORM_SERVICE_UPDATED',
       entityType: 'ServiceCatalog',
@@ -115,6 +116,7 @@ export function registerSuperAdminRoutes(app: express.Express) {
   })
 
   app.post('/api/super-admin/operations/cameras', requireSession('SUPER_ADMIN'), sensitiveLimiter, (req, res) => {
+    const session = currentSession(res)
     const payload = z
       .object({
         departmentId: z.string().min(3).max(120),
@@ -158,7 +160,7 @@ export function registerSuperAdminRoutes(app: express.Express) {
       timestamp
     )
     addAudit({
-      actor: 'مدير النظام',
+      actor: session.actor,
       role: 'SUPER_ADMIN',
       action: 'DEPARTMENT_CAMERA_CONFIGURED',
       entityType: 'DepartmentCamera',
@@ -178,6 +180,7 @@ export function registerSuperAdminRoutes(app: express.Express) {
     requireSession('SUPER_ADMIN'),
     sensitiveLimiter,
     (req, res) => {
+      const session = currentSession(res)
       const payload = z
         .object({
           departmentId: z.string().min(3).max(120),
@@ -197,7 +200,7 @@ export function registerSuperAdminRoutes(app: express.Express) {
       const id = `wrk_${randomUUID().replaceAll('-', '')}`
       db.prepare(
         `INSERT INTO department_workforce_snapshots (id, department_id, total_employees, present_employees, absent_employees, source_name, source_url, authorization_status, observed_at, recorded_by, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, 'RECORDED_BY_SUPER_ADMIN', ?, 'مدير النظام', ?)`
+      VALUES (?, ?, ?, ?, ?, ?, ?, 'RECORDED_BY_SUPER_ADMIN', ?, ?, ?)`
       ).run(
         id,
         payload.departmentId,
@@ -207,10 +210,11 @@ export function registerSuperAdminRoutes(app: express.Express) {
         payload.sourceName,
         payload.sourceUrl || null,
         payload.observedAt,
+        session.actor,
         new Date().toISOString()
       )
       addAudit({
-        actor: 'مدير النظام',
+        actor: session.actor,
         role: 'SUPER_ADMIN',
         action: 'WORKFORCE_SNAPSHOT_RECORDED',
         entityType: 'DepartmentWorkforceSnapshot',
@@ -243,6 +247,7 @@ export function registerSuperAdminRoutes(app: express.Express) {
   })
 
   app.post('/api/super-admin/government-services', requireSession('SUPER_ADMIN'), sensitiveLimiter, (req, res) => {
+    const session = currentSession(res)
     const payload = z
       .object({
         canonicalServiceId: z.string().min(3).max(160),
@@ -289,7 +294,7 @@ export function registerSuperAdminRoutes(app: express.Express) {
       .parse(req.body) as GovernmentServiceRecordInput
     if (payload.publicationStatus === 'APPROVED' && !payload.sources.length)
       return res.status(422).json({ message: 'لا يمكن نشر خدمة بلا مصدر حكومي رسمي.' })
-    const service = upsertGovernmentService(payload, 'مدير النظام')
+    const service = upsertGovernmentService(payload, session.actor)
     res.status(201).json(service)
   })
 
@@ -298,6 +303,7 @@ export function registerSuperAdminRoutes(app: express.Express) {
     requireSession('SUPER_ADMIN'),
     sensitiveLimiter,
     (req, res) => {
+      const session = currentSession(res)
       const payload = z
         .object({
           publicationStatus: z.enum(['DRAFT', 'APPROVED', 'NEEDS_REVIEW', 'DISABLED']),
@@ -308,7 +314,7 @@ export function registerSuperAdminRoutes(app: express.Express) {
         id: param(req, 'id'),
         publicationStatus: payload.publicationStatus,
         reason: payload.reason,
-        actor: 'مدير النظام',
+        actor: session.actor,
       })
       if (!service) return res.status(404).json({ message: 'سجل الخدمة غير موجود.' })
       res.json(service)

@@ -138,7 +138,7 @@ export function registerFeedbackRoutes(app: express.Express) {
       .safeParse(req.body)
     if (!parsed.success) return res.status(400).json({ message: 'تحقق من الحالة ووصف الإجراء قبل الحفظ.' })
     const session = res.locals.session as SessionData
-    const actor = session.role === 'SUPER_ADMIN' ? 'مدير النظام' : 'موظف مختص'
+    const actor = session.actor
     const updated = updateFeedbackStatus(feedback.id, { ...parsed.data, actor })
     notifyCitizen({
       citizenId: feedback.citizenId,

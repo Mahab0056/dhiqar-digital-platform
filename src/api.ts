@@ -12,6 +12,12 @@ import type {
   GovernmentServicePublicationStatus,
   IssuedDocument,
   PlatformServiceSettings,
+  StaffAccount,
+  StaffLoginResponse,
+  StaffRole,
+  StaffSession,
+  StaffSessionItem,
+  AuditLogEntry,
 } from './types'
 
 const readableRequestError = (status: number, message?: string) => {
@@ -42,13 +48,76 @@ const request = async <T>(path: string, options?: RequestInit): Promise<T> => {
 }
 
 export const api = {
-  getSession: () =>
-    request<{
-      authenticated: true
-      role: 'CITIZEN' | 'EMPLOYEE' | 'IDENTITY_REVIEWER' | 'OPERATIONS' | 'SUPER_ADMIN'
-      subject: string
-      expiresAt: string
-    }>('/api/auth/session'),
+  getSession: () => request<StaffSession>('/api/auth/session'),
+  staffLogin: (username: string, password: string) =>
+    request<StaffLoginResponse>('/api/auth/staff/login', {
+      method: 'POST',
+      body: JSON.stringify({ username, password }),
+    }),
+  staffMfa: (challengeToken: string, code: string) =>
+    request<StaffSession>('/api/auth/staff/mfa', { method: 'POST', body: JSON.stringify({ challengeToken, code }) }),
+  changeStaffPassword: (currentPassword: string, newPassword: string) =>
+    request<{ success: boolean; otherSessionsRevoked: number }>('/api/auth/staff/change-password', {
+      method: 'POST',
+      body: JSON.stringify({ currentPassword, newPassword }),
+    }),
+  mfaSetup: () =>
+    request<{ secret: string; otpauthUrl: string; qrDataUrl: string }>('/api/auth/staff/mfa/setup', { method: 'POST' }),
+  mfaConfirm: (code: string) =>
+    request<{ success: boolean }>('/api/auth/staff/mfa/confirm', { method: 'POST', body: JSON.stringify({ code }) }),
+  mfaDisable: (password: string, code: string) =>
+    request<{ success: boolean }>('/api/auth/staff/mfa/disable', {
+      method: 'POST',
+      body: JSON.stringify({ password, code }),
+    }),
+  listMySessions: () => request<StaffSessionItem[]>('/api/auth/staff/sessions'),
+  revokeOtherSessions: () =>
+    request<{ success: boolean; revoked: number }>('/api/auth/staff/sessions/revoke-others', { method: 'POST' }),
+  revokeSession: (id: string) =>
+    request<{ success: boolean }>(`/api/auth/staff/sessions/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  logout: () => request<{ success: boolean }>('/api/auth/logout', { method: 'POST' }),
+  // ---- staff administration (super admin) ----
+  listStaffAccounts: () =>
+    request<{ accounts: StaffAccount[]; roles: StaffRole[]; departments: Array<{ id: string; name: string }> }>(
+      '/api/super-admin/staff'
+    ),
+  createStaffAccount: (payload: {
+    username: string
+    fullName: string
+    role: StaffRole
+    departmentId?: string | null
+  }) =>
+    request<{ account: StaffAccount; temporaryPassword: string | null }>('/api/super-admin/staff', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  updateStaffAccount: (id: string, payload: { fullName?: string; role?: StaffRole; departmentId?: string | null }) =>
+    request<{ account: StaffAccount }>(`/api/super-admin/staff/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    }),
+  setStaffStatus: (id: string, status: 'ACTIVE' | 'DISABLED') =>
+    request<{ account: StaffAccount }>(`/api/super-admin/staff/${encodeURIComponent(id)}/status`, {
+      method: 'POST',
+      body: JSON.stringify({ status }),
+    }),
+  resetStaffPassword: (id: string) =>
+    request<{ temporaryPassword: string }>(`/api/super-admin/staff/${encodeURIComponent(id)}/reset-password`, {
+      method: 'POST',
+    }),
+  resetStaffMfa: (id: string) =>
+    request<{ success: boolean }>(`/api/super-admin/staff/${encodeURIComponent(id)}/reset-mfa`, { method: 'POST' }),
+  revokeStaffSessions: (id: string) =>
+    request<{ success: boolean; revoked: number }>(`/api/super-admin/staff/${encodeURIComponent(id)}/revoke-sessions`, {
+      method: 'POST',
+    }),
+  listAuditLogs: (params: { limit?: number; action?: string; actor?: string } = {}) => {
+    const search = new URLSearchParams()
+    if (params.limit) search.set('limit', String(params.limit))
+    if (params.action) search.set('action', params.action)
+    if (params.actor) search.set('actor', params.actor)
+    return request<AuditLogEntry[]>(`/api/super-admin/audit-logs${search.size ? `?${search}` : ''}`)
+  },
   listGovernmentServices: (params: { query?: string; dhiQarOnly?: boolean } = {}) => {
     const search = new URLSearchParams()
     if (params.query) search.set('q', params.query)
@@ -71,22 +140,6 @@ export const api = {
       `/api/super-admin/government-services/${encodeURIComponent(id)}/publication`,
       { method: 'PATCH', body: JSON.stringify({ publicationStatus, reason }) }
     ),
-  loginEmployee: (accessCode: string) =>
-    request<{ authenticated: true; role: 'EMPLOYEE'; expiresInSeconds: number }>('/api/auth/employee', {
-      method: 'POST',
-      body: JSON.stringify({ accessCode }),
-    }),
-  loginOperations: (accessCode: string) =>
-    request<{ authenticated: true; role: 'OPERATIONS'; expiresInSeconds: number }>('/api/auth/operations', {
-      method: 'POST',
-      body: JSON.stringify({ accessCode }),
-    }),
-  loginSuperAdmin: (accessCode: string) =>
-    request<{ authenticated: true; role: 'SUPER_ADMIN'; expiresInSeconds: number }>('/api/auth/super-admin', {
-      method: 'POST',
-      body: JSON.stringify({ accessCode }),
-    }),
-  logout: () => request<{ success: boolean }>('/api/auth/logout', { method: 'POST' }),
   heartbeatPresence: () => request<{ activeWindowSeconds: number }>('/api/presence/heartbeat', { method: 'POST' }),
   getPlatformServiceSettings: (serviceKey: string) =>
     request<PlatformServiceSettings>(`/api/platform-services/${encodeURIComponent(serviceKey)}`),
@@ -396,7 +449,7 @@ export const api = {
       face_match_score: number | null
       face_match_provider: string | null
     } | null>('/api/onboarding/identity-review/latest'),
-  listIdentityReviews: (reviewAccessCode: string) =>
+  listIdentityReviews: () =>
     request<
       Array<{
         id: string
@@ -430,12 +483,9 @@ export const api = {
         }
         media: Array<{ id: string; label: string; mimeType: string; sizeBytes: number }>
       }>
-    >('/api/admin/identity-reviews', { headers: { 'x-review-access-code': reviewAccessCode } }),
-  loadReviewMedia: async (mediaId: string, reviewAccessCode: string) => {
-    const response = await fetch(`/api/admin/media/${mediaId}`, {
-      credentials: 'include',
-      headers: { 'x-review-access-code': reviewAccessCode },
-    })
+    >('/api/admin/identity-reviews'),
+  loadReviewMedia: async (mediaId: string) => {
+    const response = await fetch(`/api/admin/media/${mediaId}`, { credentials: 'include' })
     if (!response.ok) {
       const body = await response.json().catch(() => ({ message: 'تعذر فتح الوسيط.' }))
       throw new Error(body.message || 'تعذر فتح الوسيط.')
@@ -445,12 +495,11 @@ export const api = {
   },
   decideIdentityReview: (
     reviewId: string,
-    reviewAccessCode: string,
     payload: { decision: 'APPROVED' | 'REJECTED' | 'NEEDS_RESUBMISSION'; notes: string }
   ) =>
     request<{ id: string; status: string; reviewedAt: string; mediaPurged: boolean; mediaRetained: boolean }>(
       `/api/admin/identity-reviews/${reviewId}/decision`,
-      { method: 'POST', headers: { 'x-review-access-code': reviewAccessCode }, body: JSON.stringify(payload) }
+      { method: 'POST', body: JSON.stringify(payload) }
     ),
   listApplications: () => request<GovernmentApplication[]>('/api/applications'),
   getApplication: (reference: string) => request<GovernmentApplication>(`/api/applications/${reference}`),

@@ -4,7 +4,9 @@ import 'leaflet/dist/leaflet.css'
 import { SessionGate } from './components/shared/SessionGate'
 import { NotFound } from './pages/NotFound'
 import { RouteFallback } from './components/shared/RouteFallback'
+import { LegacyLoginRedirect } from './pages/auth/StaffLoginPage'
 import './App.css'
+import './styles/staff.css'
 
 const LandingPage = lazy(() => import('./pages/public/LandingPage').then(m => ({ default: m.LandingPage })))
 const GovernmentDirectoryPage = lazy(() =>
@@ -13,9 +15,9 @@ const GovernmentDirectoryPage = lazy(() =>
 const GovernmentServiceDetailPage = lazy(() =>
   import('./pages/public/GovernmentServiceDetailPage').then(m => ({ default: m.GovernmentServiceDetailPage }))
 )
+const StaffLoginPage = lazy(() => import('./pages/auth/StaffLoginPage').then(m => ({ default: m.StaffLoginPage })))
+const SecurityPage = lazy(() => import('./pages/staff/SecurityPage').then(m => ({ default: m.SecurityPage })))
 const LoginPage = lazy(() => import('./pages/auth/LoginPage').then(m => ({ default: m.LoginPage })))
-const OperationsLogin = lazy(() => import('./pages/auth/OperationsLogin').then(m => ({ default: m.OperationsLogin })))
-const SuperAdminLogin = lazy(() => import('./pages/auth/SuperAdminLogin').then(m => ({ default: m.SuperAdminLogin })))
 const SuperAdminDashboard = lazy(() =>
   import('./pages/super-admin/SuperAdminDashboard').then(m => ({ default: m.SuperAdminDashboard }))
 )
@@ -58,8 +60,18 @@ function App() {
         <Route path="/directory" component={GovernmentDirectoryPage} />
         <Route path="/government-services/:id">{params => <GovernmentServiceDetailPage id={params.id} />}</Route>
         <Route path="/login" component={LoginPage} />
-        <Route path="/operations/login" component={OperationsLogin} />
-        <Route path="/super-admin/login" component={SuperAdminLogin} />
+        <Route path="/staff/login" component={StaffLoginPage} />
+        <Route path="/staff/security">
+          <SessionGate role="EMPLOYEE">
+            <SecurityPage />
+          </SessionGate>
+        </Route>
+        <Route path="/operations/login">
+          <LegacyLoginRedirect next="/operations" />
+        </Route>
+        <Route path="/super-admin/login">
+          <LegacyLoginRedirect next="/super-admin" />
+        </Route>
         <Route path="/super-admin">
           <SessionGate role="SUPER_ADMIN">
             <SuperAdminDashboard />

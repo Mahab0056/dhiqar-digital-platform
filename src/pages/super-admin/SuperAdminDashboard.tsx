@@ -20,6 +20,8 @@ import { NewRequestAlertsPanel } from '../../components/shared/NewRequestAlertsP
 import { AdminCitizensPanel } from './AdminCitizensPanel'
 import { DepartmentManagementPanel } from './DepartmentManagementPanel'
 import { GovernmentServiceAdminPanel } from './GovernmentServiceAdminPanel'
+import { StaffAccountsPanel } from './StaffAccountsPanel'
+import { logoutAndRedirect, useSession } from '../../lib/session'
 
 export function SuperAdminDashboard() {
   const [, navigate] = useLocation()
@@ -64,10 +66,8 @@ export function SuperAdminDashboard() {
       active = false
     }
   }, [])
-  const endSession = async () => {
-    await api.logout()
-    navigate('/login')
-  }
+  const { session } = useSession()
+  const endSession = () => logoutAndRedirect(path => navigate(path), '/staff/login')
   const system = {
     pendingIdentity: Number(overview?.system?.pendingIdentity || 0),
     openApplications: Number(overview?.system?.openApplications || 0),
@@ -91,7 +91,12 @@ export function SuperAdminDashboard() {
           <button className="button ghost" onClick={() => void endSession()}>
             إنهاء الجلسة
           </button>
-          <div className="user-avatar gold">SA</div>
+          <Link className="button ghost" href="/staff/security">
+            الأمان
+          </Link>
+          <div className="user-avatar gold" title={session?.displayName || ''}>
+            {(session?.displayName || 'SA').slice(0, 2)}
+          </div>
         </div>
       </header>
       {error && (
@@ -214,6 +219,7 @@ export function SuperAdminDashboard() {
           )}
         </article>
       </section>
+      <StaffAccountsPanel />
       <NewRequestAlertsPanel scope="admin" />
       <AdminCitizensPanel />
       <DepartmentManagementPanel />

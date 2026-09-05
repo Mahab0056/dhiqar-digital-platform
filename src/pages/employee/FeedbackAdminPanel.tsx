@@ -13,7 +13,7 @@ import { api } from '../../api'
 import type { CitizenFeedback } from '../../types'
 import { feedbackStatusLabels } from '../citizen/feedback-labels'
 
-export function FeedbackAdminPanel({ reviewAccessCode }: { reviewAccessCode: string }) {
+export function FeedbackAdminPanel() {
   const [items, setItems] = useState<CitizenFeedback[]>([])
   const [selected, setSelected] = useState<CitizenFeedback | null>(null)
   const [status, setStatus] = useState<'IN_REVIEW' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED'>('IN_REVIEW')
@@ -83,9 +83,8 @@ export function FeedbackAdminPanel({ reviewAccessCode }: { reviewAccessCode: str
   }
   const openMedia = async (mediaId: string) => {
     if (openedMedia[mediaId]) return
-    if (!reviewAccessCode) return setError('رمز مراجعة الموظف غير متاح لهذه الجلسة.')
     try {
-      const item = await api.loadReviewMedia(mediaId, reviewAccessCode)
+      const item = await api.loadReviewMedia(mediaId)
       setOpenedMedia(current => ({ ...current, [mediaId]: item }))
     } catch (openError) {
       setError((openError as Error).message)

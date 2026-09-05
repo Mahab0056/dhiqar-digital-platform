@@ -1,6 +1,6 @@
 import type React from 'react'
 import { useEffect, useState } from 'react'
-import { Link } from 'wouter'
+import { Link, useLocation } from 'wouter'
 import { ArrowLeft, LockKeyhole, RefreshCw } from 'lucide-react'
 import { api } from '../../api'
 import { Brand } from '../public/Brand'
@@ -13,20 +13,25 @@ export function SessionGate({
   children: React.ReactNode
 }) {
   const [state, setState] = useState<'loading' | 'allowed' | 'denied'>('loading')
+  const [, navigate] = useLocation()
   useEffect(() => {
     api
       .getSession()
-      .then(session =>
+      .then(session => {
+        if (session.role !== 'CITIZEN' && session.mustChangePassword) {
+          navigate(`/staff/login?next=${encodeURIComponent(window.location.pathname)}`)
+          return
+        }
         setState(
           session.role === role ||
             (role === 'EMPLOYEE' && (session.role === 'IDENTITY_REVIEWER' || session.role === 'SUPER_ADMIN')) ||
-            (role === 'OPERATIONS' && (session.role === 'EMPLOYEE' || session.role === 'SUPER_ADMIN'))
+            (role === 'OPERATIONS' && session.role === 'SUPER_ADMIN')
             ? 'allowed'
             : 'denied'
         )
-      )
+      })
       .catch(() => setState('denied'))
-  }, [role])
+  }, [role, navigate])
   if (state === 'loading')
     return (
       <div className="access-gate-page">
@@ -45,31 +50,15 @@ export function SessionGate({
         <p>
           {role === 'CITIZEN'
             ? 'أكد رقم هاتفك لإدارة معاملاتك وبياناتك بأمان.'
-            : role === 'SUPER_ADMIN'
-              ? 'سجّل دخولك بحساب المدير العام قبل فتح إدارة المنصة.'
-              : role === 'OPERATIONS'
-                ? 'سجّل دخولك برمز غرفة العمليات قبل فتح المؤشرات التشغيلية.'
-                : 'سجّل دخولك بحساب الموظف قبل فتح الشاشات التشغيلية.'}
+            : 'سجّل دخولك بحسابك الوظيفي. هذه الصفحة تتطلب صلاحية محددة.'}
         </p>
         <Link
           className="button primary"
           href={
-            role === 'CITIZEN'
-              ? '/onboarding'
-              : role === 'SUPER_ADMIN'
-                ? '/super-admin/login'
-                : role === 'OPERATIONS'
-                  ? '/operations/login'
-                  : '/employee'
+            role === 'CITIZEN' ? '/onboarding' : `/staff/login?next=${encodeURIComponent(window.location.pathname)}`
           }
         >
-          {role === 'CITIZEN'
-            ? 'تأكيد الهاتف'
-            : role === 'SUPER_ADMIN'
-              ? 'دخول المدير العام'
-              : role === 'OPERATIONS'
-                ? 'دخول غرفة العمليات'
-                : 'دخول الموظف'}{' '}
+          {role === 'CITIZEN' ? 'تأكيد الهاتف' : 'دخول الموظفين'}
           <ArrowLeft />
         </Link>
       </div>

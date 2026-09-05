@@ -33,7 +33,6 @@ export function IdentityReviewPanel() {
     }
     media: Array<{ id: string; label: string; mimeType: string; sizeBytes: number }>
   }
-  const [accessCode, setAccessCode] = useState('')
   const [reviews, setReviews] = useState<Review[]>([])
   const [selected, setSelected] = useState<Review | null>(null)
   const [mediaUrls, setMediaUrls] = useState<Record<string, { url: string; mimeType: string }>>({})
@@ -44,7 +43,7 @@ export function IdentityReviewPanel() {
     setBusy(true)
     setError('')
     try {
-      const items = await api.listIdentityReviews(accessCode)
+      const items = await api.listIdentityReviews()
       setReviews(items)
       setSelected(current => items.find(item => item.id === current?.id) || items[0] || null)
     } catch (e) {
@@ -54,16 +53,16 @@ export function IdentityReviewPanel() {
     }
   }
   useEffect(() => {
-    const refreshReviews = () => {
-      if (accessCode.trim().length >= 8) void load()
-    }
+    void load()
+    const refreshReviews = () => void load()
     window.addEventListener('employee-work-queue-updated', refreshReviews)
     return () => window.removeEventListener('employee-work-queue-updated', refreshReviews)
-  }, [accessCode])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   const openMedia = async (mediaId: string) => {
     if (mediaUrls[mediaId]) return
     try {
-      const item = await api.loadReviewMedia(mediaId, accessCode)
+      const item = await api.loadReviewMedia(mediaId)
       setMediaUrls(current => ({ ...current, [mediaId]: item }))
     } catch (e) {
       setError((e as Error).message)
@@ -74,7 +73,7 @@ export function IdentityReviewPanel() {
     setBusy(true)
     setError('')
     try {
-      await api.decideIdentityReview(selected.id, accessCode, { decision, notes })
+      await api.decideIdentityReview(selected.id, { decision, notes })
       Object.values(mediaUrls).forEach(item => URL.revokeObjectURL(item.url))
       setMediaUrls({})
       setNotes('')
@@ -96,18 +95,11 @@ export function IdentityReviewPanel() {
         <div>
           <span className="section-kicker">مراجعة الهوية والوسائط</span>
           <h2>ملفات الهوية والفيديو</h2>
-          <p>تُفتح المرفقات بتفويض مستقل، وتُسجل المشاهدة والقرار، وتبقى محفوظة بتشفير وفق موافقة المواطن.</p>
+          <p>تُسجل مشاهدة كل مرفق وكل قرار باسم الموظف. اتخاذ القرار يتطلب دور «مراجع هوية» أو مدير النظام.</p>
         </div>
         <div className="review-access">
-          <input
-            type="password"
-            value={accessCode}
-            onChange={e => setAccessCode(e.target.value)}
-            placeholder="رمز دخول المراجع"
-            autoComplete="off"
-          />
-          <button className="button primary" onClick={load} disabled={busy || accessCode.length < 8}>
-            {busy ? 'جاري الفتح...' : 'فتح قائمة المراجعة'}
+          <button className="button primary" onClick={load} disabled={busy}>
+            {busy ? 'جاري التحديث...' : 'تحديث قائمة المراجعة'}
           </button>
         </div>
       </div>

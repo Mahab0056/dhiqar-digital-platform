@@ -3,7 +3,7 @@ import { param } from '../http/params.js'
 import { randomUUID } from 'node:crypto'
 import { z } from 'zod'
 import { upload, validateUploadedFile } from '../http/upload.js'
-import { type SessionData, requireSession, currentCitizen } from '../auth/session.js'
+import { type SessionData, requireSession, currentCitizen, currentSession } from '../auth/session.js'
 import { notifyCitizen, employeeWorkQueueRealtime } from '../realtime.js'
 import { addAudit, addEvent, db, getApplicationByReference, getApplications } from '../db.js'
 import { storeEncryptedMedia } from '../media.js'
@@ -232,6 +232,7 @@ export function registerApplicationsRoutes(app: express.Express) {
   )
 
   app.post('/api/applications/:reference/request-document', requireSession('EMPLOYEE', 'SUPER_ADMIN'), (req, res) => {
+    const session = currentSession(res)
     const payload = z.object({ documentName: z.string().min(2) }).parse(req.body)
     const item = getApplicationByReference(param(req, 'reference'))
     if (!item) return res.status(404).json({ message: 'المعاملة غير موجودة.' })
@@ -243,7 +244,7 @@ export function registerApplicationsRoutes(app: express.Express) {
       type: 'INFORMATION_REQUESTED',
       title: 'طلب معلومات إضافية',
       description: `طلب الموظف رفع ${payload.documentName}.`,
-      actor: 'موظفة التدقيق — سارة كاظم',
+      actor: session.actor,
     })
     notifyCitizen({
       citizenId: Number(item.citizenId),
@@ -253,8 +254,8 @@ export function registerApplicationsRoutes(app: express.Express) {
       link: `/citizen/application/${param(req, 'reference')}`,
     })
     addAudit({
-      actor: 'سارة كاظم حسن',
-      role: 'EMPLOYEE',
+      actor: session.actor,
+      role: session.role,
       action: 'DOCUMENT_REQUESTED',
       entityType: 'Application',
       entityId: param(req, 'reference'),
@@ -337,6 +338,7 @@ export function registerApplicationsRoutes(app: express.Express) {
   )
 
   app.post('/api/applications/:reference/approve', requireSession('EMPLOYEE', 'SUPER_ADMIN'), async (req, res) => {
+    const session = currentSession(res)
     const item = getApplicationByReference(param(req, 'reference'))
     if (!item) return res.status(404).json({ message: 'المعاملة غير موجودة.' })
     if (item.status === 'ACTION_REQUIRED')
@@ -370,8 +372,8 @@ export function registerApplicationsRoutes(app: express.Express) {
         link: `/citizen/application/${param(req, 'reference')}`,
       })
       addAudit({
-        actor: 'سارة كاظم حسن',
-        role: 'EMPLOYEE',
+        actor: session.actor,
+        role: session.role,
         action: 'PAYMENT_REQUIRED',
         entityType: 'Application',
         entityId: param(req, 'reference'),
@@ -389,7 +391,7 @@ export function registerApplicationsRoutes(app: express.Express) {
       serviceName: String(item.serviceName),
       departmentName: String(item.department),
       documentTitle: `إجازة ممارسة نشاط تجاري — ${String(item.businessName)}`,
-      issuedBy: 'موظف مختص',
+      issuedBy: session.actor,
       issuedAt: timestamp,
       preferredDocumentNumber: `LIC-${new Date().getFullYear()}-${String(item.id).padStart(5, '0')}`,
       details: [
@@ -410,7 +412,7 @@ export function registerApplicationsRoutes(app: express.Express) {
         type: 'APPROVED',
         title: 'تمت الموافقة',
         description: 'اعتمد الموظف المختص الطلب.',
-        actor: 'موظفة التدقيق — سارة كاظم',
+        actor: session.actor,
       })
       addEvent(item.id as number, {
         type: 'DOCUMENT_ISSUED',
@@ -426,8 +428,8 @@ export function registerApplicationsRoutes(app: express.Express) {
         link: `/citizen/application/${param(req, 'reference')}`,
       })
       addAudit({
-        actor: 'موظف مختص',
-        role: 'EMPLOYEE',
+        actor: session.actor,
+        role: session.role,
         action: 'APPLICATION_APPROVED_DOCUMENT_ISSUED',
         entityType: 'Application',
         entityId: param(req, 'reference'),

@@ -19,9 +19,15 @@ import { registerDocumentsRoutes } from './routes/documents.js'
 import { registerOperationsRoutes } from './routes/operations.js'
 import { registerSuperAdminRoutes } from './routes/super-admin.js'
 import { registerSystemRoutes } from './routes/system.js'
+import { registerStaffAdminRoutes } from './routes/staff-admin.js'
+import { bootstrapStaffAccounts } from './auth/staff.js'
+import { purgeExpiredSessions } from './auth/session.js'
 
 seedVerifiedGovernmentServices()
 seedPlatformServiceCatalog()
+bootstrapStaffAccounts()
+purgeExpiredSessions()
+setInterval(purgeExpiredSessions, 60 * 60 * 1000).unref()
 
 const { app, httpServer } = createApp()
 installRealtime(httpServer)
@@ -36,6 +42,7 @@ registerApplicationsRoutes(app)
 registerDocumentsRoutes(app)
 registerOperationsRoutes(app)
 registerSuperAdminRoutes(app)
+registerStaffAdminRoutes(app)
 registerSystemRoutes(app)
 
 const currentDir = dirname(fileURLToPath(import.meta.url))

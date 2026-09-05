@@ -323,7 +323,7 @@ export function registerServiceRequestsRoutes(app: express.Express) {
         return res.status(400).json({ message: 'اكتب سبب الرفض للمواطن قبل حفظ القرار.' })
       const timestamp = new Date().toISOString()
       const session = res.locals.session as SessionData
-      const actor = session.role === 'SUPER_ADMIN' ? 'مدير النظام' : 'موظف مختص'
+      const actor = session.actor
       let issuedDocument: Awaited<ReturnType<typeof createIssuedDocument>> | null = null
       if (parsed.data.status === 'APPROVED') {
         issuedDocument = await createIssuedDocument({

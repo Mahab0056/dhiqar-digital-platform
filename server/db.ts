@@ -223,6 +223,48 @@ db.exec(`
     updated_at TEXT NOT NULL
   );
 
+  CREATE TABLE IF NOT EXISTS staff_accounts (
+    id TEXT PRIMARY KEY,
+    username TEXT NOT NULL UNIQUE,
+    full_name TEXT NOT NULL,
+    role TEXT NOT NULL CHECK (role IN ('EMPLOYEE', 'IDENTITY_REVIEWER', 'OPERATIONS', 'SUPER_ADMIN')),
+    department_id TEXT,
+    password_hash TEXT NOT NULL,
+    password_updated_at TEXT NOT NULL,
+    must_change_password INTEGER NOT NULL DEFAULT 1,
+    totp_secret_encrypted TEXT,
+    totp_enabled INTEGER NOT NULL DEFAULT 0,
+    totp_last_counter INTEGER,
+    status TEXT NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'DISABLED')),
+    failed_attempts INTEGER NOT NULL DEFAULT 0,
+    locked_until TEXT,
+    last_login_at TEXT,
+    created_by TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    FOREIGN KEY (department_id) REFERENCES departments(id)
+  );
+  CREATE INDEX IF NOT EXISTS idx_staff_accounts_role_status ON staff_accounts(role, status);
+
+  CREATE TABLE IF NOT EXISTS auth_sessions (
+    id TEXT PRIMARY KEY,
+    role TEXT NOT NULL,
+    subject TEXT NOT NULL,
+    staff_id TEXT,
+    citizen_id INTEGER,
+    ip_hash TEXT,
+    user_agent TEXT,
+    created_at TEXT NOT NULL,
+    last_seen_at TEXT NOT NULL,
+    expires_at TEXT NOT NULL,
+    revoked_at TEXT,
+    revoked_reason TEXT,
+    FOREIGN KEY (staff_id) REFERENCES staff_accounts(id),
+    FOREIGN KEY (citizen_id) REFERENCES citizens(id)
+  );
+  CREATE INDEX IF NOT EXISTS idx_auth_sessions_staff ON auth_sessions(staff_id, revoked_at);
+  CREATE INDEX IF NOT EXISTS idx_auth_sessions_expiry ON auth_sessions(expires_at);
+
   CREATE TABLE IF NOT EXISTS department_workforce_snapshots (
     id TEXT PRIMARY KEY,
     department_id TEXT NOT NULL,

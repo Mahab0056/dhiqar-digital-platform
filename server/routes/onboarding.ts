@@ -3,7 +3,7 @@ import { param } from '../http/params.js'
 import { randomUUID } from 'node:crypto'
 import { z } from 'zod'
 import { upload, validateUploadedFile } from '../http/upload.js'
-import { setSession, requireSession, currentCitizen, requireReviewAccess } from '../auth/session.js'
+import { setSession, requireSession, currentCitizen, currentSession, requireReviewAccess } from '../auth/session.js'
 import { notifyCitizen, employeeWorkQueueRealtime } from '../realtime.js'
 import { addAudit, db, getCitizenById, getOrCreateCitizen } from '../db.js'
 import { createOtpChallenge, processOtpDeliveryWebhook, verifyOtpChallenge } from '../otp.js'
@@ -50,7 +50,7 @@ export function registerOnboardingRoutes(app: express.Express) {
         .parse(req.body)
       const result = verifyOtpChallenge(payload)
       const citizen = getOrCreateCitizen(result.accountKey, result.phoneMasked)
-      setSession(res, String(citizen.id), 'CITIZEN')
+      setSession(res, String(citizen.id), 'CITIZEN', req)
       addAudit({
         actor: citizen.fullName,
         role: 'CITIZEN',
@@ -397,8 +397,8 @@ export function registerOnboardingRoutes(app: express.Express) {
   app.get(
     '/api/admin/identity-reviews',
     requireSession('EMPLOYEE', 'IDENTITY_REVIEWER', 'SUPER_ADMIN'),
-    requireReviewAccess,
     (_req, res) => {
+      const session = currentSession(res)
       const rows = db
         .prepare(
           `
@@ -418,8 +418,8 @@ export function registerOnboardingRoutes(app: express.Express) {
         )
         .all() as Array<Record<string, unknown>>
       addAudit({
-        actor: 'Identity Reviewer',
-        role: 'IDENTITY_REVIEWER',
+        actor: session.actor,
+        role: session.role,
         action: 'IDENTITY_REVIEW_QUEUE_VIEWED',
         entityType: 'IdentityReviewQueue',
         entityId: 'all',
@@ -489,37 +489,34 @@ export function registerOnboardingRoutes(app: express.Express) {
     }
   )
 
-  app.get(
-    '/api/admin/media/:id',
-    requireSession('EMPLOYEE', 'IDENTITY_REVIEWER', 'SUPER_ADMIN'),
-    requireReviewAccess,
-    (req, res) => {
-      try {
-        const media = readDecryptedMedia(param(req, 'id'))
-        if (!media) return res.status(404).json({ message: 'الوسيط غير متاح أو انتهت مدة الاحتفاظ.' })
-        addAudit({
-          actor: 'Identity Reviewer',
-          role: 'IDENTITY_REVIEWER',
-          action: 'IDENTITY_MEDIA_VIEWED',
-          entityType: 'MediaObject',
-          entityId: param(req, 'id'),
-          metadata: { purpose: 'identity-review' },
-        })
-        res.setHeader('Content-Type', media.mimeType)
-        res.setHeader('Content-Disposition', 'inline')
-        res.setHeader('Cache-Control', 'private, no-store')
-        res.send(media.buffer)
-      } catch {
-        res.status(500).json({ message: 'تعذر فتح الوسيط المشفر.' })
-      }
+  app.get('/api/admin/media/:id', requireSession('EMPLOYEE', 'IDENTITY_REVIEWER', 'SUPER_ADMIN'), (req, res) => {
+    const session = currentSession(res)
+    try {
+      const media = readDecryptedMedia(param(req, 'id'))
+      if (!media) return res.status(404).json({ message: 'الوسيط غير متاح أو انتهت مدة الاحتفاظ.' })
+      addAudit({
+        actor: session.actor,
+        role: session.role,
+        action: 'IDENTITY_MEDIA_VIEWED',
+        entityType: 'MediaObject',
+        entityId: param(req, 'id'),
+        metadata: { purpose: 'identity-review' },
+      })
+      res.setHeader('Content-Type', media.mimeType)
+      res.setHeader('Content-Disposition', 'inline')
+      res.setHeader('Cache-Control', 'private, no-store')
+      res.send(media.buffer)
+    } catch {
+      res.status(500).json({ message: 'تعذر فتح الوسيط المشفر.' })
     }
-  )
+  })
 
   app.post(
     '/api/admin/identity-reviews/:id/decision',
     requireSession('EMPLOYEE', 'IDENTITY_REVIEWER', 'SUPER_ADMIN'),
     requireReviewAccess,
     (req, res) => {
+      const session = currentSession(res)
       try {
         const payload = z
           .object({
@@ -537,7 +534,7 @@ export function registerOnboardingRoutes(app: express.Express) {
         try {
           db.prepare(
             `UPDATE identity_reviews SET status = ?, reviewed_at = ?, reviewed_by = ?, review_notes = ?, updated_at = ? WHERE id = ?`
-          ).run(payload.decision, timestamp, 'موظف مراجعة الهوية', payload.notes, timestamp, param(req, 'id'))
+          ).run(payload.decision, timestamp, session.actor, payload.notes, timestamp, param(req, 'id'))
           const citizenStatus = payload.decision === 'APPROVED' ? 'VERIFIED_MANUAL' : payload.decision
           db.prepare('UPDATE citizens SET verification_status = ?, updated_at = ? WHERE id = ?').run(
             citizenStatus,
@@ -561,8 +558,8 @@ export function registerOnboardingRoutes(app: express.Express) {
             link: '/citizen',
           })
           addAudit({
-            actor: 'موظف مراجعة الهوية',
-            role: 'IDENTITY_REVIEWER',
+            actor: session.actor,
+            role: session.role,
             action: 'IDENTITY_REVIEW_DECIDED',
             entityType: 'IdentityReview',
             entityId: param(req, 'id'),
@@ -576,8 +573,8 @@ export function registerOnboardingRoutes(app: express.Express) {
           throw error
         }
         addAudit({
-          actor: 'موظف مراجعة الهوية',
-          role: 'IDENTITY_REVIEWER',
+          actor: session.actor,
+          role: session.role,
           action: 'IDENTITY_MEDIA_RETAINED_AFTER_DECISION',
           entityType: 'IdentityReview',
           entityId: param(req, 'id'),
