@@ -11,9 +11,38 @@
   direction: rtl;
 }
 
-html, body, #root { width: 100%; min-width: 320px; min-height: 100%; }
-body { min-height: 100vh; }
-h1, h2, h3, h4, strong, button { font-family: 'Noto Kufi Arabic', 'IBM Plex Sans Arabic', system-ui, sans-serif; }
-button, a, input, select { outline-color: #14a85b; }
-button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible { outline: 3px solid rgba(20, 168, 91, .28); outline-offset: 2px; }
-::selection { color: white; background: #08783f; }
+html,
+body,
+#root {
+  width: 100%;
+  min-width: 320px;
+  min-height: 100%;
+}
+body {
+  min-height: 100vh;
+}
+h1,
+h2,
+h3,
+h4,
+strong,
+button {
+  font-family: 'Noto Kufi Arabic', 'IBM Plex Sans Arabic', system-ui, sans-serif;
+}
+button,
+a,
+input,
+select {
+  outline-color: #14a85b;
+}
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 3px solid rgba(20, 168, 91, 0.28);
+  outline-offset: 2px;
+}
+::selection {
+  color: white;
+  background: #08783f;
+}

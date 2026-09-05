@@ -44,7 +44,11 @@ function hashCode(challengeId: string, phone: string, code: string) {
 
 function rateLimitCount(column: 'phone_hash' | 'created_ip_hash', value: string) {
   const since = new Date(Date.now() - OTP_RATE_WINDOW_MINUTES * 60 * 1000).toISOString()
-  return (db.prepare(`SELECT COUNT(*) AS count FROM otp_challenges WHERE ${column} = ? AND created_at >= ?`).get(value, since) as { count: number }).count
+  return (
+    db
+      .prepare(`SELECT COUNT(*) AS count FROM otp_challenges WHERE ${column} = ? AND created_at >= ?`)
+      .get(value, since) as { count: number }
+  ).count
 }
 
 export async function createOtpChallenge(input: { phone: string; requesterIp: string }) {
@@ -66,12 +70,14 @@ export async function createOtpChallenge(input: { phone: string; requesterIp: st
 
   const createdAt = new Date()
   const expiresAt = new Date(createdAt.getTime() + OTP_TTL_MINUTES * 60 * 1000)
-  db.prepare(`
+  db.prepare(
+    `
     INSERT INTO otp_challenges (
       id, phone_hash, phone_masked, code_hash, delivery_status, attempts,
       max_attempts, expires_at, created_ip_hash, created_at
     ) VALUES (?, ?, ?, ?, 'REQUESTED', 0, ?, ?, ?, ?)
-  `).run(
+  `
+  ).run(
     challengeId,
     phoneHash,
     maskPhone(phone),
@@ -79,18 +85,19 @@ export async function createOtpChallenge(input: { phone: string; requesterIp: st
     OTP_MAX_ATTEMPTS,
     expiresAt.toISOString(),
     ipHash,
-    createdAt.toISOString(),
+    createdAt.toISOString()
   )
 
   const webhookSecret = process.env.OTPIQ_WEBHOOK_SECRET?.trim()
   const publicBaseUrl = process.env.PUBLIC_BASE_URL?.replace(/\/$/, '')
-  const deliveryReport = webhookSecret && publicBaseUrl
-    ? {
-        webhookUrl: `${publicBaseUrl}/api/webhooks/otpiq`,
-        deliveryReportType: 'final',
-        webhookSecret,
-      }
-    : undefined
+  const deliveryReport =
+    webhookSecret && publicBaseUrl
+      ? {
+          webhookUrl: `${publicBaseUrl}/api/webhooks/otpiq`,
+          deliveryReportType: 'final',
+          webhookSecret,
+        }
+      : undefined
 
   const response = await fetch(`${OTPIQ_BASE_URL}/sms`, {
     method: 'POST',
@@ -107,10 +114,15 @@ export async function createOtpChallenge(input: { phone: string; requesterIp: st
     }),
   })
 
-  const body = await response.json().catch(() => ({})) as Record<string, unknown>
+  const body = (await response.json().catch(() => ({}))) as Record<string, unknown>
   if (!response.ok) {
     db.prepare('DELETE FROM otp_challenges WHERE id = ?').run(challengeId)
-    const message = typeof body.error === 'string' ? body.error : typeof body.message === 'string' ? body.message : 'تعذر إرسال رمز التحقق.'
+    const message =
+      typeof body.error === 'string'
+        ? body.error
+        : typeof body.message === 'string'
+          ? body.message
+          : 'تعذر إرسال رمز التحقق.'
     throw new Error(message)
   }
 
@@ -127,18 +139,24 @@ export async function createOtpChallenge(input: { phone: string; requesterIp: st
 
 export function verifyOtpChallenge(input: { challengeId: string; phone: string; otp: string }) {
   const phone = normalizeIraqiPhone(input.phone)
-  const row = db.prepare(`
+  const row = db
+    .prepare(
+      `
     SELECT id, phone_hash, code_hash, attempts, max_attempts, expires_at, verified_at
     FROM otp_challenges WHERE id = ?
-  `).get(input.challengeId) as {
-    id: string
-    phone_hash: string
-    code_hash: string
-    attempts: number
-    max_attempts: number
-    expires_at: string
-    verified_at: string | null
-  } | undefined
+  `
+    )
+    .get(input.challengeId) as
+    | {
+        id: string
+        phone_hash: string
+        code_hash: string
+        attempts: number
+        max_attempts: number
+        expires_at: string
+        verified_at: string | null
+      }
+    | undefined
 
   if (!row) throw new Error('طلب التحقق غير موجود أو انتهت صلاحيته.')
   if (row.verified_at) throw new Error('تم استخدام رمز التحقق مسبقاً.')
@@ -153,7 +171,10 @@ export function verifyOtpChallenge(input: { challengeId: string; phone: string; 
   }
 
   const verifiedAt = new Date().toISOString()
-  db.prepare(`UPDATE otp_challenges SET verified_at = ?, delivery_status = 'VERIFIED' WHERE id = ?`).run(verifiedAt, row.id)
+  db.prepare(`UPDATE otp_challenges SET verified_at = ?, delivery_status = 'VERIFIED' WHERE id = ?`).run(
+    verifiedAt,
+    row.id
+  )
   return { success: true, phoneMasked: maskPhone(phone), verifiedAt, accountKey: row.phone_hash }
 }
 
@@ -165,8 +186,12 @@ export function processOtpDeliveryWebhook(input: { secret: string | undefined; p
   if (received.length !== wanted.length || !timingSafeEqual(received, wanted)) throw new Error('Unauthorized webhook.')
 
   const payload = input.payload as { smsId?: unknown; status?: unknown }
-  if (typeof payload.smsId !== 'string' || typeof payload.status !== 'string') throw new Error('Invalid webhook payload.')
-  db.prepare('UPDATE otp_challenges SET delivery_status = ? WHERE sms_id = ?').run(payload.status.toUpperCase(), payload.smsId)
+  if (typeof payload.smsId !== 'string' || typeof payload.status !== 'string')
+    throw new Error('Invalid webhook payload.')
+  db.prepare('UPDATE otp_challenges SET delivery_status = ? WHERE sms_id = ?').run(
+    payload.status.toUpperCase(),
+    payload.smsId
+  )
   return { accepted: true }
 }
 

@@ -1,10 +1,5 @@
 export type ApplicationStatus =
-  | 'SUBMITTED'
-  | 'UNDER_REVIEW'
-  | 'ACTION_REQUIRED'
-  | 'PAYMENT_REQUIRED'
-  | 'APPROVED'
-  | 'REJECTED'
+  'SUBMITTED' | 'UNDER_REVIEW' | 'ACTION_REQUIRED' | 'PAYMENT_REQUIRED' | 'APPROVED' | 'REJECTED'
 
 export type VerificationStatus =
   | 'PHONE_VERIFIED'
@@ -87,7 +82,16 @@ export interface GovernmentApplication {
   issuedAt?: string | null
   pdfAvailable?: boolean
   originalPdfUrl?: string | null
-  attachments: Array<{ id: string; mediaId: string; label: string; originalName: string; mimeType: string; purpose?: string; sizeBytes: number; available: boolean }>
+  attachments: Array<{
+    id: string
+    mediaId: string
+    label: string
+    originalName: string
+    mimeType: string
+    purpose?: string
+    sizeBytes: number
+    available: boolean
+  }>
   createdAt: string
   updatedAt: string
   events: ApplicationEvent[]
@@ -122,10 +126,24 @@ export interface CitizenServiceRequest {
   decisionNote?: string | null
   requiredDocument?: string | null
   citizenName?: string
-  attachments?: Array<{ id: string; mediaId: string; label: string; originalName: string; mimeType: string; sizeBytes: number; available: boolean }>
+  attachments?: Array<{
+    id: string
+    mediaId: string
+    label: string
+    originalName: string
+    mimeType: string
+    sizeBytes: number
+    available: boolean
+  }>
   createdAt: string
   updatedAt: string
-  appointment?: { id: string; preferredDate: string; preferredTime: string; status: string; note?: string | null } | null
+  appointment?: {
+    id: string
+    preferredDate: string
+    preferredTime: string
+    status: string
+    note?: string | null
+  } | null
 }
 
 export type FeedbackKind = 'COMPLAINT' | 'SUGGESTION'
@@ -147,7 +165,15 @@ export interface CitizenFeedback {
   adminNote?: string | null
   createdAt: string
   updatedAt: string
-  attachments: Array<{ id: number; mediaId: string; label: string; originalName: string; mimeType: string; sizeBytes: number; available: boolean }>
+  attachments: Array<{
+    id: number
+    mediaId: string
+    label: string
+    originalName: string
+    mimeType: string
+    sizeBytes: number
+    available: boolean
+  }>
   events: Array<{ id: number; status: string; title: string; description: string; actor: string; createdAt: string }>
 }
 
@@ -213,7 +239,15 @@ export interface ServiceItem {
   requirements: string[]
 }
 
-export type GovernmentServiceVerificationStatus = 'VERIFIED_UR_PORTAL' | 'VERIFIED_MINISTRY' | 'VERIFIED_GOVERNMENT_AUTHORITY' | 'VERIFIED_MULTIPLE_OFFICIAL_SOURCES' | 'PARTIALLY_VERIFIED' | 'REQUIRES_MANUAL_VERIFICATION' | 'OUTDATED_SOURCE' | 'NEEDS_UPDATE'
+export type GovernmentServiceVerificationStatus =
+  | 'VERIFIED_UR_PORTAL'
+  | 'VERIFIED_MINISTRY'
+  | 'VERIFIED_GOVERNMENT_AUTHORITY'
+  | 'VERIFIED_MULTIPLE_OFFICIAL_SOURCES'
+  | 'PARTIALLY_VERIFIED'
+  | 'REQUIRES_MANUAL_VERIFICATION'
+  | 'OUTDATED_SOURCE'
+  | 'NEEDS_UPDATE'
 export type GovernmentServicePublicationStatus = 'DRAFT' | 'APPROVED' | 'NEEDS_REVIEW' | 'DISABLED'
 
 export interface GovernmentServiceDirectoryEntry {
@@ -238,7 +272,17 @@ export interface GovernmentServiceDirectoryEntry {
   applicationChannel: string
   externalServiceUrl?: string | null
   existingServiceKey?: string | null
-  requiredDocuments: Array<{ documentName: string; requiredOrOptional: 'REQUIRED' | 'OPTIONAL' | 'CONDITIONAL'; appliesWhen?: string | null; notes?: string | null; originalRequired?: boolean; copyRequired?: boolean; certifiedCopyRequired?: boolean; frontSideRequired?: boolean; backSideRequired?: boolean }>
+  requiredDocuments: Array<{
+    documentName: string
+    requiredOrOptional: 'REQUIRED' | 'OPTIONAL' | 'CONDITIONAL'
+    appliesWhen?: string | null
+    notes?: string | null
+    originalRequired?: boolean
+    copyRequired?: boolean
+    certifiedCopyRequired?: boolean
+    frontSideRequired?: boolean
+    backSideRequired?: boolean
+  }>
   requiredInformation: string[]
   eligibilityConditions: string[]
   feeDetails: Array<{ rule: string; amount: number | null; currency?: string | null; status?: string | null }>
@@ -253,13 +297,31 @@ export interface GovernmentServiceDirectoryEntry {
   qrVerificationAvailable?: boolean | null
   serviceOutput?: string | null
   physicalDocumentRequired?: boolean | null
-  legalBasis: Array<{ lawName?: string; lawNumber?: string; year?: number; article?: string; regulation?: string; officialSource?: string }>
+  legalBasis: Array<{
+    lawName?: string
+    lawNumber?: string
+    year?: number
+    article?: string
+    regulation?: string
+    officialSource?: string
+  }>
   verificationStatus: GovernmentServiceVerificationStatus
   lastVerifiedDate?: string | null
   sourceDate?: string | null
   publicationStatus: GovernmentServicePublicationStatus
   active: boolean
-  sources: Array<{ id?: string; sourceType: string; authorityName: string; officialUrl: string; pageTitle?: string | null; dateAccessed: string; datePublished?: string | null; lastVerifiedDate?: string | null; verificationStatus: GovernmentServiceVerificationStatus; sourceNote?: string | null }>
+  sources: Array<{
+    id?: string
+    sourceType: string
+    authorityName: string
+    officialUrl: string
+    pageTitle?: string | null
+    dateAccessed: string
+    datePublished?: string | null
+    lastVerifiedDate?: string | null
+    verificationStatus: GovernmentServiceVerificationStatus
+    sourceNote?: string | null
+  }>
   createdAt: string
   updatedAt: string
 }
@@ -278,6 +340,21 @@ export interface DepartmentWorkbench {
   district: string
   dataStatus: string
   sourceUrl: string | null
-  services: Array<{ id: string; name: string; category: string; requiredDocuments: string[]; active: boolean; updatedAt: string }>
-  requests: Array<{ reference: string; serviceName: string; citizenName: string; status: string; currentAction: string; createdAt: string; updatedAt: string }>
+  services: Array<{
+    id: string
+    name: string
+    category: string
+    requiredDocuments: string[]
+    active: boolean
+    updatedAt: string
+  }>
+  requests: Array<{
+    reference: string
+    serviceName: string
+    citizenName: string
+    status: string
+    currentAction: string
+    createdAt: string
+    updatedAt: string
+  }>
 }

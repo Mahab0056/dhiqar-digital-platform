@@ -7,8 +7,9 @@ import { fileURLToPath } from 'node:url'
 const currentDir = dirname(fileURLToPath(import.meta.url))
 const defaultDatabasePath = join(currentDir, '..', 'data', 'dhiqar-demo.sqlite')
 const railwayVolumePath = process.env.RAILWAY_VOLUME_MOUNT_PATH?.trim()
-const databasePath = process.env.DATABASE_PATH?.trim()
-  || (railwayVolumePath ? join(railwayVolumePath, 'dhiqar-demo.sqlite') : defaultDatabasePath)
+const databasePath =
+  process.env.DATABASE_PATH?.trim() ||
+  (railwayVolumePath ? join(railwayVolumePath, 'dhiqar-demo.sqlite') : defaultDatabasePath)
 mkdirSync(dirname(databasePath), { recursive: true })
 
 export const db = new DatabaseSync(databasePath)
@@ -567,8 +568,12 @@ ensureColumn('identity_reviews', 'location_lat', 'REAL')
 ensureColumn('identity_reviews', 'location_lng', 'REAL')
 ensureColumn('identity_reviews', 'location_accuracy_m', 'REAL')
 ensureColumn('identity_reviews', 'location_consent_at', 'TEXT')
-db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_citizens_account_key ON citizens(account_key) WHERE account_key IS NOT NULL')
-db.exec('CREATE INDEX IF NOT EXISTS idx_citizens_admin_directory ON citizens(verification_status, document_type, updated_at DESC)')
+db.exec(
+  'CREATE UNIQUE INDEX IF NOT EXISTS idx_citizens_account_key ON citizens(account_key) WHERE account_key IS NOT NULL'
+)
+db.exec(
+  'CREATE INDEX IF NOT EXISTS idx_citizens_admin_directory ON citizens(verification_status, document_type, updated_at DESC)'
+)
 
 const now = () => new Date().toISOString()
 
@@ -576,10 +581,14 @@ export function ensureDemoCitizen() {
   const existing = db.prepare('SELECT id FROM citizens LIMIT 1').get() as { id: number } | undefined
   if (existing) return existing.id
   const timestamp = now()
-  const result = db.prepare(`
+  const result = db
+    .prepare(
+      `
     INSERT INTO citizens (full_name, national_id_masked, phone_masked, verification_status, district, consent_at, created_at, updated_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-  `).run('مهاب علي ياسين', '********** 4821', '0780***4567', 'VERIFIED', 'الناصرية', timestamp, timestamp, timestamp)
+  `
+    )
+    .run('مهاب علي ياسين', '********** 4821', '0780***4567', 'VERIFIED', 'الناصرية', timestamp, timestamp, timestamp)
   return Number(result.lastInsertRowid)
 }
 
@@ -593,10 +602,12 @@ export function addAudit(input: {
   newValue?: unknown
   metadata?: unknown
 }) {
-  db.prepare(`
+  db.prepare(
+    `
     INSERT INTO audit_logs (actor, role, action, entity_type, entity_id, previous_value, new_value, metadata, created_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(
+  `
+  ).run(
     input.actor,
     input.role,
     input.action,
@@ -605,37 +616,72 @@ export function addAudit(input: {
     input.previousValue ? JSON.stringify(input.previousValue) : null,
     input.newValue ? JSON.stringify(input.newValue) : null,
     input.metadata ? JSON.stringify(input.metadata) : null,
-    now(),
+    now()
   )
 }
 
-export function addEvent(applicationId: number, input: { type: string; title: string; description: string; actor: string }) {
-  db.prepare(`
+export function addEvent(
+  applicationId: number,
+  input: { type: string; title: string; description: string; actor: string }
+) {
+  db.prepare(
+    `
     INSERT INTO application_events (application_id, type, title, description, actor, created_at)
     VALUES (?, ?, ?, ?, ?, ?)
-  `).run(applicationId, input.type, input.title, input.description, input.actor, now())
+  `
+  ).run(applicationId, input.type, input.title, input.description, input.actor, now())
 }
 
-export function createNotification(input: { citizenId: number; type: string; title: string; message: string; link?: string }) {
+export function createNotification(input: {
+  citizenId: number
+  type: string
+  title: string
+  message: string
+  link?: string
+}) {
   const id = `ntf_${randomUUID().replaceAll('-', '')}`
-  db.prepare(`INSERT INTO notifications (id, citizen_id, type, title, message, link, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)`)
-    .run(id, input.citizenId, input.type, input.title, input.message, input.link || null, now())
+  db.prepare(
+    `INSERT INTO notifications (id, citizen_id, type, title, message, link, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)`
+  ).run(id, input.citizenId, input.type, input.title, input.message, input.link || null, now())
   return id
 }
 
 export function getCitizenNotifications(citizenId: number, limit = 50) {
-  const rows = db.prepare(`SELECT id, type, title, message, link, read_at, created_at FROM notifications WHERE citizen_id = ? ORDER BY created_at DESC LIMIT ?`).all(citizenId, limit) as Array<Record<string, unknown>>
-  const unread = (db.prepare('SELECT COUNT(*) AS total FROM notifications WHERE citizen_id = ? AND read_at IS NULL').get(citizenId) as { total: number }).total
-  return { unread, items: rows.map(row => ({ id: row.id, type: row.type, title: row.title, message: row.message, link: row.link, readAt: row.read_at, createdAt: row.created_at })) }
+  const rows = db
+    .prepare(
+      `SELECT id, type, title, message, link, read_at, created_at FROM notifications WHERE citizen_id = ? ORDER BY created_at DESC LIMIT ?`
+    )
+    .all(citizenId, limit) as Array<Record<string, unknown>>
+  const unread = (
+    db
+      .prepare('SELECT COUNT(*) AS total FROM notifications WHERE citizen_id = ? AND read_at IS NULL')
+      .get(citizenId) as { total: number }
+  ).total
+  return {
+    unread,
+    items: rows.map(row => ({
+      id: row.id,
+      type: row.type,
+      title: row.title,
+      message: row.message,
+      link: row.link,
+      readAt: row.read_at,
+      createdAt: row.created_at,
+    })),
+  }
 }
 
 export function markNotificationRead(citizenId: number, notificationId: string) {
-  const result = db.prepare('UPDATE notifications SET read_at = COALESCE(read_at, ?) WHERE id = ? AND citizen_id = ?').run(now(), notificationId, citizenId)
+  const result = db
+    .prepare('UPDATE notifications SET read_at = COALESCE(read_at, ?) WHERE id = ? AND citizen_id = ?')
+    .run(now(), notificationId, citizenId)
   return result.changes > 0
 }
 
 export function markAllNotificationsRead(citizenId: number) {
-  const result = db.prepare('UPDATE notifications SET read_at = COALESCE(read_at, ?) WHERE citizen_id = ?').run(now(), citizenId)
+  const result = db
+    .prepare('UPDATE notifications SET read_at = COALESCE(read_at, ?) WHERE citizen_id = ?')
+    .run(now(), citizenId)
   return Number(result.changes)
 }
 
@@ -659,13 +705,18 @@ export function getCitizenById(id: number) {
 }
 
 export function getOrCreateCitizen(accountKey: string, phoneMasked: string) {
-  const existing = db.prepare('SELECT * FROM citizens WHERE account_key = ?').get(accountKey) as Record<string, unknown> | undefined
+  const existing = db.prepare('SELECT * FROM citizens WHERE account_key = ?').get(accountKey) as
+    Record<string, unknown> | undefined
   if (existing) return mapCitizen(existing)
   const timestamp = now()
-  const result = db.prepare(`
+  const result = db
+    .prepare(
+      `
     INSERT INTO citizens (full_name, national_id_masked, phone_masked, account_key, verification_status, district, created_at, updated_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-  `).run('مواطن جديد', 'لم تُقدَّم الهوية', phoneMasked, accountKey, 'PHONE_VERIFIED', 'غير محدد', timestamp, timestamp)
+  `
+    )
+    .run('مواطن جديد', 'لم تُقدَّم الهوية', phoneMasked, accountKey, 'PHONE_VERIFIED', 'غير محدد', timestamp, timestamp)
   return getCitizenById(Number(result.lastInsertRowid))!
 }
 
@@ -676,13 +727,26 @@ export function getCitizen() {
   return mapCitizen(row)
 }
 
-const adminCitizenVerificationStatuses = new Set(['PHONE_VERIFIED', 'PENDING_REVIEW', 'VERIFIED', 'VERIFIED_MANUAL', 'VERIFIED_UR_PORTAL', 'NEEDS_RESUBMISSION', 'REJECTED'])
+const adminCitizenVerificationStatuses = new Set([
+  'PHONE_VERIFIED',
+  'PENDING_REVIEW',
+  'VERIFIED',
+  'VERIFIED_MANUAL',
+  'VERIFIED_UR_PORTAL',
+  'NEEDS_RESUBMISSION',
+  'REJECTED',
+])
 const adminCitizenDocumentTypes = new Set(['NATIONAL_ID', 'PASSPORT', 'DRIVING_LICENSE', 'UNSPECIFIED'])
 
-export function listCitizensForSuperAdmin(filters: { query?: string; verificationStatus?: string; documentType?: string; limit?: number } = {}) {
+export function listCitizensForSuperAdmin(
+  filters: { query?: string; verificationStatus?: string; documentType?: string; limit?: number } = {}
+) {
   const where: string[] = []
   const values: Array<string | number> = []
-  const query = String(filters.query || '').trim().replace(/[\u0000-\u001f]/g, '').slice(0, 80)
+  const query = String(filters.query || '')
+    .trim()
+    .replace(/[\u0000-\u001f]/g, '')
+    .slice(0, 80)
   const verificationStatus = String(filters.verificationStatus || '').trim()
   const documentType = String(filters.documentType || '').trim()
   const limit = Math.min(Math.max(Number(filters.limit) || 100, 1), 250)
@@ -697,17 +761,24 @@ export function listCitizensForSuperAdmin(filters: { query?: string; verificatio
   }
   if (adminCitizenDocumentTypes.has(documentType)) {
     if (documentType === 'UNSPECIFIED') where.push("(c.document_type IS NULL OR c.document_type = '')")
-    else { where.push('c.document_type = ?'); values.push(documentType) }
+    else {
+      where.push('c.document_type = ?')
+      values.push(documentType)
+    }
   }
   const clause = where.length ? `WHERE ${where.join(' AND ')}` : ''
-  const rows = db.prepare(`
+  const rows = db
+    .prepare(
+      `
     SELECT c.id, c.full_name, c.national_id_masked, c.phone_masked, c.verification_status, c.district, c.document_type, c.created_at, c.updated_at,
       (SELECT COUNT(*) FROM applications a WHERE a.citizen_id = c.id) AS application_count,
       (SELECT COUNT(*) FROM service_requests sr WHERE sr.citizen_id = c.id) AS service_request_count,
       MAX(COALESCE(c.updated_at, c.created_at)) AS last_activity_at
     FROM citizens c ${clause}
     ORDER BY c.updated_at DESC, c.id DESC LIMIT ?
-  `).all(...values, limit) as Array<Record<string, unknown>>
+  `
+    )
+    .all(...values, limit) as Array<Record<string, unknown>>
   return rows.map(row => ({
     id: Number(row.id),
     fullName: String(row.full_name),
@@ -725,33 +796,43 @@ export function listCitizensForSuperAdmin(filters: { query?: string; verificatio
 }
 
 export function getApplications() {
-
   const rows = db.prepare('SELECT * FROM applications ORDER BY id DESC').all() as Array<Record<string, unknown>>
   return rows.map(mapApplication)
 }
 
 export function getApplicationsForCitizen(citizenId: number) {
-  const rows = db.prepare('SELECT * FROM applications WHERE citizen_id = ? ORDER BY id DESC').all(citizenId) as Array<Record<string, unknown>>
+  const rows = db.prepare('SELECT * FROM applications WHERE citizen_id = ? ORDER BY id DESC').all(citizenId) as Array<
+    Record<string, unknown>
+  >
   return rows.map(mapApplication)
 }
 
 export function getApplicationByReference(reference: string) {
-  const row = db.prepare('SELECT * FROM applications WHERE reference = ?').get(reference) as Record<string, unknown> | undefined
+  const row = db.prepare('SELECT * FROM applications WHERE reference = ?').get(reference) as
+    Record<string, unknown> | undefined
   return row ? mapApplication(row) : null
 }
 
 export function getApplicationByVerificationId(verificationId: string) {
-  const row = db.prepare('SELECT * FROM applications WHERE verification_id = ? AND status = ?').get(verificationId, 'APPROVED') as Record<string, unknown> | undefined
+  const row = db
+    .prepare('SELECT * FROM applications WHERE verification_id = ? AND status = ?')
+    .get(verificationId, 'APPROVED') as Record<string, unknown> | undefined
   return row ? mapApplication(row) : null
 }
 
 function mapApplication(row: Record<string, unknown>) {
-  const events = db.prepare('SELECT * FROM application_events WHERE application_id = ? ORDER BY id ASC').all(row.id) as Array<Record<string, unknown>>
-  const attachments = db.prepare(`
+  const events = db
+    .prepare('SELECT * FROM application_events WHERE application_id = ? ORDER BY id ASC')
+    .all(row.id) as Array<Record<string, unknown>>
+  const attachments = db
+    .prepare(
+      `
     SELECT am.id, am.label, mo.id AS media_id, mo.original_name, mo.mime_type, mo.purpose, mo.size_bytes, mo.deleted_at
     FROM application_media am JOIN media_objects mo ON mo.id = am.media_id
     WHERE am.application_id = ? ORDER BY am.created_at ASC
-  `).all(row.id) as Array<Record<string, unknown>>
+  `
+    )
+    .all(row.id) as Array<Record<string, unknown>>
   return {
     id: row.id,
     reference: row.reference,
@@ -773,7 +854,16 @@ function mapApplication(row: Record<string, unknown>) {
     requiredDocument: row.required_document,
     documentNumber: row.document_number,
     verificationId: row.verification_id,
-    attachments: attachments.map(item => ({ id: item.id, mediaId: item.media_id, label: item.label, originalName: item.original_name, mimeType: item.mime_type, purpose: item.purpose, sizeBytes: item.size_bytes, available: !item.deleted_at })),
+    attachments: attachments.map(item => ({
+      id: item.id,
+      mediaId: item.media_id,
+      label: item.label,
+      originalName: item.original_name,
+      mimeType: item.mime_type,
+      purpose: item.purpose,
+      sizeBytes: item.size_bytes,
+      available: !item.deleted_at,
+    })),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     events: events.map(event => ({
@@ -790,38 +880,113 @@ function mapApplication(row: Record<string, unknown>) {
 export type FeedbackKind = 'COMPLAINT' | 'SUGGESTION'
 export type FeedbackStatus = 'RECEIVED' | 'IN_REVIEW' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED'
 
-const feedbackReference = (kind: FeedbackKind) => `${kind === 'COMPLAINT' ? 'TQD-CMP' : 'TQD-SUG'}-${new Date().getFullYear()}-${String((db.prepare('SELECT COUNT(*) AS total FROM citizen_feedback').get() as { total: number }).total + 1).padStart(5, '0')}`
+const feedbackReference = (kind: FeedbackKind) =>
+  `${kind === 'COMPLAINT' ? 'TQD-CMP' : 'TQD-SUG'}-${new Date().getFullYear()}-${String((db.prepare('SELECT COUNT(*) AS total FROM citizen_feedback').get() as { total: number }).total + 1).padStart(5, '0')}`
 
 function mapFeedback(row: Record<string, unknown>) {
-  const events = db.prepare('SELECT id, status, title, description, actor, created_at FROM feedback_events WHERE feedback_id = ? ORDER BY id ASC').all(row.id) as Array<Record<string, unknown>>
-  const attachments = db.prepare(`SELECT fm.id, fm.label, mo.id AS media_id, mo.original_name, mo.mime_type, mo.size_bytes, mo.deleted_at
-    FROM feedback_media fm JOIN media_objects mo ON mo.id = fm.media_id WHERE fm.feedback_id = ? ORDER BY fm.id ASC`).all(row.id) as Array<Record<string, unknown>>
+  const events = db
+    .prepare(
+      'SELECT id, status, title, description, actor, created_at FROM feedback_events WHERE feedback_id = ? ORDER BY id ASC'
+    )
+    .all(row.id) as Array<Record<string, unknown>>
+  const attachments = db
+    .prepare(
+      `SELECT fm.id, fm.label, mo.id AS media_id, mo.original_name, mo.mime_type, mo.size_bytes, mo.deleted_at
+    FROM feedback_media fm JOIN media_objects mo ON mo.id = fm.media_id WHERE fm.feedback_id = ? ORDER BY fm.id ASC`
+    )
+    .all(row.id) as Array<Record<string, unknown>>
   return {
-    id: Number(row.id), reference: String(row.reference), citizenId: Number(row.citizen_id), kind: String(row.kind), category: String(row.category), departmentId: row.department_id ? String(row.department_id) : null,
-    subject: String(row.subject), description: String(row.description), district: row.district ? String(row.district) : null,
+    id: Number(row.id),
+    reference: String(row.reference),
+    citizenId: Number(row.citizen_id),
+    kind: String(row.kind),
+    category: String(row.category),
+    departmentId: row.department_id ? String(row.department_id) : null,
+    subject: String(row.subject),
+    description: String(row.description),
+    district: row.district ? String(row.district) : null,
     coordinates: row.lat !== null && row.lng !== null ? { lat: Number(row.lat), lng: Number(row.lng) } : null,
-    status: String(row.status), currentAction: String(row.current_action), adminNote: row.admin_note ? String(row.admin_note) : null,
-    createdAt: String(row.created_at), updatedAt: String(row.updated_at),
-    attachments: attachments.map(item => ({ id: Number(item.id), mediaId: String(item.media_id), label: String(item.label), originalName: String(item.original_name), mimeType: String(item.mime_type), sizeBytes: Number(item.size_bytes), available: !item.deleted_at })),
-    events: events.map(event => ({ id: Number(event.id), status: String(event.status), title: String(event.title), description: String(event.description), actor: String(event.actor), createdAt: String(event.created_at) })),
+    status: String(row.status),
+    currentAction: String(row.current_action),
+    adminNote: row.admin_note ? String(row.admin_note) : null,
+    createdAt: String(row.created_at),
+    updatedAt: String(row.updated_at),
+    attachments: attachments.map(item => ({
+      id: Number(item.id),
+      mediaId: String(item.media_id),
+      label: String(item.label),
+      originalName: String(item.original_name),
+      mimeType: String(item.mime_type),
+      sizeBytes: Number(item.size_bytes),
+      available: !item.deleted_at,
+    })),
+    events: events.map(event => ({
+      id: Number(event.id),
+      status: String(event.status),
+      title: String(event.title),
+      description: String(event.description),
+      actor: String(event.actor),
+      createdAt: String(event.created_at),
+    })),
   }
 }
 
-export function createFeedback(input: { citizenId: number; kind: FeedbackKind; category: string; departmentId?: string; subject: string; description: string; district?: string; lat?: number; lng?: number }) {
+export function createFeedback(input: {
+  citizenId: number
+  kind: FeedbackKind
+  category: string
+  departmentId?: string
+  subject: string
+  description: string
+  district?: string
+  lat?: number
+  lng?: number
+}) {
   const timestamp = now()
   const reference = feedbackReference(input.kind)
-  const currentAction = input.kind === 'COMPLAINT' ? 'تم استلام الشكوى وتحويلها إلى الجهة المختصة.' : 'تم استلام المقترح وإحالته للمراجعة.'
-  const result = db.prepare(`INSERT INTO citizen_feedback (reference, citizen_id, kind, category, department_id, subject, description, district, lat, lng, status, current_action, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'RECEIVED', ?, ?, ?)`)
-    .run(reference, input.citizenId, input.kind, input.category, input.departmentId || null, input.subject, input.description, input.district || null, input.lat ?? null, input.lng ?? null, currentAction, timestamp, timestamp)
+  const currentAction =
+    input.kind === 'COMPLAINT' ? 'تم استلام الشكوى وتحويلها إلى الجهة المختصة.' : 'تم استلام المقترح وإحالته للمراجعة.'
+  const result = db
+    .prepare(
+      `INSERT INTO citizen_feedback (reference, citizen_id, kind, category, department_id, subject, description, district, lat, lng, status, current_action, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'RECEIVED', ?, ?, ?)`
+    )
+    .run(
+      reference,
+      input.citizenId,
+      input.kind,
+      input.category,
+      input.departmentId || null,
+      input.subject,
+      input.description,
+      input.district || null,
+      input.lat ?? null,
+      input.lng ?? null,
+      currentAction,
+      timestamp,
+      timestamp
+    )
   const id = Number(result.lastInsertRowid)
-  db.prepare('INSERT INTO feedback_events (feedback_id, status, title, description, actor, created_at) VALUES (?, ?, ?, ?, ?, ?)')
-    .run(id, 'RECEIVED', input.kind === 'COMPLAINT' ? 'تم تسجيل الشكوى' : 'تم تسجيل المقترح', currentAction, 'منصة ذي قار الرقمية', timestamp)
+  db.prepare(
+    'INSERT INTO feedback_events (feedback_id, status, title, description, actor, created_at) VALUES (?, ?, ?, ?, ?, ?)'
+  ).run(
+    id,
+    'RECEIVED',
+    input.kind === 'COMPLAINT' ? 'تم تسجيل الشكوى' : 'تم تسجيل المقترح',
+    currentAction,
+    'منصة ذي قار الرقمية',
+    timestamp
+  )
   return getFeedbackById(id)!
 }
 
 export function attachFeedbackMedia(feedbackId: number, mediaId: string, label: string) {
-  db.prepare('INSERT INTO feedback_media (feedback_id, media_id, label, created_at) VALUES (?, ?, ?, ?)').run(feedbackId, mediaId, label, now())
+  db.prepare('INSERT INTO feedback_media (feedback_id, media_id, label, created_at) VALUES (?, ?, ?, ?)').run(
+    feedbackId,
+    mediaId,
+    label,
+    now()
+  )
 }
 
 export function getFeedbackById(id: number) {
@@ -830,33 +995,47 @@ export function getFeedbackById(id: number) {
 }
 
 export function getFeedbackForCitizen(citizenId: number) {
-  const rows = db.prepare('SELECT * FROM citizen_feedback WHERE citizen_id = ? ORDER BY updated_at DESC').all(citizenId) as Array<Record<string, unknown>>
+  const rows = db
+    .prepare('SELECT * FROM citizen_feedback WHERE citizen_id = ? ORDER BY updated_at DESC')
+    .all(citizenId) as Array<Record<string, unknown>>
   return rows.map(mapFeedback)
 }
 
 export function getFeedbackByReference(reference: string) {
-  const row = db.prepare('SELECT * FROM citizen_feedback WHERE reference = ?').get(reference) as Record<string, unknown> | undefined
+  const row = db.prepare('SELECT * FROM citizen_feedback WHERE reference = ?').get(reference) as
+    Record<string, unknown> | undefined
   return row ? mapFeedback(row) : null
 }
 
 export function getFeedbackForAdmin() {
-  const rows = db.prepare('SELECT * FROM citizen_feedback ORDER BY CASE status WHEN \'RECEIVED\' THEN 0 WHEN \'IN_REVIEW\' THEN 1 WHEN \'IN_PROGRESS\' THEN 2 ELSE 3 END, updated_at DESC').all() as Array<Record<string, unknown>>
+  const rows = db
+    .prepare(
+      "SELECT * FROM citizen_feedback ORDER BY CASE status WHEN 'RECEIVED' THEN 0 WHEN 'IN_REVIEW' THEN 1 WHEN 'IN_PROGRESS' THEN 2 ELSE 3 END, updated_at DESC"
+    )
+    .all() as Array<Record<string, unknown>>
   return rows.map(mapFeedback)
 }
 
-export function updateFeedbackStatus(feedbackId: number, input: { status: FeedbackStatus; currentAction: string; adminNote?: string; actor: string }) {
+export function updateFeedbackStatus(
+  feedbackId: number,
+  input: { status: FeedbackStatus; currentAction: string; adminNote?: string; actor: string }
+) {
   const timestamp = now()
-  db.prepare('UPDATE citizen_feedback SET status = ?, current_action = ?, admin_note = ?, updated_at = ? WHERE id = ?')
-    .run(input.status, input.currentAction, input.adminNote || null, timestamp, feedbackId)
-  db.prepare('INSERT INTO feedback_events (feedback_id, status, title, description, actor, created_at) VALUES (?, ?, ?, ?, ?, ?)')
-    .run(feedbackId, input.status, `تحديث الحالة: ${input.status}`, input.currentAction, input.actor, timestamp)
+  db.prepare(
+    'UPDATE citizen_feedback SET status = ?, current_action = ?, admin_note = ?, updated_at = ? WHERE id = ?'
+  ).run(input.status, input.currentAction, input.adminNote || null, timestamp, feedbackId)
+  db.prepare(
+    'INSERT INTO feedback_events (feedback_id, status, title, description, actor, created_at) VALUES (?, ?, ?, ?, ?, ?)'
+  ).run(feedbackId, input.status, `تحديث الحالة: ${input.status}`, input.currentAction, input.actor, timestamp)
   return getFeedbackById(feedbackId)
 }
 
 export function resetDemo() {
   db.exec('BEGIN')
   try {
-    db.exec('DELETE FROM payments; DELETE FROM notifications; DELETE FROM application_events; DELETE FROM applications; DELETE FROM audit_logs;')
+    db.exec(
+      'DELETE FROM payments; DELETE FROM notifications; DELETE FROM application_events; DELETE FROM applications; DELETE FROM audit_logs;'
+    )
     db.exec('COMMIT')
   } catch (error) {
     db.exec('ROLLBACK')

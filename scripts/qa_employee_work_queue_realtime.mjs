@@ -5,7 +5,9 @@ import { ensureDemoCitizen } from '../server/db.js'
 const base = process.argv[2] || 'http://127.0.0.1:8798'
 const secret = process.env.SESSION_SECRET || 'employee-work-queue-qa-session-secret-long'
 const makeSession = (sub, role) => {
-  const payload = Buffer.from(JSON.stringify({ sub, role, exp: Math.floor(Date.now() / 1000) + 3600 })).toString('base64url')
+  const payload = Buffer.from(JSON.stringify({ sub, role, exp: Math.floor(Date.now() / 1000) + 3600 })).toString(
+    'base64url'
+  )
   return `${payload}.${createHmac('sha256', secret).update(payload).digest('base64url')}`
 }
 const citizenId = ensureDemoCitizen()
@@ -15,56 +17,165 @@ const pages = await (await fetch('http://127.0.0.1:9222/json')).json()
 const page = pages.find(item => item.type === 'page')
 if (!page?.webSocketDebuggerUrl) throw new Error('تعذر فتح متصفح فحص الموظف.')
 const cdp = new WebSocket(page.webSocketDebuggerUrl)
-const waiting = new Map(); let nextId = 1
-const send = (method, params = {}) => new Promise((resolve, reject) => { const id = nextId++; waiting.set(id, { resolve, reject }); cdp.send(JSON.stringify({ id, method, params })) })
-cdp.addEventListener('message', event => { const response = JSON.parse(event.data); if (!response.id || !waiting.has(response.id)) return; const callback = waiting.get(response.id); waiting.delete(response.id); response.error ? callback.reject(new Error(response.error.message)) : callback.resolve(response.result) })
-await new Promise((resolve, reject) => { cdp.addEventListener('open', resolve, { once: true }); cdp.addEventListener('error', reject, { once: true }) })
-const evaluate = async expression => { const value = await send('Runtime.evaluate', { expression, returnByValue: true, awaitPromise: true }); if (value.exceptionDetails) throw new Error(value.exceptionDetails.text || 'فشل فحص واجهة الموظف.'); return value.result.value }
+const waiting = new Map()
+let nextId = 1
+const send = (method, params = {}) =>
+  new Promise((resolve, reject) => {
+    const id = nextId++
+    waiting.set(id, { resolve, reject })
+    cdp.send(JSON.stringify({ id, method, params }))
+  })
+cdp.addEventListener('message', event => {
+  const response = JSON.parse(event.data)
+  if (!response.id || !waiting.has(response.id)) return
+  const callback = waiting.get(response.id)
+  waiting.delete(response.id)
+  response.error ? callback.reject(new Error(response.error.message)) : callback.resolve(response.result)
+})
+await new Promise((resolve, reject) => {
+  cdp.addEventListener('open', resolve, { once: true })
+  cdp.addEventListener('error', reject, { once: true })
+})
+const evaluate = async expression => {
+  const value = await send('Runtime.evaluate', { expression, returnByValue: true, awaitPromise: true })
+  if (value.exceptionDetails) throw new Error(value.exceptionDetails.text || 'فشل فحص واجهة الموظف.')
+  return value.result.value
+}
 const wait = ms => new Promise(resolve => setTimeout(resolve, ms))
-await send('Page.enable'); await send('Network.enable'); await send('Runtime.enable')
-await send('Network.setCookie', { name: 'dhiqar_session', value: makeSession('employee-queue-qa', 'EMPLOYEE'), url: base, httpOnly: true, sameSite: 'Lax' })
-await send('Page.navigate', { url: `${base}/employee` }); await wait(1000)
-if (!await evaluate(`document.body.innerText.includes('لوحة عمل المراجعة')`)) throw new Error('employee dashboard did not open')
+await send('Page.enable')
+await send('Network.enable')
+await send('Runtime.enable')
+await send('Network.setCookie', {
+  name: 'dhiqar_session',
+  value: makeSession('employee-queue-qa', 'EMPLOYEE'),
+  url: base,
+  httpOnly: true,
+  sameSite: 'Lax',
+})
+await send('Page.navigate', { url: `${base}/employee` })
+await wait(1000)
+if (!(await evaluate(`document.body.innerText.includes('لوحة عمل المراجعة')`)))
+  throw new Error('employee dashboard did not open')
 const validWebm = Buffer.concat([Buffer.from([0x1a, 0x45, 0xdf, 0xa3]), Buffer.alloc(110_000)])
 const faceVideo = () => new Blob([validWebm], { type: 'video/webm' })
 const serviceForm = new FormData()
 serviceForm.append('serviceKey', 'building-permit')
-serviceForm.append('data', JSON.stringify({ applicantCapacity: 'مالك العقار', propertyNumber: 'QAREALTIME-101', propertyAddress: 'عنوان اختبار حي', district: 'الناصرية', constructionType: 'سكني', floors: '1', engineerName: 'مكتب فحص' }))
-serviceForm.append('faceConsent', 'true'); serviceForm.append('faceVideo', faceVideo(), 'face-video-service.webm')
-const serviceResponse = await fetch(`${base}/api/service-requests`, { method: 'POST', headers: { cookie: citizenCookie }, body: serviceForm })
-if (serviceResponse.status !== 201) throw new Error(`service request creation failed: ${serviceResponse.status} ${await serviceResponse.text()}`)
+serviceForm.append(
+  'data',
+  JSON.stringify({
+    applicantCapacity: 'مالك العقار',
+    propertyNumber: 'QAREALTIME-101',
+    propertyAddress: 'عنوان اختبار حي',
+    district: 'الناصرية',
+    constructionType: 'سكني',
+    floors: '1',
+    engineerName: 'مكتب فحص',
+  })
+)
+serviceForm.append('faceConsent', 'true')
+serviceForm.append('faceVideo', faceVideo(), 'face-video-service.webm')
+const serviceResponse = await fetch(`${base}/api/service-requests`, {
+  method: 'POST',
+  headers: { cookie: citizenCookie },
+  body: serviceForm,
+})
+if (serviceResponse.status !== 201)
+  throw new Error(`service request creation failed: ${serviceResponse.status} ${await serviceResponse.text()}`)
 const service = await serviceResponse.json()
 await wait(450)
-const serviceUi = await evaluate(`(() => ({ found: document.body.innerText.includes(${JSON.stringify(service.reference)}), toast: document.body.innerText.includes('طلب خدمة جديد') }))()`)
-if (!serviceUi.found || !serviceUi.toast) throw new Error(`new service request did not appear live for employee: ${JSON.stringify(serviceUi)}`)
-const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScL5JwAAAABJRU5ErkJggg==', 'base64')
+const serviceUi = await evaluate(
+  `(() => ({ found: document.body.innerText.includes(${JSON.stringify(service.reference)}), toast: document.body.innerText.includes('طلب خدمة جديد') }))()`
+)
+if (!serviceUi.found || !serviceUi.toast)
+  throw new Error(`new service request did not appear live for employee: ${JSON.stringify(serviceUi)}`)
+const png = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScL5JwAAAABJRU5ErkJggg==',
+  'base64'
+)
 const applicationForm = new FormData()
-applicationForm.append('serviceKey', 'store-license'); applicationForm.append('serviceName', 'إجازة فتح محل'); applicationForm.append('department', 'بلدية الناصرية')
-applicationForm.append('businessName', 'محل فحص الطابور الحي'); applicationForm.append('activityType', 'متجر'); applicationForm.append('address', 'عنوان فحص حي'); applicationForm.append('district', 'الناصرية'); applicationForm.append('ownershipType', 'rent')
-applicationForm.append('coordinates', JSON.stringify({ lat: 31.05, lng: 46.26 })); applicationForm.append('fee', '0'); applicationForm.append('faceConsent', 'true')
-applicationForm.append('propertyDocument', new Blob([png], { type: 'image/png' }), 'lease.png'); applicationForm.append('storefrontPhoto', new Blob([png], { type: 'image/png' }), 'storefront.png'); applicationForm.append('faceVideo', faceVideo(), 'face-video-application.webm')
-const applicationResponse = await fetch(`${base}/api/applications`, { method: 'POST', headers: { cookie: citizenCookie }, body: applicationForm })
-if (applicationResponse.status !== 201) throw new Error(`application creation failed: ${applicationResponse.status} ${await applicationResponse.text()}`)
+applicationForm.append('serviceKey', 'store-license')
+applicationForm.append('serviceName', 'إجازة فتح محل')
+applicationForm.append('department', 'بلدية الناصرية')
+applicationForm.append('businessName', 'محل فحص الطابور الحي')
+applicationForm.append('activityType', 'متجر')
+applicationForm.append('address', 'عنوان فحص حي')
+applicationForm.append('district', 'الناصرية')
+applicationForm.append('ownershipType', 'rent')
+applicationForm.append('coordinates', JSON.stringify({ lat: 31.05, lng: 46.26 }))
+applicationForm.append('fee', '0')
+applicationForm.append('faceConsent', 'true')
+applicationForm.append('propertyDocument', new Blob([png], { type: 'image/png' }), 'lease.png')
+applicationForm.append('storefrontPhoto', new Blob([png], { type: 'image/png' }), 'storefront.png')
+applicationForm.append('faceVideo', faceVideo(), 'face-video-application.webm')
+const applicationResponse = await fetch(`${base}/api/applications`, {
+  method: 'POST',
+  headers: { cookie: citizenCookie },
+  body: applicationForm,
+})
+if (applicationResponse.status !== 201)
+  throw new Error(`application creation failed: ${applicationResponse.status} ${await applicationResponse.text()}`)
 const application = await applicationResponse.json()
 await wait(450)
-const applicationUi = await evaluate(`(() => ({ found: document.body.innerText.includes(${JSON.stringify(application.reference)}), toast: document.body.innerText.includes('معاملة جديدة'), summary: document.body.innerText.includes('معاملات محلية جديدة') }))()`)
-if (!applicationUi.found || !applicationUi.toast || !applicationUi.summary) throw new Error(`new application did not appear live for employee: ${JSON.stringify(applicationUi)}`)
+const applicationUi = await evaluate(
+  `(() => ({ found: document.body.innerText.includes(${JSON.stringify(application.reference)}), toast: document.body.innerText.includes('معاملة جديدة'), summary: document.body.innerText.includes('معاملات محلية جديدة') }))()`
+)
+if (!applicationUi.found || !applicationUi.toast || !applicationUi.summary)
+  throw new Error(`new application did not appear live for employee: ${JSON.stringify(applicationUi)}`)
 const identityForm = new FormData()
-identityForm.append('fullName', 'مواطن اختبار الطابور الحي'); identityForm.append('documentNumber', '482123456789'); identityForm.append('documentType', 'NATIONAL_ID')
-identityForm.append('consent', 'true'); identityForm.append('retainMedia', 'true'); identityForm.append('analysisConsent', 'true'); identityForm.append('profilePhotoConsent', 'true'); identityForm.append('locationConsent', 'false')
+identityForm.append('fullName', 'مواطن اختبار الطابور الحي')
+identityForm.append('documentNumber', '482123456789')
+identityForm.append('documentType', 'NATIONAL_ID')
+identityForm.append('consent', 'true')
+identityForm.append('retainMedia', 'true')
+identityForm.append('analysisConsent', 'true')
+identityForm.append('profilePhotoConsent', 'true')
+identityForm.append('locationConsent', 'false')
 const identityImage = readFileSync(new URL('../public/brand/ur-heritage-hero.jpg', import.meta.url))
-identityForm.append('idFront', new Blob([identityImage], { type: 'image/jpeg' }), 'identity-front.jpg'); identityForm.append('idBack', new Blob([identityImage], { type: 'image/jpeg' }), 'identity-back.jpg'); identityForm.append('faceVideo', faceVideo(), 'face-video-7s-test.webm')
-const identityResponse = await fetch(`${base}/api/onboarding/identity-review`, { method: 'POST', headers: { cookie: citizenCookie }, body: identityForm })
-if (identityResponse.status !== 201) throw new Error(`identity review creation failed: ${identityResponse.status} ${await identityResponse.text()}`)
+identityForm.append('idFront', new Blob([identityImage], { type: 'image/jpeg' }), 'identity-front.jpg')
+identityForm.append('idBack', new Blob([identityImage], { type: 'image/jpeg' }), 'identity-back.jpg')
+identityForm.append('faceVideo', faceVideo(), 'face-video-7s-test.webm')
+const identityResponse = await fetch(`${base}/api/onboarding/identity-review`, {
+  method: 'POST',
+  headers: { cookie: citizenCookie },
+  body: identityForm,
+})
+if (identityResponse.status !== 201)
+  throw new Error(`identity review creation failed: ${identityResponse.status} ${await identityResponse.text()}`)
 const identity = await identityResponse.json()
 await wait(450)
-const identityUi = await evaluate(`(() => { const toast = document.querySelector('.employee-realtime-toast')?.textContent || ''; return { toast: toast.includes('طلب توثيق هوية جديد'), summary: document.body.innerText.includes('مواطنون بانتظار مراجعة الهوية'), toastHasCitizenName: toast.includes('مواطن اختبار الطابور الحي') } })()`)
-if (!identityUi.toast || !identityUi.summary || identityUi.toastHasCitizenName) throw new Error(`new identity review did not appear safely for employee: ${JSON.stringify(identityUi)}`)
+const identityUi = await evaluate(
+  `(() => { const toast = document.querySelector('.employee-realtime-toast')?.textContent || ''; return { toast: toast.includes('طلب توثيق هوية جديد'), summary: document.body.innerText.includes('مواطنون بانتظار مراجعة الهوية'), toastHasCitizenName: toast.includes('مواطن اختبار الطابور الحي') } })()`
+)
+if (!identityUi.toast || !identityUi.summary || identityUi.toastHasCitizenName)
+  throw new Error(`new identity review did not appear safely for employee: ${JSON.stringify(identityUi)}`)
 const employeeApps = await fetch(`${base}/api/applications`, { headers: { cookie: employeeCookie } })
 const employeeServices = await fetch(`${base}/api/employee/service-requests`, { headers: { cookie: employeeCookie } })
 const queueSummary = await fetch(`${base}/api/employee/work-queue-summary`, { headers: { cookie: employeeCookie } })
-if (employeeApps.status !== 200 || employeeServices.status !== 200 || queueSummary.status !== 200) throw new Error('employee queue endpoints denied authenticated employee')
-const appItems = await employeeApps.json(); const serviceItems = await employeeServices.json(); const summary = await queueSummary.json()
-if (!appItems.some(item => item.reference === application.reference) || !serviceItems.some(item => item.reference === service.reference) || summary.applications < 1 || summary.serviceRequests < 1 || summary.identityReviews < 1 || !identity.id) throw new Error('employee endpoints did not return newly created work')
-console.log(JSON.stringify({ employee_work_queue_realtime: 'pass', serviceReference: service.reference, applicationReference: application.reference, identityReviewId: identity.id, summary }, null, 2))
+if (employeeApps.status !== 200 || employeeServices.status !== 200 || queueSummary.status !== 200)
+  throw new Error('employee queue endpoints denied authenticated employee')
+const appItems = await employeeApps.json()
+const serviceItems = await employeeServices.json()
+const summary = await queueSummary.json()
+if (
+  !appItems.some(item => item.reference === application.reference) ||
+  !serviceItems.some(item => item.reference === service.reference) ||
+  summary.applications < 1 ||
+  summary.serviceRequests < 1 ||
+  summary.identityReviews < 1 ||
+  !identity.id
+)
+  throw new Error('employee endpoints did not return newly created work')
+console.log(
+  JSON.stringify(
+    {
+      employee_work_queue_realtime: 'pass',
+      serviceReference: service.reference,
+      applicationReference: application.reference,
+      identityReviewId: identity.id,
+      summary,
+    },
+    null,
+    2
+  )
+)
 cdp.close()

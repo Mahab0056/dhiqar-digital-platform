@@ -3,7 +3,15 @@ import { WebSocket, WebSocketServer } from 'ws'
 
 type NotificationSnapshot = {
   unread: number
-  items: Array<{ id: string; type: string; title: string; message: string; link: string | null; readAt: string | null; createdAt: string }>
+  items: Array<{
+    id: string
+    type: string
+    title: string
+    message: string
+    link: string | null
+    readAt: string | null
+    createdAt: string
+  }>
 }
 
 type RealtimeOptions = {
@@ -45,7 +53,9 @@ export function installCitizenNotificationRealtime(options: RealtimeOptions) {
       const clients = clientsByCitizen.get(citizenId) || new Set<RealtimeClient>()
       clients.add(client)
       clientsByCitizen.set(citizenId, clients)
-      webSocket.on('pong', () => { client.lastPongAt = Date.now() })
+      webSocket.on('pong', () => {
+        client.lastPongAt = Date.now()
+      })
       webSocket.once('close', () => remove(citizenId, client))
       webSocket.once('error', () => remove(citizenId, client))
       webSocket.send(JSON.stringify({ type: 'citizen.notifications.connected' }))
@@ -54,11 +64,12 @@ export function installCitizenNotificationRealtime(options: RealtimeOptions) {
 
   const heartbeat = setInterval(() => {
     const staleAfterMs = 70_000
-    for (const clients of clientsByCitizen.values()) for (const client of clients) {
-      if (client.socket.readyState !== WebSocket.OPEN || Date.now() - client.lastPongAt > staleAfterMs) {
-        client.socket.terminate()
-      } else client.socket.ping()
-    }
+    for (const clients of clientsByCitizen.values())
+      for (const client of clients) {
+        if (client.socket.readyState !== WebSocket.OPEN || Date.now() - client.lastPongAt > staleAfterMs) {
+          client.socket.terminate()
+        } else client.socket.ping()
+      }
   }, 25_000)
   heartbeat.unref()
 

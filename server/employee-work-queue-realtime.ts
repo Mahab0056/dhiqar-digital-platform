@@ -28,33 +28,61 @@ export function installEmployeeWorkQueueRealtime({ server, authenticateEmployee,
     const url = new URL(request.url || '/', 'http://localhost')
     if (url.pathname !== '/ws/employee-work-queue') return
     const origin = request.headers.origin
-    if (!isAllowedOrigin(origin)) { socket.write('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n'); socket.destroy(); return }
+    if (!isAllowedOrigin(origin)) {
+      socket.write('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n')
+      socket.destroy()
+      return
+    }
     const actor = authenticateEmployee(request)
-    if (!actor) { socket.write('HTTP/1.1 401 Unauthorized\r\nConnection: close\r\n\r\n'); socket.destroy(); return }
+    if (!actor) {
+      socket.write('HTTP/1.1 401 Unauthorized\r\nConnection: close\r\n\r\n')
+      socket.destroy()
+      return
+    }
     const subject = `${actor.role}:${actor.subject}`
     const existing = socketsBySubject.get(subject) || new Set<WebSocket>()
-    if (existing.size >= 4) { socket.write('HTTP/1.1 429 Too Many Requests\r\nConnection: close\r\n\r\n'); socket.destroy(); return }
+    if (existing.size >= 4) {
+      socket.write('HTTP/1.1 429 Too Many Requests\r\nConnection: close\r\n\r\n')
+      socket.destroy()
+      return
+    }
     serverSocket.handleUpgrade(request, socket, head, webSocket => {
-      existing.add(webSocket); socketsBySubject.set(subject, existing)
+      existing.add(webSocket)
+      socketsBySubject.set(subject, existing)
       webSocket.send(JSON.stringify({ type: 'employee.work-queue.connected' }))
-      webSocket.on('pong', () => { (webSocket as WebSocket & { alive?: boolean }).alive = true })
+      webSocket.on('pong', () => {
+        ;(webSocket as WebSocket & { alive?: boolean }).alive = true
+      })
       webSocket.on('close', () => remove(subject, webSocket))
       webSocket.on('error', () => remove(subject, webSocket))
     })
   })
   const heartbeat = setInterval(() => {
-    socketsBySubject.forEach((peers, subject) => peers.forEach(socket => {
-      const tracked = socket as WebSocket & { alive?: boolean }
-      if (tracked.alive === false) { socket.terminate(); remove(subject, socket); return }
-      tracked.alive = false; socket.ping()
-    }))
+    socketsBySubject.forEach((peers, subject) =>
+      peers.forEach(socket => {
+        const tracked = socket as WebSocket & { alive?: boolean }
+        if (tracked.alive === false) {
+          socket.terminate()
+          remove(subject, socket)
+          return
+        }
+        tracked.alive = false
+        socket.ping()
+      })
+    )
   }, 30_000)
   heartbeat.unref()
   return {
     publish(event: WorkQueueEvent) {
       const message = JSON.stringify({ type: 'employee.work-queue.updated', payload: event })
-      socketsBySubject.forEach(peers => peers.forEach(socket => { if (socket.readyState === WebSocket.OPEN) socket.send(message) }))
+      socketsBySubject.forEach(peers =>
+        peers.forEach(socket => {
+          if (socket.readyState === WebSocket.OPEN) socket.send(message)
+        })
+      )
     },
-    activeCount() { return [...socketsBySubject.values()].reduce((total, peers) => total + peers.size, 0) },
+    activeCount() {
+      return [...socketsBySubject.values()].reduce((total, peers) => total + peers.size, 0)
+    },
   }
 }

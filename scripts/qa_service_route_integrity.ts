@@ -16,11 +16,14 @@ for (const service of services) {
 }
 
 const specialized = serviceDefinitions.filter(service => service.mode === 'SPECIALIZED').map(service => service.key)
-if (specialized.length !== 1 || specialized[0] !== 'store-license') throw new Error('Only store-license may use the specialized form')
+if (specialized.length !== 1 || specialized[0] !== 'store-license')
+  throw new Error('Only store-license may use the specialized form')
 
 const app = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8')
-if (app.includes('href="/service/store-license"')) throw new Error('A generic citizen action still opens store-license directly')
-if (!app.includes('availableServices.map(service')) throw new Error('Citizen direct catalog is not rendering all services')
+if (app.includes('href="/service/store-license"'))
+  throw new Error('A generic citizen action still opens store-license directly')
+if (!app.includes('availableServices.map(service'))
+  throw new Error('Citizen direct catalog is not rendering all services')
 if (!app.includes('href={`/service/${service.key}`}')) throw new Error('Service cards do not use each service key')
 
 console.log(`service_route_integrity=pass services=${services.length} specialized=${specialized.length}`)
