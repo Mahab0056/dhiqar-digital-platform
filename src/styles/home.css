@@ -28,11 +28,11 @@
   --gov-radius-lg: 14px;
   --gov-shadow: 0 1px 2px rgba(16, 39, 30, 0.06), 0 6px 18px rgba(16, 39, 30, 0.05);
   --gov-shadow-hover: 0 2px 4px rgba(16, 39, 30, 0.08), 0 12px 28px rgba(16, 39, 30, 0.09);
-  --gov-container: 1440px;
+  --gov-container: 1480px;
 }
 
 .gov-container {
-  width: min(var(--gov-container), calc(100% - 64px));
+  width: min(var(--gov-container), calc(100% - 48px));
   margin-inline: auto;
 }
 .gov-home {
@@ -1325,4 +1325,618 @@
 }
 :root[data-gov-theme='dark'] .gov-search input {
   color: var(--gov-ink);
+}
+
+/* =============================================================================================
+   Lower half — editorial bands (no card-in-card)
+   ============================================================================================= */
+.gov-band {
+  padding: 56px 0;
+}
+.gov-band-green {
+  background: var(--gov-green-050);
+  border-top: 1px solid var(--gov-line-soft);
+  border-bottom: 1px solid var(--gov-line-soft);
+}
+.gov-band-mint {
+  background: #eef7f2;
+}
+.gov-band-neutral {
+  background: var(--gov-bg);
+}
+.gov-band-head {
+  margin-bottom: 26px;
+}
+.gov-band-head h2 {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 900;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+.gov-band-head h2::before {
+  content: '';
+  width: 26px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--gov-green-700);
+}
+.gov-band-head p {
+  margin: 8px 0 0;
+  color: var(--gov-muted);
+  font-size: 15px;
+  max-width: 70ch;
+}
+.gov-center {
+  display: flex;
+  justify-content: center;
+  margin-top: 22px;
+}
+
+/* GIS explorer */
+.gov-gis {
+  display: grid;
+  grid-template-columns: minmax(300px, 35%) 1fr;
+  gap: 20px;
+  align-items: stretch;
+}
+.gov-gis-browser {
+  display: grid;
+  grid-template-rows: auto auto 1fr auto;
+  gap: 12px;
+  min-width: 0;
+}
+.gov-gis-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  background: #fff;
+  border: 1px solid var(--gov-line);
+  border-radius: var(--gov-radius-sm);
+  height: 46px;
+  padding: 0 12px;
+  gap: 8px;
+  color: var(--gov-muted);
+}
+.gov-gis-search input {
+  flex: 1;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 14px;
+  color: var(--gov-ink);
+  min-width: 0;
+}
+.gov-gis-search input:focus {
+  outline: none;
+}
+.gov-gis-search:focus-within {
+  border-color: var(--gov-green-600);
+}
+.gov-gis-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.gov-gis-filters button {
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--gov-line);
+  background: #fff;
+  color: var(--gov-ink-2);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.gov-gis-filters button.is-active {
+  background: var(--gov-green-800);
+  border-color: var(--gov-green-800);
+  color: #fff;
+}
+.gov-gis-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+  max-height: 440px;
+  overflow-y: auto;
+  padding-inline-end: 4px;
+}
+.gov-gis-list button {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 38px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border-radius: var(--gov-radius-sm);
+  border: 1px solid transparent;
+  background: transparent;
+  text-align: right;
+  font: inherit;
+  color: var(--gov-ink);
+  cursor: pointer;
+}
+.gov-gis-list button:hover {
+  background: #fff;
+  border-color: var(--gov-line);
+}
+.gov-gis-list button.is-active {
+  background: #fff;
+  border-color: var(--gov-green-700);
+  box-shadow: 0 0 0 1px var(--gov-green-700) inset;
+}
+.gov-gis-logo {
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+  background: #fff;
+  border: 1px solid var(--gov-line);
+  display: grid;
+  place-items: center;
+  color: var(--gov-green-700);
+}
+.gov-gis-logo svg {
+  width: 18px;
+  height: 18px;
+}
+.gov-gis-meta {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.gov-gis-meta strong {
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+.gov-gis-meta small {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--gov-muted);
+  font-size: 11.5px;
+}
+.gov-gis-status {
+  font-size: 11px;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #eef1ef;
+  color: var(--gov-muted);
+  white-space: nowrap;
+}
+.gov-gis-status.on {
+  background: var(--gov-green-100);
+  color: var(--gov-green-800);
+}
+.gov-gis-empty {
+  color: var(--gov-muted);
+  padding: 12px;
+  font-size: 13px;
+}
+.gov-gis-map-wrap {
+  position: relative;
+  border-radius: var(--gov-radius);
+  overflow: hidden;
+  border: 1px solid var(--gov-line);
+  background: #e9eeeb;
+  min-height: 560px;
+}
+.gov-gis-map {
+  width: 100%;
+  height: 100%;
+  min-height: 560px;
+}
+.gov-gis-panel {
+  position: absolute;
+  z-index: 600;
+  top: 16px;
+  left: 16px;
+  width: min(340px, calc(100% - 32px));
+  background: #fff;
+  border: 1px solid var(--gov-line);
+  border-radius: var(--gov-radius);
+  box-shadow: 0 16px 40px rgba(16, 39, 30, 0.14);
+  padding: 18px;
+  display: grid;
+  gap: 10px;
+  text-align: right;
+}
+.gov-gis-close {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  border: 0;
+  background: transparent;
+  color: var(--gov-muted);
+  cursor: pointer;
+}
+.gov-gis-panel-kicker {
+  color: var(--gov-green-700);
+  font-size: 12px;
+  font-weight: 800;
+}
+.gov-gis-panel h3 {
+  margin: 0;
+  font-size: 16px;
+  padding-left: 24px;
+  line-height: 1.5;
+}
+.gov-gis-panel dl {
+  margin: 0;
+  display: grid;
+  gap: 4px;
+  font-size: 13px;
+}
+.gov-gis-panel dt {
+  color: var(--gov-muted);
+  font-size: 11.5px;
+  font-weight: 700;
+  margin-top: 4px;
+}
+.gov-gis-panel dd {
+  margin: 0;
+  color: var(--gov-ink-2);
+  line-height: 1.6;
+}
+.gov-gis-panel dd b {
+  color: var(--gov-green-800);
+  font-weight: 700;
+}
+.gov-gis-panel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+.gov-gis-note {
+  color: var(--gov-muted);
+  font-size: 11.5px;
+}
+.gov-gis-count {
+  position: absolute;
+  z-index: 600;
+  bottom: 12px;
+  right: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 11px;
+  background: #fff;
+  border: 1px solid var(--gov-line);
+  border-radius: var(--gov-radius-sm);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--gov-ink-2);
+}
+
+/* Journey line */
+.gov-journey-section {
+  text-align: center;
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+}
+.gov-eyebrow-center {
+  color: var(--gov-green-700);
+  font-weight: 800;
+  font-size: 13px;
+  letter-spacing: 0.02em;
+}
+.gov-journey-section h2 {
+  margin: 0 0 22px;
+  font-size: 26px;
+  font-weight: 900;
+}
+.gov-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  max-width: 1100px;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  position: relative;
+}
+.gov-steps::before {
+  content: '';
+  position: absolute;
+  top: 19px;
+  right: 10%;
+  left: 10%;
+  height: 2px;
+  background: linear-gradient(90deg, var(--gov-green-100), var(--gov-green-600), var(--gov-green-100));
+}
+.gov-steps li {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+}
+.gov-step-number {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2px solid var(--gov-green-600);
+  color: var(--gov-green-800);
+  display: grid;
+  place-items: center;
+  font-weight: 900;
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  position: relative;
+  z-index: 1;
+}
+.gov-step-label {
+  font-weight: 800;
+  font-size: 15px;
+  color: var(--gov-ink);
+}
+
+/* Verification band */
+.gov-verify {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 32px;
+  align-items: center;
+}
+.gov-verify-copy h2 {
+  margin: 0 0 8px;
+  font-size: 26px;
+  font-weight: 900;
+}
+.gov-verify-copy p {
+  margin: 0 0 20px;
+  color: var(--gov-ink-2);
+  font-size: 15px;
+}
+.gov-verify-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 10px;
+  align-items: end;
+}
+.gov-verify-row label {
+  display: grid;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 800;
+  color: var(--gov-ink-2);
+}
+.gov-verify-row input {
+  border: 1px solid var(--gov-line);
+  border-radius: var(--gov-radius-sm);
+  padding: 12px 14px;
+  font: inherit;
+  font-size: 15px;
+  background: #fff;
+  min-width: 0;
+}
+.gov-verify-row input:focus {
+  outline: none;
+  border-color: var(--gov-green-600);
+  box-shadow: 0 0 0 3px rgba(8, 122, 85, 0.15);
+}
+.gov-verify-row .gov-btn {
+  height: 46px;
+}
+.gov-verify-visual {
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+}
+.gov-verify-visual .gov-doc-sheet {
+  width: 190px;
+  transform: rotate(-4deg);
+}
+
+/* Services two-column */
+.gov-services-two {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 32px;
+}
+.gov-services-two a {
+  display: grid;
+  grid-template-columns: 40px 1fr auto 16px;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 6px;
+  border-bottom: 1px solid var(--gov-line-soft);
+  color: var(--gov-ink);
+  text-decoration: none;
+}
+.gov-services-two a:hover strong {
+  color: var(--gov-green-800);
+}
+.gov-service-text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.gov-service-text strong {
+  font-size: 15px;
+}
+.gov-service-text small {
+  color: var(--gov-muted);
+  font-size: 12.5px;
+}
+.gov-service-status {
+  font-size: 11.5px;
+  font-weight: 800;
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: var(--gov-green-100);
+  color: var(--gov-green-800);
+  white-space: nowrap;
+}
+.gov-services-two a > svg {
+  color: var(--gov-muted);
+}
+
+/* Trust strip */
+.gov-trust {
+  padding: 22px 0;
+  border-top: 1px solid var(--gov-line-soft);
+  border-bottom: 1px solid var(--gov-line-soft);
+}
+.gov-trust-list {
+  list-style: none;
+  margin: 0 auto;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 14px 24px;
+}
+.gov-trust-list li {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--gov-ink-2);
+}
+.gov-trust-list svg {
+  width: 20px;
+  height: 20px;
+  color: var(--gov-green-700);
+}
+
+/* News editorial */
+.gov-news {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 28px;
+  align-items: start;
+}
+.gov-news-featured {
+  display: grid;
+  gap: 14px;
+  color: var(--gov-ink);
+  text-decoration: none;
+}
+.gov-news-featured img {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-radius: var(--gov-radius);
+  border: 1px solid var(--gov-line-soft);
+}
+.gov-news-featured-text {
+  display: grid;
+  gap: 6px;
+}
+.gov-news-featured small {
+  color: var(--gov-green-700);
+  font-weight: 700;
+  font-size: 12.5px;
+}
+.gov-news-featured strong {
+  font-size: 22px;
+  line-height: 1.5;
+  font-weight: 900;
+}
+.gov-news-side {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+}
+.gov-news-side a {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 14px;
+  align-items: center;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--gov-line-soft);
+  color: var(--gov-ink);
+  text-decoration: none;
+}
+.gov-news-side li:first-child a {
+  padding-top: 0;
+}
+.gov-news-side img {
+  width: 120px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: var(--gov-radius-sm);
+  border: 1px solid var(--gov-line-soft);
+}
+.gov-news-side small {
+  display: block;
+  color: var(--gov-green-700);
+  font-weight: 700;
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+.gov-news-side strong {
+  font-size: 15px;
+  line-height: 1.55;
+}
+.gov-news-side a:hover strong,
+.gov-news-featured:hover strong {
+  color: var(--gov-green-800);
+}
+
+/* Footer refinement (spacing/typography only) */
+.gov-home .footer {
+  padding-top: 56px;
+}
+.gov-home .footer-grid {
+  gap: 40px;
+}
+.gov-home .footer a {
+  line-height: 2;
+}
+
+@media (max-width: 1100px) {
+  .gov-gis {
+    grid-template-columns: 1fr;
+  }
+  .gov-gis-list {
+    max-height: 280px;
+  }
+  .gov-gis-map-wrap,
+  .gov-gis-map {
+    min-height: 420px;
+  }
+  .gov-verify,
+  .gov-news,
+  .gov-services-two {
+    grid-template-columns: 1fr;
+  }
+  .gov-verify-visual {
+    display: none;
+  }
+  .gov-band {
+    padding: 40px 0;
+  }
+}
+@media (max-width: 700px) {
+  .gov-steps {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+  .gov-steps::before {
+    display: none;
+  }
+  .gov-steps li {
+    grid-template-columns: 40px 1fr;
+    justify-items: start;
+    align-items: center;
+  }
+  .gov-verify-row {
+    grid-template-columns: 1fr;
+  }
+  .gov-news-side a {
+    grid-template-columns: 96px 1fr;
+  }
 }

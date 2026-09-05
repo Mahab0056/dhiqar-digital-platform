@@ -9,7 +9,6 @@ import {
   Bus,
   CheckCircle2,
   ChevronLeft,
-  ClipboardList,
   FileCheck2,
   FilePlus2,
   FileSearch,
@@ -20,18 +19,17 @@ import {
   Home,
   Leaf,
   LockKeyhole,
-  Map as MapIcon,
   MapPin,
   MessageSquareWarning,
+  Navigation,
   QrCode,
   Search,
   ShieldCheck,
-  Upload,
   UserRound,
   X,
   Zap,
 } from 'lucide-react'
-import { CircleMarker, MapContainer, TileLayer, Tooltip as LeafletTooltip } from 'react-leaflet'
+import { CircleMarker, MapContainer, TileLayer, Tooltip as LeafletTooltip, ZoomControl, useMap } from 'react-leaflet'
 import { api } from '../../api'
 import { services } from '../../data'
 import { dhiqarNews } from '../../news'
@@ -81,14 +79,6 @@ const quickActions = [
   },
 ] as const
 
-const journey = [
-  { icon: Search, title: 'اختر الخدمة', text: 'ابحث عن الخدمة المناسبة' },
-  { icon: ClipboardList, title: 'أكمل البيانات', text: 'املأ النموذج الإلكتروني' },
-  { icon: Upload, title: 'ارفع المستندات', text: 'أرفق الوثائق المطلوبة' },
-  { icon: FileSearch, title: 'تابع الطلب', text: 'تعرف على حالة معاملتك' },
-  { icon: FileCheck2, title: 'استلم النتيجة', text: 'احصل على وثيقتك إلكترونياً' },
-]
-
 const homeCategories = [
   { label: 'الأعمال والتجارة', icon: BriefcaseBusiness, query: 'المحلات والأعمال' },
   { label: 'السكن والعقار', icon: Home, query: 'السكن والأراضي' },
@@ -101,14 +91,34 @@ const homeCategories = [
   { label: 'الخدمات الشخصية', icon: UserRound, query: 'الوثائق الحكومية' },
 ]
 
-const capabilities = [
-  { icon: FileText, label: 'معاملات إلكترونية' },
-  { icon: Search, label: 'تتبع حالة الطلب' },
-  { icon: Bell, label: 'إشعارات فورية' },
-  { icon: ShieldCheck, label: 'وثائق قابلة للتحقق' },
+const journeySteps = ['اختر الخدمة', 'قدّم الطلب', 'التدقيق', 'الموافقة', 'استلم النتيجة']
+
+const trustItems = [
+  { icon: ShieldCheck, label: 'منصة حكومية موحدة' },
+  { icon: FileCheck2, label: 'وثائق قابلة للتحقق' },
   { icon: LockKeyhole, label: 'حماية البيانات' },
-  { icon: History, label: 'سجل إلكتروني للمعاملة' },
+  { icon: Bell, label: 'إشعارات المعاملات' },
+  { icon: History, label: 'سجل إلكتروني' },
 ]
+
+const entityFilters = [
+  { key: 'all', label: 'الكل', categories: null },
+  { key: 'municipal', label: 'بلديات', categories: ['بلديات'] },
+  { key: 'health', label: 'صحة', categories: ['صحة'] },
+  { key: 'education', label: 'تعليم', categories: ['تربية وتعليم', 'تعليم عالي'] },
+  { key: 'utilities', label: 'خدمات', categories: ['ماء', 'مجاري', 'كهرباء', 'طرق وجسور', 'اتصالات وبريد', 'موارد مائية'] },
+  { key: 'government', label: 'دوائر حكومية', categories: ['حكومة محلية', 'أحوال مدنية وجوازات', 'تسجيل عقاري', 'ضرائب ومالية', 'قضاء', 'أمن وشرطة'] },
+] as const
+
+/** Pans the real map to the selected entity (no-op when it has no verified coordinates). */
+function MapFocus({ target }: { target: DepartmentSummary | null }) {
+  const map = useMap()
+  useEffect(() => {
+    if (target && typeof target.lat === 'number' && typeof target.lng === 'number')
+      map.flyTo([target.lat, target.lng], Math.max(map.getZoom(), 14), { duration: 0.6 })
+  }, [map, target])
+  return null
+}
 
 export function LandingPage() {
   const [, navigate] = useLocation()
@@ -116,6 +126,8 @@ export function LandingPage() {
   const [departments, setDepartments] = useState<DepartmentSummary[]>([])
   const [selectedDepartment, setSelectedDepartment] = useState<DepartmentSummary | null>(null)
   const [verifyId, setVerifyId] = useState('')
+  const [entityQuery, setEntityQuery] = useState('')
+  const [entityFilter, setEntityFilter] = useState<(typeof entityFilters)[number]['key']>('all')
 
   useEffect(() => {
     api
@@ -157,6 +169,16 @@ export function LandingPage() {
     (item): item is DepartmentSummary & { lat: number; lng: number } =>
       typeof item.lat === 'number' && typeof item.lng === 'number'
   )
+
+  const filteredEntities = useMemo(() => {
+    const filter = entityFilters.find(item => item.key === entityFilter)
+    const term = normalizeArabic(entityQuery)
+    return departments.filter(item => {
+      if (filter?.categories && !(filter.categories as readonly string[]).includes(item.category)) return false
+      if (!term) return true
+      return normalizeArabic(`${item.name} ${item.category} ${item.district} ${item.services.join(' ')}`).includes(term)
+    })
+  }, [departments, entityFilter, entityQuery])
 
   const submitSearch = (event: React.FormEvent) => {
     event.preventDefault()
@@ -284,15 +306,194 @@ export function LandingPage() {
         </section>
 
         {/* ---- capabilities / journey / map ------------------------------------------ */}
-        <section className="gov-section gov-container gov-three gov-three-main" id="journey">
-          <article className="gov-panel gov-verify-panel">
-            <header className="gov-panel-head">
-              <div>
-                <h2>التحقق من وثيقة</h2>
-                <p>تأكد من صحة أي وثيقة صادرة عن المنصة</p>
-              </div>
+        {/* ---- GIS explorer ---------------------------------------------------------- */}
+        <section className="gov-band gov-band-green" id="gis">
+          <div className="gov-container">
+            <header className="gov-band-head">
+              <h2>اكتشف ذي قار رقمياً</h2>
+              <p>استكشف الجهات الحكومية والخدمات المتاحة في محافظة ذي قار من خلال الخريطة الرقمية.</p>
             </header>
-            <div className="gov-doc-preview" aria-hidden="true">
+            <div className="gov-gis">
+              <aside className="gov-gis-browser">
+                <label className="gov-gis-search">
+                  <Search size={17} />
+                  <input
+                    value={entityQuery}
+                    onChange={event => setEntityQuery(event.target.value)}
+                    placeholder="ابحث عن جهة حكومية"
+                    aria-label="ابحث عن جهة حكومية"
+                  />
+                </label>
+                <div className="gov-gis-filters" role="tablist" aria-label="تصفية الجهات">
+                  {entityFilters.map(filter => (
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={entityFilter === filter.key}
+                      className={entityFilter === filter.key ? 'is-active' : ''}
+                      onClick={() => setEntityFilter(filter.key)}
+                      key={filter.key}
+                    >
+                      {filter.label}
+                    </button>
+                  ))}
+                </div>
+                <ul className="gov-gis-list" aria-label="قائمة الجهات">
+                  {filteredEntities.slice(0, 40).map(item => (
+                    <li key={item.id}>
+                      <button
+                        type="button"
+                        className={selectedDepartment?.id === item.id ? 'is-active' : ''}
+                        onClick={() => setSelectedDepartment(item)}
+                      >
+                        <span className="gov-gis-logo">
+                          <Building2 />
+                        </span>
+                        <span className="gov-gis-meta">
+                          <strong>{item.name}</strong>
+                          <small>
+                            <MapPin size={11} /> {item.district}
+                            {' • '}
+                            {(item.services.length + (item.digitalServices || 0)).toLocaleString('en-US')} خدمة
+                          </small>
+                        </span>
+                        <span className={item.dataStatus === 'VERIFIED_SOURCE' ? 'gov-gis-status on' : 'gov-gis-status'}>
+                          {item.dataStatus === 'VERIFIED_SOURCE' ? 'موثقة' : 'قيد التحقق'}
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                  {!filteredEntities.length && <li className="gov-gis-empty">لا توجد جهة مطابقة.</li>}
+                </ul>
+                <Link href="/departments" className="gov-link">
+                  دليل الجهات الحكومية الكامل <ArrowLeft size={14} />
+                </Link>
+              </aside>
+              <div className="gov-gis-map-wrap">
+                <MapContainer
+                  center={[31.05, 46.25]}
+                  zoom={12}
+                  scrollWheelZoom={false}
+                  zoomControl={false}
+                  attributionControl={false}
+                  className="gov-gis-map"
+                >
+                  <ZoomControl position="bottomleft" />
+                  <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                  <MapFocus target={selectedDepartment} />
+                  {located.map(item => (
+                    <CircleMarker
+                      key={item.id}
+                      center={[item.lat, item.lng]}
+                      radius={selectedDepartment?.id === item.id ? 10 : 7}
+                      pathOptions={{
+                        color: '#ffffff',
+                        weight: 2,
+                        fillColor: selectedDepartment?.id === item.id ? '#c8102e' : '#087a55',
+                        fillOpacity: 1,
+                      }}
+                      eventHandlers={{ click: () => setSelectedDepartment(item) }}
+                    >
+                      <LeafletTooltip direction="top" offset={[0, -8]} opacity={1}>
+                        {item.name}
+                      </LeafletTooltip>
+                    </CircleMarker>
+                  ))}
+                </MapContainer>
+                {selectedDepartment && (
+                  <div className="gov-gis-panel" role="dialog" aria-label={selectedDepartment.name}>
+                    <button type="button" className="gov-gis-close" aria-label="إغلاق" onClick={() => setSelectedDepartment(null)}>
+                      <X size={15} />
+                    </button>
+                    <span className="gov-gis-panel-kicker">{selectedDepartment.category}</span>
+                    <h3>{selectedDepartment.name}</h3>
+                    <dl>
+                      <dt>العنوان</dt>
+                      <dd>{selectedDepartment.address || `${selectedDepartment.district} — العنوان التفصيلي غير مسجل بعد`}</dd>
+                      <dt>الخدمات المتاحة</dt>
+                      <dd>
+                        {selectedDepartment.services.slice(0, 4).join('، ')}
+                        {selectedDepartment.services.length > 4 ? ' …' : ''}
+                        {selectedDepartment.digitalServices ? (
+                          <b> — {selectedDepartment.digitalServices.toLocaleString('en-US')} خدمة إلكترونية على المنصة</b>
+                        ) : null}
+                      </dd>
+                    </dl>
+                    <div className="gov-gis-panel-actions">
+                      <Link href={`/departments/${selectedDepartment.id}`} className="gov-btn primary small">
+                        عرض الجهة
+                      </Link>
+                      {typeof selectedDepartment.lat === 'number' && typeof selectedDepartment.lng === 'number' && (
+                        <a
+                          className="gov-btn outline small"
+                          href={`https://www.openstreetmap.org/directions?to=${selectedDepartment.lat}%2C${selectedDepartment.lng}`}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          <Navigation size={14} /> الحصول على الاتجاهات
+                        </a>
+                      )}
+                    </div>
+                    {selectedDepartment.gisStatus !== 'COORDINATES_VERIFIED' && (
+                      <small className="gov-gis-note">الموقع الجغرافي لهذه الجهة بانتظار إحداثيات رسمية.</small>
+                    )}
+                  </div>
+                )}
+                <span className="gov-gis-count">
+                  <MapPin size={13} /> {located.length.toLocaleString('en-US')} جهة بموقع موثق من {departments.length.toLocaleString('en-US')}
+                </span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ---- journey ----------------------------------------------------------------- */}
+        <section className="gov-band" id="journey">
+          <div className="gov-container gov-journey-section">
+            <span className="gov-eyebrow-center">من الطلب إلى الإنجاز</span>
+            <h2>معاملتك الحكومية بخطوات واضحة</h2>
+            <ol className="gov-steps">
+              {journeySteps.map((step, index) => (
+                <li key={step}>
+                  <span className="gov-step-number">{String(index + 1).padStart(2, '0')}</span>
+                  <span className="gov-step-label">{step}</span>
+                </li>
+              ))}
+            </ol>
+          </div>
+        </section>
+
+        {/* ---- verification ------------------------------------------------------------ */}
+        <section className="gov-band gov-band-mint" id="verify">
+          <div className="gov-container gov-verify">
+            <div className="gov-verify-copy">
+              <h2>التحقق من وثيقة حكومية</h2>
+              <p>تحقق من صحة الوثائق الصادرة إلكترونياً من منصة ذي قار الرقمية.</p>
+              <form
+                className="gov-verify-row"
+                onSubmit={event => {
+                  event.preventDefault()
+                  if (verifyId.trim()) navigate(`/verify/${encodeURIComponent(verifyId.trim())}`)
+                }}
+              >
+                <label>
+                  <span>رقم الوثيقة</span>
+                  <input
+                    value={verifyId}
+                    onChange={event => setVerifyId(event.target.value)}
+                    placeholder="TQD-XXXXXXXXXXXXXXXX"
+                    dir="ltr"
+                  />
+                </label>
+                <button type="submit" className="gov-btn primary" disabled={!verifyId.trim()}>
+                  تحقق الآن
+                </button>
+                <Link href="/verify" className="gov-btn outline">
+                  <QrCode size={16} /> مسح QR
+                </Link>
+              </form>
+            </div>
+            <div className="gov-verify-visual" aria-hidden="true">
               <div className="gov-doc-sheet">
                 <span className="gov-doc-seal">
                   <ShieldCheck />
@@ -305,176 +506,93 @@ export function LandingPage() {
                   <QrCode />
                 </span>
               </div>
-              <div className="gov-doc-badge">
+              <span className="gov-doc-badge">
                 <CheckCircle2 size={14} /> وثيقة موثقة رقمياً
-              </div>
-            </div>
-            <form
-              className="gov-verify-form"
-              onSubmit={event => {
-                event.preventDefault()
-                if (verifyId.trim()) navigate(`/verify/${encodeURIComponent(verifyId.trim())}`)
-              }}
-            >
-              <input
-                value={verifyId}
-                onChange={event => setVerifyId(event.target.value)}
-                placeholder="مثال: TQD-XXXXXXXXXXXXXXXX"
-                dir="ltr"
-                aria-label="معرّف التحقق"
-              />
-              <button type="submit" className="gov-btn primary" disabled={!verifyId.trim()}>
-                التحقق من وثيقة
-              </button>
-            </form>
-            <Link href="/verify" className="gov-verify-scan">
-              <QrCode size={18} /> مسح رمز QR بالكاميرا
-            </Link>
-          </article>
-          <article className="gov-panel gov-journey-panel">
-            <header className="gov-panel-head">
-              <h2>رحلة إنجاز معاملتك</h2>
-            </header>
-            <ol className="gov-journey">
-              {journey.map((step, index) => (
-                <li key={step.title}>
-                  <span className="gov-journey-icon">
-                    <step.icon />
-                  </span>
-                  <strong>{step.title}</strong>
-                  <small>{step.text}</small>
-                  {index < journey.length - 1 && <ArrowLeft className="gov-journey-arrow" aria-hidden="true" />}
-                </li>
-              ))}
-            </ol>
-            <div className="gov-journey-foot">
-              <span>
-                {services.length.toLocaleString('en-US')} خدمة متاحة إلكترونياً الآن — قدّم طلبك وتابعه من حسابك.
               </span>
-              <Link href="/onboarding" className="gov-btn primary small">
-                ابدأ معاملتك <ArrowLeft size={14} />
-              </Link>
             </div>
-          </article>
-
-          <article className="gov-panel gov-map-panel">
-            <header className="gov-panel-head">
-              <h2>ذي قار على الخريطة</h2>
-              <p>استكشف الجهات الحكومية والخدمات في المحافظة</p>
-            </header>
-            <div className="gov-map-frame">
-              <MapContainer
-                center={[31.052, 46.249]}
-                zoom={12}
-                scrollWheelZoom={false}
-                zoomControl={false}
-                attributionControl={false}
-                className="gov-map"
-              >
-                <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-                {located.map(item => (
-                  <CircleMarker
-                    key={item.id}
-                    center={[item.lat, item.lng]}
-                    radius={selectedDepartment?.id === item.id ? 9 : 6}
-                    pathOptions={{ color: '#ffffff', weight: 2, fillColor: '#0b6b3a', fillOpacity: 1 }}
-                    eventHandlers={{ click: () => setSelectedDepartment(item) }}
-                  >
-                    <LeafletTooltip direction="top" offset={[0, -6]} opacity={1}>
-                      {item.name}
-                    </LeafletTooltip>
-                  </CircleMarker>
-                ))}
-              </MapContainer>
-              {selectedDepartment && (
-                <div className="gov-map-card">
-                  <button type="button" aria-label="إغلاق" onClick={() => setSelectedDepartment(null)}>
-                    <X size={14} />
-                  </button>
-                  <strong>{selectedDepartment.name}</strong>
-                  <span className="gov-map-badge">
-                    <MapPin size={11} /> {selectedDepartment.district}
-                  </span>
-                  <small>
-                    الخدمات المسجلة{' '}
-                    <b>{(selectedDepartment.services.length + (selectedDepartment.digitalServices || 0)).toLocaleString('en-US')} خدمة</b>
-                  </small>
-                  <Link href={`/departments/${selectedDepartment.id}`} className="gov-btn primary small">
-                    عرض الجهة
-                  </Link>
-                </div>
-              )}
-              <Link href="/departments" className="gov-map-full">
-                <MapIcon size={15} /> عرض الخريطة الكاملة
-              </Link>
-            </div>
-          </article>
+          </div>
         </section>
 
-        <section className="gov-section gov-container gov-three gov-three-bottom">
-          <article className="gov-panel">
-            <header className="gov-panel-head">
-              <h2>مزايا المنصة</h2>
-              <p>خدمات حكومية رقمية موثوقة وآمنة</p>
+        {/* ---- services ----------------------------------------------------------------- */}
+        <section className="gov-band" id="e-services">
+          <div className="gov-container">
+            <header className="gov-band-head">
+              <h2>خدمات حكومية إلكترونية</h2>
+              <p>ابدأ معاملتك إلكترونياً دون الحاجة إلى مراجعة الدائرة في الخطوات المتاحة رقمياً.</p>
             </header>
-            <ul className="gov-capabilities">
-              {capabilities.map(item => (
-                <li key={item.label}>
-                  <span>
-                    <item.icon />
-                  </span>
-                  {item.label}
-                </li>
-              ))}
-            </ul>
-          </article>
-
-          <article className="gov-panel">
-            <header className="gov-panel-head">
-              <h2>الخدمات المتاحة إلكترونياً</h2>
-              <Link href="/directory" className="gov-link">
-                الكل <ArrowLeft size={14} />
-              </Link>
-            </header>
-            <ul className="gov-service-list">
-              {services.slice(0, 6).map(service => (
+            <ul className="gov-services-two">
+              {services.slice(0, 8).map(service => (
                 <li key={service.key}>
                   <Link href={`/service/${service.key}`}>
                     <span className="gov-service-icon">
                       <FileText />
                     </span>
-                    <span>
+                    <span className="gov-service-text">
                       <strong>{service.title}</strong>
                       <small>{service.department}</small>
                     </span>
+                    <span className="gov-service-status">متاحة إلكترونياً</span>
                     <ChevronLeft size={16} />
                   </Link>
                 </li>
               ))}
             </ul>
-          </article>
+            <div className="gov-center">
+              <Link href="/directory" className="gov-btn outline">
+                استعراض جميع الخدمات <ArrowLeft size={15} />
+              </Link>
+            </div>
+          </div>
+        </section>
 
-          <article className="gov-panel">
-            <header className="gov-panel-head">
-              <h2>آخر الأخبار والتحديثات</h2>
+        {/* ---- trust strip ---------------------------------------------------------------- */}
+        <section className="gov-band gov-band-neutral gov-trust">
+          <ul className="gov-container gov-trust-list">
+            {trustItems.map(item => (
+              <li key={item.label}>
+                <item.icon />
+                <span>{item.label}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        {/* ---- news ---------------------------------------------------------------------- */}
+        <section className="gov-band" id="news">
+          <div className="gov-container">
+            <header className="gov-band-head">
+              <h2>آخر أخبار المحافظة</h2>
+              <p>عناوين من مصادر إخبارية معروفة؛ كل خبر يفتح عند مصدره الأصلي.</p>
             </header>
-            <ul className="gov-news-list">
-              {dhiqarNews.slice(0, 4).map(item => (
-                <li key={item.sourceUrl}>
-                  <a href={item.sourceUrl} target="_blank" rel="noreferrer">
-                    <img src={item.image} alt="" loading="lazy" />
-                    <span>
-                      <small>
-                        {item.category} • {item.source}
-                      </small>
-                      <strong>{item.title}</strong>
-                    </span>
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </article>
-
+            <div className="gov-news">
+              {dhiqarNews[0] && (
+                <a className="gov-news-featured" href={dhiqarNews[0].sourceUrl} target="_blank" rel="noreferrer">
+                  <img src={dhiqarNews[0].image} alt="" />
+                  <span className="gov-news-featured-text">
+                    <small>
+                      {dhiqarNews[0].category} • {dhiqarNews[0].source}
+                    </small>
+                    <strong>{dhiqarNews[0].title}</strong>
+                  </span>
+                </a>
+              )}
+              <ul className="gov-news-side">
+                {dhiqarNews.slice(1, 4).map(item => (
+                  <li key={item.sourceUrl}>
+                    <a href={item.sourceUrl} target="_blank" rel="noreferrer">
+                      <img src={item.image} alt="" loading="lazy" />
+                      <span>
+                        <small>
+                          {item.category} • {item.source}
+                        </small>
+                        <strong>{item.title}</strong>
+                      </span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
         </section>
       </main>
       <Footer />
