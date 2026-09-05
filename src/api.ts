@@ -264,6 +264,17 @@ export const api = {
       method: 'PATCH',
       body: JSON.stringify(payload),
     }),
+  getPushConfig: () => request<{ enabled: boolean; publicKey: string | null }>('/api/push/config'),
+  subscribePush: (subscription: { endpoint: string; keys: { p256dh: string; auth: string } }) =>
+    request<{ ok: boolean; devices: number }>('/api/citizen/push/subscribe', {
+      method: 'POST',
+      body: JSON.stringify(subscription),
+    }),
+  unsubscribePush: (endpoint: string) =>
+    request<{ ok: boolean; devices: number }>('/api/citizen/push/unsubscribe', {
+      method: 'POST',
+      body: JSON.stringify({ endpoint }),
+    }),
   getPaymentConfig: () => request<PaymentConfig>('/api/payments/config'),
   getPayment: (reference: string) => request<PaymentIntent>(`/api/citizen/payments/${encodeURIComponent(reference)}`),
   startCheckout: (reference: string) =>

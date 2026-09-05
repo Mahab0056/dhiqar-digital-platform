@@ -490,6 +490,7 @@ export function registerApplicationsRoutes(app: express.Express) {
         title: 'وثيقتك جاهزة للعرض والتنزيل',
         message: `صدرت الوثيقة ${documentNumber}. افتح المعاملة لمعاينة PDF أو تنزيله أو التحقق منه عبر QR.`,
         link: `/citizen/application/${param(req, 'reference')}`,
+        pushLink: `/api/citizen/issued-documents/${issuedDocument.id}/pdf`,
       })
       addAudit({
         actor: session.actor,

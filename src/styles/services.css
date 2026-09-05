@@ -1034,3 +1034,74 @@
     justify-content: center;
   }
 }
+
+/* ---- push notifications card --------------------------------------------------------------- */
+.push-card {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 12px 14px;
+  align-items: center;
+  padding: 14px 16px;
+  border: 1px solid var(--gov-line);
+  border-radius: var(--gov-radius);
+  background: var(--gov-surface);
+  margin-bottom: 16px;
+}
+.push-card.compact {
+  padding: 12px 14px;
+  margin-bottom: 12px;
+}
+.push-card.is-on {
+  background: var(--gov-green-050);
+  border-color: var(--gov-green-100);
+}
+.push-card-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: var(--gov-green-050);
+  color: var(--gov-green-800);
+}
+.push-card.is-on .push-card-icon {
+  background: var(--gov-green-800);
+  color: #fff;
+}
+.push-card > div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.push-card strong {
+  font-size: 14px;
+}
+.push-card > div > span {
+  font-size: 12.5px;
+  color: var(--gov-muted);
+  line-height: 1.6;
+}
+.push-card-error {
+  font-style: normal;
+  color: var(--gov-red);
+  font-size: 12px;
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+.push-card-error svg {
+  width: 14px;
+  height: 14px;
+}
+.push-card .button.small {
+  white-space: nowrap;
+}
+@media (max-width: 640px) {
+  .push-card {
+    grid-template-columns: auto 1fr;
+  }
+  .push-card .button.small {
+    grid-column: 1 / -1;
+    justify-content: center;
+  }
+}

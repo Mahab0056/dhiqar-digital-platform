@@ -8,6 +8,7 @@ import { installRealtime } from './realtime.js'
 import { seedServiceCatalog } from './services/catalog.js'
 import { registerServicesRoutes } from './routes/services.js'
 import { registerPaymentRoutes } from './routes/payments.js'
+import { registerPushRoutes } from './routes/push.js'
 import { seedVerifiedGovernmentServices } from './government-service-seed.js'
 import { registerPublicRoutes } from './routes/public.js'
 import { registerAuthRoutes } from './routes/auth.js'
@@ -46,6 +47,7 @@ export function createPlatformServer(options: { serveStatic?: boolean } = {}) {
   registerServicesRoutes(app)
   registerServiceRequestsRoutes(app)
   registerPaymentRoutes(app)
+  registerPushRoutes(app)
   registerOnboardingRoutes(app)
   registerApplicationsRoutes(app)
   registerDocumentsRoutes(app)

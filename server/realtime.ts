@@ -4,6 +4,7 @@ import { installCitizenNotificationRealtime, type NotificationSnapshot } from '.
 import { installEmployeeWorkQueueRealtime } from './employee-work-queue-realtime.js'
 import { readSession } from './auth/session.js'
 import { isAllowedOrigin } from './config.js'
+import { sendPushToCitizen } from './push.js'
 
 let citizenRealtime: ReturnType<typeof installCitizenNotificationRealtime> | null = null
 let employeeRealtime: ReturnType<typeof installEmployeeWorkQueueRealtime> | null = null
@@ -48,7 +49,15 @@ export function notifyCitizen(input: {
   title: string
   message: string
   link?: string
+  /** Optional deep link for the push notification (e.g. a PDF); defaults to `link`. */
+  pushLink?: string
 }) {
   createNotification(input)
   citizenNotificationRealtime.publish(input.citizenId, getCitizenNotifications(input.citizenId))
+  sendPushToCitizen(input.citizenId, {
+    title: input.title,
+    body: input.message,
+    link: input.pushLink || input.link,
+    tag: input.type,
+  })
 }

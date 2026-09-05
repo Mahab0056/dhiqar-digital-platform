@@ -20,6 +20,7 @@ import {
   Search,
 } from 'lucide-react'
 import { api } from '../../api'
+import { PushNotificationsCard } from '../../components/citizen/PushNotificationsCard'
 import { services, statusLabels } from '../../data'
 import { getServiceDefinition } from '../../service-forms'
 import type {
@@ -482,6 +483,7 @@ export function CitizenDashboard() {
             )}
           </article>
           <aside className="citizen-workspace-card citizen-notification-card" id="notifications">
+            <PushNotificationsCard compact />
             <header className="citizen-section-heading compact">
               <div>
                 <span className="section-kicker">التحديثات</span>

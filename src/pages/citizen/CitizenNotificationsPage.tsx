@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'wouter'
 import { AlertTriangle, ArrowLeft, ArrowRight, Bell, Check, RefreshCw } from 'lucide-react'
 import { api } from '../../api'
+import { PushNotificationsCard } from '../../components/citizen/PushNotificationsCard'
 import type { CitizenNotification } from '../../types'
 import { PortalLayout } from '../../components/citizen/PortalLayout'
 
@@ -73,6 +74,7 @@ export function CitizenNotificationsPage() {
             )}
           </div>
         </header>
+        <PushNotificationsCard />
         {error && (
           <div className="form-error">
             <AlertTriangle /> {error}

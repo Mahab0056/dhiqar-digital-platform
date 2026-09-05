@@ -818,7 +818,9 @@ export function registerServiceRequestsRoutes(app: express.Express) {
       }
       const title =
         decision.status === 'APPROVED'
-          ? 'تمت الموافقة على طلبك'
+          ? issuedDocument
+            ? 'اكتملت معاملتك — وثيقة PDF جاهزة'
+            : 'تمت الموافقة على طلبك'
           : decision.status === 'REJECTED'
             ? 'تم رفض طلبك'
             : decision.status === 'ACTION_REQUIRED'
@@ -828,8 +830,9 @@ export function registerServiceRequestsRoutes(app: express.Express) {
         citizenId: Number(row.citizen_id),
         type: 'SERVICE_REQUEST_UPDATED',
         title,
-        message: `${String(row.reference)} — ${finalAction}${decision.decisionNote && decision.status !== 'REJECTED' ? ` • ${decision.decisionNote}` : ''}`,
+        message: `${String(row.reference)} — ${finalAction}${decision.decisionNote && decision.status !== 'REJECTED' ? ` • ${decision.decisionNote}` : ''}${issuedDocument ? ' اضغط لتنزيل الوثيقة.' : ''}`,
         link: decision.status === 'APPROVED' ? '/citizen#issued-documents' : '/citizen#my-requests',
+        pushLink: issuedDocument ? `/api/citizen/issued-documents/${issuedDocument.id}/pdf` : undefined,
       })
       employeeWorkQueueRealtime.publish({
         entity: 'SERVICE_REQUEST',
