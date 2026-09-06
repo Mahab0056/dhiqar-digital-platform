@@ -156,7 +156,10 @@ export function CitizenDashboard() {
   )
   const [serviceCategory, setServiceCategory] = useState('الكل')
   const [serviceSearch, setServiceSearch] = useState('')
-  const [serviceLimit, setServiceLimit] = useState(24)
+  // phones get a short deck (the page is one column there); "عرض المزيد" loads the rest
+  const [serviceLimit, setServiceLimit] = useState(() =>
+    typeof window !== 'undefined' && window.innerWidth < 720 ? 8 : 24
+  )
   const serviceCategories = ['الكل', ...Array.from(new Set(availableServices.map(service => service.category)))]
   const filteredAvailableServices = availableServices.filter(
     service =>

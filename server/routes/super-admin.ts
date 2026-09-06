@@ -2,7 +2,7 @@ import type express from 'express'
 import { param } from '../http/params.js'
 import { randomUUID } from 'node:crypto'
 import { z } from 'zod'
-import { sensitiveLimiter } from '../http/rate-limit.js'
+import { adminMutationLimiter } from '../http/rate-limit.js'
 import { requireSession, currentSession } from '../auth/session.js'
 import { ensureDepartmentRecord } from '../seed.js'
 import { addAudit, db, listCitizensForSuperAdmin } from '../db.js'
@@ -79,7 +79,7 @@ export function registerSuperAdminRoutes(app: express.Express) {
     })
   })
 
-  app.patch('/api/super-admin/platform-services/:key', requireSession('SUPER_ADMIN'), sensitiveLimiter, (req, res) => {
+  app.patch('/api/super-admin/platform-services/:key', requireSession('SUPER_ADMIN'), adminMutationLimiter, (req, res) => {
     const session = currentSession(res)
     const payload = z
       .object({
@@ -115,7 +115,7 @@ export function registerSuperAdminRoutes(app: express.Express) {
     res.json({ success: true, updatedAt: timestamp })
   })
 
-  app.post('/api/super-admin/operations/cameras', requireSession('SUPER_ADMIN'), sensitiveLimiter, (req, res) => {
+  app.post('/api/super-admin/operations/cameras', requireSession('SUPER_ADMIN'), adminMutationLimiter, (req, res) => {
     const session = currentSession(res)
     const payload = z
       .object({
@@ -178,7 +178,7 @@ export function registerSuperAdminRoutes(app: express.Express) {
   app.post(
     '/api/super-admin/operations/workforce-snapshots',
     requireSession('SUPER_ADMIN'),
-    sensitiveLimiter,
+    adminMutationLimiter,
     (req, res) => {
       const session = currentSession(res)
       const payload = z
@@ -246,7 +246,7 @@ export function registerSuperAdminRoutes(app: express.Express) {
     res.json({ service, versions: listGovernmentServiceVersions(service.id) })
   })
 
-  app.post('/api/super-admin/government-services', requireSession('SUPER_ADMIN'), sensitiveLimiter, (req, res) => {
+  app.post('/api/super-admin/government-services', requireSession('SUPER_ADMIN'), adminMutationLimiter, (req, res) => {
     const session = currentSession(res)
     const payload = z
       .object({
@@ -301,7 +301,7 @@ export function registerSuperAdminRoutes(app: express.Express) {
   app.patch(
     '/api/super-admin/government-services/:id/publication',
     requireSession('SUPER_ADMIN'),
-    sensitiveLimiter,
+    adminMutationLimiter,
     (req, res) => {
       const session = currentSession(res)
       const payload = z

@@ -4,7 +4,7 @@ import { z } from 'zod'
 import { addAudit, db } from '../db.js'
 import { createBackup, databaseStats, integrityCheck } from '../db-ops/backup.js'
 import { param } from '../http/params.js'
-import { sensitiveLimiter } from '../http/rate-limit.js'
+import { adminMutationLimiter } from '../http/rate-limit.js'
 import { currentSession, requireSession, revokeStaffSessions } from '../auth/session.js'
 import {
   countStaff,
@@ -31,7 +31,7 @@ export function registerStaffAdminRoutes(app: express.Express) {
     res.json({ accounts: listStaff(), roles: staffRoles, departments })
   })
 
-  app.post('/api/super-admin/staff', guard, sensitiveLimiter, (req, res) => {
+  app.post('/api/super-admin/staff', guard, adminMutationLimiter, (req, res) => {
     const session = currentSession(res)
     const payload = z
       .object({
@@ -64,7 +64,7 @@ export function registerStaffAdminRoutes(app: express.Express) {
     res.status(201).json({ account: created.account, temporaryPassword: created.temporaryPassword })
   })
 
-  app.patch('/api/super-admin/staff/:id', guard, sensitiveLimiter, (req, res) => {
+  app.patch('/api/super-admin/staff/:id', guard, adminMutationLimiter, (req, res) => {
     const session = currentSession(res)
     const id = param(req, 'id')
     const before = getStaffById(id)
@@ -99,7 +99,7 @@ export function registerStaffAdminRoutes(app: express.Express) {
     res.json({ account })
   })
 
-  app.post('/api/super-admin/staff/:id/status', guard, sensitiveLimiter, (req, res) => {
+  app.post('/api/super-admin/staff/:id/status', guard, adminMutationLimiter, (req, res) => {
     const session = currentSession(res)
     const id = param(req, 'id')
     const payload = z.object({ status: z.enum(['ACTIVE', 'DISABLED']) }).parse(req.body)
@@ -121,7 +121,7 @@ export function registerStaffAdminRoutes(app: express.Express) {
     res.json({ account: getStaffById(id) })
   })
 
-  app.post('/api/super-admin/staff/:id/reset-password', guard, sensitiveLimiter, (req, res) => {
+  app.post('/api/super-admin/staff/:id/reset-password', guard, adminMutationLimiter, (req, res) => {
     const session = currentSession(res)
     const id = param(req, 'id')
     if (!getStaffById(id)) return res.status(404).json({ message: 'الحساب غير موجود.' })
@@ -137,7 +137,7 @@ export function registerStaffAdminRoutes(app: express.Express) {
     res.json({ temporaryPassword })
   })
 
-  app.post('/api/super-admin/staff/:id/reset-mfa', guard, sensitiveLimiter, (req, res) => {
+  app.post('/api/super-admin/staff/:id/reset-mfa', guard, adminMutationLimiter, (req, res) => {
     const session = currentSession(res)
     const id = param(req, 'id')
     if (!getStaffById(id)) return res.status(404).json({ message: 'الحساب غير موجود.' })
@@ -153,7 +153,7 @@ export function registerStaffAdminRoutes(app: express.Express) {
     res.json({ success: true })
   })
 
-  app.post('/api/super-admin/staff/:id/revoke-sessions', guard, sensitiveLimiter, (req, res) => {
+  app.post('/api/super-admin/staff/:id/revoke-sessions', guard, adminMutationLimiter, (req, res) => {
     const session = currentSession(res)
     const id = param(req, 'id')
     if (!getStaffById(id)) return res.status(404).json({ message: 'الحساب غير موجود.' })
@@ -173,7 +173,7 @@ export function registerStaffAdminRoutes(app: express.Express) {
     res.json({ ...databaseStats(), integrity: integrityCheck() })
   })
 
-  app.post('/api/super-admin/system/backups', guard, sensitiveLimiter, (_req, res) => {
+  app.post('/api/super-admin/system/backups', guard, adminMutationLimiter, (_req, res) => {
     const session = currentSession(res)
     try {
       const entry = createBackup('MANUAL')

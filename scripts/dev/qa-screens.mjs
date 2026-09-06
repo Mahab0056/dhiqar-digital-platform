@@ -5,7 +5,13 @@ const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromi
 const shoot = async (context, name, path, full = true) => {
   const page = await context.newPage()
   await page.goto(base + path, { waitUntil: 'networkidle' }).catch(() => null)
-  await page.waitForTimeout(800)
+  await page.waitForTimeout(500)
+  // scroll-reveal sections only animate in on real scroll; force them for a full-page capture
+  if (full)
+    await page.evaluate(() =>
+      document.querySelectorAll('[data-reveal]').forEach(element => element.classList.add('is-revealed'))
+    )
+  await page.waitForTimeout(700)
   await page.screenshot({ path: `qa-screens/${name}.png`, fullPage: full })
   await page.close()
 }

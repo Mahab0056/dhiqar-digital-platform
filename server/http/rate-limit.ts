@@ -30,5 +30,12 @@ export const identityUploadLimiter = make(
   'تجاوزت الحد المؤقت لعمليات التحقق من الهوية. حاول بعد قليل.'
 )
 
+/** Admin/staff mutations: one super admin editing a table fires many requests legitimately. */
+export const adminMutationLimiter = make(
+  10 * 60 * 1000,
+  200,
+  'طلبات إدارية كثيرة خلال وقت قصير. انتظر قليلاً ثم أعد المحاولة.'
+)
+
 /** Kept for compatibility with older imports; same budget as identity uploads. */
 export const sensitiveLimiter = identityUploadLimiter

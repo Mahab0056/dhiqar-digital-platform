@@ -136,14 +136,8 @@ export function LandingPage() {
   useEffect(() => {
     api
       .listDepartments()
-      .then(result => {
-        setDepartments(result.items)
-        setSelectedDepartment(
-          result.items.find(item => item.id === 'dhiqar-municipalities' && item.lat !== null) ||
-            result.items.find(item => item.lat !== null) ||
-            null
-        )
-      })
+      // the map opens clean: the details panel appears only after the visitor picks a department
+      .then(result => setDepartments(result.items))
       .catch(() => setDepartments([]))
   }, [])
 

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useLocation } from 'wouter'
 import {
   Activity,
@@ -33,6 +33,8 @@ export function EmployeeDashboard() {
   const [, navigate] = useLocation()
   const { session } = useSession()
   const canReviewIdentity = session?.role === 'IDENTITY_REVIEWER' || session?.role === 'SUPER_ADMIN'
+  const sessionRoleRef = useRef<string | undefined>(session?.role)
+  sessionRoleRef.current = session?.role
   const isReviewerOnly = session?.role === 'IDENTITY_REVIEWER'
   const todayLabel = new Date().toLocaleDateString('en-GB')
   const [apps, setApps] = useState<GovernmentApplication[]>([])
@@ -45,8 +47,12 @@ export function EmployeeDashboard() {
   const [mediaError, setMediaError] = useState('')
   const [reviewError, setReviewError] = useState('')
   const load = useCallback(async () => {
-    // each source loads independently: a 401 on one (e.g. reviewers cannot list applications) must not blank the board
-    const [items, summary] = await Promise.allSettled([api.listApplications(), api.getEmployeeWorkQueueSummary()])
+    // identity reviewers have no case queue: never call the applications endpoint for them (it would 401)
+    const reviewerOnly = sessionRoleRef.current === 'IDENTITY_REVIEWER'
+    const [items, summary] = await Promise.allSettled([
+      reviewerOnly ? Promise.resolve([] as GovernmentApplication[]) : api.listApplications(),
+      api.getEmployeeWorkQueueSummary(),
+    ])
     if (summary.status === 'fulfilled') setWorkQueue(summary.value)
     if (items.status === 'fulfilled') {
       const list = items.value
@@ -64,6 +70,7 @@ export function EmployeeDashboard() {
       .then(session => {
         const allowed =
           session.role === 'EMPLOYEE' || session.role === 'IDENTITY_REVIEWER' || session.role === 'SUPER_ADMIN'
+        sessionRoleRef.current = session.role
         setAuthenticated(allowed)
         if (allowed) void load()
         else navigate('/staff/login?next=%2Femployee')
