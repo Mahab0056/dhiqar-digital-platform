@@ -1533,8 +1533,8 @@
   font-weight: 800;
   padding: 3px 8px;
   border-radius: 999px;
-  background: #eef1ef;
-  color: var(--gov-muted);
+  background: var(--gov-line-soft);
+  color: var(--gov-ink-2);
   white-space: nowrap;
 }
 .gov-gis-status.on {

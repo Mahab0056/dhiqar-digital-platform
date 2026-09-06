@@ -458,15 +458,31 @@
   gap: 8px;
   align-items: center;
 }
-.ops-header-actions > button,
-.ops-header-actions > a {
+/* App.css pins every header button to a 38px icon square, which clips text labels */
+.ops-shell .ops-header-actions > button,
+.ops-shell .ops-header-actions > a,
+.super-admin-header .ops-header-actions > button {
+  width: auto;
+  min-width: 38px;
+  height: 38px;
+  padding: 0 12px;
   white-space: nowrap;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
 }
-.ops-header-actions .user-avatar,
-.user-avatar {
+.ops-shell .ops-header-actions > button svg,
+.ops-shell .ops-header-actions > a svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+:root .ops-shell .ops-header-actions .user-avatar,
+:root .ops-shell .user-avatar,
+:root .user-avatar {
   display: inline-grid;
   place-items: center;
   width: 40px;
@@ -477,8 +493,9 @@
   font-weight: 800;
   font-size: 14px;
 }
-.user-avatar.gold {
-  background: #bb8a35;
+:root .ops-shell .user-avatar.gold,
+:root .user-avatar.gold {
+  background: linear-gradient(135deg, #aa7c34, #dfbe72);
   color: #1b1405;
 }
 .ops-header-identity {
@@ -643,4 +660,181 @@
   .health-row > div {
     grid-column: 1 / -1;
   }
+}
+
+/* ---- readable controls in both themes ------------------------------------------------------- */
+.sidebar-logout {
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+  color: #8a9890;
+  width: 100%;
+  justify-content: flex-start;
+}
+.sidebar-logout:hover {
+  color: var(--p-text, #0f1714);
+}
+:root[data-gov-theme='dark'] .sidebar-logout:hover {
+  color: #fff;
+}
+/* ghost buttons must not fall back to a near-black brand colour on dark surfaces */
+:root[data-gov-theme='dark'] .button.ghost,
+:root[data-gov-theme='dark'] .ops-shell .button.ghost,
+.ops-shell .button.ghost {
+  color: #cfe0d6;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.05);
+}
+:root:not([data-gov-theme='dark']) .ops-main .button.ghost {
+  color: var(--p-text, #10221a);
+  border-color: var(--p-line, #e3e8e5);
+  background: var(--p-surface, #fff);
+}
+:root[data-gov-theme='dark'] .button.ghost:hover,
+.ops-shell .button.ghost:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+:root[data-gov-theme='dark'] .user-avatar.gold,
+.ops-shell .user-avatar.gold {
+  background: linear-gradient(135deg, #aa7c34, #dfbe72);
+  color: #1b1405;
+}
+:root[data-gov-theme='dark'] .user-avatar,
+.ops-shell .user-avatar {
+  background: #0a6b3d;
+  color: #fff;
+}
+
+/* ---- remaining contrast corrections (measured) ---------------------------------------------- */
+:root:not([data-gov-theme='dark']) .ops-sidebar .ops-exit,
+:root:not([data-gov-theme='dark']) .ops-sidebar nav a {
+  color: var(--p-text, #10221a);
+  border-color: var(--p-line, #e3e8e5);
+}
+:root:not([data-gov-theme='dark']) .ops-sidebar .ops-exit:hover,
+:root:not([data-gov-theme='dark']) .ops-sidebar nav a:hover {
+  background: var(--p-surface-2, #eef3f0);
+  color: #0a3f2c;
+}
+:root:not([data-gov-theme='dark']) .ops-shell .camera-status-button {
+  background: var(--p-surface-2, #eef3f0);
+  border-color: var(--p-line, #d7e3db);
+  color: #0a4c34;
+}
+:root:not([data-gov-theme='dark']) .ops-shell .period-button {
+  color: var(--p-text, #10221a);
+}
+:root[data-gov-theme='dark'] .ops-shell .section-kicker,
+.ops-shell .section-kicker {
+  color: #e0bd74;
+}
+:root:not([data-gov-theme='dark']) .ops-main .section-kicker {
+  color: #0a5137;
+}
+.user-avatar.gold {
+  background-color: #b7913f;
+}
+/* active tab / segmented control on a green ground must stay white */
+.gov-segmented button.active,
+.workspace-tab.active,
+.super-admin-tabs button.active,
+.ops-shell [role='tab'][aria-selected='true'] {
+  color: #fff;
+}
+.search-help {
+  color: var(--p-muted, #5b6a63);
+}
+
+/* Secondary text inside the staff/citizen portal: one muted token instead of ~30 pale greys
+   (measured 2.8–3.2:1 on white before this rule). */
+:root:not([data-gov-theme='dark'])
+  .portal-shell
+  :is(small, em, .muted, [class*='muted']):not([class*='status']):not([class*='chip']):not([class*='badge']):not(
+    [class*='pill']
+  ):not(.gov-utility *),
+:root:not([data-gov-theme='dark'])
+  .portal-main
+  :is(small, em):not([class*='status']):not([class*='chip']):not([class*='badge']):not([class*='pill']) {
+  color: var(--p-muted, #5b6a63);
+}
+:root[data-gov-theme='dark']
+  .portal-shell
+  :is(small, em, .muted, [class*='muted']):not([class*='status']):not([class*='chip']):not([class*='badge']):not(
+    [class*='pill']
+  ):not(.gov-utility *) {
+  color: var(--p-muted, #a5b3ab);
+}
+/* the green utility bar carries its own foreground in every shell and theme */
+:root .gov-utility :is(small, em, span, strong, a, button),
+:root .gov-utility .gov-utility-lang.is-muted {
+  color: #e6efe9;
+}
+:root .gov-utility .gov-utility-lang.is-muted {
+  opacity: 0.8;
+}
+:root .gov-utility .gov-utility-identity strong,
+:root .gov-utility .gov-utility-lang.is-active {
+  color: #fff;
+}
+.workspace-tabbar button.active > *,
+.workspace-tabbar button.active span {
+  color: inherit;
+}
+:root[data-gov-theme='dark'] .user-avatar.gold {
+  background-color: #b7913f;
+}
+.sidebar-logout {
+  color: var(--p-muted, #5b6a63);
+}
+:root[data-gov-theme='dark'] .sidebar-logout {
+  color: #a5b3ab;
+}
+
+/* operations panels in day mode: measured secondary text on white */
+:root:not([data-gov-theme='dark']) .ops-main .health-row,
+:root:not([data-gov-theme='dark']) .ops-main .health-row b,
+:root:not([data-gov-theme='dark']) .ops-main .health-row b small,
+:root:not([data-gov-theme='dark']) .ops-main .period-button {
+  color: var(--p-muted, #5b6a63);
+}
+:root:not([data-gov-theme='dark']) .ops-main .health-row.health-ok b {
+  color: #0a5137;
+}
+:root:not([data-gov-theme='dark']) .ops-main .health-row.health-warn b {
+  color: #8a5a06;
+}
+:root:not([data-gov-theme='dark']) .ops-main .health-row.health-off b {
+  color: #a3182b;
+}
+
+/* selected workspace tab: the label span must take the tab's own white foreground */
+:root .workspace-tabbar button.active,
+:root .workspace-tabbar button[aria-selected='true'],
+:root .workspace-tabbar button.active > span,
+:root .workspace-tabbar button[aria-selected='true'] > span,
+:root .workspace-tabbar button.active > svg,
+:root .workspace-tabbar button[aria-selected='true'] > svg {
+  color: #fff;
+}
+
+/* portal chooser + map hint keep readable ink in night mode */
+:root[data-gov-theme='dark'] .login-v3 .login-v3-option {
+  background: #16211c;
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #e7ece9;
+}
+:root[data-gov-theme='dark'] .login-v3 .login-v3-option :is(h1, h2, h3, strong, b, span, p) {
+  color: #e7ece9;
+}
+:root[data-gov-theme='dark'] .login-v3 .login-v3-option small {
+  color: #4cc796;
+}
+:root[data-gov-theme='dark'] .login-v3 .login-v3-option.primary-access {
+  background: #113d2d;
+}
+.gov-location-hint,
+:root[data-gov-theme='dark'] .gov-location-hint {
+  color: #344054;
 }

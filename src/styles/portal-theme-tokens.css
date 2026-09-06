@@ -5,7 +5,7 @@
   --p-surface-2: #f8faf9;
   --p-line: #e3e8e5;
   --p-text: #101828;
-  --p-muted: #667085;
+  --p-muted: #5b6a63;
   --p-shadow: 0 1px 2px rgba(16, 39, 30, 0.06), 0 8px 24px rgba(16, 39, 30, 0.06);
 }
 :root[data-gov-theme='dark'] {
@@ -14,7 +14,7 @@
   --p-surface-2: #17231d;
   --p-line: #26332c;
   --p-text: #e7ece9;
-  --p-muted: #97a49d;
+  --p-muted: #a5b3ab;
   --p-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 10px 28px rgba(0, 0, 0, 0.35);
   color-scheme: dark;
 }
@@ -41,8 +41,8 @@
   background: var(--gov-green-050, #f1f8f4);
   color: var(--gov-green-800, #075e45);
 }
-:root:not([data-gov-theme='dark']) .ops-shell .muted,
-:root:not([data-gov-theme='dark']) .ops-shell small {
+:root:not([data-gov-theme='dark']) .ops-main .muted,
+:root:not([data-gov-theme='dark']) .ops-main small {
   color: var(--p-muted);
 }
 :root:not([data-gov-theme='dark']) .ops-kpis > div::after {
@@ -67,25 +67,38 @@
   padding: 2px;
 }
 
-/* day mode inside the (dark-native) operations / super-admin shells: text inherits the theme colour */
+/* day mode inside the (dark-native) operations / super-admin shells: text inherits the theme colour.
+   The green utility bar and the green sidebar keep their own (light-on-dark) colours in both themes. */
 :root:not([data-gov-theme='dark'])
-  .ops-shell
+  .ops-main
   :is(h1, h2, h3, h4, h5, p, li, td, th, dt, dd, label, strong, b, em, small, time),
 :root:not([data-gov-theme='dark'])
-  .ops-shell
+  .ops-main
   :is(span):not([class*='status']):not([class*='badge']):not([class*='pill']):not([class*='chip']):not(
     [class*='tag']
-  ):not(.button *):not(.gov-utility *) {
+  ):not(.button *):not(.active *):not([aria-selected='true'] *) {
   color: var(--p-text);
 }
-:root:not([data-gov-theme='dark']) .ops-shell :is(small, .muted, [class*='muted'], [class*='hint']) {
+:root:not([data-gov-theme='dark']) .ops-main :is(small, .muted, [class*='muted'], [class*='hint']) {
   color: var(--p-muted);
 }
-:root:not([data-gov-theme='dark']) .ops-shell .section-kicker,
-:root:not([data-gov-theme='dark']) .ops-shell .panel-heading span {
+/* a selected tab/segment paints its own foreground; its children must inherit it */
+:root:not([data-gov-theme='dark'])
+  .ops-main
+  :is(.workspace-tabbar button.active, [aria-selected='true'], .gov-segmented button.active)
+  > * {
+  color: inherit;
+}
+/* tiles that keep a dark ground in day mode get a light one instead of dark-on-dark text */
+:root:not([data-gov-theme='dark']) .ops-main .finance-total {
+  background: var(--gov-green-050, #f1f8f4);
+  border-color: var(--p-line);
+}
+:root:not([data-gov-theme='dark']) .ops-main .section-kicker,
+:root:not([data-gov-theme='dark']) .ops-main .panel-heading span {
   color: var(--gov-green-800, #075e45);
 }
-:root:not([data-gov-theme='dark']) .ops-shell table {
+:root:not([data-gov-theme='dark']) .ops-main table {
   color: var(--p-text);
 }
 :root:not([data-gov-theme='dark']) .ops-shell input,
@@ -106,16 +119,29 @@
   background: var(--gov-green-800, #075e45);
   color: #fff;
 }
+/* chips/status pills keep their own light ground and dark ink in both themes */
+.portal-shell :is([class*='status'], [class*='chip'], [class*='badge'], [class*='pill'], .role-chip) > * {
+  color: inherit;
+}
+
 /* night mode inside the (light-native) citizen / employee portal: same idea in reverse */
-:root[data-gov-theme='dark'] .portal-shell :is(h1, h2, h3, h4, h5, p, li, td, th, dt, dd, label, strong, b, time),
+:root[data-gov-theme='dark']
+  .portal-shell
+  :is(h1, h2, h3, h4, h5, p, li, td, th, dt, dd, label, strong, b, time):not([class*='status']):not(
+    [class*='chip']
+  ):not([class*='badge']):not([class*='pill']),
 :root[data-gov-theme='dark']
   .portal-shell
   :is(span):not([class*='status']):not([class*='badge']):not([class*='pill']):not([class*='chip']):not(
     [class*='tag']
-  ):not(.button *):not(.gov-utility *) {
+  ):not(.button *):not(.gov-utility *):not(.active *):not([aria-selected='true'] *) {
   color: var(--p-text);
 }
-:root[data-gov-theme='dark'] .portal-shell :is(small, .muted, [class*='muted'], [class*='hint']) {
+:root[data-gov-theme='dark']
+  .portal-shell
+  :is(small, .muted, [class*='muted'], [class*='hint']):not([class*='status']):not([class*='chip']):not(
+    [class*='badge']
+  ):not([class*='pill']):not(.gov-utility *) {
   color: var(--p-muted);
 }
 :root[data-gov-theme='dark'] .portal-shell .section-kicker {

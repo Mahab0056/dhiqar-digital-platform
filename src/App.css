@@ -1406,7 +1406,7 @@ svg {
   border-radius: 13px;
   background: #fff8e8;
   color: #635634;
-  font-size: 9px !important;
+  font-size: 12px !important;
   line-height: 1.7;
 }
 .consent-box input {
@@ -3455,7 +3455,7 @@ svg {
   width: auto !important;
   padding: 0 12px;
   gap: 7px;
-  color: #9db4a8 !important;
+  color: #9db4a8;
   font-size: 12px;
 }
 .period-button svg {
@@ -4649,7 +4649,7 @@ body {
   gap: 7px !important;
   margin: 10px 0 14px !important;
   color: #43594d;
-  font-size: 11px !important;
+  font-size: 12px !important;
 }
 .review-notes textarea {
   min-height: 78px;
@@ -6565,9 +6565,7 @@ time {
   background: #fff;
   color: #9b1720;
   font:
-    800 16px/1 Inter,
-    system-ui,
-    sans-serif;
+    800 16px/1 'IBM Plex Sans Arabic', system-ui, sans-serif;
 }
 .recording-countdown strong {
   font-size: 12px;
@@ -6618,9 +6616,7 @@ time {
   background: #e4f6eb;
   color: #087743;
   font:
-    800 17px/1 Inter,
-    system-ui,
-    sans-serif;
+    800 17px/1 'IBM Plex Sans Arabic', system-ui, sans-serif;
 }
 .screening-score > div {
   display: grid;
@@ -6779,9 +6775,7 @@ time {
   color: #809087;
   direction: ltr;
   font:
-    9px/1.4 Inter,
-    system-ui,
-    sans-serif;
+    12px/1.4 'IBM Plex Sans Arabic', system-ui, sans-serif;
 }
 .gis-popup a {
   margin-top: 4px;
@@ -6858,9 +6852,7 @@ time {
   color: #087743;
   direction: ltr;
   font:
-    700 12px/1 Inter,
-    system-ui,
-    sans-serif;
+    700 12px/1 'IBM Plex Sans Arabic', system-ui, sans-serif;
 }
 .news-slide {
   display: grid;
@@ -7175,7 +7167,7 @@ time {
   border-radius: 999px;
   background: rgba(36, 148, 89, 0.18);
   color: #74e5a4;
-  font: 700 0.62rem/1 system-ui;
+  font: 700 0.75rem/1 system-ui;
   letter-spacing: 0.04em;
 }
 .audit-role.super_admin {
@@ -8137,8 +8129,7 @@ time {
   color: #fff;
   background: #087844;
   font:
-    700 12px/1 Inter,
-    sans-serif;
+    700 12px/1 'IBM Plex Sans Arabic', system-ui, sans-serif;
 }
 .feedback-form-title h2 {
   margin: 1px 0 4px;
@@ -8201,7 +8192,7 @@ time {
   justify-self: end;
   margin-top: -2px;
   color: #94a69b;
-  font-family: Inter, sans-serif;
+  font-family: 'IBM Plex Sans Arabic', system-ui, sans-serif;
 }
 .feedback-evidence-grid {
   display: grid;
@@ -8369,7 +8360,7 @@ time {
 }
 .feedback-success strong {
   color: #17432d;
-  font-family: Inter, sans-serif;
+  font-family: 'IBM Plex Sans Arabic', system-ui, sans-serif;
   font-size: 13px;
 }
 .feedback-success > .button + .button {
@@ -8426,7 +8417,7 @@ time {
 }
 .feedback-detail header > div > small {
   color: #d7eddf;
-  font-family: Inter, sans-serif;
+  font-family: 'IBM Plex Sans Arabic', system-ui, sans-serif;
 }
 .feedback-detail-action {
   display: flex;
@@ -8507,8 +8498,7 @@ time {
   color: #fff;
   background: #0d7d49;
   font:
-    700 10px/1 Inter,
-    sans-serif;
+    700 12px/1 'IBM Plex Sans Arabic', system-ui, sans-serif;
 }
 .feedback-event strong,
 .feedback-event time,
@@ -8597,7 +8587,7 @@ time {
 .feedback-media-list small {
   margin-top: 2px;
   color: #82958a;
-  font-family: Inter, sans-serif;
+  font-family: 'IBM Plex Sans Arabic', system-ui, sans-serif;
   font-size: 12px;
 }
 .feedback-media-list .button {
@@ -8768,8 +8758,7 @@ time {
   margin-top: 4px;
   color: #82958a;
   font:
-    9px/1.4 Inter,
-    sans-serif;
+    12px/1.4 'IBM Plex Sans Arabic', system-ui, sans-serif;
 }
 .feedback-admin-row p {
   overflow: hidden;
@@ -8806,8 +8795,7 @@ time {
 .feedback-admin-detail header > small {
   color: #8b9c92;
   font:
-    9px/1.5 Inter,
-    sans-serif;
+    12px/1.5 'IBM Plex Sans Arabic', system-ui, sans-serif;
 }
 .feedback-admin-description {
   margin: 16px 0;
@@ -8829,8 +8817,7 @@ time {
   margin-top: 11px;
   color: #2a6d4b;
   font:
-    10px/1.5 Inter,
-    sans-serif;
+    12px/1.5 'IBM Plex Sans Arabic', system-ui, sans-serif;
   direction: ltr;
 }
 .feedback-admin-description span svg {
@@ -8875,8 +8862,7 @@ time {
   margin-top: 2px;
   color: #84968b;
   font:
-    8px/1.4 Inter,
-    sans-serif;
+    12px/1.4 'IBM Plex Sans Arabic', system-ui, sans-serif;
 }
 .feedback-admin-media img {
   grid-column: 1 / -1;
@@ -9048,8 +9034,7 @@ time {
   margin-top: 4px;
   color: #82958a;
   font:
-    9px/1.4 Inter,
-    sans-serif;
+    12px/1.4 'IBM Plex Sans Arabic', system-ui, sans-serif;
 }
 .service-request-admin-row p {
   overflow: hidden;
@@ -9087,8 +9072,7 @@ time {
 .service-request-admin-detail header > small {
   color: #8b9c92;
   font:
-    9px/1.5 Inter,
-    sans-serif;
+    12px/1.5 'IBM Plex Sans Arabic', system-ui, sans-serif;
 }
 .service-request-form-data,
 .service-request-update {
@@ -9242,8 +9226,7 @@ time {
 .citizen-service-request-top small {
   color: #7a8f82;
   font:
-    9px/1.3 Inter,
-    sans-serif;
+    12px/1.3 'IBM Plex Sans Arabic', system-ui, sans-serif;
 }
 .citizen-service-request-top p {
   margin: 6px 0 0;
@@ -9434,8 +9417,7 @@ time {
   color: #f1faf4;
   direction: ltr;
   font:
-    800 13px/1 Inter,
-    sans-serif;
+    800 13px/1 'IBM Plex Sans Arabic', system-ui, sans-serif;
 }
 .workforce-status {
   display: grid;
@@ -9532,7 +9514,7 @@ time {
   border-radius: 8px;
   background: #0e412c;
   color: #9de9bc;
-  font: 800 9px/1 inherit;
+  font: 800 12px/1 inherit;
   cursor: pointer;
   transition:
     background 160ms var(--ease),
@@ -9599,8 +9581,7 @@ time {
 .camera-status-dialog header small {
   color: #8fb6a1;
   font:
-    800 8px/1 Inter,
-    sans-serif;
+    800 12px/1 'IBM Plex Sans Arabic', system-ui, sans-serif;
   letter-spacing: 0.08em;
 }
 .camera-status-dialog header h3 {
@@ -10704,8 +10685,7 @@ body {
   color: #6b7f73;
   background: #e5ebe4;
   font:
-    800 9px/1 Inter,
-    sans-serif;
+    800 12px/1 'IBM Plex Sans Arabic', system-ui, sans-serif;
 }
 .service-form-progress .active b {
   color: #fff;
@@ -10898,7 +10878,7 @@ body {
   border: 0;
   border-radius: 4px;
   background: #e1e8e1;
-  font-family: Inter, Arial, sans-serif;
+  font-family: 'IBM Plex Sans Arabic', system-ui, sans-serif;
 }
 .stepper .active span,
 .stepper .done span {
@@ -11091,7 +11071,7 @@ body {
 }
 .application-detail-header > div > div > span:last-child {
   color: #d8e7de;
-  font-family: Inter, Arial, sans-serif;
+  font-family: 'IBM Plex Sans Arabic', system-ui, sans-serif;
 }
 .application-detail-header h1 {
   color: #fff;
@@ -11953,7 +11933,7 @@ body {
   border-radius: 3px;
   background: #e2eee3;
   color: #226244;
-  font-family: Inter, Arial, sans-serif;
+  font-family: 'IBM Plex Sans Arabic', system-ui, sans-serif;
   font-size: 12px;
 }
 .citizen-service-directory {
@@ -12195,7 +12175,7 @@ body {
 .directory-count strong {
   display: block;
   color: var(--reed-deep);
-  font-family: Inter, Arial, sans-serif;
+  font-family: 'IBM Plex Sans Arabic', system-ui, sans-serif;
   font-size: 32px;
   line-height: 1.25;
 }
@@ -12386,7 +12366,7 @@ body {
   overflow: hidden;
   margin-top: 2px;
   color: #819287;
-  font-family: Inter, Arial, sans-serif;
+  font-family: 'IBM Plex Sans Arabic', system-ui, sans-serif;
   font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -12700,9 +12680,7 @@ body {
   background: rgba(6, 33, 23, 0.5);
   color: #d7e4da;
   font:
-    700 8px/1 Inter,
-    Arial,
-    sans-serif;
+    700 12px/1 'IBM Plex Sans Arabic', system-ui, sans-serif;
   cursor: pointer;
   transition:
     background 0.18s ease,
@@ -13497,9 +13475,7 @@ body {
 .hero-service-list > a > span {
   color: #e2be70;
   font:
-    800 9px/1 Inter,
-    Arial,
-    sans-serif;
+    800 12px/1 'IBM Plex Sans Arabic', system-ui, sans-serif;
 }
 .hero-service-list strong {
   display: block;
@@ -13664,9 +13640,7 @@ body {
   color: #725b29;
   background: #f1e6c7;
   font:
-    800 9px/1 Inter,
-    Arial,
-    sans-serif;
+    800 12px/1 'IBM Plex Sans Arabic', system-ui, sans-serif;
 }
 .home-process-steps strong {
   display: block;
@@ -16572,8 +16546,7 @@ body {
   color: #fff;
   background: rgba(15, 136, 87, 0.24);
   font:
-    800 21px/1 Inter,
-    sans-serif;
+    800 21px/1 'IBM Plex Sans Arabic', system-ui, sans-serif;
   direction: ltr;
 }
 .face-countdown.active {
@@ -18174,8 +18147,7 @@ body {
 .citizen-notifications-full-list .citizen-notification-row time {
   color: #82958b;
   font:
-    11px/1.4 Inter,
-    sans-serif;
+    12px/1.4 'IBM Plex Sans Arabic', system-ui, sans-serif;
   direction: ltr;
   text-align: right;
 }

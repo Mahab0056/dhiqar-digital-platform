@@ -78,7 +78,8 @@ for media, sel, body in rules(css):
     DARK_SHELL = ('.ops-', '.dark-panel', '.governor', '.ranking', '.executive', '.health', '.super-admin', '.admin-', '.system-',
                   '.staff-table', '.service-admin', '.registry-', '.real-gis', '.alert-item', '.priority-number', '.pie-', '.period-',
                   '.secret-box', '.score-ring', '.staff-create', '.audit', '.operations')
-    ACCENT = ('.button', '.primary', 'badge', '.status', '.chip', '.pill', '.tag', 'active', '.brand', '.role-chip', '.section-kicker', '.hero')
+    ACCENT = ('.button', '.primary', 'badge', '.status', '.chip', '.pill', '.tag', 'active', '.brand', '.role-chip',
+              '.section-kicker', '.hero', 'avatar', '.ops-header-actions', '.score-ring', '.ops-exit')
     is_dark_shell = any(k in sel for k in DARK_SHELL)
     is_accent = any(a in sel for a in ACCENT)
     # Only real ops/admin shells get a day mode. Dark-native *citizen/public* blocks (footer, hero bands,
