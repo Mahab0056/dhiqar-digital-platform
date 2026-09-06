@@ -27,7 +27,9 @@ export function registerApplicationsRoutes(app: express.Express) {
       const session = currentSession(res)
       const scoped = session.role === 'EMPLOYEE' && session.departmentId ? session.departmentId : null
       const scopedName = scoped ? departmentById.get(scoped)?.name || '' : null
-      const applications = Number(
+      // reviewers (and department-less employees) have no case queue of their own
+      const hasCaseQueue = session.role === 'SUPER_ADMIN' || Boolean(scoped)
+      const applications = !hasCaseQueue ? 0 : Number(
         (
           (scopedName !== null
             ? db
@@ -40,7 +42,7 @@ export function registerApplicationsRoutes(app: express.Express) {
                 .get()) as { count: number }
         ).count
       )
-      const serviceRequests = Number(
+      const serviceRequests = !hasCaseQueue ? 0 : Number(
         (
           (scoped
             ? db

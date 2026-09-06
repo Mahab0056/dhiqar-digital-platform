@@ -9,7 +9,7 @@ export function SessionGate({
   role,
   children,
 }: {
-  role: 'CITIZEN' | 'EMPLOYEE' | 'OPERATIONS' | 'SUPER_ADMIN'
+  role: 'CITIZEN' | 'EMPLOYEE' | 'OPERATIONS' | 'SUPER_ADMIN' | 'ANY_STAFF'
   children: React.ReactNode
 }) {
   const [state, setState] = useState<'loading' | 'allowed' | 'denied'>('loading')
@@ -24,6 +24,7 @@ export function SessionGate({
         }
         setState(
           session.role === role ||
+            (role === 'ANY_STAFF' && session.role !== 'CITIZEN') ||
             (role === 'EMPLOYEE' &&
               (session.role === 'IDENTITY_REVIEWER' ||
                 session.role === 'SUPER_ADMIN' ||

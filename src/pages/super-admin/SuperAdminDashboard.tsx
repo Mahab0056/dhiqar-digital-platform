@@ -100,9 +100,15 @@ export function SuperAdminDashboard() {
           <Link className="button ghost" href="/staff/security">
             الأمان
           </Link>
-          <div className="user-avatar gold" title={session?.displayName || ''}>
-            {(session?.displayName || 'SA').slice(0, 2)}
-          </div>
+          <span className="ops-header-identity">
+            <div className="user-avatar gold" aria-hidden="true">
+              {(session?.displayName || session?.username || 'SA').trim().slice(0, 2)}
+            </div>
+            <span>
+              <strong>{session?.displayName || session?.username || 'المشرف العام'}</strong>
+              <small>المشرف العام للمنصة</small>
+            </span>
+          </span>
         </div>
       </header>
       {error && (

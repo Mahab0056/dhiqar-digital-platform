@@ -199,7 +199,9 @@ export function ApplicationPage({ reference }: { reference: string }) {
             <span>
               <small>الرسم</small>
               <strong>
-                {formatIQD(app.fee)} — {app.paymentStatus === 'PAID' ? 'مدفوع' : 'بانتظار الموافقة'}
+                {app.fee > 0
+                  ? `${formatIQD(app.fee)} — ${app.paymentStatus === 'PAID' ? 'مسدد' : app.status === 'PAYMENT_REQUIRED' ? 'مستحق الدفع' : 'يُسدد بعد الموافقة'}`
+                  : 'لا توجد رسوم مستحقة حالياً؛ تحدد الدائرة الرسم عند التدقيق إن وُجد.'}
               </strong>
             </span>
           </div>

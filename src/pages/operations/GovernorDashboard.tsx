@@ -3,11 +3,13 @@ import { Link } from 'wouter'
 import { ArrowLeft, CalendarDays, Gauge, Landmark } from 'lucide-react'
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { api } from '../../api'
+import { useSession } from '../../lib/session'
 import { defaultStats } from '../../data'
 import { DhiQarMap } from '../../components/operations/DhiQarMap'
 import { OperationsShell } from '../../components/operations/OperationsShell'
 
 export function GovernorDashboard() {
+  const { session } = useSession()
   const [stats, setStats] = useState(defaultStats)
   useEffect(() => {
     api
@@ -30,7 +32,15 @@ export function GovernorDashboard() {
           <span className="period-button">
             سجل المنصة الحالي <CalendarDays />
           </span>
-          <div className="user-avatar gold">مح</div>
+          <span className="ops-header-identity">
+            <div className="user-avatar gold" aria-hidden="true">
+              {(session?.displayName || session?.username || 'مح').trim().slice(0, 2)}
+            </div>
+            <span>
+              <strong>{session?.displayName || session?.username || 'لوحة المحافظ'}</strong>
+              <small>عرض تنفيذي — بلا بيانات شخصية</small>
+            </span>
+          </span>
         </div>
       </header>
       <section className="executive-score">

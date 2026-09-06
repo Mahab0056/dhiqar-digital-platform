@@ -19,11 +19,12 @@ import {
   X,
 } from 'lucide-react'
 import { api } from '../../api'
+import { arabicCount } from '../../lib/arabic-count'
 import { useSession } from '../../lib/session'
 import { statusLabels } from '../../data'
 import type { GovernmentApplication } from '../../types'
 import { PortalLayout } from '../../components/citizen/PortalLayout'
-import { WorkspaceTabs } from '../../components/shared/WorkspaceTabs'
+import { WorkspaceTabs, type WorkspaceTab } from '../../components/shared/WorkspaceTabs'
 import { FeedbackAdminPanel } from './FeedbackAdminPanel'
 import { IdentityReviewPanel } from './IdentityReviewPanel'
 import { ServiceRequestAdminPanel } from './ServiceRequestAdminPanel'
@@ -32,24 +33,30 @@ export function EmployeeDashboard() {
   const [, navigate] = useLocation()
   const { session } = useSession()
   const canReviewIdentity = session?.role === 'IDENTITY_REVIEWER' || session?.role === 'SUPER_ADMIN'
+  const isReviewerOnly = session?.role === 'IDENTITY_REVIEWER'
   const todayLabel = new Date().toLocaleDateString('en-GB')
   const [apps, setApps] = useState<GovernmentApplication[]>([])
   const [selected, setSelected] = useState<GovernmentApplication | null>(null)
   const [workQueue, setWorkQueue] = useState({ applications: 0, serviceRequests: 0, identityReviews: 0, total: 0 })
+  const openCount = workQueue.total
   const [busy, setBusy] = useState(false)
   const [authenticated, setAuthenticated] = useState<boolean | null>(null)
   const [openedMedia, setOpenedMedia] = useState<{ url: string; mimeType: string; label: string } | null>(null)
   const [mediaError, setMediaError] = useState('')
   const [reviewError, setReviewError] = useState('')
   const load = useCallback(async () => {
-    const [items, summary] = await Promise.all([api.listApplications(), api.getEmployeeWorkQueueSummary()])
-    setApps(items)
-    setWorkQueue(summary)
-    setSelected(current =>
-      !current || !items.find(item => item.reference === current.reference)
-        ? items[0] || null
-        : items.find(item => item.reference === current.reference) || null
-    )
+    // each source loads independently: a 401 on one (e.g. reviewers cannot list applications) must not blank the board
+    const [items, summary] = await Promise.allSettled([api.listApplications(), api.getEmployeeWorkQueueSummary()])
+    if (summary.status === 'fulfilled') setWorkQueue(summary.value)
+    if (items.status === 'fulfilled') {
+      const list = items.value
+      setApps(list)
+      setSelected(current =>
+        !current || !list.find(item => item.reference === current.reference)
+          ? list[0] || null
+          : list.find(item => item.reference === current.reference) || null
+      )
+    }
   }, [])
   useEffect(() => {
     api
@@ -124,8 +131,9 @@ export function EmployeeDashboard() {
           </span>
           <h1>{session?.displayName ? `مرحباً ${session.displayName.split(' ')[0]}، ` : ''}لوحة عمل المراجعة</h1>
           <p>
-            هناك {apps.filter(a => a.status !== 'APPROVED' && a.status !== 'REJECTED').length.toLocaleString('en-US')}{' '}
-            معاملات تحتاج مراجعة.
+            {openCount === 0
+              ? 'لا توجد معاملات بانتظارك الآن.'
+              : `${arabicCount(openCount, { one: 'معاملة', two: 'معاملتان', few: 'معاملات', many: 'معاملة' })} تحتاج مراجعتك.`}
           </p>
         </div>
         <div className="department-dashboard-actions">
@@ -199,15 +207,26 @@ export function EmployeeDashboard() {
           <span className="red">
             <Clock3 />
           </span>
-          <small>التأخير التشغيلي</small>
-          <strong>—</strong>
-          <em>بانتظار SLA</em>
+          <small>طلبات خدمات مفتوحة</small>
+          <strong>{workQueue.serviceRequests.toLocaleString('en-US')}</strong>
         </div>
       </section>
       <WorkspaceTabs
         ariaLabel="أقسام بوابة الموظف"
-        defaultTab="employee-service-requests"
-        tabs={[
+        defaultTab={isReviewerOnly ? 'employee-identity-reviews' : 'employee-service-requests'}
+        tabs={(
+          (isReviewerOnly
+            ? [
+                {
+                  id: 'employee-identity-reviews',
+                  label: 'مراجعة الهوية',
+                  icon: Fingerprint,
+                  badge: workQueue.identityReviews,
+                  content: <IdentityReviewPanel />,
+                },
+              ]
+            : []) as WorkspaceTab[]
+        ).concat(isReviewerOnly ? [] : [
           {
             id: 'employee-service-requests',
             label: 'طلبات الخدمات',
@@ -590,7 +609,7 @@ export function EmployeeDashboard() {
               </>
             ),
           },
-        ]}
+        ])}
       />
     </PortalLayout>
   )

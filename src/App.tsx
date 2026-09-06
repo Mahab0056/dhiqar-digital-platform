@@ -97,7 +97,7 @@ function App() {
         <Route path="/login" component={LoginPage} />
         <Route path="/staff/login" component={StaffLoginPage} />
         <Route path="/staff/security">
-          <SessionGate role="EMPLOYEE">
+          <SessionGate role="ANY_STAFF">
             <SecurityPage />
           </SessionGate>
         </Route>

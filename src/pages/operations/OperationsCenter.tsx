@@ -25,6 +25,7 @@ import {
   YAxis,
 } from 'recharts'
 import { api } from '../../api'
+import { useSession } from '../../lib/session'
 import { defaultStats, formatIQD } from '../../data'
 import { DhiQarMap } from '../../components/operations/DhiQarMap'
 import { OperationsRegistryPanel } from '../../components/operations/OperationsRegistryPanel'
@@ -32,6 +33,7 @@ import { OperationsShell } from '../../components/operations/OperationsShell'
 import { NewRequestAlertsPanel } from '../../components/shared/NewRequestAlertsPanel'
 
 export function OperationsCenter() {
+  const { session } = useSession()
   const [stats, setStats] = useState(defaultStats)
   const [now, setNow] = useState(() => new Date())
   useEffect(() => {
@@ -70,7 +72,15 @@ export function OperationsCenter() {
           <a href="#operations-alerts" className="ops-alert-link" aria-label="الانتقال إلى التنبيهات">
             <Bell />
           </a>
-          <div className="user-avatar">عم</div>
+          <span className="ops-header-identity">
+            <div className="user-avatar" aria-hidden="true">
+              {(session?.displayName || session?.username || 'عم').trim().slice(0, 2)}
+            </div>
+            <span>
+              <strong>{session?.displayName || session?.username || 'غرفة العمليات'}</strong>
+              <small>{session?.role === 'SUPER_ADMIN' ? 'المشرف العام' : 'موظف غرفة العمليات'}</small>
+            </span>
+          </span>
         </div>
       </header>
       <section className="ops-kpis">
