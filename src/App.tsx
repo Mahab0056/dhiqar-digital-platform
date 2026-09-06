@@ -1,5 +1,6 @@
 import { lazy, Suspense } from 'react'
-import { Route, Switch } from 'wouter'
+import { Route, Switch, useLocation } from 'wouter'
+import { useHashScroll } from './lib/use-hash-scroll'
 import 'leaflet/dist/leaflet.css'
 import { SessionGate } from './components/shared/SessionGate'
 import { NotFound } from './pages/NotFound'
@@ -70,9 +71,16 @@ const VerifyScanner = lazy(() => import('./pages/verify/VerifyScanner').then(m =
 const InfoPage = lazy(() => import('./pages/public/InfoPage').then(m => ({ default: m.InfoPage })))
 const VerifyPage = lazy(() => import('./pages/verify/VerifyPage').then(m => ({ default: m.VerifyPage })))
 
+function HashScroller() {
+  const [location] = useLocation()
+  useHashScroll(location)
+  return null
+}
+
 function App() {
   return (
     <Suspense fallback={<RouteFallback />}>
+      <HashScroller />
       <Switch>
         <Route path="/" component={LandingPage} />
         <Route path="/directory" component={GovernmentDirectoryPage} />
@@ -143,7 +151,11 @@ function App() {
         </Route>
         <Route path="/service/:key">{params => <ServiceFormPage serviceKey={params.key} />}</Route>
         <Route path="/citizen/application/:reference">
-          {params => <ApplicationPage reference={params.reference} />}
+          {params => (
+            <SessionGate role="CITIZEN">
+              <ApplicationPage reference={params.reference} />
+            </SessionGate>
+          )}
         </Route>
         <Route path="/employee" component={EmployeeDashboard} />
         <Route path="/operations">

@@ -255,3 +255,124 @@
   justify-content: center;
   margin-top: 12px;
 }
+
+/* citizen sidebar: real logout + secondary "switch portal" */
+.sidebar-logout-group {
+  display: grid;
+  gap: 8px;
+}
+.sidebar-switch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: center;
+  font-size: 13px;
+  color: var(--p-muted, #8fa199);
+  text-decoration: none;
+  padding: 6px;
+}
+.sidebar-switch:hover {
+  color: var(--p-text, #fff);
+}
+.sidebar-switch svg {
+  width: 15px;
+  height: 15px;
+}
+.citizen-empty-state {
+  max-width: 520px;
+  margin: 48px auto;
+  text-align: center;
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  padding: 32px;
+  border-radius: 16px;
+  background: var(--p-surface, #fff);
+  border: 1px solid var(--p-line, #e3e8e5);
+}
+.citizen-empty-state svg {
+  width: 36px;
+  height: 36px;
+  color: #c8102e;
+}
+.citizen-empty-state h2 {
+  margin: 0;
+  font-size: 20px;
+}
+.citizen-empty-state p {
+  margin: 0;
+  color: var(--p-muted, #667085);
+  line-height: 1.7;
+}
+
+/* my complaints list on the feedback page */
+.feedback-mine {
+  margin: 0 0 20px;
+  background: var(--p-surface, #fff);
+  border: 1px solid var(--p-line, #e3e8e5);
+  border-radius: 16px;
+  padding: 16px 18px;
+}
+.feedback-mine > header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.feedback-mine > header small {
+  color: var(--p-muted, #667085);
+}
+.feedback-mine ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+.feedback-mine li a {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  text-decoration: none;
+  color: inherit;
+  border: 1px solid transparent;
+}
+.feedback-mine li a:hover {
+  border-color: var(--p-line, #e3e8e5);
+  background: var(--p-surface-2, #f6f8f7);
+}
+.feedback-mine li b {
+  display: block;
+  font-size: 14px;
+}
+.feedback-mine li small {
+  color: var(--p-muted, #667085);
+  font-size: 12px;
+}
+.feedback-mine li svg {
+  width: 16px;
+  height: 16px;
+  color: var(--p-muted, #667085);
+}
+.feedback-chip {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #eef3f0;
+  color: #1f3b2f;
+  white-space: nowrap;
+}
+.feedback-chip.status-resolved,
+.feedback-chip.status-closed {
+  background: #e4f2ec;
+  color: #075e45;
+}
+.feedback-chip.status-in_progress,
+.feedback-chip.status-in_review {
+  background: #eef4fb;
+  color: #2c5c9e;
+}

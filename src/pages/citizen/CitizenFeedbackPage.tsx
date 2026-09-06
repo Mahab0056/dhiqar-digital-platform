@@ -1,5 +1,5 @@
 import type React from 'react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useLocation } from 'wouter'
 import {
   AlertTriangle,
@@ -17,8 +17,7 @@ import {
 } from 'lucide-react'
 import { api } from '../../api'
 import { LocationPicker, type PickedLocation } from '../../components/maps/LocationPicker'
-import { defaultStats } from '../../data'
-import type { CitizenFeedback } from '../../types'
+import type { CitizenFeedback, DepartmentSummary } from '../../types'
 import { PortalLayout } from '../../components/citizen/PortalLayout'
 import { feedbackStatusLabels, feedbackCategories } from './feedback-labels'
 
@@ -35,7 +34,26 @@ export function CitizenFeedbackPage() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [created, setCreated] = useState<CitizenFeedback | null>(null)
+  const [departments, setDepartments] = useState<DepartmentSummary[]>([])
+  const [mine, setMine] = useState<CitizenFeedback[]>([])
   const categories = feedbackCategories[kind]
+  useEffect(() => {
+    api
+      .listDepartments()
+      .then(response => setDepartments(response.items))
+      .catch(() => setDepartments([]))
+    api
+      .listFeedback()
+      .then(setMine)
+      .catch(() => setMine([]))
+    // "راسل الدعم" from an application page pre-fills the subject with the reference
+    const about = new URLSearchParams(window.location.search).get('about')
+    if (about) {
+      setKind('SUGGESTION')
+      setCategory(feedbackCategories.SUGGESTION[0])
+      setSubject(`استفسار عن المعاملة ${about}`)
+    }
+  }, [])
   const onFiles = (files: FileList | null) => {
     const selected = Array.from(files || []).slice(0, 3)
     const allowed = selected.every(file => file.type.startsWith('image/') || file.type === 'application/pdf')
@@ -109,8 +127,35 @@ export function CitizenFeedbackPage() {
           <h1>
             شكوى أو مقترح،<em> صوتك يوصل</em>
           </h1>
-          <p>سجّل طلبك بخطوات قصيرة. راح يصلك رقم متابعة وإشعار مع كل تحديث من الجهة المختصة.</p>
+          <p>سجّل طلبك بخطوات قصيرة. راح يصلك رقم متابعة وإشعار مع كل تحديث من الدائرة المختصة.</p>
         </header>
+        {mine.length > 0 && (
+          <section className="feedback-mine" aria-label="شكاواي ومقترحاتي">
+            <header>
+              <strong>شكاواي ومقترحاتي</strong>
+              <small>{mine.length.toLocaleString('en-US')} سجل</small>
+            </header>
+            <ul>
+              {mine.slice(0, 6).map(item => (
+                <li key={item.reference}>
+                  <Link href={`/citizen/feedback/${item.reference}`}>
+                    <span className={`feedback-chip status-${item.status.toLowerCase()}`}>
+                      {feedbackStatusLabels[item.status] || item.status}
+                    </span>
+                    <div>
+                      <b>{item.subject}</b>
+                      <small>
+                        {item.reference} • {item.kind === 'COMPLAINT' ? 'شكوى' : 'مقترح'} •{' '}
+                        {new Date(item.updatedAt || item.createdAt).toLocaleDateString('en-GB')}
+                      </small>
+                    </div>
+                    <ArrowLeft />
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
         <form className="feedback-form" onSubmit={submit}>
           <section className="feedback-kind-select">
             <button
@@ -165,8 +210,8 @@ export function CitizenFeedbackPage() {
                 الدائرة المعنية <small>اختياري</small>
                 <select value={departmentId} onChange={event => setDepartmentId(event.target.value)}>
                   <option value="">لا أعرف الدائرة</option>
-                  {defaultStats.departments.map(item => (
-                    <option value={String(item.id)} key={item.id}>
+                  {departments.map(item => (
+                    <option value={item.id} key={item.id}>
                       {item.name}
                     </option>
                   ))}

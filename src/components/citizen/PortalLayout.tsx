@@ -1,5 +1,5 @@
 import type React from 'react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation } from 'wouter'
 import {
   Activity,
@@ -25,7 +25,6 @@ import {
 } from 'lucide-react'
 import { api } from '../../api'
 import { logoutAndRedirect, useSession } from '../../lib/session'
-import { services } from '../../data'
 import type { CitizenNotification } from '../../types'
 import { Brand } from '../public/Brand'
 import { CivicUtilityBar } from '../public/CivicUtilityBar'
@@ -193,14 +192,27 @@ export function PortalLayout({
     const timer = window.setInterval(() => void api.heartbeatPresence().catch(() => {}), 60_000)
     return () => window.clearInterval(timer)
   }, [])
-  const searchResults = useMemo(() => {
-    const term = searchQuery.trim().toLowerCase()
-    if (!term) return []
-    return services
-      .filter(service =>
-        `${service.title} ${service.department} ${service.category} ${service.description}`.toLowerCase().includes(term)
-      )
-      .slice(0, 6)
+  // portal search runs against the full catalog (synonyms, fuzzy Arabic) — not the 12 legacy services
+  const [searchResults, setSearchResults] = useState<
+    Array<{ key: string; title: string; departmentName: string; category: string }>
+  >([])
+  const searchRequest = useRef(0)
+  useEffect(() => {
+    const term = searchQuery.trim()
+    if (term.length < 2) {
+      setSearchResults([])
+      return
+    }
+    const id = ++searchRequest.current
+    const timer = window.setTimeout(() => {
+      api
+        .searchServices(term, 6)
+        .then(items => {
+          if (searchRequest.current === id) setSearchResults(items)
+        })
+        .catch(() => {})
+    }, 180)
+    return () => window.clearTimeout(timer)
   }, [searchQuery])
   const nav =
     role === 'citizen'
@@ -269,9 +281,18 @@ export function PortalLayout({
             <LogOut /> تسجيل الخروج
           </button>
         ) : (
-          <Link href="/login" className="sidebar-logout">
-            <LogIn /> تبديل البوابة
-          </Link>
+          <div className="sidebar-logout-group">
+            <button
+              type="button"
+              className="sidebar-logout"
+              onClick={() => void logoutAndRedirect(path => navigate(path), '/')}
+            >
+              <LogOut /> تسجيل الخروج
+            </button>
+            <Link href="/login" className="sidebar-switch">
+              <LogIn /> تبديل البوابة
+            </Link>
+          </div>
         )}
       </aside>
       <div className="portal-main">
@@ -298,7 +319,7 @@ export function PortalLayout({
                     <div>
                       <strong>{service.title}</strong>
                       <small>
-                        {service.department} • {service.category}
+                        {service.departmentName} • {service.category}
                       </small>
                     </div>
                     <ArrowLeft />

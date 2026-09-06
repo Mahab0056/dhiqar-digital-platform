@@ -14,9 +14,14 @@ export function ApplicationPage({ reference }: { reference: string }) {
   const [missingDocument, setMissingDocument] = useState<File | null>(null)
   const [uploadError, setUploadError] = useState('')
   const [archivedDocument, setArchivedDocument] = useState<IssuedDocument | null>(null)
+  const [loadError, setLoadError] = useState('')
   const refresh = () => api.getApplication(reference).then(setApp)
   useEffect(() => {
-    void api.getApplication(reference).then(setApp)
+    setLoadError('')
+    api
+      .getApplication(reference)
+      .then(setApp)
+      .catch(error => setLoadError((error as Error).message || 'المعاملة غير موجودة.'))
   }, [reference])
   useEffect(() => {
     if (app?.status !== 'APPROVED') {
@@ -51,9 +56,20 @@ export function ApplicationPage({ reference }: { reference: string }) {
   if (!app)
     return (
       <PortalLayout>
-        <div className="loading-state">
-          <RefreshCw className="spin" /> جاري تحميل المعاملة...
-        </div>
+        {loadError ? (
+          <div className="citizen-empty-state">
+            <AlertTriangle />
+            <h2>تعذر فتح المعاملة</h2>
+            <p>{loadError.includes('غير موجودة') ? `لا توجد معاملة بالرقم ${reference} ضمن حسابك.` : loadError}</p>
+            <Link href="/citizen#my-requests" className="button primary">
+              <ArrowRight /> العودة إلى معاملاتي
+            </Link>
+          </div>
+        ) : (
+          <div className="loading-state">
+            <RefreshCw className="spin" /> جاري تحميل المعاملة...
+          </div>
+        )}
       </PortalLayout>
     )
   const faceVerificationRequired = app.requiredDocument === 'فيديو توثيق الوجه القصير'
@@ -190,8 +206,10 @@ export function ApplicationPage({ reference }: { reference: string }) {
           <div className="support-card">
             <Headphones />
             <strong>تحتاج مساعدة؟</strong>
-            <p>تواصل مع مركز دعم المواطنين مع ذكر رقم المعاملة.</p>
-            <button>اتصل بالدعم</button>
+            <p>أرسل استفسارك عبر الشكاوى والمقترحات مع ذكر رقم المعاملة {app.reference} وستصلك الإجابة في الإشعارات.</p>
+            <Link href={`/citizen/feedback?about=${encodeURIComponent(app.reference)}`} className="button outline">
+              راسل الدعم
+            </Link>
           </div>
         </aside>
       </div>
