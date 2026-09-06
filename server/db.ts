@@ -1106,12 +1106,14 @@ export function getFeedbackByReference(reference: string) {
   return row ? mapFeedback(row) : null
 }
 
-export function getFeedbackForAdmin() {
-  const rows = db
-    .prepare(
-      "SELECT * FROM citizen_feedback ORDER BY CASE status WHEN 'RECEIVED' THEN 0 WHEN 'IN_REVIEW' THEN 1 WHEN 'IN_PROGRESS' THEN 2 ELSE 3 END, updated_at DESC"
-    )
-    .all() as Array<Record<string, unknown>>
+export function getFeedbackForAdmin(scope?: { departmentId: string }) {
+  const order =
+    "ORDER BY CASE status WHEN 'RECEIVED' THEN 0 WHEN 'IN_REVIEW' THEN 1 WHEN 'IN_PROGRESS' THEN 2 ELSE 3 END, updated_at DESC"
+  const rows = (
+    scope
+      ? db.prepare(`SELECT * FROM citizen_feedback WHERE department_id = ? ${order}`).all(scope.departmentId)
+      : db.prepare(`SELECT * FROM citizen_feedback ${order}`).all()
+  ) as Array<Record<string, unknown>>
   return rows.map(mapFeedback)
 }
 

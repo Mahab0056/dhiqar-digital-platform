@@ -256,7 +256,7 @@ export function registerApplicationsRoutes(app: express.Express) {
         message: `سُجل طلب ${service.title} بالرقم ${reference} ووُجه إلى ${service.departmentName}.`,
         link: `/citizen/application/${reference}`,
       })
-      employeeWorkQueueRealtime.publish({ entity: 'APPLICATION', action: 'CREATED', reference })
+      employeeWorkQueueRealtime.publish({ entity: 'APPLICATION', action: 'CREATED', reference, departmentId: service.departmentId })
       addAudit({
         actor: citizen.fullName,
         role: 'CITIZEN',
@@ -288,7 +288,12 @@ export function registerApplicationsRoutes(app: express.Express) {
       )
       .run(`يرجى رفع ${payload.documentName} لإكمال التدقيق.`, payload.documentName, timestamp, param(req, 'reference'))
     if (!changed.changes) return res.status(409).json({ message: 'تغيرت حالة المعاملة. أعد تحميل الصفحة.' })
-    employeeWorkQueueRealtime.publish({ entity: 'APPLICATION', action: 'UPDATED', reference: param(req, 'reference') })
+    employeeWorkQueueRealtime.publish({
+      entity: 'APPLICATION',
+      action: 'UPDATED',
+      reference: param(req, 'reference'),
+      departmentId: (item.departmentId as string | null) || null,
+    })
     addEvent(item.id as number, {
       type: 'INFORMATION_REQUESTED',
       title: 'طلب معلومات إضافية',
@@ -373,6 +378,7 @@ export function registerApplicationsRoutes(app: express.Express) {
         entity: 'APPLICATION',
         action: 'UPDATED',
         reference: param(req, 'reference'),
+        departmentId: (item.departmentId as string | null) || null,
       })
       addAudit({
         actor: citizen.fullName,
@@ -417,7 +423,12 @@ export function registerApplicationsRoutes(app: express.Express) {
       message: `رُفضت المعاملة ${reference}. السبب: ${payload.reason}. يمكنك تقديم طلب جديد بعد معالجة السبب.`,
       link: `/citizen/application/${reference}`,
     })
-    employeeWorkQueueRealtime.publish({ entity: 'APPLICATION', action: 'UPDATED', reference })
+    employeeWorkQueueRealtime.publish({
+      entity: 'APPLICATION',
+      action: 'UPDATED',
+      reference,
+      departmentId: (item.departmentId as string | null) || null,
+    })
     addAudit({
       actor: session.actor,
       role: session.role,

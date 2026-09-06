@@ -1,4 +1,5 @@
 import type express from 'express'
+import { departmentById } from '../department-registry.js'
 import { param } from '../http/params.js'
 import { type SessionData, requireSession, currentCitizen } from '../auth/session.js'
 import { addAudit, getApplicationByVerificationId } from '../db.js'
@@ -60,9 +61,17 @@ export function registerDocumentsRoutes(app: express.Express) {
     return sendIssuedPdf(res, row, req.query.download === '1')
   })
 
+  const issuedScope = (session: SessionData) => {
+    if (session.role === 'SUPER_ADMIN') return undefined
+    const name = session.departmentId ? departmentById.get(session.departmentId)?.name : undefined
+    return name ? { departmentName: name } : null
+  }
+
   app.get('/api/employee/issued-documents', requireSession('EMPLOYEE', 'SUPER_ADMIN'), (_req, res) => {
+    const scope = issuedScope(res.locals.session as SessionData)
+    if (scope === null) return res.json([])
     res.json(
-      listIssuedDocumentsForEmployee().map(row => ({
+      listIssuedDocumentsForEmployee(scope).map(row => ({
         id: String(row.id),
         sourceKind: String(row.source_kind),
         applicationReference: row.application_reference ? String(row.application_reference) : null,
@@ -80,9 +89,10 @@ export function registerDocumentsRoutes(app: express.Express) {
   })
 
   app.get('/api/employee/issued-documents/:id/pdf', requireSession('EMPLOYEE', 'SUPER_ADMIN'), (req, res) => {
-    const row = getIssuedDocumentForEmployee(param(req, 'id'))
-    if (!row) return res.status(404).json({ message: 'الوثيقة المؤرشفة غير موجودة.' })
     const session = res.locals.session as SessionData
+    const scope = issuedScope(session)
+    const row = scope === null ? undefined : getIssuedDocumentForEmployee(param(req, 'id'), scope)
+    if (!row) return res.status(404).json({ message: 'الوثيقة المؤرشفة غير موجودة.' })
     addAudit({
       actor: session.actor,
       role: session.role,

@@ -4,7 +4,7 @@ import { param } from '../http/params.js'
 import { z } from 'zod'
 import { upload, validateUploadedFile } from '../http/upload.js'
 import { type SessionData, requireSession, currentCitizen } from '../auth/session.js'
-import { notifyCitizen } from '../realtime.js'
+import { employeeWorkQueueRealtime, notifyCitizen } from '../realtime.js'
 import {
   addAudit,
   createFeedback,
@@ -93,6 +93,12 @@ export function registerFeedbackRoutes(app: express.Express) {
         newValue: { category: parsed.category, departmentId: parsed.departmentId, attachmentCount: files.length },
         metadata: { hasLocation: parsed.lat !== undefined },
       })
+      employeeWorkQueueRealtime.publish({
+        entity: 'FEEDBACK',
+        action: 'CREATED',
+        reference: result.reference,
+        departmentId: result.departmentId || null,
+      })
       res.status(201).json(result)
     } catch (error) {
       const message =
@@ -121,13 +127,22 @@ export function registerFeedbackRoutes(app: express.Express) {
     res.send(media.buffer)
   })
 
+  /** Department staff see only complaints routed to their department; super admin sees all. */
+  const feedbackScope = (session: SessionData) =>
+    session.role === 'SUPER_ADMIN' ? undefined : session.departmentId ? { departmentId: session.departmentId } : null
+
   app.get('/api/admin/feedback', requireSession('EMPLOYEE', 'SUPER_ADMIN'), (_req, res) => {
-    res.json(getFeedbackForAdmin())
+    const scope = feedbackScope(res.locals.session as SessionData)
+    if (scope === null) return res.json([])
+    res.json(getFeedbackForAdmin(scope))
   })
 
   app.patch('/api/admin/feedback/:reference', requireSession('EMPLOYEE', 'SUPER_ADMIN'), (req, res) => {
     const feedback = getFeedbackByReference(param(req, 'reference'))
     if (!feedback) return res.status(404).json({ message: 'الطلب غير موجود.' })
+    const scope = feedbackScope(res.locals.session as SessionData)
+    if (scope === null || (scope && feedback.departmentId !== scope.departmentId))
+      return res.status(403).json({ message: 'هذه الشكوى تخص دائرة أخرى.' })
     const parsed = z
       .object({
         status: z.enum(['IN_REVIEW', 'IN_PROGRESS', 'RESOLVED', 'CLOSED']),
@@ -154,6 +169,12 @@ export function registerFeedbackRoutes(app: express.Express) {
       entityId: feedback.reference,
       previousValue: { status: feedback.status },
       newValue: { status: parsed.data.status },
+    })
+    employeeWorkQueueRealtime.publish({
+      entity: 'FEEDBACK',
+      action: 'UPDATED',
+      reference: feedback.reference,
+      departmentId: feedback.departmentId || null,
     })
     res.json(updated)
   })

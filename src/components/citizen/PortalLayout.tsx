@@ -69,7 +69,7 @@ export function PortalLayout({
   const [liveUnread, setLiveUnread] = useState(0)
   const [liveNotification, setLiveNotification] = useState<CitizenNotification | null>(null)
   const [employeeWorkEvent, setEmployeeWorkEvent] = useState<{
-    entity: 'APPLICATION' | 'SERVICE_REQUEST' | 'IDENTITY_REVIEW'
+    entity: 'APPLICATION' | 'SERVICE_REQUEST' | 'IDENTITY_REVIEW' | 'FEEDBACK'
     action: 'CREATED' | 'UPDATED'
     reference?: string
   } | null>(null)
@@ -373,7 +373,9 @@ export function PortalLayout({
               ? '#employee-service-requests'
               : employeeWorkEvent.entity === 'IDENTITY_REVIEW'
                 ? '#employee-identity-reviews'
-                : '#employee-applications'
+                : employeeWorkEvent.entity === 'FEEDBACK'
+                  ? '#employee-feedback'
+                  : '#employee-applications'
           }
           className="employee-realtime-toast"
           aria-live="polite"
@@ -383,10 +385,20 @@ export function PortalLayout({
             <small>تحديث في طابور العمل</small>
             <strong>
               {employeeWorkEvent.entity === 'IDENTITY_REVIEW'
-                ? 'طلب توثيق هوية جديد'
-                : employeeWorkEvent.entity === 'SERVICE_REQUEST'
-                  ? 'طلب خدمة جديد'
-                  : 'معاملة جديدة'}
+                ? employeeWorkEvent.action === 'CREATED'
+                  ? 'طلب توثيق هوية جديد'
+                  : 'تحديث على مراجعة هوية'
+                : employeeWorkEvent.entity === 'FEEDBACK'
+                  ? employeeWorkEvent.action === 'CREATED'
+                    ? 'شكوى أو مقترح جديد'
+                    : 'تحديث على شكوى'
+                  : employeeWorkEvent.entity === 'SERVICE_REQUEST'
+                    ? employeeWorkEvent.action === 'CREATED'
+                      ? 'طلب خدمة جديد'
+                      : 'تحديث على طلب خدمة'
+                    : employeeWorkEvent.action === 'CREATED'
+                      ? 'معاملة جديدة'
+                      : 'تحديث على معاملة'}
             </strong>
             <em>{employeeWorkEvent.reference || 'حدّثت المنصة قائمة العمل تلقائياً.'}</em>
           </span>

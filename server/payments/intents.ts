@@ -162,6 +162,7 @@ export function settlePayment(input: {
       entity: 'SERVICE_REQUEST',
       action: 'UPDATED',
       reference: intent.serviceRequestReference,
+      departmentId: String(row.department_id || '') || null,
     })
   addAudit({
     actor: input.actor,

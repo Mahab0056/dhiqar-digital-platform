@@ -284,15 +284,20 @@ export function getIssuedDocumentForCitizen(id: string, citizenId: number) {
     Record<string, unknown> | undefined
 }
 
-export function listIssuedDocumentsForEmployee() {
-  return db
-    .prepare(
-      `SELECT id, source_kind, application_reference, service_request_reference, service_name, department_name, document_title, document_number, verification_id, status, issued_at
-    FROM issued_documents ORDER BY issued_at DESC`
-    )
-    .all() as Array<Record<string, unknown>>
+const employeeColumns = `id, source_kind, application_reference, service_request_reference, service_name, department_name, document_title, document_number, verification_id, status, issued_at`
+
+export function listIssuedDocumentsForEmployee(scope?: { departmentName: string }) {
+  return (
+    scope
+      ? db
+          .prepare(`SELECT ${employeeColumns} FROM issued_documents WHERE department_name = ? ORDER BY issued_at DESC`)
+          .all(scope.departmentName)
+      : db.prepare(`SELECT ${employeeColumns} FROM issued_documents ORDER BY issued_at DESC`).all()
+  ) as Array<Record<string, unknown>>
 }
 
-export function getIssuedDocumentForEmployee(id: string) {
-  return db.prepare('SELECT * FROM issued_documents WHERE id = ?').get(id) as Record<string, unknown> | undefined
+export function getIssuedDocumentForEmployee(id: string, scope?: { departmentName: string }) {
+  const row = db.prepare('SELECT * FROM issued_documents WHERE id = ?').get(id) as Record<string, unknown> | undefined
+  if (row && scope && String(row.department_name) !== scope.departmentName) return undefined
+  return row
 }

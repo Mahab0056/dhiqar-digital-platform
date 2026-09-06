@@ -25,7 +25,11 @@ export function installRealtime(server: Server) {
     authenticateEmployee(request) {
       const session = readSession(request)
       if (!session || !['EMPLOYEE', 'IDENTITY_REVIEWER', 'SUPER_ADMIN'].includes(session.role)) return null
-      return { subject: session.sub, role: session.role as 'EMPLOYEE' | 'IDENTITY_REVIEWER' | 'SUPER_ADMIN' }
+      return {
+        subject: session.sub,
+        role: session.role as 'EMPLOYEE' | 'IDENTITY_REVIEWER' | 'SUPER_ADMIN',
+        departmentId: session.departmentId || null,
+      }
     },
     isAllowedOrigin,
   })

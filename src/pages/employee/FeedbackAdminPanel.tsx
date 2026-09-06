@@ -64,6 +64,16 @@ export function FeedbackAdminPanel() {
       active = false
     }
   }, [])
+  useEffect(() => {
+    // live refresh when a complaint is created/updated for this department (keeps the selected item)
+    const refresh = (event: Event) => {
+      const detail = (event as CustomEvent<{ entity?: string; reference?: string }>).detail
+      if (detail?.entity === 'FEEDBACK') void load(selected?.reference)
+    }
+    window.addEventListener('employee-work-queue-updated', refresh)
+    return () => window.removeEventListener('employee-work-queue-updated', refresh)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected?.reference])
   const save = async () => {
     if (!selected || currentAction.trim().length < 6) return setError('اكتب إجراءً واضحاً للمواطن قبل الحفظ.')
     setBusy(true)

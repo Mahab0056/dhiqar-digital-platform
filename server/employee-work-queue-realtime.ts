@@ -2,26 +2,34 @@ import type { IncomingMessage, Server as HttpServer } from 'node:http'
 import { WebSocket, WebSocketServer } from 'ws'
 
 type EmployeeRole = 'EMPLOYEE' | 'IDENTITY_REVIEWER' | 'SUPER_ADMIN'
-type WorkQueueEvent = {
-  entity: 'APPLICATION' | 'SERVICE_REQUEST' | 'IDENTITY_REVIEW'
+export type WorkQueueEvent = {
+  entity: 'APPLICATION' | 'SERVICE_REQUEST' | 'IDENTITY_REVIEW' | 'FEEDBACK'
   action: 'CREATED' | 'UPDATED'
   reference?: string
+  /** When set, only staff of this department (plus super admins) receive the event. */
+  departmentId?: string | null
 }
 
 type Options = {
   server: HttpServer
-  authenticateEmployee: (request: IncomingMessage) => { subject: string; role: EmployeeRole } | null
+  authenticateEmployee: (
+    request: IncomingMessage
+  ) => { subject: string; role: EmployeeRole; departmentId?: string | null } | null
   isAllowedOrigin: (origin?: string) => boolean
 }
 
 export function installEmployeeWorkQueueRealtime({ server, authenticateEmployee, isAllowedOrigin }: Options) {
   const socketsBySubject = new Map<string, Set<WebSocket>>()
+  const audience = new Map<string, { role: EmployeeRole; departmentId: string | null }>()
   const serverSocket = new WebSocketServer({ noServer: true, clientTracking: false })
   const remove = (subject: string, socket: WebSocket) => {
     const peers = socketsBySubject.get(subject)
     if (!peers) return
     peers.delete(socket)
-    if (peers.size === 0) socketsBySubject.delete(subject)
+    if (peers.size === 0) {
+      socketsBySubject.delete(subject)
+      audience.delete(subject)
+    }
   }
   server.on('upgrade', (request, socket, head) => {
     const url = new URL(request.url || '/', 'http://localhost')
@@ -39,6 +47,7 @@ export function installEmployeeWorkQueueRealtime({ server, authenticateEmployee,
       return
     }
     const subject = `${actor.role}:${actor.subject}`
+    audience.set(subject, { role: actor.role, departmentId: actor.departmentId || null })
     const existing = socketsBySubject.get(subject) || new Set<WebSocket>()
     if (existing.size >= 4) {
       socket.write('HTTP/1.1 429 Too Many Requests\r\nConnection: close\r\n\r\n')
@@ -74,11 +83,17 @@ export function installEmployeeWorkQueueRealtime({ server, authenticateEmployee,
   return {
     publish(event: WorkQueueEvent) {
       const message = JSON.stringify({ type: 'employee.work-queue.updated', payload: event })
-      socketsBySubject.forEach(peers =>
+      socketsBySubject.forEach((peers, subject) => {
+        const who = audience.get(subject)
+        if (!who) return
+        // identity events go to reviewers/super admins only; department events only to that department
+        if (event.entity === 'IDENTITY_REVIEW' && who.role === 'EMPLOYEE') return
+        if (event.entity !== 'IDENTITY_REVIEW' && who.role === 'IDENTITY_REVIEWER') return
+        if (event.departmentId && who.role === 'EMPLOYEE' && who.departmentId !== event.departmentId) return
         peers.forEach(socket => {
           if (socket.readyState === WebSocket.OPEN) socket.send(message)
         })
-      )
+      })
     },
     activeCount() {
       return [...socketsBySubject.values()].reduce((total, peers) => total + peers.size, 0)

@@ -441,7 +441,8 @@ export function registerServiceRequestsRoutes(app: express.Express) {
       message: `${service.title} — ${reference}. ${currentAction}`,
       link: payment ? `/citizen/pay/${payment.reference}` : '/citizen#my-requests',
     })
-    if (!feeDue) employeeWorkQueueRealtime.publish({ entity: 'SERVICE_REQUEST', action: 'CREATED', reference })
+    if (!feeDue)
+      employeeWorkQueueRealtime.publish({ entity: 'SERVICE_REQUEST', action: 'CREATED', reference, departmentId: department.id })
     addAudit({
       actor: citizen.fullName,
       role: 'CITIZEN',
@@ -565,6 +566,7 @@ export function registerServiceRequestsRoutes(app: express.Express) {
           entity: 'SERVICE_REQUEST',
           action: 'UPDATED',
           reference: String(row.reference),
+          departmentId: String(row.department_id),
         })
         addAudit({
           actor: citizen.fullName,
@@ -623,12 +625,12 @@ export function registerServiceRequestsRoutes(app: express.Express) {
   // ---- employee: open one attachment of a request in their own department ---------------------
   app.get(
     '/api/employee/service-requests/:reference/media/:mediaId',
-    requireSession('EMPLOYEE', 'OPERATIONS', 'SUPER_ADMIN'),
+    requireSession('EMPLOYEE', 'SUPER_ADMIN'),
     (req, res) => {
       const session = currentSession(res)
       const row = loadRequest(param(req, 'reference'))
       if (!row) return res.status(404).json({ message: 'طلب الخدمة غير موجود.' })
-      if (session.role !== 'OPERATIONS' && !canActOn(session, row))
+      if (!canActOn(session, row))
         return res.status(403).json({ message: 'هذا الطلب يخص دائرة أخرى.' })
       const mediaId = param(req, 'mediaId')
       const owned = db
@@ -690,6 +692,12 @@ export function registerServiceRequestsRoutes(app: express.Express) {
         entityType: 'ServiceRequest',
         entityId: String(row.reference),
         newValue: { documentKey: item.key, note: item.note },
+      })
+      employeeWorkQueueRealtime.publish({
+        entity: 'SERVICE_REQUEST',
+        action: 'UPDATED',
+        reference: String(row.reference),
+        departmentId: String(row.department_id),
       })
       res.json(serializeServiceRequestForEmployee(loadRequest(String(row.reference))!))
     }
@@ -755,6 +763,12 @@ export function registerServiceRequestsRoutes(app: express.Express) {
           entityType: 'ServiceRequest',
           entityId: String(row.reference),
           newValue: { amountIqd: parsed.data.amountIqd, payment: intent.reference },
+        })
+        employeeWorkQueueRealtime.publish({
+          entity: 'SERVICE_REQUEST',
+          action: 'UPDATED',
+          reference: String(row.reference),
+          departmentId: String(row.department_id),
         })
         return res.json(serializeServiceRequestForEmployee(loadRequest(String(row.reference))!))
       }
@@ -862,6 +876,7 @@ export function registerServiceRequestsRoutes(app: express.Express) {
         entity: 'SERVICE_REQUEST',
         action: 'UPDATED',
         reference: String(row.reference),
+        departmentId: String(row.department_id),
       })
       addAudit({
         actor: session.actor,

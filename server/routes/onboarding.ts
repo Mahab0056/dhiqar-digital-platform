@@ -669,6 +669,7 @@ export function registerOnboardingRoutes(app: express.Express) {
           db.exec('ROLLBACK')
           throw error
         }
+        employeeWorkQueueRealtime.publish({ entity: 'IDENTITY_REVIEW', action: 'UPDATED', reference: param(req, 'id') })
         addAudit({
           actor: session.actor,
           role: session.role,
