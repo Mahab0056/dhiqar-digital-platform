@@ -1,6 +1,15 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'wouter'
-import { AlertTriangle, BriefcaseBusiness, CheckCircle2, ExternalLink, FileText, Gauge, RefreshCw } from 'lucide-react'
+import {
+  AlertTriangle,
+  BriefcaseBusiness,
+  CheckCircle2,
+  ExternalLink,
+  FileText,
+  Gauge,
+  RefreshCw,
+  Search,
+} from 'lucide-react'
 import { api } from '../../api'
 import { statusLabels } from '../../data'
 import type { DepartmentWorkbench } from '../../types'
@@ -11,6 +20,8 @@ export function DepartmentManagementPanel() {
   const [loading, setLoading] = useState(true)
   const [busyService, setBusyService] = useState<string | null>(null)
   const [error, setError] = useState('')
+  const [filter, setFilter] = useState('')
+  const [editing, setEditing] = useState<{ id: string; text: string } | null>(null)
   const load = useCallback(async () => {
     setLoading(true)
     setError('')
@@ -28,18 +39,18 @@ export function DepartmentManagementPanel() {
     void load()
   }, [load])
   const selected = departments.find(item => item.id === selectedId) || departments[0]
-  const updateRequirements = async (service: DepartmentWorkbench['services'][number]) => {
-    const entered = window.prompt('اكتب المتطلبات، كل متطلب في سطر مستقل:', service.requiredDocuments.join('\n'))
-    if (entered === null) return
-    const requiredDocuments = entered
+  const saveRequirements = async (service: DepartmentWorkbench['services'][number]) => {
+    if (!editing || editing.id !== service.id) return
+    const requiredDocuments = editing.text
       .split('\n')
       .map(item => item.trim())
       .filter(Boolean)
-    if (!requiredDocuments.length) return setError('أدخل متطلباً واحداً على الأقل أو ألغِ العملية.')
+    if (!requiredDocuments.length) return setError('أدخل مستمسكاً واحداً على الأقل أو ألغِ التعديل.')
     setBusyService(service.id)
     setError('')
     try {
       await api.updatePlatformService(service.id, { requiredDocuments })
+      setEditing(null)
       await load()
     } catch (item) {
       setError((item as Error).message)
@@ -48,6 +59,11 @@ export function DepartmentManagementPanel() {
     }
   }
   const toggleService = async (service: DepartmentWorkbench['services'][number]) => {
+    if (
+      service.active &&
+      !window.confirm(`إيقاف استقبال «${service.name}»؟ لن يتمكن المواطنون من تقديم هذه الخدمة حتى إعادة تفعيلها.`)
+    )
+      return
     setBusyService(service.id)
     setError('')
     try {
@@ -82,18 +98,44 @@ export function DepartmentManagementPanel() {
         </div>
       ) : (
         <>
-          <div className="department-workbench-tabs">
-            {departments.map(item => (
-              <button
-                type="button"
-                key={item.id}
-                className={selected?.id === item.id ? 'active' : ''}
-                onClick={() => setSelectedId(item.id)}
-              >
-                {item.name}
-                <small>{item.requests.length.toLocaleString('en-US')} طلب</small>
-              </button>
-            ))}
+          <div className="department-workbench-picker">
+            <label className="department-workbench-search">
+              <Search />
+              <input
+                value={filter}
+                onChange={event => setFilter(event.target.value)}
+                placeholder="ابحث عن دائرة بالاسم أو القطاع…"
+                aria-label="بحث عن دائرة"
+              />
+            </label>
+            <label className="department-workbench-select">
+              <span>الدائرة</span>
+              <select value={selected?.id || ''} onChange={event => setSelectedId(event.target.value)}>
+                {departments
+                  .filter(item => !filter.trim() || `${item.name} ${item.category} ${item.district}`.includes(filter.trim()))
+                  .map(item => (
+                    <option key={item.id} value={item.id}>
+                      {item.name} — {item.requests.length.toLocaleString('en-US')} طلب
+                    </option>
+                  ))}
+              </select>
+            </label>
+            <div className="department-workbench-tabs">
+              {departments
+                .filter(item => item.requests.length > 0)
+                .slice(0, 12)
+                .map(item => (
+                  <button
+                    type="button"
+                    key={item.id}
+                    className={selected?.id === item.id ? 'active' : ''}
+                    onClick={() => setSelectedId(item.id)}
+                  >
+                    {item.name}
+                    <small>{item.requests.length.toLocaleString('en-US')} طلب</small>
+                  </button>
+                ))}
+            </div>
           </div>
           {selected && (
             <div className="department-workbench-content">
@@ -172,22 +214,52 @@ export function DepartmentManagementPanel() {
                               {service.active ? 'متاحة' : 'موقوفة'}
                             </span>
                           </header>
-                          <ul>
-                            {service.requiredDocuments.map(item => (
-                              <li key={item}>
-                                <CheckCircle2 /> {item}
-                              </li>
-                            ))}
-                          </ul>
+                          {editing?.id === service.id ? (
+                            <div className="service-requirements-editor">
+                              <label>
+                                المستمسكات المطلوبة — كل مستمسك في سطر مستقل (تصبح خانات رفع للمواطن)
+                                <textarea
+                                  value={editing.text}
+                                  rows={Math.max(3, editing.text.split('\n').length + 1)}
+                                  onChange={event => setEditing({ id: service.id, text: event.target.value })}
+                                />
+                              </label>
+                              <small>اكتب المستمسكات فقط (هوية، عقد، صورة…). التعليمات العامة تُكتب في وصف الخدمة.</small>
+                            </div>
+                          ) : (
+                            <ul>
+                              {service.requiredDocuments.map(item => (
+                                <li key={item}>
+                                  <CheckCircle2 /> {item}
+                                </li>
+                              ))}
+                            </ul>
+                          )}
                           <footer>
-                            <button
-                              type="button"
-                              className="button outline"
-                              onClick={() => void updateRequirements(service)}
-                              disabled={busyService === service.id}
-                            >
-                              تعديل المتطلبات
-                            </button>
+                            {editing?.id === service.id ? (
+                              <>
+                                <button
+                                  type="button"
+                                  className="button primary"
+                                  onClick={() => void saveRequirements(service)}
+                                  disabled={busyService === service.id}
+                                >
+                                  حفظ المستمسكات
+                                </button>
+                                <button type="button" className="button ghost" onClick={() => setEditing(null)}>
+                                  إلغاء
+                                </button>
+                              </>
+                            ) : (
+                              <button
+                                type="button"
+                                className="button outline"
+                                onClick={() => setEditing({ id: service.id, text: service.requiredDocuments.join('\n') })}
+                                disabled={busyService === service.id}
+                              >
+                                تعديل المستمسكات
+                              </button>
+                            )}
                             <button
                               type="button"
                               className="button ghost"

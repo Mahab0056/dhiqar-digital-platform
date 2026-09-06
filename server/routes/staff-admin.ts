@@ -1,4 +1,5 @@
 import type express from 'express'
+import { departmentById } from '../department-registry.js'
 import { z } from 'zod'
 import { addAudit, db } from '../db.js'
 import { createBackup, databaseStats, integrityCheck } from '../db-ops/backup.js'
@@ -42,6 +43,8 @@ export function registerStaffAdminRoutes(app: express.Express) {
       .parse(req.body)
     let created: ReturnType<typeof createStaff>
     try {
+      if (payload.departmentId && !departmentById.has(payload.departmentId))
+        return res.status(400).json({ message: 'الدائرة المحددة غير موجودة في سجل الدوائر.' })
       created = createStaff({ ...payload, departmentId: payload.departmentId || null, createdBy: session.staffId! })
     } catch (error) {
       return res.status(400).json({ message: (error as Error).message })
@@ -80,6 +83,8 @@ export function registerStaffAdminRoutes(app: express.Express) {
       countStaff('SUPER_ADMIN') <= 1
     )
       return res.status(409).json({ message: 'لا يمكن إزالة آخر مدير نظام فعّال.' })
+    if (payload.departmentId && !departmentById.has(payload.departmentId))
+      return res.status(400).json({ message: 'الدائرة المحددة غير موجودة في سجل الدوائر.' })
     const account = updateStaffProfile(id, payload)
     if (payload.role && payload.role !== before.role) revokeStaffSessions(id, 'ROLE_CHANGED')
     addAudit({

@@ -496,3 +496,112 @@
   font-size: 14px;
   color: #f4f7f2;
 }
+
+/* super-admin departments workbench: searchable picker, no 13k px chip strip */
+.department-workbench-picker {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+  gap: 12px;
+  align-items: end;
+  min-width: 0;
+}
+.department-workbench-picker .department-workbench-tabs {
+  grid-column: 1 / -1;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+.department-workbench-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  height: 44px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.05);
+  color: inherit;
+}
+.department-workbench-search svg {
+  width: 16px;
+  height: 16px;
+  opacity: 0.7;
+}
+.department-workbench-search input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+.department-workbench-select {
+  display: grid;
+  gap: 4px;
+  font-size: 12px;
+  min-width: 0;
+}
+.department-workbench-select select {
+  height: 44px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.05);
+  color: inherit;
+  font: inherit;
+  padding: 0 10px;
+  max-width: 100%;
+}
+:root:not([data-gov-theme='dark']) .department-workbench-search,
+:root:not([data-gov-theme='dark']) .department-workbench-select select {
+  border-color: var(--p-line, #e3e8e5);
+  background: var(--p-surface, #fff);
+}
+.ops-main,
+.department-workbench-content {
+  min-width: 0;
+  max-width: 100%;
+}
+.service-requirements-editor {
+  display: grid;
+  gap: 6px;
+  margin: 8px 0;
+}
+.service-requirements-editor label {
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+}
+.service-requirements-editor textarea {
+  width: 100%;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.05);
+  color: inherit;
+  font: inherit;
+  padding: 10px;
+  resize: vertical;
+}
+:root:not([data-gov-theme='dark']) .service-requirements-editor textarea {
+  border-color: var(--p-line, #e3e8e5);
+  background: var(--p-surface, #fff);
+}
+.service-requirements-editor small {
+  opacity: 0.75;
+}
+@media (max-width: 700px) {
+  .department-workbench-picker {
+    grid-template-columns: 1fr;
+  }
+}
+.score-ring.is-empty {
+  opacity: 0.55;
+}
+.ranking-empty {
+  padding: 18px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  color: #a5b9ae;
+  font-size: 13px;
+  line-height: 1.7;
+}

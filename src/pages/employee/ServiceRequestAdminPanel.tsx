@@ -66,7 +66,7 @@ export function ServiceRequestAdminPanel({
     setError('')
     if (item) {
       setStatus(
-        (item.status === 'SUBMITTED' || item.status === 'APPOINTMENT_REQUESTED'
+        (item.status === 'SUBMITTED' || item.status === 'APPOINTMENT_REQUESTED' || item.status === 'PAYMENT_PENDING'
           ? 'UNDER_REVIEW'
           : item.status) as Decision
       )

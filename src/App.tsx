@@ -157,7 +157,11 @@ function App() {
             </SessionGate>
           )}
         </Route>
-        <Route path="/employee" component={EmployeeDashboard} />
+        <Route path="/employee">
+          <SessionGate role="EMPLOYEE">
+            <EmployeeDashboard />
+          </SessionGate>
+        </Route>
         <Route path="/operations">
           <SessionGate role="OPERATIONS">
             <OperationsCenter />

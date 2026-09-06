@@ -262,8 +262,12 @@ export function StaffAccountsPanel() {
                   <button
                     className="icon-button"
                     title="إعادة تعيين كلمة المرور"
+                    aria-label={`إعادة تعيين كلمة مرور ${item.username}`}
                     disabled={busy}
                     onClick={() =>
+                      window.confirm(
+                        `إعادة تعيين كلمة مرور ${item.fullName} (${item.username})؟ ستُنهى جلساته الحالية وسيحتاج كلمة المرور المؤقتة الجديدة للدخول.`
+                      ) &&
                       void act(async () => {
                         const result = await api.resetStaffPassword(item.id)
                         return {
@@ -278,8 +282,10 @@ export function StaffAccountsPanel() {
                   <button
                     className="icon-button"
                     title="إلغاء المصادقة الثنائية"
+                    aria-label={`إلغاء المصادقة الثنائية لـ ${item.username}`}
                     disabled={busy || !item.totpEnabled}
                     onClick={() =>
+                      window.confirm(`إلغاء المصادقة الثنائية للحساب ${item.username}؟ سيدخل بكلمة المرور فقط حتى يعيد التفعيل.`) &&
                       void act(() =>
                         api
                           .resetStaffMfa(item.id)
@@ -292,8 +298,11 @@ export function StaffAccountsPanel() {
                   <button
                     className="icon-button"
                     title={item.status === 'ACTIVE' ? 'تعطيل الحساب' : 'تفعيل الحساب'}
+                    aria-label={`${item.status === 'ACTIVE' ? 'تعطيل' : 'تفعيل'} حساب ${item.username}`}
                     disabled={busy}
                     onClick={() =>
+                      (item.status !== 'ACTIVE' ||
+                        window.confirm(`تعطيل حساب ${item.fullName} (${item.username})؟ ستُنهى جلساته ولن يتمكن من الدخول.`)) &&
                       void act(() =>
                         api
                           .setStaffStatus(item.id, item.status === 'ACTIVE' ? 'DISABLED' : 'ACTIVE')

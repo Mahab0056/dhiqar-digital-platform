@@ -30,7 +30,7 @@ import type {
 
 const readableRequestError = (status: number, message?: string, path = '') => {
   // login endpoints return 401 for wrong credentials — show the server's own explanation there
-  if (status === 401 && !/\/login$/.test(path))
+  if (status === 401 && !/\/(login|mfa|change-password|mfa\/disable|mfa\/confirm|verify-phone)$/.test(path))
     return 'انتهت جلسة الدخول أو لا تملك صلاحية الإرسال. سجّل الدخول من جديد ثم أعد المحاولة.'
   if (status === 413) return 'حجم أحد المرفقات أكبر من المسموح. صوّر الملف بدقة أقل أو اختر ملفاً أصغر ثم أعد الإرسال.'
   if (status === 429) return 'تجاوزت عدد المحاولات المسموح حالياً. انتظر دقائق قليلة ثم أعد المحاولة.'

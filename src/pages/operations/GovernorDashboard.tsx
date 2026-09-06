@@ -17,7 +17,20 @@ export function GovernorDashboard() {
       .then(setStats)
       .catch(() => {})
   }, [])
-  const ranked = useMemo(() => [...stats.departments].sort((a, b) => b.transactions - a.transactions), [stats])
+  const ranked = useMemo(
+    () =>
+      [...stats.departments]
+        .filter(item => item.transactions > 0 || item.openFeedback > 0)
+        .sort((a, b) => b.transactions - a.transactions)
+        .slice(0, 10),
+    [stats]
+  )
+  // a real completion ratio computed from platform records (not an institutional SLA/satisfaction survey)
+  const totalRecorded = stats.departments.reduce((sum, item) => sum + item.transactions, 0)
+  const totalCompleted = stats.departments.reduce((sum, item) => sum + item.completed, 0)
+  const totalRejected = stats.departments.reduce((sum, item) => sum + item.rejected, 0)
+  const completionRate = totalRecorded ? Math.round((totalCompleted / totalRecorded) * 100) : null
+  const decidedRate = totalRecorded ? Math.round(((totalCompleted + totalRejected) / totalRecorded) * 100) : null
   return (
     <OperationsShell active="governor">
       <header className="ops-header governor-header">
@@ -45,26 +58,33 @@ export function GovernorDashboard() {
       </header>
       <section className="executive-score">
         <div>
-          <span className="score-ring">
-            <b>—</b>
-            <small>/100</small>
+          <span className={`score-ring ${completionRate === null ? 'is-empty' : ''}`}>
+            <b>{completionRate === null ? '—' : completionRate.toLocaleString('en-US')}</b>
+            <small>{completionRate === null ? '' : '%'}</small>
           </span>
           <div>
-            <small>مؤشر الأداء الحكومي</small>
-            <strong>بانتظار مصدر قياس مؤسسي</strong>
-            <p>لا يُحسب قبل ربط مؤشرات SLA والرضا من الجهة المالكة</p>
+            <small>نسبة الإنجاز على المنصة</small>
+            <strong>
+              {completionRate === null
+                ? 'لا توجد معاملات مسجلة بعد'
+                : `${totalCompleted.toLocaleString('en-US')} معاملة مكتملة من ${totalRecorded.toLocaleString('en-US')}`}
+            </strong>
+            <p>
+              محسوبة من سجل المنصة فقط. مؤشرات SLA ورضا المواطنين تُعرض عند اعتمادها من الجهة المالكة — لا تُعرض أرقام
+              غير موثقة.
+            </p>
           </div>
         </div>
         <div className="executive-mini">
           <span>
-            <small>الالتزام بالـSLA</small>
-            <strong>—</strong>
-            <i style={{ width: '0%' }} />
+            <small>معاملات صدر فيها قرار</small>
+            <strong>{decidedRate === null ? '—' : `${decidedRate}%`}</strong>
+            <i style={{ width: `${decidedRate ?? 0}%` }} />
           </span>
           <span>
-            <small>رضا المواطنين</small>
-            <strong>—</strong>
-            <i style={{ width: '0%' }} />
+            <small>شكاوى مفتوحة</small>
+            <strong>{stats.complaints.toLocaleString('en-US')}</strong>
+            <i style={{ width: stats.complaints ? '100%' : '0%' }} />
           </span>
           <span>
             <small>طلبات مكتملة</small>
@@ -95,11 +115,14 @@ export function GovernorDashboard() {
         <div className="ranking-card">
           <div className="panel-heading">
             <div>
-              <h3>ترتيب الدوائر</h3>
-              <p>حسب الطلبات المسجلة في المنصة</p>
+              <h3>الدوائر الأكثر نشاطاً</h3>
+              <p>الدوائر التي سجلت طلبات أو شكاوى على المنصة</p>
             </div>
             <Gauge />
           </div>
+          {ranked.length === 0 && (
+            <div className="ranking-empty">لم تُسجل بعد أي معاملة أو شكوى لدوائر المحافظة على المنصة.</div>
+          )}
           {ranked.map((dept, index) => (
             <div className="ranking-row" key={dept.id}>
               <b>{index + 1}</b>
