@@ -658,6 +658,11 @@ export function CitizenDashboard() {
                           </Link>
                         </div>
                       )}
+                    {item.paymentStatus === 'PAY_AT_OFFICE' && !item.payments?.length && (
+                      <div className="service-request-attachment-summary">
+                        <CreditCard /> رسم الخدمة يُسدد في الدائرة عند إكمال الإجراء؛ الدفع الإلكتروني غير مفعّل بعد.
+                      </div>
+                    )}
                     {item.payments?.some(payment => payment.status === 'PAID') && (
                       <div className="service-request-attachment-summary">
                         <ReceiptText /> إيصال الدفع:{' '}

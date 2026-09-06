@@ -276,9 +276,11 @@ describe('application workflow', () => {
 })
 
 describe('identity review permissions', () => {
-  it('employee can list reviews but only reviewer/super admin can decide', async () => {
+  it('only reviewer/super admin can list or decide identity reviews', async () => {
     const list = await request(app).get('/api/admin/identity-reviews').set('Cookie', employee)
-    expect(list.status).toBe(200)
+    expect(list.status).toBe(403)
+    const asAdminList = await request(app).get('/api/admin/identity-reviews').set('Cookie', admin)
+    expect(asAdminList.status).toBe(200)
     const decision = await request(app)
       .post('/api/admin/identity-reviews/nonexistent/decision')
       .set('Cookie', employee)

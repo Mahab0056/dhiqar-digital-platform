@@ -1,4 +1,5 @@
 import type express from 'express'
+import { safeMessage } from '../http/error-handler.js'
 import { param } from '../http/params.js'
 import { z } from 'zod'
 import { upload, validateUploadedFile } from '../http/upload.js'
@@ -97,9 +98,7 @@ export function registerFeedbackRoutes(app: express.Express) {
       const message =
         error instanceof z.ZodError
           ? 'تحقق من نوع الطلب والعنوان والوصف والموقع قبل الإرسال.'
-          : error instanceof Error
-            ? error.message
-            : 'تعذر تسجيل الطلب.'
+          : safeMessage(error, 'تعذر تسجيل الطلب.')
       res.status(400).json({ message })
     }
   })

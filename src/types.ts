@@ -238,6 +238,7 @@ export interface CitizenServiceRequest {
   checklist?: ChecklistItem[]
   attachments?: ServiceRequestAttachment[]
   payments?: PaymentIntent[]
+  paymentStatus?: 'NOT_REQUIRED' | 'PENDING' | 'PAID' | 'PAY_AT_OFFICE'
   createdAt: string
   updatedAt: string
   appointment?: {

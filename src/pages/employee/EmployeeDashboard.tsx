@@ -31,6 +31,7 @@ import { ServiceRequestAdminPanel } from './ServiceRequestAdminPanel'
 export function EmployeeDashboard() {
   const [, navigate] = useLocation()
   const { session } = useSession()
+  const canReviewIdentity = session?.role === 'IDENTITY_REVIEWER' || session?.role === 'SUPER_ADMIN'
   const todayLabel = new Date().toLocaleDateString('en-GB')
   const [apps, setApps] = useState<GovernmentApplication[]>([])
   const [selected, setSelected] = useState<GovernmentApplication | null>(null)
@@ -153,16 +154,24 @@ export function EmployeeDashboard() {
           <small>طلبات خدمات جديدة</small>
           <strong>{workQueue.serviceRequests.toLocaleString('en-US')}</strong>
         </div>
-        <div>
-          <span>
-            <Fingerprint />
-          </span>
-          <small>مواطنون بانتظار مراجعة الهوية</small>
-          <strong>{workQueue.identityReviews.toLocaleString('en-US')}</strong>
-        </div>
-        <a href="#employee-identity-reviews">
-          <ShieldCheck /> فتح مراجعة الهوية
-        </a>
+        {canReviewIdentity ? (
+          <>
+            <div>
+              <span>
+                <Fingerprint />
+              </span>
+              <small>مواطنون بانتظار مراجعة الهوية</small>
+              <strong>{workQueue.identityReviews.toLocaleString('en-US')}</strong>
+            </div>
+            <a href="#employee-identity-reviews">
+              <ShieldCheck /> فتح مراجعة الهوية
+            </a>
+          </>
+        ) : (
+          <a href="#employee-service-requests">
+            <ShieldCheck /> فتح طلبات الخدمات
+          </a>
+        )}
       </section>
       <section className="employee-kpis">
         <div>
@@ -480,13 +489,17 @@ export function EmployeeDashboard() {
               </>
             ),
           },
-          {
-            id: 'employee-identity-reviews',
-            label: 'مراجعة الهوية',
-            icon: Fingerprint,
-            badge: workQueue.identityReviews,
-            content: <IdentityReviewPanel />,
-          },
+          ...(canReviewIdentity
+            ? [
+                {
+                  id: 'employee-identity-reviews',
+                  label: 'مراجعة الهوية',
+                  icon: Fingerprint,
+                  badge: workQueue.identityReviews,
+                  content: <IdentityReviewPanel />,
+                },
+              ]
+            : []),
           { id: 'employee-feedback', label: 'الشكاوى والمقترحات', icon: Bell, content: <FeedbackAdminPanel /> },
           {
             id: 'employee-archive',

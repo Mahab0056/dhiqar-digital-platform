@@ -27,6 +27,7 @@ import { seedDepartments } from './departments.js'
 import { scheduleBackups } from './db-ops/backup.js'
 import { bootstrapStaffAccounts } from './auth/staff.js'
 import { purgeExpiredSessions } from './auth/session.js'
+import { purgeExpiredMedia } from './media.js'
 
 export function createPlatformServer(options: { serveStatic?: boolean } = {}) {
   seedVerifiedGovernmentServices()
@@ -36,6 +37,17 @@ export function createPlatformServer(options: { serveStatic?: boolean } = {}) {
   purgeExpiredSessions()
   scheduleBackups()
   setInterval(purgeExpiredSessions, 60 * 60 * 1000).unref()
+  // enforce media retention: run once at boot, then hourly (never crashes the process)
+  const safePurge = () => {
+    try {
+      const removed = purgeExpiredMedia()
+      if (removed) console.log(`[media] purged ${removed} expired encrypted object(s)`)
+    } catch (error) {
+      console.error('[media] purge failed', error)
+    }
+  }
+  safePurge()
+  setInterval(safePurge, 60 * 60 * 1000).unref()
 
   const { app, httpServer } = createApp()
   installRealtime(httpServer)

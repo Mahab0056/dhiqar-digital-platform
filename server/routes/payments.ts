@@ -1,8 +1,9 @@
 import type express from 'express'
+import { safeMessage } from '../http/error-handler.js'
 import { z } from 'zod'
 import { param } from '../http/params.js'
 import { requireSession, currentCitizen } from '../auth/session.js'
-import { db } from '../db.js'
+import { addAudit, db } from '../db.js'
 import { productionOrigin as publicBaseUrl } from '../config.js'
 import { paymentProvider, sandboxAllowed } from '../payments/providers.js'
 import { getPaymentIntent, getPaymentIntentById, settlePayment } from '../payments/intents.js'
@@ -59,7 +60,7 @@ export function registerPaymentRoutes(app: express.Express) {
       )
       res.json({ checkoutUrl: checkout.checkoutUrl, mode: checkout.mode, provider: checkout.provider })
     } catch (error) {
-      res.status(502).json({ message: error instanceof Error ? error.message : 'تعذر بدء عملية الدفع.' })
+      res.status(502).json({ message: safeMessage(error, 'تعذر بدء عملية الدفع.') })
     }
   })
 
@@ -88,10 +89,31 @@ export function registerPaymentRoutes(app: express.Express) {
     const provider = paymentProvider()
     const name = param(req, 'provider')
     if (!provider || provider.name !== name) return res.redirect('/citizen?payment=unavailable')
+    // the sandbox settles only through the authenticated sandbox-confirm route — never via an open GET
+    if (provider.name === 'sandbox') return res.redirect('/citizen?payment=invalid')
     const result = provider.parseCallback(req.query as Record<string, unknown>)
     if (!result.ok || !result.intentId) return res.redirect('/citizen?payment=invalid')
     const intent = getPaymentIntentById(result.intentId)
     if (!intent) return res.redirect('/citizen?payment=invalid')
+    // the signed callback must match the intent we created: same gateway transaction, same amount, not expired
+    const claims = result.raw || {}
+    const claimedAmount = Number(claims.amount ?? intent.amountIqd)
+    const exp = Number(claims.exp || 0)
+    if (
+      (intent.providerReference && result.providerReference && intent.providerReference !== result.providerReference) ||
+      (Number.isFinite(claimedAmount) && Math.round(claimedAmount) !== Math.round(intent.amountIqd)) ||
+      (exp && exp * 1000 < Date.now())
+    ) {
+      addAudit({
+        actor: 'payment-gateway',
+        role: 'SYSTEM',
+        action: 'PAYMENT_CALLBACK_REJECTED',
+        entityType: 'PaymentIntent',
+        entityId: intent.reference,
+        metadata: { providerReference: result.providerReference, claimedAmount, exp },
+      })
+      return res.redirect(`/citizen/pay/${encodeURIComponent(intent.reference)}?result=invalid`)
+    }
     settlePayment({
       intentId: intent.id,
       providerReference: result.providerReference,

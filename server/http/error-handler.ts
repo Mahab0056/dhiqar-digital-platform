@@ -43,3 +43,15 @@ export const errorHandler = (
     requestId,
   })
 }
+
+/**
+ * Domain errors in this codebase are written in Arabic for the citizen; anything else (ENOSPC, SQLite, TypeError…)
+ * is internal and must never reach the client. Returns the Arabic message or the fallback.
+ */
+export function safeMessage(error: unknown, fallback: string) {
+  if (error instanceof z.ZodError) return 'تحقق من الحقول المطلوبة وصيغة البيانات قبل الإرسال.'
+  if (error instanceof Error && /[؀-ۿ]/.test(error.message) && !/ENOSPC|EACCES|SQLITE|at .* \(/.test(error.message))
+    return error.message
+  if (error instanceof Error) console.error('[route]', error)
+  return fallback
+}

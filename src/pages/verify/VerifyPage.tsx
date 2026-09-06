@@ -9,6 +9,7 @@ import { CivicUtilityBar } from '../../components/public/CivicUtilityBar'
 export function VerifyPage({ verificationId }: { verificationId: string }) {
   const [app, setApp] = useState<GovernmentApplication | null>(null)
   const [error, setError] = useState('')
+  const revoked = (app?.status as string | undefined) === 'REVOKED'
   useEffect(() => {
     api
       .verifyDocument(verificationId)
@@ -26,15 +27,14 @@ export function VerifyPage({ verificationId }: { verificationId: string }) {
       </header>
       <main className="container verify-content">
         {app ? (
-          <div className="verification-result valid">
-            <span className="verification-icon">
-              <BadgeCheck />
-            </span>
+          <div className={`verification-result ${revoked ? 'invalid' : 'valid'}`}>
+            <span className="verification-icon">{revoked ? <AlertTriangle /> : <BadgeCheck />}</span>
             <span className="section-kicker">DIGITAL DOCUMENT VERIFICATION</span>
-            <h1>الوثيقة صحيحة ضمن سجل المنصة</h1>
+            <h1>{revoked ? 'هذه الوثيقة ملغاة ولم تعد نافذة' : 'الوثيقة صحيحة ضمن سجل المنصة'}</h1>
             <p>
-              تم إصدار هذه الوثيقة من سجل ذي قار الرقمية ويمكن التحقق من بياناتها هنا. يبقى نفاذها خارج المنصة مرتبطاً
-              باعتماد الجهة المختصة.
+              {revoked
+                ? 'أُلغيت هذه الوثيقة من سجل ذي قار الرقمية. لا تعتمد عليها؛ راجع الجهة المصدرة للتأكد.'
+                : 'تم إصدار هذه الوثيقة من سجل ذي قار الرقمية ويمكن التحقق من بياناتها هنا. يبقى نفاذها خارج المنصة مرتبطاً باعتماد الجهة المختصة.'}
             </p>
             <div className="verification-data">
               <span>
@@ -55,7 +55,7 @@ export function VerifyPage({ verificationId }: { verificationId: string }) {
               </span>
               <span>
                 <small>الحالة</small>
-                <strong>فعّالة في سجل المنصة</strong>
+                <strong>{revoked ? 'ملغاة' : 'فعّالة في سجل المنصة'}</strong>
               </span>
               <span>
                 <small>تاريخ الإصدار</small>

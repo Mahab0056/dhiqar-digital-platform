@@ -1,5 +1,5 @@
 import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID } from 'node:crypto'
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { db } from './db.js'
@@ -94,14 +94,31 @@ export function readDecryptedMedia(id: string) {
   const row = db
     .prepare(
       `
-    SELECT storage_path, mime_type, original_name, deleted_at
+    SELECT storage_path, mime_type, original_name, deleted_at, expires_at, retention_policy
     FROM media_objects WHERE id = ?
   `
     )
     .get(id) as
-    { storage_path: string; mime_type: string; original_name: string; deleted_at: string | null } | undefined
+    | {
+        storage_path: string
+        mime_type: string
+        original_name: string
+        deleted_at: string | null
+        expires_at: string | null
+        retention_policy: string | null
+      }
+    | undefined
 
   if (!row || row.deleted_at) return null
+  if (
+    row.retention_policy !== 'RETAINED_WITH_CONSENT' &&
+    row.expires_at &&
+    row.expires_at <= new Date().toISOString()
+  ) {
+    deleteEncryptedMedia(id)
+    return null
+  }
+  if (!existsSync(row.storage_path)) return null
   const envelope = readFileSync(row.storage_path)
   if (envelope.length < 29) throw new Error('Encrypted media envelope is invalid.')
   const iv = envelope.subarray(0, 12)

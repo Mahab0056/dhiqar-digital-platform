@@ -1,9 +1,11 @@
 import type express from 'express'
+import { safeMessage } from '../http/error-handler.js'
 import { param } from '../http/params.js'
 import { randomUUID } from 'node:crypto'
 import { z } from 'zod'
 import { upload, validateUploadedFile } from '../http/upload.js'
-import { setSession, requireSession, currentCitizen, currentSession, requireReviewAccess } from '../auth/session.js'
+import { departmentById } from '../department-registry.js'
+import { type SessionData, setSession, requireSession, currentCitizen, currentSession, requireReviewAccess } from '../auth/session.js'
 import { notifyCitizen, employeeWorkQueueRealtime } from '../realtime.js'
 import { addAudit, db, getCitizenById, getOrCreateCitizen } from '../db.js'
 import { createOtpChallenge, processOtpDeliveryWebhook, verifyOtpChallenge } from '../otp.js'
@@ -18,6 +20,65 @@ const parseJson = (value: unknown) => {
   } catch {
     return null
   }
+}
+
+const identityPurposes = new Set([
+  'NATIONAL_ID_FRONT',
+  'NATIONAL_ID_BACK',
+  'IDENTITY_DOCUMENT_FRONT',
+  'IDENTITY_DOCUMENT_BACK',
+  'FACE_VIDEO',
+  'PROFILE_PHOTO',
+])
+
+/**
+ * Media is only served to staff who own the record it belongs to:
+ * identity media → identity reviewers / super admin; application, service-request and feedback
+ * attachments → super admin or an employee of the department the record is routed to.
+ */
+function staffMayOpenMedia(session: SessionData, mediaId: string) {
+  if (session.role === 'SUPER_ADMIN') return true
+  const media = db.prepare('SELECT purpose FROM media_objects WHERE id = ?').get(mediaId) as
+    | { purpose: string }
+    | undefined
+  if (!media) return false
+  if (identityPurposes.has(media.purpose)) {
+    if (session.role !== 'IDENTITY_REVIEWER') return false
+    return Boolean(
+      db
+        .prepare(
+          'SELECT 1 FROM identity_reviews WHERE id_front_media_id = ? OR id_back_media_id = ? OR face_video_media_id = ?'
+        )
+        .get(mediaId, mediaId, mediaId)
+    )
+  }
+  if (session.role !== 'EMPLOYEE' || !session.departmentId) return false
+  const departmentName = departmentById.get(session.departmentId)?.name || ''
+  if (media.purpose === 'FEEDBACK_ATTACHMENT')
+    return Boolean(
+      db
+        .prepare(
+          'SELECT 1 FROM feedback_media fm JOIN citizen_feedback cf ON cf.id = fm.feedback_id WHERE fm.media_id = ? AND cf.department_id = ?'
+        )
+        .get(mediaId, session.departmentId)
+    )
+  if (media.purpose === 'SERVICE_REQUEST_DOCUMENT')
+    return Boolean(
+      db
+        .prepare(
+          'SELECT 1 FROM service_request_media srm JOIN service_requests sr ON sr.id = srm.service_request_id WHERE srm.media_id = ? AND sr.department_id = ?'
+        )
+        .get(mediaId, session.departmentId)
+    )
+  if (media.purpose === 'APPLICATION_DOCUMENT' || media.purpose === 'STOREFRONT_PHOTO')
+    return Boolean(
+      db
+        .prepare(
+          'SELECT 1 FROM application_media am JOIN applications a ON a.id = am.application_id WHERE am.media_id = ? AND (a.department_id = ? OR (a.department_id IS NULL AND a.department = ?))'
+        )
+        .get(mediaId, session.departmentId, departmentName)
+    )
+  return false
 }
 
 export function registerOnboardingRoutes(app: express.Express) {
@@ -41,9 +102,7 @@ export function registerOnboardingRoutes(app: express.Express) {
       const message =
         error instanceof z.ZodError
           ? 'أدخل رقم هاتف عراقي صحيحاً بصيغة 07XXXXXXXXX.'
-          : error instanceof Error
-            ? error.message
-            : 'تعذر إرسال رمز التحقق.'
+          : safeMessage(error, 'تعذر إرسال رمز التحقق.')
       res.status(400).json({ message })
     }
   })
@@ -73,9 +132,7 @@ export function registerOnboardingRoutes(app: express.Express) {
       const message =
         error instanceof z.ZodError
           ? 'أدخل رقم الهاتف ومعرّف الطلب ورمز التحقق المكوّن من 6 أرقام بصورة صحيحة.'
-          : error instanceof Error
-            ? error.message
-            : 'تعذر التحقق من الرمز.'
+          : safeMessage(error, 'تعذر التحقق من الرمز.')
       res.status(400).json({ message })
     }
   })
@@ -98,6 +155,8 @@ export function registerOnboardingRoutes(app: express.Express) {
       .parse(req.body)
     const citizen = currentCitizen(res)
     if (!citizen) return
+    if (['VERIFIED', 'VERIFIED_MANUAL'].includes(citizen.verificationStatus))
+      return res.status(409).json({ message: 'هويتك موثقة مسبقاً ولا يمكن إعادة فتحها من هنا.' })
     const timestamp = new Date().toISOString()
     db.prepare(
       'UPDATE citizens SET full_name = ?, verification_status = ?, consent_at = ?, updated_at = ? WHERE id = ?'
@@ -150,7 +209,7 @@ export function registerOnboardingRoutes(app: express.Express) {
                 : undefined,
         })
       } catch (error) {
-        const message = error instanceof Error ? error.message : 'تعذر تحليل صورة المستند.'
+        const message = safeMessage(error, 'تعذر تحليل صورة المستند.')
         res.status(400).json({ message })
       }
     }
@@ -181,6 +240,18 @@ export function registerOnboardingRoutes(app: express.Express) {
             locationAccuracyM: z.coerce.number().min(0).max(50_000).optional(),
           })
           .parse(req.body)
+        const submitter = currentCitizen(res)
+        if (!submitter) return
+        // state guard: a verified citizen cannot downgrade themselves; a pending review cannot be re-queued
+        if (['VERIFIED', 'VERIFIED_MANUAL'].includes(submitter.verificationStatus))
+          return res.status(409).json({ message: 'هويتك موثقة مسبقاً. لتعديل بياناتك راجع مركز خدمة المواطن.' })
+        const pending = db
+          .prepare(`SELECT id FROM identity_reviews WHERE citizen_id = ? AND status = 'PENDING_REVIEW' LIMIT 1`)
+          .get(submitter.id)
+        if (pending)
+          return res
+            .status(409)
+            .json({ message: 'طلب مراجعة هويتك قيد التدقيق حالياً. ستصلك النتيجة عبر الإشعارات قبل إمكانية إعادة الإرسال.' })
         const files = req.files as Record<string, Express.Multer.File[]> | undefined
         const idFront = files?.idFront?.[0]
         const idBack = files?.idBack?.[0]
@@ -392,7 +463,7 @@ export function registerOnboardingRoutes(app: express.Express) {
           screening,
         })
       } catch (error) {
-        const message = error instanceof Error ? error.message : 'تعذر حفظ طلب مراجعة الهوية.'
+        const message = safeMessage(error, 'تعذر حفظ طلب مراجعة الهوية.')
         res.status(400).json({ message })
       }
     }
@@ -415,6 +486,7 @@ export function registerOnboardingRoutes(app: express.Express) {
   app.get(
     '/api/admin/identity-reviews',
     requireSession('EMPLOYEE', 'IDENTITY_REVIEWER', 'SUPER_ADMIN'),
+    requireReviewAccess,
     (_req, res) => {
       const session = currentSession(res)
       const rows = db
@@ -515,6 +587,8 @@ export function registerOnboardingRoutes(app: express.Express) {
   app.get('/api/admin/media/:id', requireSession('EMPLOYEE', 'IDENTITY_REVIEWER', 'SUPER_ADMIN'), (req, res) => {
     const session = currentSession(res)
     try {
+      if (!staffMayOpenMedia(session, param(req, 'id')))
+        return res.status(404).json({ message: 'الوسيط غير متاح أو انتهت مدة الاحتفاظ.' })
       const media = readDecryptedMedia(param(req, 'id'))
       if (!media) return res.status(404).json({ message: 'الوسيط غير متاح أو انتهت مدة الاحتفاظ.' })
       addAudit({
@@ -611,7 +685,7 @@ export function registerOnboardingRoutes(app: express.Express) {
           mediaRetained: true,
         })
       } catch (error) {
-        const message = error instanceof Error ? error.message : 'تعذر حفظ قرار المراجعة.'
+        const message = safeMessage(error, 'تعذر حفظ قرار المراجعة.')
         res.status(400).json({ message })
       }
     }
@@ -643,7 +717,7 @@ export function registerOnboardingRoutes(app: express.Express) {
       })
       res.json(getCitizenById(citizen.id))
     } catch (error) {
-      res.status(400).json({ message: error instanceof Error ? error.message : 'تعذر حفظ الموقع.' })
+      res.status(400).json({ message: safeMessage(error, 'تعذر حفظ الموقع.') })
     }
   })
 

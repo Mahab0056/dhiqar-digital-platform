@@ -1,4 +1,5 @@
 import type express from 'express'
+import { safeMessage } from '../http/error-handler.js'
 import { param } from '../http/params.js'
 import { randomUUID } from 'node:crypto'
 import { z } from 'zod'
@@ -117,6 +118,7 @@ const serializeServiceRequestForEmployee = (row: Record<string, unknown>) => {
     checklist: parseChecklist(row.document_checklist),
     attachments: serviceRequestAttachments(Number(row.id)),
     payments: listPaymentsForRequest(Number(row.id)),
+    paymentStatus: String(row.payment_status || 'NOT_REQUIRED'),
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at),
   }
@@ -145,6 +147,7 @@ const serializeServiceRequestForCitizen = (row: Record<string, unknown>) => {
     checklist: parseChecklist(row.document_checklist),
     attachments: serviceRequestAttachments(Number(row.id)),
     payments: listPaymentsForRequest(Number(row.id)),
+    paymentStatus: String(row.payment_status || 'NOT_REQUIRED'),
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at),
     appointment: appointment
@@ -304,9 +307,14 @@ export function registerServiceRequestsRoutes(app: express.Express) {
     )
     const reference = `TQS-${new Date().getFullYear()}-${serial}`
     // Official fee + working gateway → the request waits for payment before it reaches the department.
-    const feeDue = service.feeStatus === 'OFFICIAL' && (service.feeIqd || 0) > 0 && Boolean(paymentProvider())
+    const officialFee = service.feeStatus === 'OFFICIAL' && (service.feeIqd || 0) > 0
+    const feeDue = officialFee && Boolean(paymentProvider())
+    // official fee but no gateway → the fee is never waived: it is flagged to be paid at the office
+    const payAtOffice = officialFee && !feeDue
     const currentAction = feeDue
       ? `بانتظار سداد رسم الخدمة (${(service.feeIqd || 0).toLocaleString('en-US')} د.ع). يُحال الطلب إلى الدائرة فور تأكيد الدفع.`
+      : payAtOffice
+        ? `أُرسل الطلب إلى الدائرة المختصة. رسم الخدمة ${(service.feeIqd || 0).toLocaleString('en-US')} د.ع يُسدد في الدائرة عند إكمال الإجراء (الدفع الإلكتروني غير مفعّل بعد).`
       : service.mode === 'APPOINTMENT'
         ? 'أُرسل طلب الموعد إلى الدائرة وبانتظار التأكيد.'
         : service.channel === 'APPOINTMENT_REQUIRED'
@@ -324,8 +332,8 @@ export function registerServiceRequestsRoutes(app: express.Express) {
     try {
       const result = db
         .prepare(
-          `INSERT INTO service_requests (reference, citizen_id, service_id, department_id, status, form_data, current_action, document_checklist, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+          `INSERT INTO service_requests (reference, citizen_id, service_id, department_id, status, form_data, current_action, document_checklist, payment_status, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
         )
         .run(
           reference,
@@ -336,6 +344,7 @@ export function registerServiceRequestsRoutes(app: express.Express) {
           JSON.stringify(cleanData),
           currentAction,
           '[]',
+          feeDue ? 'PENDING' : payAtOffice ? 'PAY_AT_OFFICE' : 'NOT_REQUIRED',
           timestamp,
           timestamp
         )
@@ -444,7 +453,13 @@ export function registerServiceRequestsRoutes(app: express.Express) {
         department: department.id,
         documents: checklist.filter(item => item.mediaId).map(item => item.key),
       },
-      metadata: { storedFields: Object.keys(cleanData), protectedFaceVideoId: faceMediaId, faceConsent: true },
+      metadata: {
+        storedFields: Object.keys(cleanData),
+        protectedFaceVideoId: faceMediaId,
+        faceConsent: true,
+        feeIqd: officialFee ? service.feeIqd : 0,
+        feeCollection: feeDue ? 'ONLINE' : payAtOffice ? 'PAY_AT_OFFICE' : 'NONE',
+      },
     })
     res.status(201).json({
       id: serviceRequestId,
@@ -561,7 +576,7 @@ export function registerServiceRequestsRoutes(app: express.Express) {
         })
         res.json(serializeServiceRequestForCitizen(loadRequest(String(row.reference))!))
       } catch (error) {
-        res.status(400).json({ message: error instanceof Error ? error.message : 'تعذر رفع المستند المطلوب.' })
+        res.status(400).json({ message: safeMessage(error, 'تعذر رفع المستند المطلوب.') })
       }
     }
   )

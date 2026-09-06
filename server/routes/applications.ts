@@ -55,13 +55,16 @@ export function registerApplicationsRoutes(app: express.Express) {
                 .get()) as { count: number }
         ).count
       )
-      const identityReviews = Number(
-        (
-          db.prepare(`SELECT COUNT(*) AS count FROM identity_reviews WHERE status = 'PENDING_REVIEW'`).get() as {
-            count: number
-          }
-        ).count
-      )
+      const identityReviews =
+        session.role === 'IDENTITY_REVIEWER' || session.role === 'SUPER_ADMIN'
+          ? Number(
+              (
+                db.prepare(`SELECT COUNT(*) AS count FROM identity_reviews WHERE status = 'PENDING_REVIEW'`).get() as {
+                  count: number
+                }
+              ).count
+            )
+          : 0
       res.json({
         applications,
         serviceRequests,

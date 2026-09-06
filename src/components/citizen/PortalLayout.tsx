@@ -215,6 +215,10 @@ export function PortalLayout({
           { icon: KeyRound, label: 'الأمان والحساب', href: '/staff/security' },
         ]
   const { session } = useSession()
+  if (role === 'employee' && session && session.role !== 'IDENTITY_REVIEWER' && session.role !== 'SUPER_ADMIN') {
+    const index = nav.findIndex(item => item.href === '/employee#employee-identity-reviews')
+    if (index >= 0) nav.splice(index, 1)
+  }
   if (role === 'employee' && session?.departmentId)
     nav.splice(1, 0, { icon: Building2, label: 'لوحة دائرتي', href: `/department/${session.departmentId}` })
   const staffName = session && session.role !== 'CITIZEN' ? session.displayName || session.username || 'موظف' : null

@@ -133,6 +133,30 @@ export function registerDocumentsRoutes(app: express.Express) {
         pdfAvailable: true,
       })
     }
+    if (issued && issued.status !== 'ACTIVE') {
+      addAudit({
+        actor: 'Public Verification',
+        role: 'PUBLIC',
+        action: 'DOCUMENT_VERIFICATION_REVOKED',
+        entityType: 'IssuedDocument',
+        entityId: String(issued.id),
+        metadata: { verificationId: param(req, 'verificationId'), status: issued.status },
+      })
+      return res.json({
+        reference: issued.application_reference || issued.service_request_reference,
+        citizenName: issued.citizen_name,
+        serviceName: issued.service_name,
+        department: issued.department_name,
+        documentTitle: issued.document_title,
+        documentNumber: issued.document_number,
+        verificationId: issued.verification_id,
+        status: 'REVOKED',
+        issuedAt: issued.issued_at,
+        updatedAt: issued.updated_at,
+        originalPdfUrl: null,
+        pdfAvailable: false,
+      })
+    }
     const item = getApplicationByVerificationId(param(req, 'verificationId'))
     if (!item) return res.status(404).json({ message: 'لم يتم العثور على وثيقة صادرة بهذا المعرّف.' })
     addAudit({
@@ -143,6 +167,20 @@ export function registerDocumentsRoutes(app: express.Express) {
       entityId: param(req, 'verificationId'),
       metadata: { exposedFields: 'minimal', archivedPdf: false },
     })
-    return res.json({ ...item, pdfAvailable: false, originalPdfUrl: null })
+    // legacy approvals (before the issued-documents archive): expose only what a verifier needs
+    return res.json({
+      reference: item.reference,
+      citizenName: item.citizenName,
+      serviceName: item.serviceName,
+      department: item.department,
+      documentTitle: item.serviceName,
+      documentNumber: item.documentNumber,
+      verificationId: item.verificationId,
+      status: item.status === 'APPROVED' ? 'APPROVED' : 'REVOKED',
+      issuedAt: item.decidedAt || item.updatedAt,
+      updatedAt: item.updatedAt,
+      pdfAvailable: false,
+      originalPdfUrl: null,
+    })
   })
 }
