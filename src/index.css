@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=Noto+Kufi+Arabic:wght@400;500;600;700;800;900&display=swap');
+/* Fonts are self-hosted (see src/main.tsx → @fontsource) so the platform never depends on Google Fonts availability. */
 
 :root {
   font-family: 'IBM Plex Sans Arabic', system-ui, sans-serif;

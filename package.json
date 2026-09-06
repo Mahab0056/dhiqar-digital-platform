@@ -23,6 +23,8 @@
     "check": "pnpm lint && pnpm typecheck && pnpm test"
   },
   "dependencies": {
+    "@fontsource/ibm-plex-sans-arabic": "^5.3.0",
+    "@fontsource/noto-kufi-arabic": "^5.3.0",
     "cors": "^2.8.6",
     "express": "^5.2.1",
     "express-rate-limit": "^8.6.2",
