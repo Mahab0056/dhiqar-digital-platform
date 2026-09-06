@@ -1,19 +1,10 @@
 import type React from 'react'
 import { useState } from 'react'
 import { Link, useLocation } from 'wouter'
-import {
-  AlertTriangle,
-  ArrowRight,
-  Building2,
-  CheckCircle2,
-  Clock3,
-  MapPin,
-  ReceiptText,
-  Send,
-  ShieldCheck,
-} from 'lucide-react'
+import { AlertTriangle, ArrowRight, Building2, Clock3, ReceiptText, Send, ShieldCheck } from 'lucide-react'
 import { api } from '../../api'
 import { formatIQD, services } from '../../data'
+import { LocationPicker, type PickedLocation } from '../../components/maps/LocationPicker'
 import { SecureCameraCapture } from '../../components/camera/SecureCameraCapture'
 import {
   onboardingPathForService,
@@ -34,7 +25,7 @@ export function SpecializedServiceFormPage({ serviceKey }: { serviceKey: string 
     }
   })
   const [ownership, setOwnership] = useState(draft.ownershipType === 'owned' ? 'owned' : 'rent')
-  const [coords, setCoords] = useState({ lat: 31.045, lng: 46.258 })
+  const [location, setLocation] = useState<PickedLocation | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [propertyDocument, setPropertyDocument] = useState<File | null>(null)
@@ -60,6 +51,7 @@ export function SpecializedServiceFormPage({ serviceKey }: { serviceKey: string 
     }
     if (!faceVideo || !faceConsent)
       return setError('التقط فيديو توثيق الوجه القصير ووافق على إرفاقه مع الطلب قبل الإرسال.')
+    if (!location) return setError('حدد موقع المحل على الخريطة أو اكتب العنوان واختره من النتائج.')
     if (service.key === 'store-license' && (!propertyDocument || !storefrontPhoto))
       return setError(`صوّر أو ارفع ${ownership === 'rent' ? 'عقد الإيجار' : 'سند الملكية'} وصورة واجهة المحل أولاً.`)
     setBusy(true)
@@ -69,7 +61,7 @@ export function SpecializedServiceFormPage({ serviceKey }: { serviceKey: string 
         serviceName: service.title,
         department: service.department,
         ...data,
-        coordinates: coords,
+        coordinates: { lat: location.lat, lng: location.lng },
         fee: service.fee,
         propertyDocument,
         storefrontPhoto,
@@ -187,40 +179,13 @@ export function SpecializedServiceFormPage({ serviceKey }: { serviceKey: string 
               <span>3</span>
               <div>
                 <h2>موقع المحل</h2>
-                <p>حدده على الخريطة لتوجيه الكشف إلى الفريق الصحيح.</p>
+                <p>
+                  حدده على الخريطة الحقيقية، أو اضغط «موقعي الحالي»، أو اكتب العنوان واختره — يوجَّه فريق الكشف إليه
+                  مباشرة.
+                </p>
               </div>
             </div>
-            <div
-              className="location-picker"
-              onClick={event => {
-                const rect = event.currentTarget.getBoundingClientRect()
-                setCoords({
-                  lat: 31.02 + (1 - (event.clientY - rect.top) / rect.height) * 0.06,
-                  lng: 46.22 + ((event.clientX - rect.left) / rect.width) * 0.08,
-                })
-              }}
-            >
-              <div className="map-grid-lines" />
-              <span className="map-river" />
-              <div
-                className="map-pin-selected"
-                style={{
-                  left: `${((coords.lng - 46.22) / 0.08) * 100}%`,
-                  top: `${(1 - (coords.lat - 31.02) / 0.06) * 100}%`,
-                }}
-              >
-                <MapPin />
-              </div>
-              <span className="map-label l1">مركز الناصرية</span>
-              <span className="map-label l2">نهر الفرات</span>
-            </div>
-            <div className="coordinate-row">
-              <span>خط العرض: {coords.lat.toFixed(5)}</span>
-              <span>خط الطول: {coords.lng.toFixed(5)}</span>
-              <span>
-                <CheckCircle2 /> تم تحديد الموقع
-              </span>
-            </div>
+            <LocationPicker value={location} onChange={setLocation} height={340} />
           </section>
           <section className="form-card">
             <div className="form-card-title">

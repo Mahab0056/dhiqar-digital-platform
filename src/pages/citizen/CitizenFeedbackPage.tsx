@@ -16,6 +16,7 @@ import {
   X,
 } from 'lucide-react'
 import { api } from '../../api'
+import { LocationPicker, type PickedLocation } from '../../components/maps/LocationPicker'
 import { defaultStats } from '../../data'
 import type { CitizenFeedback } from '../../types'
 import { PortalLayout } from '../../components/citizen/PortalLayout'
@@ -30,24 +31,11 @@ export function CitizenFeedbackPage() {
   const [subject, setSubject] = useState('')
   const [description, setDescription] = useState('')
   const [attachments, setAttachments] = useState<File[]>([])
-  const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null)
-  const [locationState, setLocationState] = useState('')
+  const [location, setLocation] = useState<PickedLocation | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [created, setCreated] = useState<CitizenFeedback | null>(null)
   const categories = feedbackCategories[kind]
-  const getLocation = () => {
-    if (!navigator.geolocation) return setLocationState('متصفحك لا يدعم تحديد الموقع. يمكنك الإرسال بدون موقع.')
-    setLocationState('جاري تحديد موقع البلاغ...')
-    navigator.geolocation.getCurrentPosition(
-      position => {
-        setLocation({ lat: position.coords.latitude, lng: position.coords.longitude })
-        setLocationState('تم تحديد الموقع. يمكنك تعديل الوصف قبل الإرسال.')
-      },
-      () => setLocationState('تعذر تحديد الموقع. تحقق من إذن الموقع أو أكمل الإرسال بدونه.'),
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
-    )
-  }
   const onFiles = (files: FileList | null) => {
     const selected = Array.from(files || []).slice(0, 3)
     const allowed = selected.every(file => file.type.startsWith('image/') || file.type === 'application/pdf')
@@ -228,17 +216,16 @@ export function CitizenFeedbackPage() {
               </div>
             </div>
             <div className="feedback-evidence-grid">
-              <div className="feedback-location">
-                <MapPin />
-                <strong>{location ? 'تم تحديد موقع البلاغ' : 'حدد موقع البلاغ'}</strong>
-                <p>
-                  {location
-                    ? `${location.lat.toFixed(5)}, ${location.lng.toFixed(5)}`
-                    : locationState || 'يمكنك الإرسال بدون الموقع إذا كانت التفاصيل كافية.'}
-                </p>
-                <button className="button outline" type="button" onClick={getLocation}>
-                  <MapPin /> {location ? 'تحديث الموقع' : 'استخدم موقعي'}
-                </button>
+              <div className="feedback-location wide">
+                <strong>
+                  <MapPin /> موقع البلاغ <small>اختياري — يسرّع توجيه الفريق</small>
+                </strong>
+                <LocationPicker
+                  value={location}
+                  onChange={setLocation}
+                  height={300}
+                  placeholder="اكتب عنوان البلاغ: الحي، الشارع، أقرب معلم…"
+                />
               </div>
               <label className="feedback-upload">
                 <input
