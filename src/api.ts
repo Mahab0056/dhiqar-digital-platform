@@ -28,8 +28,10 @@ import type {
   DepartmentSummary,
 } from './types'
 
-const readableRequestError = (status: number, message?: string) => {
-  if (status === 401) return 'انتهت جلسة الدخول أو لا تملك صلاحية الإرسال. سجّل الدخول من جديد ثم أعد المحاولة.'
+const readableRequestError = (status: number, message?: string, path = '') => {
+  // login endpoints return 401 for wrong credentials — show the server's own explanation there
+  if (status === 401 && !/\/login$/.test(path))
+    return 'انتهت جلسة الدخول أو لا تملك صلاحية الإرسال. سجّل الدخول من جديد ثم أعد المحاولة.'
   if (status === 413) return 'حجم أحد المرفقات أكبر من المسموح. صوّر الملف بدقة أقل أو اختر ملفاً أصغر ثم أعد الإرسال.'
   if (status === 429) return 'تجاوزت عدد المحاولات المسموح حالياً. انتظر دقائق قليلة ثم أعد المحاولة.'
   return message || 'تعذر تنفيذ الطلب. تحقق من البيانات ثم أعد المحاولة.'
@@ -50,7 +52,7 @@ const request = async <T>(path: string, options?: RequestInit): Promise<T> => {
   }
   if (!response.ok) {
     const payload = (await response.json().catch(() => ({ message: '' }))) as { message?: string }
-    throw new Error(readableRequestError(response.status, payload.message))
+    throw new Error(readableRequestError(response.status, payload.message, path))
   }
   return response.json() as Promise<T>
 }
