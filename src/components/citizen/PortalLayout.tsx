@@ -10,6 +10,7 @@ import {
   BriefcaseBusiness,
   Building2,
   CalendarDays,
+  Fingerprint,
   FileArchive,
   FileText,
   Gauge,
@@ -205,9 +206,10 @@ export function PortalLayout({
     role === 'citizen'
       ? citizenNav
       : [
-          { icon: Gauge, label: 'لوحة العمل', href: '/employee#workboard' },
-          { icon: FileText, label: 'المعاملات', href: '/employee#employee-applications' },
-          { icon: CalendarDays, label: 'الكشوفات', href: '/employee#employee-service-requests' },
+          { icon: Gauge, label: 'طلبات الخدمات', href: '/employee#employee-service-requests' },
+          { icon: FileText, label: 'معاملات إجازة المحل', href: '/employee#employee-applications' },
+          { icon: Fingerprint, label: 'مراجعة الهوية', href: '/employee#employee-identity-reviews' },
+          { icon: MessageSquareWarning, label: 'الشكاوى', href: '/employee#employee-feedback' },
           { icon: FileArchive, label: 'الأرشيف', href: '/employee#employee-archive' },
           { icon: Activity, label: 'سجل الإجراءات', href: '/employee#employee-activity' },
           { icon: KeyRound, label: 'الأمان والحساب', href: '/staff/security' },

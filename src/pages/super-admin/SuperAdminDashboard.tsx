@@ -10,14 +10,18 @@ import {
   FileText,
   Fingerprint,
   Landmark,
+  LayoutDashboard,
   Map,
   RefreshCw,
+  UsersRound,
+  Database,
   ShieldCheck,
 } from 'lucide-react'
 import { api } from '../../api'
 import { auditActionLabel } from '../../audit-labels'
 import { OperationsShell } from '../../components/operations/OperationsShell'
 import { NewRequestAlertsPanel } from '../../components/shared/NewRequestAlertsPanel'
+import { WorkspaceTabs } from '../../components/shared/WorkspaceTabs'
 import { AdminCitizensPanel } from './AdminCitizensPanel'
 import { DepartmentManagementPanel } from './DepartmentManagementPanel'
 import { GovernmentServiceAdminPanel } from './GovernmentServiceAdminPanel'
@@ -106,127 +110,141 @@ export function SuperAdminDashboard() {
           <AlertTriangle /> {error}
         </div>
       )}
-      <section className="ops-kpis super-admin-kpis">
-        <div>
-          <span>
-            <Fingerprint />
-          </span>
-          <small>مراجعات الهوية</small>
-          <strong>{system.pendingIdentity.toLocaleString('en-US')}</strong>
-          <em>بانتظار القرار</em>
-        </div>
-        <div>
-          <span>
-            <FileText />
-          </span>
-          <small>طلبات مفتوحة</small>
-          <strong>{system.openApplications.toLocaleString('en-US')}</strong>
-          <em>تحتاج متابعة</em>
-        </div>
-        <div>
-          <span>
-            <Building2 />
-          </span>
-          <small>دوائر موثقة</small>
-          <strong>{system.verifiedDepartments.toLocaleString('en-US')}</strong>
-          <em>ضمن السجل</em>
-        </div>
-        <div>
-          <span>
-            <Map />
-          </span>
-          <small>مواقع GIS</small>
-          <strong>{system.gisLocations.toLocaleString('en-US')}</strong>
-          <em>إحداثيات متحققة</em>
-        </div>
-      </section>
-      <section className="super-admin-grid">
-        <article className="dark-panel super-admin-actions">
-          <div className="panel-heading">
-            <div>
-              <span className="section-kicker">مراكز الإدارة</span>
-              <h2>الوصول التشغيلي</h2>
-              <p>كل مسار يفتح وظيفة فعلية ضمن جلسة المدير العام.</p>
-            </div>
-            <ShieldCheck />
-          </div>
-          <div className="super-admin-action-list">
-            <Link href="/operations">
-              <Map />
-              <span>
-                <strong>غرفة العمليات</strong>
-                <small>GIS، صحة المنظومة، الدوائر والمالية</small>
-              </span>
-              <ArrowLeft />
-            </Link>
-            <Link href="/employee">
-              <FileArchive />
-              <span>
-                <strong>المعاملات ومراجعة الهوية</strong>
-                <small>قائمة العمل، المرفقات والقرارات</small>
-              </span>
-              <ArrowLeft />
-            </Link>
-            <Link href="/governor">
-              <Landmark />
-              <span>
-                <strong>لوحة المحافظ</strong>
-                <small>ملخص تنفيذي من السجلات المتاحة</small>
-              </span>
-              <ArrowLeft />
-            </Link>
-            <Link href="/">
-              <Bell />
-              <span>
-                <strong>الأخبار والخدمات</strong>
-                <small>مراجعة واجهة المواطن والمحتوى المنشور</small>
-              </span>
-              <ArrowLeft />
-            </Link>
-          </div>
-        </article>
-        <article className="dark-panel super-admin-audit">
-          <div className="panel-heading">
-            <div>
-              <span className="section-kicker">سجل التدقيق</span>
-              <h2>آخر الإجراءات المسجلة</h2>
-              <p>سجل القراءة والمراجعة والجلسات، دون إظهار محتوى الهوية.</p>
-            </div>
-            <FileCheck2 />
-          </div>
-          {loading ? (
-            <div className="loading-state">
-              <RefreshCw className="spin" /> جاري تحميل سجل التدقيق...
-            </div>
-          ) : overview?.recentAudit.length ? (
-            <div className="super-admin-audit-list">
-              {overview.recentAudit.map((entry, index) => (
-                <div key={`${entry.entityId}-${index}`}>
-                  <span className={`audit-role ${entry.role.toLowerCase()}`}>{entry.role}</span>
+      <WorkspaceTabs
+        ariaLabel="أقسام إدارة المنصة"
+        tabs={[
+          {
+            id: 'overview',
+            label: 'نظرة عامة',
+            icon: LayoutDashboard,
+            content: (
+              <>
+                <section className="ops-kpis super-admin-kpis">
                   <div>
-                    <strong>{auditActionLabel(entry.action)}</strong>
-                    <small>
-                      {entry.actor} • {entry.entityType} / {entry.entityId}
-                    </small>
+                    <span>
+                      <Fingerprint />
+                    </span>
+                    <small>مراجعات الهوية</small>
+                    <strong>{system.pendingIdentity.toLocaleString('en-US')}</strong>
+                    <em>بانتظار القرار</em>
                   </div>
-                  <time>{new Date(entry.createdAt).toLocaleString('en-GB')}</time>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="empty-queue">
-              <FileCheck2 />
-              <p>لا توجد إجراءات مسجلة بعد.</p>
-            </div>
-          )}
-        </article>
-      </section>
-      <StaffAccountsPanel />
-      <NewRequestAlertsPanel scope="admin" />
-      <AdminCitizensPanel />
-      <DepartmentManagementPanel />
-      <GovernmentServiceAdminPanel />
-      <SystemHealthPanel />
+                  <div>
+                    <span>
+                      <FileText />
+                    </span>
+                    <small>طلبات مفتوحة</small>
+                    <strong>{system.openApplications.toLocaleString('en-US')}</strong>
+                    <em>تحتاج متابعة</em>
+                  </div>
+                  <div>
+                    <span>
+                      <Building2 />
+                    </span>
+                    <small>دوائر موثقة</small>
+                    <strong>{system.verifiedDepartments.toLocaleString('en-US')}</strong>
+                    <em>ضمن السجل</em>
+                  </div>
+                  <div>
+                    <span>
+                      <Map />
+                    </span>
+                    <small>مواقع GIS</small>
+                    <strong>{system.gisLocations.toLocaleString('en-US')}</strong>
+                    <em>إحداثيات متحققة</em>
+                  </div>
+                </section>
+                <section className="super-admin-grid">
+                  <article className="dark-panel super-admin-actions">
+                    <div className="panel-heading">
+                      <div>
+                        <span className="section-kicker">مراكز الإدارة</span>
+                        <h2>الوصول التشغيلي</h2>
+                        <p>كل مسار يفتح وظيفة فعلية ضمن جلسة المدير العام.</p>
+                      </div>
+                      <ShieldCheck />
+                    </div>
+                    <div className="super-admin-action-list">
+                      <Link href="/operations">
+                        <Map />
+                        <span>
+                          <strong>غرفة العمليات</strong>
+                          <small>GIS، صحة المنظومة، الدوائر والمالية</small>
+                        </span>
+                        <ArrowLeft />
+                      </Link>
+                      <Link href="/employee">
+                        <FileArchive />
+                        <span>
+                          <strong>المعاملات ومراجعة الهوية</strong>
+                          <small>قائمة العمل، المرفقات والقرارات</small>
+                        </span>
+                        <ArrowLeft />
+                      </Link>
+                      <Link href="/governor">
+                        <Landmark />
+                        <span>
+                          <strong>لوحة المحافظ</strong>
+                          <small>ملخص تنفيذي من السجلات المتاحة</small>
+                        </span>
+                        <ArrowLeft />
+                      </Link>
+                      <Link href="/">
+                        <Bell />
+                        <span>
+                          <strong>الأخبار والخدمات</strong>
+                          <small>مراجعة واجهة المواطن والمحتوى المنشور</small>
+                        </span>
+                        <ArrowLeft />
+                      </Link>
+                    </div>
+                  </article>
+                  <article className="dark-panel super-admin-audit">
+                    <div className="panel-heading">
+                      <div>
+                        <span className="section-kicker">سجل التدقيق</span>
+                        <h2>آخر الإجراءات المسجلة</h2>
+                        <p>سجل القراءة والمراجعة والجلسات، دون إظهار محتوى الهوية.</p>
+                      </div>
+                      <FileCheck2 />
+                    </div>
+                    {loading ? (
+                      <div className="loading-state">
+                        <RefreshCw className="spin" /> جاري تحميل سجل التدقيق...
+                      </div>
+                    ) : overview?.recentAudit.length ? (
+                      <div className="super-admin-audit-list">
+                        {overview.recentAudit.map((entry, index) => (
+                          <div key={`${entry.entityId}-${index}`}>
+                            <span className={`audit-role ${entry.role.toLowerCase()}`}>{entry.role}</span>
+                            <div>
+                              <strong>{auditActionLabel(entry.action)}</strong>
+                              <small>
+                                {entry.actor} • {entry.entityType} / {entry.entityId}
+                              </small>
+                            </div>
+                            <time>{new Date(entry.createdAt).toLocaleString('en-GB')}</time>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="empty-queue">
+                        <FileCheck2 />
+                        <p>لا توجد إجراءات مسجلة بعد.</p>
+                      </div>
+                    )}
+                  </article>
+                </section>
+              </>
+            ),
+          },
+          { id: 'requests', label: 'الطلبات الواردة', icon: Bell, content: <NewRequestAlertsPanel scope="admin" /> },
+          { id: 'staff', label: 'الموظفون والصلاحيات', icon: UsersRound, content: <StaffAccountsPanel /> },
+          { id: 'citizens', label: 'سجل المواطنين', icon: Fingerprint, content: <AdminCitizensPanel /> },
+          { id: 'departments', label: 'الدوائر والخدمات', icon: Building2, content: <DepartmentManagementPanel /> },
+          { id: 'national', label: 'الخدمات الوطنية', icon: Landmark, content: <GovernmentServiceAdminPanel /> },
+          { id: 'system', label: 'النظام والنسخ الاحتياطي', icon: Database, content: <SystemHealthPanel /> },
+        ]}
+      />
     </OperationsShell>
   )
 }
