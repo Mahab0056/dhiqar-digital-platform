@@ -46,6 +46,22 @@ const unavailable = (
   faceComparison: { status: 'MANUAL_REVIEW_REQUIRED', confidence: null },
 })
 
+/** Resolves to an "unavailable" result if the analysis takes longer than `ms`. */
+async function withTimeout(work: Promise<IdentityAnalysisResult>, ms: number): Promise<IdentityAnalysisResult> {
+  let timer: NodeJS.Timeout | undefined
+  const guard = new Promise<IdentityAnalysisResult>(resolve => {
+    timer = setTimeout(() => resolve(unavailable('PROVIDER_UNAVAILABLE', 'PROVIDER_UNAVAILABLE')), ms)
+  })
+  try {
+    return await Promise.race([
+      work.catch(() => unavailable('PROVIDER_UNAVAILABLE', 'PROVIDER_UNAVAILABLE')),
+      guard,
+    ])
+  } finally {
+    if (timer) clearTimeout(timer)
+  }
+}
+
 export async function analyzeIdentityDocument(input: {
   documentType: IdentityDocumentType
   documentImage: { buffer: Buffer; mimeType: string }
@@ -56,7 +72,12 @@ export async function analyzeIdentityDocument(input: {
   const endpoint = process.env.IDENTITY_DOCUMENT_AI_ENDPOINT?.trim()
   const apiKey = process.env.IDENTITY_DOCUMENT_AI_KEY?.trim()
   if (!endpoint || !apiKey)
-    return analyzeIdentityDocumentLocally({ documentType: input.documentType, documentImage: input.documentImage })
+    // the local OCR engine downloads its language data on first use; a slow or blocked download
+    // must never hold a citizen's submission open — the reviewer sees "unavailable" instead
+    return withTimeout(
+      analyzeIdentityDocumentLocally({ documentType: input.documentType, documentImage: input.documentImage }),
+      Number(process.env.IDENTITY_OCR_TIMEOUT_MS || 12_000)
+    )
   try {
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 12_000)
