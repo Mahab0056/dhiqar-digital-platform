@@ -605,3 +605,42 @@
   font-size: 13px;
   line-height: 1.7;
 }
+
+/* system health: measured rows with status colour + detail */
+.health-row {
+  grid-template-columns: 150px 1fr auto;
+}
+.health-row b {
+  display: grid;
+  text-align: left;
+  min-width: 120px;
+}
+.health-row b small {
+  font-weight: 500;
+  font-size: 12px;
+  opacity: 0.75;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 220px;
+}
+.health-row.health-warn i {
+  background: linear-gradient(90deg, #a56a12, #e8b95a);
+}
+.health-row.health-off i {
+  background: linear-gradient(90deg, #7c2530, #d24b5e);
+}
+.health-row.health-warn b {
+  color: #e8c27a;
+}
+.health-row.health-off b {
+  color: #f08a99;
+}
+@media (max-width: 600px) {
+  .health-row {
+    grid-template-columns: 1fr auto;
+  }
+  .health-row > div {
+    grid-column: 1 / -1;
+  }
+}

@@ -4,8 +4,105 @@ import { paymentsSummary } from '../payments/intents.js'
 import { db } from '../db.js'
 import { registrySummary } from '../department-registry.js'
 import { getRegistryDepartments } from '../departments.js'
+import { databaseStats, integrityCheck, listBackups } from '../db-ops/backup.js'
+import { pushEnabled } from '../push.js'
+import { otpDevMode } from '../otp.js'
+import { faceMatchAvailable } from '../face-match.js'
+import { paymentProvider } from '../payments/providers.js'
+
+export type HealthComponent = {
+  key: string
+  label: string
+  status: 'OK' | 'WARN' | 'OFF'
+  detail: string
+}
+
+/** Real measurements only — every row is derived from configuration or live counters, never hard-coded. */
+function systemHealth(): { generatedAt: string; components: HealthComponent[] } {
+  const components: HealthComponent[] = []
+  let integrity = 'ok'
+  try {
+    const check = integrityCheck()
+    integrity = check.ok ? 'ok' : check.detail.join(', ') || 'خلل'
+  } catch {
+    integrity = 'unknown'
+  }
+  const stats = databaseStats()
+  const backups = listBackups()
+  const lastBackup = backups[0]?.createdAt || null
+  const backupAgeHours = lastBackup ? (Date.now() - new Date(lastBackup).getTime()) / 36e5 : null
+  components.push({
+    key: 'database',
+    label: 'قاعدة البيانات',
+    status: integrity === 'ok' ? 'OK' : 'WARN',
+    detail: `${(stats.sizeBytes / (1024 * 1024)).toFixed(1)} MB • ${stats.journalMode.toUpperCase()} • الفحص: ${integrity === 'ok' ? 'سليم' : integrity}`,
+  })
+  components.push({
+    key: 'backups',
+    label: 'النسخ الاحتياطي',
+    status: backupAgeHours === null ? 'WARN' : backupAgeHours <= 30 ? 'OK' : 'WARN',
+    detail:
+      backupAgeHours === null
+        ? 'لم تُنشأ نسخة بعد'
+        : `آخر نسخة قبل ${Math.max(1, Math.round(backupAgeHours))} ساعة • ${backups.length} نسخة محفوظة`,
+  })
+  const media = db
+    .prepare(
+      `SELECT COUNT(*) AS total, COALESCE(SUM(size_bytes), 0) AS bytes FROM media_objects WHERE deleted_at IS NULL`
+    )
+    .get() as { total: number; bytes: number }
+  components.push({
+    key: 'media',
+    label: 'التخزين والمرفقات المشفرة',
+    status: process.env.MEDIA_ENCRYPTION_KEY ? 'OK' : 'OFF',
+    detail: process.env.MEDIA_ENCRYPTION_KEY
+      ? `${media.total.toLocaleString('en-US')} ملف • ${(Number(media.bytes) / (1024 * 1024)).toFixed(1)} MB`
+      : 'مفتاح التشفير غير مهيأ',
+  })
+  components.push({
+    key: 'otp',
+    label: 'رسائل التحقق (OTP)',
+    status: process.env.OTPIQ_API_KEY ? 'OK' : otpDevMode() ? 'WARN' : 'OFF',
+    detail: process.env.OTPIQ_API_KEY ? 'مزود OTPIQ مهيأ' : otpDevMode() ? 'وضع تطوير — رمز ثابت' : 'المزود غير مهيأ',
+  })
+  const provider = paymentProvider()
+  components.push({
+    key: 'payments',
+    label: 'بوابة الدفع',
+    status: provider ? (provider.mode === 'LIVE' ? 'OK' : 'WARN') : 'OFF',
+    detail: provider
+      ? provider.mode === 'LIVE'
+        ? `${provider.name} — دفع حقيقي`
+        : `${provider.name} — ${provider.mode === 'SANDBOX' ? 'محاكاة (لا يُخصم مال)' : 'بيئة اختبار'}`
+      : 'غير مربوطة — الرسوم تُستوفى في الدائرة',
+  })
+  components.push({
+    key: 'push',
+    label: 'الإشعارات الفورية',
+    status: pushEnabled() ? 'OK' : 'OFF',
+    detail: pushEnabled() ? 'مفاتيح VAPID مهيأة' : 'مفاتيح VAPID غير مهيأة',
+  })
+  components.push({
+    key: 'identity',
+    label: 'التحقق الآلي من الهوية',
+    status: faceMatchAvailable() ? 'OK' : 'WARN',
+    detail: faceMatchAvailable() ? 'مطابقة الوجه والاسم فعّالة — القرار بشري' : 'محرك المطابقة غير مفعّل — مراجعة بشرية فقط',
+  })
+  const uptimeHours = process.uptime() / 3600
+  components.push({
+    key: 'api',
+    label: 'خدمة المنصة (API)',
+    status: 'OK',
+    detail: `تعمل منذ ${uptimeHours < 1 ? `${Math.round(uptimeHours * 60)} دقيقة` : `${uptimeHours.toFixed(1)} ساعة`} • Node ${process.version}`,
+  })
+  return { generatedAt: new Date().toISOString(), components }
+}
 
 export function registerOperationsRoutes(app: express.Express) {
+  app.get('/api/operations/health', requireSession('OPERATIONS', 'SUPER_ADMIN'), (_req, res) => {
+    res.json(systemHealth())
+  })
+
   app.post(
     '/api/presence/heartbeat',
     requireSession('CITIZEN', 'EMPLOYEE', 'IDENTITY_REVIEWER', 'OPERATIONS', 'SUPER_ADMIN'),

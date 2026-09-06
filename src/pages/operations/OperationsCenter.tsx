@@ -36,6 +36,24 @@ export function OperationsCenter() {
   const { session } = useSession()
   const [stats, setStats] = useState(defaultStats)
   const [now, setNow] = useState(() => new Date())
+  const [health, setHealth] = useState<
+    Array<{ key: string; label: string; status: 'OK' | 'WARN' | 'OFF'; detail: string }>
+  >([])
+  const [paymentMode, setPaymentMode] = useState<string>('UNAVAILABLE')
+  useEffect(() => {
+    const loadHealth = () =>
+      api
+        .getOperationsHealth()
+        .then(result => setHealth(result.components))
+        .catch(() => {})
+    loadHealth()
+    api
+      .getPaymentConfig()
+      .then(config => setPaymentMode(config.mode))
+      .catch(() => {})
+    const timer = window.setInterval(loadHealth, 60_000)
+    return () => window.clearInterval(timer)
+  }, [])
   useEffect(() => {
     api
       .getStats()
@@ -130,7 +148,13 @@ export function OperationsCenter() {
           </span>
           <small>التحصيل اليوم</small>
           <strong>{formatIQD(stats.financialCollection)}</strong>
-          <em>تسويات مؤكدة</em>
+          <em>
+            {paymentMode === 'LIVE'
+              ? 'تسويات مؤكدة من البوابة'
+              : paymentMode === 'UNAVAILABLE'
+                ? 'لا بوابة دفع — الرسوم في الدائرة'
+                : 'محاكاة — لا أموال حقيقية'}
+          </em>
         </div>
         <div>
           <span>
@@ -192,19 +216,17 @@ export function OperationsCenter() {
               </div>
               <Activity />
             </div>
-            {[
-              ['سجل المعاملات', 'بيانات المنصة'],
-              ['قاعدة البيانات', 'تحتاج مراقبة'],
-              ['التخزين والمرفقات', 'تحتاج مراقبة'],
-              ['خدمة الرسائل', 'مفعّلة بضوابط'],
-              ['التحقق والهوية', 'مراجعة بشرية'],
-            ].map(([name, value]) => (
-              <div className="health-row" key={String(name)}>
-                <span>{name}</span>
+            {health.length === 0 && <div className="health-row muted">جاري قياس حالة المكونات…</div>}
+            {health.map(component => (
+              <div className={`health-row health-${component.status.toLowerCase()}`} key={component.key}>
+                <span>{component.label}</span>
                 <div>
-                  <i style={{ width: value === 'بيانات المنصة' ? '65%' : '35%' }} />
+                  <i style={{ width: component.status === 'OK' ? '100%' : component.status === 'WARN' ? '55%' : '12%' }} />
                 </div>
-                <b>{value}</b>
+                <b title={component.detail}>
+                  {component.status === 'OK' ? 'سليم' : component.status === 'WARN' ? 'يحتاج انتباه' : 'غير مفعّل'}
+                  <small>{component.detail}</small>
+                </b>
               </div>
             ))}
           </div>
@@ -253,13 +275,19 @@ export function OperationsCenter() {
               <small>لا تُعرض تنبيهات SLA أو أزمنة استجابة قبل ربط مصدر قياس معتمد.</small>
             </span>
           </div>
-          <div className="alert-item low">
-            <CircleDollarSign />
-            <span>
-              <strong>بوابة الدفع تحتاج الربط</strong>
-              <small>لا تصدر وثيقة مدفوعة ولا يسجل تحصيل قبل مزود دفع وتطابق Webhook.</small>
-            </span>
-          </div>
+          {paymentMode !== 'LIVE' && (
+            <div className="alert-item low">
+              <CircleDollarSign />
+              <span>
+                <strong>{paymentMode === 'UNAVAILABLE' ? 'بوابة الدفع غير مربوطة' : 'بوابة الدفع في وضع المحاكاة'}</strong>
+                <small>
+                  {paymentMode === 'UNAVAILABLE'
+                    ? 'الرسوم الرسمية تُستوفى في الدائرة ولا تُعفى؛ يُفعّل الدفع الإلكتروني عند ربط المزود.'
+                    : 'المبالغ المعروضة تجريبية ولا تمثل تحصيلاً فعلياً حتى تفعيل الوضع الحقيقي.'}
+                </small>
+              </span>
+            </div>
+          )}
         </div>
       </section>
       <NewRequestAlertsPanel scope="operations" />

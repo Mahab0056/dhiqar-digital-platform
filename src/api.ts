@@ -278,6 +278,11 @@ export const api = {
       body: JSON.stringify({ endpoint }),
     }),
   getPaymentConfig: () => request<PaymentConfig>('/api/payments/config'),
+  getOperationsHealth: () =>
+    request<{
+      generatedAt: string
+      components: Array<{ key: string; label: string; status: 'OK' | 'WARN' | 'OFF'; detail: string }>
+    }>('/api/operations/health'),
   getPayment: (reference: string) => request<PaymentIntent>(`/api/citizen/payments/${encodeURIComponent(reference)}`),
   startCheckout: (reference: string) =>
     request<{ checkoutUrl: string; mode: string; provider: string }>(
