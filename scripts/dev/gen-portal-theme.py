@@ -80,9 +80,11 @@ for media, sel, body in rules(css):
                   '.secret-box', '.score-ring', '.staff-create', '.audit', '.operations')
     ACCENT = ('.button', '.primary', 'badge', '.status', '.chip', '.pill', '.tag', 'active', '.brand', '.role-chip', '.section-kicker', '.hero')
     is_dark_shell = any(k in sel for k in DARK_SHELL)
-    has_dark_bg = any(d.startswith('background') for d in light)
     is_accent = any(a in sel for a in ACCENT)
-    if light and (has_dark_bg or is_dark_shell) and not is_accent:
+    # Only real ops/admin shells get a day mode. Dark-native *citizen/public* blocks (footer, hero bands,
+    # service headers, login backdrops) keep their own colours in both themes — turning their background white
+    # without changing their (light) text made them unreadable.
+    if light and is_dark_shell and not is_accent:
         light_over.setdefault(media, []).append((sel, light))
     if dark and not is_dark_shell and not is_accent:
         dark_over.setdefault(media, []).append((sel, dark))

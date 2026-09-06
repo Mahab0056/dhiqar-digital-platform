@@ -14,21 +14,21 @@ export function Footer() {
         </div>
         <div>
           <strong>الخدمات والمنصة</strong>
-          <Link href="/#services">الخدمات الحكومية</Link>
+          <Link href="/directory">دليل الخدمات الحكومية</Link>
           <Link href="/departments">دليل الدوائر</Link>
-          <Link href="/directory">الخدمات الحكومية</Link>
-          <Link href="/citizen#my-requests">متابعة المعاملات</Link>
+          <Link href="/citizen">لوحة المواطن ومتابعة المعاملات</Link>
           <Link href="/citizen/feedback">الشكاوى والمقترحات</Link>
+          <Link href="/staff/login">دخول الموظفين</Link>
         </div>
-        <div id="privacy">
+        <div>
           <strong>المعلومات والثقة</strong>
           <Link href="/verify">التحقق من الوثائق</Link>
-          <a href="#privacy">سياسة الخصوصية</a>
+          <Link href="/privacy">سياسة الخصوصية</Link>
           <Link href="/terms">شروط الاستخدام</Link>
-          <a href="#accessibility">إمكانية الوصول</a>
+          <Link href="/accessibility">إمكانية الوصول</Link>
         </div>
       </div>
-      <div className="container footer-bottom" id="accessibility">
+      <div className="container footer-bottom">
         <span>جميع الحقوق محفوظة © محافظة ذي قار</span>
         <span>واجهة عربية • دعم RTL • أرقام إنجليزية • متوافق مع الهاتف</span>
       </div>

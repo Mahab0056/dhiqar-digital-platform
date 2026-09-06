@@ -221,7 +221,8 @@ function fieldScore(words: string[], token: string, weight: number) {
   let best = 0
   for (const word of words) {
     if (word === token) best = Math.max(best, 1)
-    else if (word.startsWith(token) || token.startsWith(word)) best = Math.max(best, 0.6)
+    else if (Math.min(word.length, token.length) >= 3 && (word.startsWith(token) || token.startsWith(word)))
+      best = Math.max(best, 0.6)
     else {
       const score = similarity(word, token)
       if (score >= 0.66) best = Math.max(best, score * 0.5)
@@ -266,6 +267,8 @@ export function searchCatalog(query: string, limit = 12): { hits: SearchHit[]; t
     // long queries need at least half of the words.
     const required = tokens.length <= 2 ? tokens.length : Math.ceil(tokens.length / 2)
     if (matched < required) continue
+    // a hit that only brushes the description with a weak fuzzy match is noise, not a result
+    if (score < 1) continue
     if (item.service.channel === 'ONLINE_SUBMISSION') score += 0.6
     if (item.service.sourceQuality === 'OFFICIAL') score += 0.4
     if (item.service.mode !== 'CATALOG') score += 0.3

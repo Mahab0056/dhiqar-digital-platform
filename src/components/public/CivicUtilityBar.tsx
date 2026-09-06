@@ -40,11 +40,11 @@ export function CivicUtilityBar() {
           <button type="button" onClick={toggle} aria-pressed={theme === 'dark'}>
             {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />} {theme === 'dark' ? 'الوضع النهاري' : 'الوضع الليلي'}
           </button>
-          <a href="#accessibility">
+          <a href="/accessibility">
             <Accessibility size={14} /> إمكانية الوصول
           </a>
-          <span className="gov-utility-lang is-muted" title="النسخة الإنجليزية قيد الإعداد">
-            English
+          <span className="gov-utility-lang is-muted" title="النسخة الإنجليزية قيد الإعداد" aria-disabled="true">
+            English (قريباً)
           </span>
           <span className="gov-utility-lang is-active">
             <Globe size={14} /> العربية

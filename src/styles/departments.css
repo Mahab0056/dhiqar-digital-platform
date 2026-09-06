@@ -57,7 +57,7 @@
   align-items: end;
   padding: 16px;
   border-radius: 16px;
-  background: #fff;
+  background: var(--gov-surface);
   border: 1px solid var(--line-government, #d6dfd8);
 }
 .departments-toolbar label {
@@ -99,7 +99,7 @@
 .departments-map-card {
   border-radius: 18px;
   overflow: hidden;
-  background: #fff;
+  background: var(--gov-surface);
   border: 1px solid var(--line-government, #d6dfd8);
 }
 .departments-map {
@@ -139,7 +139,7 @@
   gap: 12px;
   padding: 18px;
   border-radius: 16px;
-  background: #fff;
+  background: var(--gov-surface);
   border: 1px solid var(--line-government, #d6dfd8);
   color: inherit;
   text-decoration: none;
@@ -220,7 +220,7 @@
   align-items: center;
   padding: 26px;
   border-radius: 20px;
-  background: #fff;
+  background: var(--gov-surface);
   border: 1px solid var(--line-government, #d6dfd8);
 }
 .department-hero-icon {
@@ -270,7 +270,7 @@
 .department-block {
   padding: 22px;
   border-radius: 16px;
-  background: #fff;
+  background: var(--gov-surface);
   border: 1px solid var(--line-government, #d6dfd8);
 }
 .department-block h2 {
@@ -351,7 +351,7 @@
   gap: 4px;
   padding: 16px;
   border-radius: 14px;
-  background: #fff;
+  background: var(--gov-surface);
   border: 1px solid #d8e2dc;
 }
 .department-kpis span {
@@ -375,12 +375,12 @@
 }
 .department-kpis strong {
   font-size: 24px;
-  line-height: 1.1;
+  line-height: 1.25;
 }
 .department-kpis em {
   font-style: normal;
   color: #8a9a91;
-  font-size: 11.5px;
+  font-size: 12px;
 }
 .department-grid {
   display: grid;
@@ -394,7 +394,7 @@
   align-content: start;
   padding: 20px;
   border-radius: 16px;
-  background: #fff;
+  background: var(--gov-surface);
   border: 1px solid #d8e2dc;
   min-width: 0;
 }

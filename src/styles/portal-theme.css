@@ -3,39 +3,6 @@
    Portal day/night theme derived from App.css: ops/admin surfaces get a light day mode,
    citizen/employee surfaces get a dark night mode. Tokens live in src/styles/portal-theme-tokens.css.
    ============================================================================================= */
-:root:not([data-gov-theme='dark']) .demo-ribbon {
-  background: var(--p-surface);
-  color: var(--p-text);
-}
-:root:not([data-gov-theme='dark']) .service-card.featured {
-  background: var(--p-surface);
-}
-:root:not([data-gov-theme='dark']) .phone-notch {
-  background: var(--p-surface);
-}
-:root:not([data-gov-theme='dark']) .phone-cards > div {
-  background: var(--p-surface);
-  color: var(--p-text);
-}
-:root:not([data-gov-theme='dark']) .government-strip {
-  background: var(--p-surface);
-  color: var(--p-text);
-}
-:root:not([data-gov-theme='dark']) .footer {
-  background: var(--p-surface);
-  color: var(--p-text);
-}
-:root:not([data-gov-theme='dark']) .face-preview {
-  background: var(--p-surface);
-}
-:root:not([data-gov-theme='dark']) .citizen-id-card {
-  color: var(--p-text);
-  background: var(--p-surface);
-}
-:root:not([data-gov-theme='dark']) .service-form-header {
-  color: var(--p-text);
-  background: var(--p-surface);
-}
 :root:not([data-gov-theme='dark']) .ops-shell {
   background: var(--p-surface);
   color: var(--p-text);
@@ -70,9 +37,6 @@
 :root:not([data-gov-theme='dark']) .ops-map-panel, :root:not([data-gov-theme='dark']) .dark-panel, :root:not([data-gov-theme='dark']) .governor-map-card, :root:not([data-gov-theme='dark']) .ranking-card, :root:not([data-gov-theme='dark']) .governor-chart-card, :root:not([data-gov-theme='dark']) .executive-alerts {
   background: var(--p-surface);
   border-color: var(--p-line);
-}
-:root:not([data-gov-theme='dark']) .department-marker.offline > span {
-  background: var(--p-surface);
 }
 :root:not([data-gov-theme='dark']) .health-row > div {
   background: var(--p-surface);
@@ -110,31 +74,6 @@
 :root:not([data-gov-theme='dark']) .priority-number {
   color: var(--p-text);
 }
-:root:not([data-gov-theme='dark']) .capture-preview {
-  background: var(--p-surface);
-}
-:root:not([data-gov-theme='dark']) .live-camera {
-  background: var(--p-surface);
-}
-:root:not([data-gov-theme='dark']) .live-camera-actions {
-  background: var(--p-surface);
-}
-:root:not([data-gov-theme='dark']) .review-media-card img, :root:not([data-gov-theme='dark']) .review-media-card video {
-  background: var(--p-surface);
-}
-:root:not([data-gov-theme='dark']) .scanner-camera {
-  background: var(--p-surface);
-}
-:root:not([data-gov-theme='dark']) .employee-media-preview {
-  background: var(--p-surface);
-}
-:root:not([data-gov-theme='dark']) .employee-media-preview button {
-  background: var(--p-surface);
-  color: var(--p-text);
-}
-:root:not([data-gov-theme='dark']) .employee-media-preview img, :root:not([data-gov-theme='dark']) .employee-media-preview video, :root:not([data-gov-theme='dark']) .employee-media-preview iframe {
-  background: var(--p-surface);
-}
 :root:not([data-gov-theme='dark']) .registry-table > div {
   border-bottom-color: var(--p-line);
 }
@@ -143,32 +82,6 @@
 }
 :root:not([data-gov-theme='dark']) .registry-table a {
   color: var(--p-text);
-}
-:root:not([data-gov-theme='dark']) .finance-total {
-  border-color: var(--p-line);
-  background: var(--p-surface);
-}
-:root:not([data-gov-theme='dark']) .procurement-section {
-  background: var(--p-surface);
-  color: var(--p-text);
-}
-:root:not([data-gov-theme='dark']) .civic-utility {
-  background: var(--p-surface);
-  color: var(--p-text);
-}
-:root:not([data-gov-theme='dark']) .national-service-page > header {
-  background: var(--p-surface);
-  color: var(--p-text);
-}
-:root:not([data-gov-theme='dark']) .news-slide-media {
-  background: var(--p-surface);
-}
-:root:not([data-gov-theme='dark']) .news-slide-copy a {
-  background: var(--p-surface);
-  color: var(--p-text);
-}
-:root:not([data-gov-theme='dark']) .news-slide-copy a:hover {
-  background: var(--p-surface);
 }
 :root:not([data-gov-theme='dark']) .super-admin-login-card {
   color: var(--p-text);
@@ -209,26 +122,6 @@
 :root:not([data-gov-theme='dark']) .super-admin-audit-list small, :root:not([data-gov-theme='dark']) .super-admin-audit-list time {
   color: var(--p-text);
 }
-:root:not([data-gov-theme='dark']) .citizen-v2-identity-card {
-  color: var(--p-text);
-  background: var(--p-surface);
-}
-:root:not([data-gov-theme='dark']) .citizen-progress-card {
-  background: var(--p-surface);
-  color: var(--p-text);
-}
-:root:not([data-gov-theme='dark']) .citizen-service-card.featured {
-  color: var(--p-text);
-  background: var(--p-surface);
-}
-:root:not([data-gov-theme='dark']) .feedback-submit {
-  color: var(--p-text);
-  background: var(--p-surface);
-}
-:root:not([data-gov-theme='dark']) .feedback-detail > header {
-  color: var(--p-text);
-  background: var(--p-surface);
-}
 :root:not([data-gov-theme='dark']) .registry-department-card {
   border-color: var(--p-line);
   background: var(--p-surface);
@@ -259,82 +152,6 @@
 }
 :root:not([data-gov-theme='dark']) .registry-feedback-flag {
   color: var(--p-text);
-  background: var(--p-surface);
-}
-:root:not([data-gov-theme='dark']) .camera-status-button {
-  border-color: var(--p-line);
-  background: var(--p-surface);
-  color: var(--p-text);
-}
-:root:not([data-gov-theme='dark']) .camera-status-button:hover {
-  background: var(--p-surface);
-}
-:root:not([data-gov-theme='dark']) .camera-status-dialog > article {
-  border-color: var(--p-line);
-  background: var(--p-surface);
-  color: var(--p-text);
-}
-:root:not([data-gov-theme='dark']) .camera-status-dialog header > span {
-  background: var(--p-surface);
-  color: var(--p-text);
-}
-:root:not([data-gov-theme='dark']) .camera-status-dialog header > button {
-  background: var(--p-surface);
-  color: var(--p-text);
-}
-:root:not([data-gov-theme='dark']) .civic-utility {
-  background: var(--p-surface);
-}
-:root:not([data-gov-theme='dark']) .nav-login:hover {
-  background: var(--p-surface);
-}
-:root:not([data-gov-theme='dark']) .heritage-caption {
-  background: var(--p-surface);
-}
-:root:not([data-gov-theme='dark']) .section-ink {
-  background: var(--p-surface);
-}
-:root:not([data-gov-theme='dark']) .service-card, :root:not([data-gov-theme='dark']) .service-card.featured {
-  background: var(--p-surface);
-}
-:root:not([data-gov-theme='dark']) .service-card.featured {
-  background: var(--p-surface);
-}
-:root:not([data-gov-theme='dark']) .government-strip {
-  background: var(--p-surface);
-}
-:root:not([data-gov-theme='dark']) .footer {
-  background: var(--p-surface);
-}
-:root:not([data-gov-theme='dark']) .security-note {
-  background: var(--p-surface);
-}
-:root:not([data-gov-theme='dark']) .citizen-v2-identity-card {
-  background: var(--p-surface);
-}
-:root:not([data-gov-theme='dark']) .citizen-progress-card {
-  background: var(--p-surface);
-}
-:root:not([data-gov-theme='dark']) .service-form-header {
-  background: var(--p-surface);
-}
-:root:not([data-gov-theme='dark']) .face-preview {
-  background: var(--p-surface);
-}
-:root:not([data-gov-theme='dark']) .liveness-chip {
-  background: var(--p-surface);
-  color: var(--p-text);
-}
-:root:not([data-gov-theme='dark']) .citizen-id-card {
-  background: var(--p-surface);
-}
-:root:not([data-gov-theme='dark']) .application-detail-header {
-  background: var(--p-surface);
-}
-:root:not([data-gov-theme='dark']) .feedback-submit {
-  background: var(--p-surface);
-}
-:root:not([data-gov-theme='dark']) .feedback-detail > header {
   background: var(--p-surface);
 }
 :root:not([data-gov-theme='dark']) .ops-shell {
@@ -419,27 +236,7 @@
 :root:not([data-gov-theme='dark']) .registry-transaction-metrics b {
   color: var(--p-text);
 }
-:root:not([data-gov-theme='dark']) .finance-total {
-  background: var(--p-surface);
-}
-:root:not([data-gov-theme='dark']) .camera-status-dialog header {
-  background: var(--p-surface);
-}
 :root:not([data-gov-theme='dark']) .super-admin-kpis > div {
-  background: var(--p-surface);
-}
-:root:not([data-gov-theme='dark']) .directory-hero {
-  color: var(--p-text);
-  background: var(--p-surface);
-}
-:root:not([data-gov-theme='dark']) .home-v3-hero {
-  background: var(--p-surface);
-}
-:root:not([data-gov-theme='dark']) .home-v3-search .search-submit {
-  background: var(--p-surface);
-  color: var(--p-text);
-}
-:root:not([data-gov-theme='dark']) .login-v3::before {
   background: var(--p-surface);
 }
 :root:not([data-gov-theme='dark']) .new-request-alerts.operations {
@@ -460,51 +257,9 @@
 :root:not([data-gov-theme='dark']) .new-request-alerts.operations .new-request-alert-list small, :root:not([data-gov-theme='dark']) .new-request-alerts.operations .new-request-alert-list time {
   color: var(--p-text);
 }
-:root:not([data-gov-theme='dark']) .government-hero-showcase {
-  background: var(--p-surface);
-}
-:root:not([data-gov-theme='dark']) .face-video-camera {
-  background: var(--p-surface);
-}
-:root:not([data-gov-theme='dark']) .reference-search > button {
-  color: var(--p-text);
-  background: var(--p-surface);
-}
-:root:not([data-gov-theme='dark']) .reference-art-shape {
-  background: var(--p-surface);
-}
-:root:not([data-gov-theme='dark']) .reference-art-shape.shape-two {
-  background: var(--p-surface);
-}
-:root:not([data-gov-theme='dark']) .reference-indicators .container {
-  background: var(--p-surface);
-}
-:root:not([data-gov-theme='dark']) .reference-benefits {
-  color: var(--p-text);
-  background: var(--p-surface);
-}
-:root:not([data-gov-theme='dark']) .civic-hero-visual {
-  background: var(--p-surface);
-}
-:root:not([data-gov-theme='dark']) .civic-search button {
-  color: var(--p-text);
-  background: var(--p-surface);
-}
-:root:not([data-gov-theme='dark']) .civic-quick-grid .directory-entry {
-  color: var(--p-text);
-  border-color: var(--p-line);
-  background: var(--p-surface);
-}
 :root:not([data-gov-theme='dark']) .admin-citizen-avatar {
   background: var(--p-surface);
   color: var(--p-text);
-}
-:root:not([data-gov-theme='dark']) .departments-hero {
-  color: var(--p-text);
-  background: var(--p-surface);
-}
-:root:not([data-gov-theme='dark']) .staff-login .login-backdrop {
-  background: var(--p-surface);
 }
 @media (max-width: 600px) {
 :root:not([data-gov-theme='dark']) .ops-sidebar {
@@ -3179,9 +2934,6 @@
 :root[data-gov-theme='dark'] .employee-live-work-queue > a {
   color: var(--p-text);
 }
-:root[data-gov-theme='dark'] .departments-toolbar {
-  background: var(--p-surface);
-}
 :root[data-gov-theme='dark'] .departments-toolbar label {
   color: var(--p-text);
 }
@@ -3195,18 +2947,12 @@
 :root[data-gov-theme='dark'] .departments-count {
   color: var(--p-muted);
 }
-:root[data-gov-theme='dark'] .departments-map-card {
-  background: var(--p-surface);
-}
 :root[data-gov-theme='dark'] .departments-map-card small {
   color: var(--p-muted);
 }
 :root[data-gov-theme='dark'] .departments-group header span {
   background: var(--p-surface);
   color: var(--p-muted);
-}
-:root[data-gov-theme='dark'] .department-card {
-  background: var(--p-surface);
 }
 :root[data-gov-theme='dark'] .department-card-icon {
   background: var(--p-surface);
@@ -3221,17 +2967,11 @@
   background: var(--p-surface);
   color: var(--p-muted);
 }
-:root[data-gov-theme='dark'] .department-hero {
-  background: var(--p-surface);
-}
 :root[data-gov-theme='dark'] .department-hero-en {
   color: var(--p-muted);
 }
 :root[data-gov-theme='dark'] .department-hero-meta {
   color: var(--p-muted);
-}
-:root[data-gov-theme='dark'] .department-block {
-  background: var(--p-surface);
 }
 :root[data-gov-theme='dark'] .department-block.muted-block {
   background: var(--p-surface);
@@ -3246,7 +2986,6 @@
   color: var(--p-muted);
 }
 :root[data-gov-theme='dark'] .department-kpis > div {
-  background: var(--p-surface);
   border-color: var(--p-line);
 }
 :root[data-gov-theme='dark'] .department-kpis span {
@@ -3256,7 +2995,6 @@
   color: var(--p-muted);
 }
 :root[data-gov-theme='dark'] .department-panel {
-  background: var(--p-surface);
   border-color: var(--p-line);
 }
 :root[data-gov-theme='dark'] .department-panel > header p {
@@ -3350,6 +3088,9 @@
   color: var(--p-muted);
 }
 :root[data-gov-theme='dark'] .rejection-reason {
+  color: var(--p-text);
+}
+:root[data-gov-theme='dark'] .workspace-tabbar button b {
   color: var(--p-text);
 }
 @media (max-width: 900px) {

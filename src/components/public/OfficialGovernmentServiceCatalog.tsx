@@ -88,7 +88,7 @@ export function OfficialGovernmentServiceCatalog({ query }: { query: string }) {
           ))}
         </div>
       ) : (
-        <div className="directory-empty">
+        <div className="gov-directory-empty">
           <Search />
           <h3>لا توجد خدمة موثقة مطابقة</h3>
           <p>جرّب اسماً آخر أو أزل فلتر ذي قار. لا تظهر السجلات التي ما زالت قيد التحقق.</p>

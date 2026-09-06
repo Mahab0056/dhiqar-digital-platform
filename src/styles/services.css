@@ -10,7 +10,7 @@
   gap: 6px;
   font-size: 13px;
   font-weight: 700;
-  color: var(--gov-green-800);
+  color: var(--gov-green-text);
   background: var(--gov-green-050);
   border: 1px solid var(--gov-green-100);
   border-radius: 999px;
@@ -37,7 +37,7 @@
 .gov-chip.channel-online_submission {
   background: var(--gov-green-050);
   border-color: var(--gov-green-100);
-  color: var(--gov-green-800);
+  color: var(--gov-green-text);
 }
 .gov-chip.channel-appointment_required {
   background: var(--gov-blue-050);
@@ -134,7 +134,7 @@
   max-width: 820px;
 }
 .gov-directory-search svg {
-  color: var(--gov-green-800);
+  color: var(--gov-green-text);
   flex: none;
 }
 .gov-directory-search input {
@@ -249,7 +249,7 @@
 }
 .gov-directory-side li button.active {
   background: var(--gov-green-050);
-  color: var(--gov-green-900);
+  color: var(--gov-green-text);
   font-weight: 700;
 }
 .gov-directory-side select {
@@ -322,7 +322,7 @@
   text-decoration: none;
 }
 .gov-service-card h3 a:hover {
-  color: var(--gov-green-800);
+  color: var(--gov-green-text);
 }
 .gov-service-card > p {
   margin: 0;
@@ -355,7 +355,7 @@
   font-weight: 600;
 }
 .gov-service-card dd a {
-  color: var(--gov-green-800);
+  color: var(--gov-green-text);
   text-decoration: none;
 }
 .gov-service-card footer {
@@ -402,7 +402,7 @@
 }
 .gov-directory-note svg {
   flex: none;
-  color: var(--gov-green-800);
+  color: var(--gov-green-text);
 }
 .gov-directory-page .gov-center {
   margin: 24px 0;
@@ -410,7 +410,7 @@
 
 /* ---- service page -------------------------------------------------------------------------- */
 .gov-service-header .gov-service-department {
-  color: var(--gov-green-800);
+  color: var(--gov-green-text);
   text-decoration: none;
   font-weight: 700;
 }
@@ -462,7 +462,7 @@
 }
 .gov-doc-list li svg {
   flex: none;
-  color: var(--gov-green-700);
+  color: var(--gov-green-text);
   width: 18px;
   height: 18px;
   margin-top: 2px;
@@ -499,7 +499,7 @@
   font-size: 15px;
 }
 .gov-doc-slot-head strong b {
-  color: var(--gov-red);
+  color: var(--gov-red-text);
 }
 .gov-doc-slot-head strong em {
   font-style: normal;
@@ -536,7 +536,7 @@
 .dynamic-form-submit small.gov-muted svg {
   width: 16px;
   height: 16px;
-  color: var(--gov-green-700);
+  color: var(--gov-green-text);
 }
 
 /* ---- checklist (citizen + employee) -------------------------------------------------------- */
@@ -554,7 +554,7 @@
 }
 .checklist-badge.verified {
   background: var(--gov-green-050);
-  color: var(--gov-green-800);
+  color: var(--gov-green-text);
   border-color: var(--gov-green-100);
 }
 .checklist-badge.uploaded {
@@ -564,7 +564,7 @@
 }
 .checklist-badge.rejected {
   background: var(--gov-red-050);
-  color: var(--gov-red);
+  color: var(--gov-red-text);
   border-color: #f2c9cf;
 }
 .citizen-checklist {
@@ -597,7 +597,7 @@
   font-size: 14px;
 }
 .citizen-checklist li small {
-  color: var(--gov-red);
+  color: var(--gov-red-text);
   font-size: 12px;
 }
 .citizen-checklist .button.small,
@@ -635,7 +635,7 @@
   flex: none;
   width: 18px;
   height: 18px;
-  color: var(--gov-green-800);
+  color: var(--gov-green-text);
   margin-top: 3px;
 }
 .service-request-current-action.closed {
@@ -654,7 +654,7 @@
 .service-request-checklist h4 svg {
   width: 18px;
   height: 18px;
-  color: var(--gov-green-800);
+  color: var(--gov-green-text);
 }
 .service-request-checklist h4 small {
   margin-inline-start: auto;
@@ -710,7 +710,7 @@
   display: flex;
   gap: 6px;
   align-items: center;
-  color: var(--gov-red);
+  color: var(--gov-red-text);
   font-size: 13px;
 }
 .checklist-note svg {
@@ -793,12 +793,12 @@
   display: none;
 }
 .gov-service-header.service-form-header > a {
-  color: var(--gov-green-800);
+  color: var(--gov-green-text);
   font-size: 13px;
   font-weight: 700;
 }
 .gov-service-header.service-form-header > span {
-  color: var(--gov-green-800);
+  color: var(--gov-green-text);
   background: var(--gov-green-050);
   border: 1px solid var(--gov-green-100);
   border-radius: 999px;
@@ -831,7 +831,7 @@
 }
 .gov-service-header.service-form-header > div svg {
   width: 16px;
-  color: var(--gov-green-800);
+  color: var(--gov-green-text);
 }
 .gov-service-header .gov-service-department {
   color: var(--gov-green-800) !important;
@@ -843,7 +843,7 @@
   font-size: 12px;
 }
 .service-form-progress b {
-  font-size: 11px;
+  font-size: 12px;
 }
 .public-service-main .form-card-title h2 {
   font-size: 18px;
@@ -859,7 +859,7 @@
   color: var(--gov-ink-2);
 }
 .public-service-main .dynamic-fields label b {
-  color: var(--gov-red);
+  color: var(--gov-red-text);
 }
 
 /* ---- payment page -------------------------------------------------------------------------- */
@@ -904,7 +904,7 @@
   display: grid;
   place-items: center;
   background: var(--gov-green-050);
-  color: var(--gov-green-800);
+  color: var(--gov-green-text);
   flex: none;
 }
 .payment-summary {
@@ -931,7 +931,7 @@
 }
 .payment-amount {
   font-size: 22px;
-  color: var(--gov-green-800);
+  color: var(--gov-green-text);
 }
 .payment-state {
   display: grid;
@@ -946,7 +946,7 @@
 .payment-state svg {
   width: 28px;
   height: 28px;
-  color: var(--gov-green-700);
+  color: var(--gov-green-text);
 }
 .payment-state div {
   display: grid;
@@ -966,7 +966,7 @@
   border-color: #f2c9cf;
 }
 .payment-state.failed svg {
-  color: var(--gov-red);
+  color: var(--gov-red-text);
 }
 .payment-mode {
   display: flex;
@@ -982,7 +982,7 @@
 .payment-mode.live {
   background: var(--gov-green-050);
   border-color: var(--gov-green-100);
-  color: var(--gov-green-800);
+  color: var(--gov-green-text);
 }
 .payment-mode svg {
   width: 18px;
@@ -1062,7 +1062,7 @@
   display: grid;
   place-items: center;
   background: var(--gov-green-050);
-  color: var(--gov-green-800);
+  color: var(--gov-green-text);
 }
 .push-card.is-on .push-card-icon {
   background: var(--gov-green-800);
@@ -1083,7 +1083,7 @@
 }
 .push-card-error {
   font-style: normal;
-  color: var(--gov-red);
+  color: var(--gov-red-text);
   font-size: 12px;
   display: flex;
   gap: 4px;
@@ -1115,7 +1115,7 @@
   border-radius: 999px;
   border: 1px solid var(--gov-line);
   background: var(--gov-surface);
-  color: var(--gov-green-800);
+  color: var(--gov-green-text);
   display: grid;
   place-items: center;
   cursor: pointer;
@@ -1163,7 +1163,7 @@
   color: var(--gov-muted);
 }
 .smart-search-hint.error {
-  color: var(--gov-red);
+  color: var(--gov-red-text);
 }
 .gov-search-results li.active a {
   background: var(--gov-green-050);
@@ -1178,14 +1178,14 @@
 }
 .gov-search-results a .gov-chip {
   grid-area: chip;
-  font-size: 11px;
+  font-size: 12px;
   padding: 3px 8px;
 }
 .gov-search-more a {
   grid-template-columns: 1fr;
   grid-template-areas: 'title';
   justify-items: center;
-  color: var(--gov-green-800);
+  color: var(--gov-green-text);
   font-weight: 700;
   font-size: 13px;
   border-top: 1px solid var(--gov-line-soft);

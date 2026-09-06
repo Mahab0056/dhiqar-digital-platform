@@ -54,6 +54,7 @@ export function SmartSearch({
   const [voiceError, setVoiceError] = useState('')
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null)
   const boxRef = useRef<HTMLFormElement | null>(null)
+  const inputRef = useRef<HTMLInputElement | null>(null)
   const requestId = useRef(0)
 
   useEffect(() => {
@@ -69,7 +70,8 @@ export function SmartSearch({
         .then(items => {
           if (requestId.current === id) {
             setResults(items)
-            setOpen(true)
+            // only pop the panel while the citizen is actually in the field (not for a prefilled ?q= on load)
+            setOpen(document.activeElement === inputRef.current)
             setActive(-1)
           }
         })
@@ -163,6 +165,7 @@ export function SmartSearch({
     >
       <Search className="gov-search-icon" aria-hidden="true" />
       <input
+        ref={inputRef}
         value={value}
         onChange={event => onChange(event.target.value)}
         onFocus={() => results.length && setOpen(true)}

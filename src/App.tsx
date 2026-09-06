@@ -67,6 +67,7 @@ const GovernorDashboard = lazy(() =>
   import('./pages/operations/GovernorDashboard').then(m => ({ default: m.GovernorDashboard }))
 )
 const VerifyScanner = lazy(() => import('./pages/verify/VerifyScanner').then(m => ({ default: m.VerifyScanner })))
+const InfoPage = lazy(() => import('./pages/public/InfoPage').then(m => ({ default: m.InfoPage })))
 const VerifyPage = lazy(() => import('./pages/verify/VerifyPage').then(m => ({ default: m.VerifyPage })))
 
 function App() {
@@ -154,6 +155,15 @@ function App() {
           <SessionGate role="OPERATIONS">
             <GovernorDashboard />
           </SessionGate>
+        </Route>
+        <Route path="/privacy">
+          <InfoPage kind="privacy" />
+        </Route>
+        <Route path="/terms">
+          <InfoPage kind="terms" />
+        </Route>
+        <Route path="/accessibility">
+          <InfoPage kind="accessibility" />
         </Route>
         <Route path="/verify" component={VerifyScanner} />
         <Route path="/verify/:id">{params => <VerifyPage verificationId={params.id} />}</Route>
