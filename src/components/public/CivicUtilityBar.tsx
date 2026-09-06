@@ -38,7 +38,7 @@ export function CivicUtilityBar() {
         </span>
         <nav className="gov-utility-links" aria-label="خيارات العرض">
           <button type="button" onClick={toggle} aria-pressed={theme === 'dark'}>
-            {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />} الوضع الليلي
+            {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />} {theme === 'dark' ? 'الوضع النهاري' : 'الوضع الليلي'}
           </button>
           <a href="#accessibility">
             <Accessibility size={14} /> إمكانية الوصول

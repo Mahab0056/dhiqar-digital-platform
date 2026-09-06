@@ -11,6 +11,8 @@ import './styles/departments.css'
 import './styles/home.css'
 import './styles/services.css'
 import './styles/motion.css'
+import './styles/portal-theme-tokens.css'
+import './styles/portal-theme.css'
 import './styles/unify.css'
 
 const LandingPage = lazy(() => import('./pages/public/LandingPage').then(m => ({ default: m.LandingPage })))

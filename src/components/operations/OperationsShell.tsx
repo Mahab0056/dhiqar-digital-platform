@@ -23,7 +23,7 @@ export function OperationsShell({ children, active = 'operations' }: { children:
     return () => window.clearInterval(timer)
   }, [])
   return (
-    <div className="ops-shell">
+    <div className={`ops-shell ops-${active}`}>
       <CivicUtilityBar />
       <aside className="ops-sidebar">
         <Brand compact />

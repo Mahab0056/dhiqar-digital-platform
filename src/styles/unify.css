@@ -64,6 +64,9 @@
 
 /* operations KPIs: no orphan tile on a second row */
 .ops-kpis {
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+.ops-operations .ops-kpis {
   grid-template-columns: repeat(7, 1fr);
 }
 @media (max-width: 1200px) {

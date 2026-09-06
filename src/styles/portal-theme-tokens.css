@@ -1,0 +1,157 @@
+/* Portal theme tokens (citizen / employee / department / operations / super-admin) */
+:root {
+  --p-bg: #f4f7f5;
+  --p-surface: #ffffff;
+  --p-surface-2: #f8faf9;
+  --p-line: #e3e8e5;
+  --p-text: #101828;
+  --p-muted: #667085;
+  --p-shadow: 0 1px 2px rgba(16, 39, 30, 0.06), 0 8px 24px rgba(16, 39, 30, 0.06);
+}
+:root[data-gov-theme='dark'] {
+  --p-bg: #0b1310;
+  --p-surface: #121c17;
+  --p-surface-2: #17231d;
+  --p-line: #26332c;
+  --p-text: #e7ece9;
+  --p-muted: #97a49d;
+  --p-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 10px 28px rgba(0, 0, 0, 0.35);
+  color-scheme: dark;
+}
+/* structural surfaces that carry the theme regardless of the generated overrides */
+.portal-shell,
+.ops-shell {
+  background: var(--p-bg);
+  color: var(--p-text);
+}
+:root:not([data-gov-theme='dark']) .ops-shell,
+:root:not([data-gov-theme='dark']) .ops-main,
+:root:not([data-gov-theme='dark']) .ops-sidebar {
+  background: var(--p-bg);
+  color: var(--p-text);
+}
+:root:not([data-gov-theme='dark']) .ops-sidebar {
+  background: var(--p-surface);
+  border-inline-end: 1px solid var(--p-line);
+}
+:root:not([data-gov-theme='dark']) .ops-sidebar nav a {
+  color: var(--p-muted);
+}
+:root:not([data-gov-theme='dark']) .ops-sidebar nav a.active {
+  background: var(--gov-green-050, #f1f8f4);
+  color: var(--gov-green-800, #075e45);
+}
+:root:not([data-gov-theme='dark']) .ops-shell .muted,
+:root:not([data-gov-theme='dark']) .ops-shell small {
+  color: var(--p-muted);
+}
+:root:not([data-gov-theme='dark']) .ops-kpis > div::after {
+  display: none;
+}
+:root[data-gov-theme='dark'] .portal-sidebar,
+:root[data-gov-theme='dark'] .portal-topbar {
+  background: var(--p-surface);
+  border-color: var(--p-line);
+}
+:root[data-gov-theme='dark'] .portal-shell input,
+:root[data-gov-theme='dark'] .portal-shell select,
+:root[data-gov-theme='dark'] .portal-shell textarea {
+  background: var(--p-surface-2);
+  color: var(--p-text);
+  border-color: var(--p-line);
+}
+:root[data-gov-theme='dark'] .portal-shell img.iraq-emblem,
+:root[data-gov-theme='dark'] .portal-shell img.dhiqar-emblem {
+  background: #fff;
+  border-radius: 8px;
+  padding: 2px;
+}
+
+/* day mode inside the (dark-native) operations / super-admin shells: text inherits the theme colour */
+:root:not([data-gov-theme='dark'])
+  .ops-shell
+  :is(h1, h2, h3, h4, h5, p, li, td, th, dt, dd, label, strong, b, em, small, time),
+:root:not([data-gov-theme='dark'])
+  .ops-shell
+  :is(span):not([class*='status']):not([class*='badge']):not([class*='pill']):not([class*='chip']):not(
+    [class*='tag']
+  ):not(.button *):not(.gov-utility *) {
+  color: var(--p-text);
+}
+:root:not([data-gov-theme='dark']) .ops-shell :is(small, .muted, [class*='muted'], [class*='hint']) {
+  color: var(--p-muted);
+}
+:root:not([data-gov-theme='dark']) .ops-shell .section-kicker,
+:root:not([data-gov-theme='dark']) .ops-shell .panel-heading span {
+  color: var(--gov-green-800, #075e45);
+}
+:root:not([data-gov-theme='dark']) .ops-shell table {
+  color: var(--p-text);
+}
+:root:not([data-gov-theme='dark']) .ops-shell input,
+:root:not([data-gov-theme='dark']) .ops-shell select,
+:root:not([data-gov-theme='dark']) .ops-shell textarea {
+  background: var(--p-surface);
+  color: var(--p-text);
+  border-color: var(--p-line);
+}
+:root:not([data-gov-theme='dark']) .ops-shell .icon-button,
+:root:not([data-gov-theme='dark']) .ops-shell .button.outline,
+:root:not([data-gov-theme='dark']) .ops-shell .period-button {
+  background: var(--p-surface);
+  color: var(--p-text);
+  border: 1px solid var(--p-line);
+}
+:root:not([data-gov-theme='dark']) .ops-shell .user-avatar {
+  background: var(--gov-green-800, #075e45);
+  color: #fff;
+}
+/* night mode inside the (light-native) citizen / employee portal: same idea in reverse */
+:root[data-gov-theme='dark'] .portal-shell :is(h1, h2, h3, h4, h5, p, li, td, th, dt, dd, label, strong, b, time),
+:root[data-gov-theme='dark']
+  .portal-shell
+  :is(span):not([class*='status']):not([class*='badge']):not([class*='pill']):not([class*='chip']):not(
+    [class*='tag']
+  ):not(.button *):not(.gov-utility *) {
+  color: var(--p-text);
+}
+:root[data-gov-theme='dark'] .portal-shell :is(small, .muted, [class*='muted'], [class*='hint']) {
+  color: var(--p-muted);
+}
+:root[data-gov-theme='dark'] .portal-shell .section-kicker {
+  color: #6fd3a8;
+}
+:root[data-gov-theme='dark'] .portal-shell .button.outline,
+:root[data-gov-theme='dark'] .portal-shell .icon-button {
+  background: var(--p-surface);
+  color: var(--p-text);
+  border-color: var(--p-line);
+}
+:root[data-gov-theme='dark'] .portal-shell .button.primary {
+  color: #fff;
+}
+:root[data-gov-theme='dark'] .portal-shell .button.primary * {
+  color: #fff;
+}
+:root[data-gov-theme='dark'] .portal-shell table {
+  color: var(--p-text);
+}
+
+/* citizen hero + light gradients in night mode */
+:root[data-gov-theme='dark'] .portal-shell .citizen-v2-hero,
+:root[data-gov-theme='dark'] .portal-shell [class*='hero'],
+:root[data-gov-theme='dark'] .portal-shell [class*='-card'],
+:root[data-gov-theme='dark'] .portal-shell [class*='panel'] {
+  background-image: none;
+}
+:root[data-gov-theme='dark'] .portal-shell .citizen-v2-hero {
+  background: var(--p-surface);
+  border: 1px solid var(--p-line);
+}
+:root[data-gov-theme='dark'] .portal-shell .citizen-v2-hero h1,
+:root[data-gov-theme='dark'] .portal-shell .citizen-v2-hero h1 * {
+  color: var(--p-text);
+}
+:root[data-gov-theme='dark'] .gov-utility * {
+  color: #fff;
+}
