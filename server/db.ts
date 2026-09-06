@@ -822,8 +822,8 @@ export function listCitizensForSuperAdmin(
   const documentType = String(filters.documentType || '').trim()
   const limit = Math.min(Math.max(Number(filters.limit) || 100, 1), 250)
   if (query) {
-    const search = `%${query}%`
-    where.push('(c.full_name LIKE ? OR c.phone_masked LIKE ? OR c.national_id_masked LIKE ?)')
+    const search = `%${query.replace(/[\\%_]/g, char => `\\${char}`)}%`
+    where.push("(c.full_name LIKE ? ESCAPE '\\' OR c.phone_masked LIKE ? ESCAPE '\\' OR c.national_id_masked LIKE ? ESCAPE '\\')")
     values.push(search, search, search)
   }
   if (adminCitizenVerificationStatuses.has(verificationStatus)) {

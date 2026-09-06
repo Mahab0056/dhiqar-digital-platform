@@ -196,13 +196,14 @@ export function registerStaffAdminRoutes(app: express.Express) {
       .parse(req.query)
     const where: string[] = []
     const values: Array<string | number> = []
+    const escapeLike = (value: string) => `%${value.replace(/[\\%_]/g, char => `\\${char}`)}%`
     if (query.action) {
-      where.push('action LIKE ?')
-      values.push(`%${query.action}%`)
+      where.push("action LIKE ? ESCAPE '\\'")
+      values.push(escapeLike(query.action))
     }
     if (query.actor) {
-      where.push('actor LIKE ?')
-      values.push(`%${query.actor}%`)
+      where.push("actor LIKE ? ESCAPE '\\'")
+      values.push(escapeLike(query.actor))
     }
     const rows = db
       .prepare(
