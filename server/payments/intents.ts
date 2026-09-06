@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { addAudit, db } from '../db.js'
+import { addAudit, db, nextReference } from '../db.js'
 import { notifyCitizen, employeeWorkQueueRealtime } from '../realtime.js'
 import { paymentProvider } from './providers.js'
 
@@ -76,9 +76,7 @@ export function createPaymentForRequest(input: {
   requestedBy: string
 }) {
   const timestamp = new Date().toISOString()
-  const serial = String(
-    (db.prepare('SELECT COUNT(*) AS count FROM payment_intents').get() as { count: number }).count + 1
-  ).padStart(5, '0')
+  const serial = String(nextReference('payment_intents', 'SELECT COUNT(*) AS value FROM payment_intents')).padStart(5, '0')
   const reference = `PAY-${new Date().getFullYear()}-${serial}`
   const id = `pay_${randomUUID().replaceAll('-', '')}`
   const provider = paymentProvider()

@@ -5,7 +5,7 @@ import { z } from 'zod'
 import { upload, validateUploadedFile } from '../http/upload.js'
 import { requireSession, currentCitizen, currentSession, type SessionData } from '../auth/session.js'
 import { notifyCitizen, employeeWorkQueueRealtime } from '../realtime.js'
-import { addAudit, db } from '../db.js'
+import { addAudit, db, nextReference } from '../db.js'
 import { readDecryptedMedia, storeEncryptedMedia } from '../media.js'
 import { createIssuedDocument } from '../issued-documents.js'
 import { departmentById } from '../department-registry.js'
@@ -298,9 +298,10 @@ export function registerServiceRequestsRoutes(app: express.Express) {
     }
 
     const timestamp = new Date().toISOString()
-    const serial = String(
-      (db.prepare('SELECT COUNT(*) AS count FROM service_requests').get() as { count: number }).count + 1
-    ).padStart(5, '0')
+    const serial = String(nextReference('service_requests', 'SELECT COUNT(*) AS value FROM service_requests')).padStart(
+      5,
+      '0'
+    )
     const reference = `TQS-${new Date().getFullYear()}-${serial}`
     // Official fee + working gateway → the request waits for payment before it reaches the department.
     const feeDue = service.feeStatus === 'OFFICIAL' && (service.feeIqd || 0) > 0 && Boolean(paymentProvider())
@@ -479,7 +480,11 @@ export function registerServiceRequestsRoutes(app: express.Express) {
         const documentKey = String(req.body.documentKey || '').trim()
         let item = checklist.find(entry => entry.key === documentKey)
         if (!item) {
-          // free-form document requested by the employee (legacy path)
+          // free-form document requested by the employee (legacy path) — only while a document is actually requested
+          if (!row.required_document && String(row.status) !== 'ACTION_REQUIRED')
+            return res.status(409).json({ message: 'لا يوجد مستمسك مطلوب منك حالياً لهذا الطلب.' })
+          if (checklist.filter(entry => entry.key.startsWith('extra-')).length >= 6)
+            return res.status(409).json({ message: 'وصلت الحد الأقصى للمستمسكات الإضافية لهذا الطلب.' })
           const label = String(req.body.documentName || row.required_document || 'المستند المطلوب')
             .trim()
             .slice(0, 160)
@@ -516,10 +521,14 @@ export function registerServiceRequestsRoutes(app: express.Express) {
         const stillMissing = checklist.filter(
           entry => entry.required && entry.status !== 'UPLOADED' && entry.status !== 'VERIFIED'
         )
-        const nextStatus = stillMissing.length ? 'ACTION_REQUIRED' : 'UNDER_REVIEW'
-        const currentAction = stillMissing.length
-          ? `بقي رفع: ${stillMissing.map(entry => entry.label).join('، ')}.`
-          : 'اكتملت المستمسكات وأُعيد الطلب إلى الموظف للتدقيق.'
+        // a request waiting for payment keeps waiting for payment; uploads never bypass the fee
+        const paymentPending = String(row.status) === 'PAYMENT_PENDING'
+        const nextStatus = paymentPending ? 'PAYMENT_PENDING' : stillMissing.length ? 'ACTION_REQUIRED' : 'UNDER_REVIEW'
+        const currentAction = paymentPending
+          ? String(row.current_action || 'بانتظار سداد الرسم لإحالة الطلب إلى الدائرة.')
+          : stillMissing.length
+            ? `بقي رفع: ${stillMissing.map(entry => entry.label).join('، ')}.`
+            : 'اكتملت المستمسكات وأُعيد الطلب إلى الموظف للتدقيق.'
         db.prepare(
           `UPDATE service_requests SET status = ?, current_action = ?, document_checklist = ?, required_document = ?, updated_at = ? WHERE id = ?`
         ).run(

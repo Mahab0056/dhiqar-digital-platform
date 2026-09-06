@@ -62,6 +62,7 @@ export const statusLabels = {
   UNDER_REVIEW: 'قيد التدقيق',
   ACTION_REQUIRED: 'مطلوب إجراء',
   PAYMENT_REQUIRED: 'بانتظار الدفع',
+  APPROVING: 'جاري الاعتماد',
   APPROVED: 'مكتملة',
   REJECTED: 'مرفوضة',
 } as const

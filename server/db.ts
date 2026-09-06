@@ -632,6 +632,8 @@ ensureColumn('service_requests', 'decided_by', 'TEXT')
 ensureColumn('service_requests', 'decided_at', 'TEXT')
 ensureColumn('service_requests', 'review_started_at', 'TEXT')
 ensureColumn('service_request_media', 'document_key', 'TEXT')
+ensureColumn('applications', 'department_id', 'TEXT')
+db.exec(`CREATE TABLE IF NOT EXISTS reference_counters (key TEXT PRIMARY KEY, value INTEGER NOT NULL)`)
 ensureColumn('service_requests', 'payment_status', "TEXT NOT NULL DEFAULT 'NOT_REQUIRED'")
 ensureColumn('payment_intents', 'service_request_id', 'INTEGER')
 ensureColumn('payment_intents', 'checkout_url', 'TEXT')
@@ -842,7 +844,7 @@ export function listCitizensForSuperAdmin(
     SELECT c.id, c.full_name, c.national_id_masked, c.phone_masked, c.verification_status, c.district, c.document_type, c.created_at, c.updated_at,
       (SELECT COUNT(*) FROM applications a WHERE a.citizen_id = c.id) AS application_count,
       (SELECT COUNT(*) FROM service_requests sr WHERE sr.citizen_id = c.id) AS service_request_count,
-      MAX(COALESCE(c.updated_at, c.created_at)) AS last_activity_at
+      COALESCE(c.updated_at, c.created_at) AS last_activity_at
     FROM citizens c ${clause}
     ORDER BY c.updated_at DESC, c.id DESC LIMIT ?
   `
@@ -864,10 +866,28 @@ export function listCitizensForSuperAdmin(
   }))
 }
 
-export function getApplications(departmentName?: string) {
+/**
+ * Atomic, gap-tolerant reference numbers (never derived from COUNT(*), which breaks after any delete/restore).
+ * Seeds from the current maximum so existing rows keep their numbers.
+ */
+export function nextReference(key: string, seedSql?: string) {
+  const existing = db.prepare('SELECT value FROM reference_counters WHERE key = ?').get(key) as { value: number } | undefined
+  if (!existing) {
+    const seed = seedSql ? Number((db.prepare(seedSql).get() as { value: number | null })?.value || 0) : 0
+    db.prepare('INSERT OR IGNORE INTO reference_counters (key, value) VALUES (?, ?)').run(key, seed)
+  }
+  const row = db.prepare('UPDATE reference_counters SET value = value + 1 WHERE key = ? RETURNING value').get(key) as {
+    value: number
+  }
+  return row.value
+}
+
+export function getApplications(scope?: { departmentId?: string; departmentName?: string }) {
   const rows = (
-    departmentName
-      ? db.prepare('SELECT * FROM applications WHERE department = ? ORDER BY id DESC').all(departmentName)
+    scope?.departmentId
+      ? db
+          .prepare('SELECT * FROM applications WHERE department_id = ? OR (department_id IS NULL AND department = ?) ORDER BY id DESC')
+          .all(scope.departmentId, scope.departmentName || '')
       : db.prepare('SELECT * FROM applications ORDER BY id DESC').all()
   ) as Array<Record<string, unknown>>
   return rows.map(mapApplication)
@@ -914,6 +934,7 @@ function mapApplication(row: Record<string, unknown>) {
     serviceKey: row.service_key,
     serviceName: row.service_name,
     department: row.department,
+    departmentId: row.department_id || null,
     status: row.status,
     currentAction: row.current_action,
     businessName: row.business_name,
@@ -957,7 +978,9 @@ export type FeedbackKind = 'COMPLAINT' | 'SUGGESTION'
 export type FeedbackStatus = 'RECEIVED' | 'IN_REVIEW' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED'
 
 const feedbackReference = (kind: FeedbackKind) =>
-  `${kind === 'COMPLAINT' ? 'TQD-CMP' : 'TQD-SUG'}-${new Date().getFullYear()}-${String((db.prepare('SELECT COUNT(*) AS total FROM citizen_feedback').get() as { total: number }).total + 1).padStart(5, '0')}`
+  `${kind === 'COMPLAINT' ? 'TQD-CMP' : 'TQD-SUG'}-${new Date().getFullYear()}-${String(
+    nextReference('citizen_feedback', 'SELECT COUNT(*) AS value FROM citizen_feedback')
+  ).padStart(5, '0')}`
 
 function mapFeedback(row: Record<string, unknown>) {
   const events = db
@@ -1110,7 +1133,7 @@ export function resetDemo() {
   db.exec('BEGIN')
   try {
     db.exec(
-      'DELETE FROM payments; DELETE FROM notifications; DELETE FROM application_events; DELETE FROM applications; DELETE FROM audit_logs;'
+      'DELETE FROM payments; DELETE FROM notifications; DELETE FROM application_events; DELETE FROM applications;'
     )
     db.exec('COMMIT')
   } catch (error) {

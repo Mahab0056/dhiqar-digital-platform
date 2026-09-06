@@ -5,10 +5,19 @@ import { z } from 'zod'
 import { upload, validateUploadedFile } from '../http/upload.js'
 import { type SessionData, requireSession, currentCitizen, currentSession } from '../auth/session.js'
 import { notifyCitizen, employeeWorkQueueRealtime } from '../realtime.js'
-import { addAudit, addEvent, db, getApplicationByReference, getApplications } from '../db.js'
+import { addAudit, addEvent, db, getApplicationByReference, getApplications, nextReference } from '../db.js'
 import { storeEncryptedMedia } from '../media.js'
 import { createIssuedDocument } from '../issued-documents.js'
 import { departmentById } from '../department-registry.js'
+import { getCatalogService } from '../services/catalog.js'
+
+/** Employees may only act on applications routed to their own department; super admins see everything. */
+function canActOnApplication(session: SessionData, item: Record<string, unknown>) {
+  if (session.role === 'SUPER_ADMIN') return true
+  if (session.role !== 'EMPLOYEE' || !session.departmentId) return false
+  if (item.departmentId) return item.departmentId === session.departmentId
+  return departmentById.get(session.departmentId)?.name === item.department
+}
 
 export function registerApplicationsRoutes(app: express.Express) {
   app.get(
@@ -23,9 +32,9 @@ export function registerApplicationsRoutes(app: express.Express) {
           (scopedName !== null
             ? db
                 .prepare(
-                  `SELECT COUNT(*) AS count FROM applications WHERE status IN ('UNDER_REVIEW', 'SUBMITTED') AND department = ?`
+                  `SELECT COUNT(*) AS count FROM applications WHERE status IN ('UNDER_REVIEW', 'SUBMITTED') AND (department_id = ? OR (department_id IS NULL AND department = ?))`
                 )
-                .get(scopedName)
+                .get(scoped, scopedName)
             : db
                 .prepare(`SELECT COUNT(*) AS count FROM applications WHERE status IN ('UNDER_REVIEW', 'SUBMITTED')`)
                 .get()) as { count: number }
@@ -65,9 +74,16 @@ export function registerApplicationsRoutes(app: express.Express) {
 
   app.get('/api/applications', requireSession('EMPLOYEE', 'SUPER_ADMIN'), (_req, res) => {
     const session = currentSession(res)
-    const scopedName =
-      session.role === 'EMPLOYEE' && session.departmentId ? departmentById.get(session.departmentId)?.name : undefined
-    res.json(getApplications(scopedName))
+    if (session.role === 'EMPLOYEE') {
+      if (!session.departmentId) return res.json([])
+      return res.json(
+        getApplications({
+          departmentId: session.departmentId,
+          departmentName: departmentById.get(session.departmentId)?.name,
+        })
+      )
+    }
+    res.json(getApplications())
   })
 
   app.get('/api/applications/:reference', requireSession('CITIZEN', 'EMPLOYEE', 'SUPER_ADMIN'), (req, res) => {
@@ -87,6 +103,7 @@ export function registerApplicationsRoutes(app: express.Express) {
         metadata: { maskedCitizenData: true },
       })
     } else {
+      if (!canActOnApplication(session, item)) return res.status(404).json({ message: 'المعاملة غير موجودة.' })
       addAudit({
         actor: session.sub,
         role: session.role,
@@ -111,8 +128,6 @@ export function registerApplicationsRoutes(app: express.Express) {
       const payload = z
         .object({
           serviceKey: z.string().min(2),
-          serviceName: z.string().min(2),
-          department: z.string().min(2),
           businessName: z.string().min(2),
           activityType: z.string().min(2),
           address: z.string().min(4),
@@ -129,7 +144,6 @@ export function registerApplicationsRoutes(app: express.Express) {
             },
             z.object({ lat: z.coerce.number(), lng: z.coerce.number() })
           ),
-          fee: z.coerce.number().nonnegative(),
           faceConsent: z.literal('true'),
           attachments: z.array(z.string()).default([]),
         })
@@ -138,6 +152,10 @@ export function registerApplicationsRoutes(app: express.Express) {
       if (!citizen) return
       if (!['VERIFIED', 'VERIFIED_MANUAL'].includes(citizen.verificationStatus))
         return res.status(409).json({ message: 'أكمل مراجعة الهوية أولاً قبل تقديم خدمة جديدة.' })
+      // Service name, department and fee always come from the catalog — never from the client.
+      const service = getCatalogService(payload.serviceKey)
+      if (!service || !service.active) return res.status(404).json({ message: 'الخدمة غير متاحة حالياً.' })
+      const fee = service.feeStatus === 'OFFICIAL' ? Number(service.feeIqd || 0) : 0
       const files = req.files as Record<string, Express.Multer.File[]> | undefined
       const propertyDocument = files?.propertyDocument?.[0]
       const storefrontPhoto = files?.storefrontPhoto?.[0]
@@ -153,26 +171,27 @@ export function registerApplicationsRoutes(app: express.Express) {
       validateUploadedFile(faceVideo, ['video'])
       const timestamp = new Date().toISOString()
       const serial = String(
-        (db.prepare('SELECT COUNT(*) AS count FROM applications').get() as { count: number }).count + 1
+        nextReference('applications', 'SELECT COUNT(*) AS value FROM applications')
       ).padStart(4, '0')
       const reference = `TQD-${new Date().getFullYear()}-${serial}`
       const result = db
         .prepare(
           `
       INSERT INTO applications (
-        reference, citizen_id, citizen_name, service_key, service_name, department, status,
+        reference, citizen_id, citizen_name, service_key, service_name, department, department_id, status,
         current_action, business_name, activity_type, address, district, ownership_type,
         lat, lng, fee, payment_status, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `
         )
         .run(
           reference,
           citizen.id,
           citizen.fullName,
-          payload.serviceKey,
-          payload.serviceName,
-          payload.department,
+          service.key,
+          service.title,
+          service.departmentName,
+          service.departmentId,
           'SUBMITTED',
           'لا يوجد إجراء مطلوب منك. المعاملة لدى الموظف المختص.',
           payload.businessName,
@@ -182,8 +201,8 @@ export function registerApplicationsRoutes(app: express.Express) {
           payload.ownershipType,
           payload.coordinates.lat,
           payload.coordinates.lng,
-          payload.fee,
-          payload.fee > 0 ? 'PENDING' : 'NOT_REQUIRED',
+          fee,
+          fee > 0 ? 'PENDING' : 'NOT_REQUIRED',
           timestamp,
           timestamp
         )
@@ -224,14 +243,14 @@ export function registerApplicationsRoutes(app: express.Express) {
       addEvent(applicationId, {
         type: 'ROUTED',
         title: 'تم التوجيه إلى الدائرة',
-        description: `تم توجيه الطلب آلياً إلى ${payload.department}.`,
+        description: `تم توجيه الطلب آلياً إلى ${service.departmentName}.`,
         actor: 'محرك سير العمل',
       })
       notifyCitizen({
         citizenId: citizen.id,
         type: 'APPLICATION_CREATED',
         title: 'تم تسجيل المعاملة',
-        message: `سُجل طلب ${payload.serviceName} بالرقم ${reference} ووُجه إلى ${payload.department}.`,
+        message: `سُجل طلب ${service.title} بالرقم ${reference} ووُجه إلى ${service.departmentName}.`,
         link: `/citizen/application/${reference}`,
       })
       employeeWorkQueueRealtime.publish({ entity: 'APPLICATION', action: 'CREATED', reference })
@@ -241,7 +260,7 @@ export function registerApplicationsRoutes(app: express.Express) {
         action: 'APPLICATION_CREATED',
         entityType: 'Application',
         entityId: reference,
-        newValue: { service: payload.serviceKey, district: payload.district },
+        newValue: { service: service.key, district: payload.district, fee },
         metadata: {
           protectedAttachments: protectedFiles.map(file => file.label),
           retentionDays: 30,
@@ -256,13 +275,17 @@ export function registerApplicationsRoutes(app: express.Express) {
     const session = currentSession(res)
     const payload = z.object({ documentName: z.string().min(2) }).parse(req.body)
     const item = getApplicationByReference(param(req, 'reference'))
-    if (!item) return res.status(404).json({ message: 'المعاملة غير موجودة.' })
+    if (!item || !canActOnApplication(session, item)) return res.status(404).json({ message: 'المعاملة غير موجودة.' })
     if (item.status === 'APPROVED' || item.status === 'REJECTED')
       return res.status(409).json({ message: 'لا يمكن طلب مستند لمعاملة مغلقة.' })
     const timestamp = new Date().toISOString()
-    db.prepare(
-      `UPDATE applications SET status = 'ACTION_REQUIRED', current_action = ?, required_document = ?, updated_at = ? WHERE reference = ?`
-    ).run(`يرجى رفع ${payload.documentName} لإكمال التدقيق.`, payload.documentName, timestamp, param(req, 'reference'))
+    const changed = db
+      .prepare(
+        `UPDATE applications SET status = 'ACTION_REQUIRED', current_action = ?, required_document = ?, updated_at = ? WHERE reference = ? AND status NOT IN ('APPROVED', 'REJECTED')`
+      )
+      .run(`يرجى رفع ${payload.documentName} لإكمال التدقيق.`, payload.documentName, timestamp, param(req, 'reference'))
+    if (!changed.changes) return res.status(409).json({ message: 'تغيرت حالة المعاملة. أعد تحميل الصفحة.' })
+    employeeWorkQueueRealtime.publish({ entity: 'APPLICATION', action: 'UPDATED', reference: param(req, 'reference') })
     addEvent(item.id as number, {
       type: 'INFORMATION_REQUESTED',
       title: 'طلب معلومات إضافية',
@@ -304,6 +327,8 @@ export function registerApplicationsRoutes(app: express.Express) {
       const item = getApplicationByReference(param(req, 'reference'))
       if (!item || Number(item.citizenId) !== citizen.id)
         return res.status(404).json({ message: 'المعاملة غير موجودة.' })
+      if (item.status !== 'ACTION_REQUIRED')
+        return res.status(409).json({ message: 'لا يوجد مستند مطلوب منك حالياً لهذه المعاملة.' })
       if (!req.file) return res.status(400).json({ message: `صوّر أو ارفع ${payload.documentName} قبل الإرسال.` })
       if (payload.documentPurpose === 'FACE_VIDEO') validateUploadedFile(req.file, ['video'])
       else validateUploadedFile(req.file, ['image', 'pdf'])
@@ -326,7 +351,7 @@ export function registerApplicationsRoutes(app: express.Express) {
         timestamp
       )
       db.prepare(
-        `UPDATE applications SET status = 'UNDER_REVIEW', current_action = 'لا يوجد إجراء مطلوب منك. تم استلام المستند وأعيدت المعاملة للموظف المختص.', required_document = NULL, updated_at = ? WHERE reference = ?`
+        `UPDATE applications SET status = 'UNDER_REVIEW', current_action = 'لا يوجد إجراء مطلوب منك. تم استلام المستند وأعيدت المعاملة للموظف المختص.', required_document = NULL, updated_at = ? WHERE reference = ? AND status = 'ACTION_REQUIRED'`
       ).run(timestamp, param(req, 'reference'))
       addEvent(item.id as number, {
         type: 'DOCUMENT_UPLOADED',
@@ -365,14 +390,17 @@ export function registerApplicationsRoutes(app: express.Express) {
     const payload = z.object({ reason: z.string().trim().min(10).max(1000) }).parse(req.body)
     const reference = param(req, 'reference')
     const item = getApplicationByReference(reference)
-    if (!item) return res.status(404).json({ message: 'المعاملة غير موجودة.' })
+    if (!item || !canActOnApplication(session, item)) return res.status(404).json({ message: 'المعاملة غير موجودة.' })
     if (item.status === 'APPROVED')
       return res.status(409).json({ message: 'لا يمكن رفض معاملة صدرت وثيقتها. استخدم مسار الإلغاء الرسمي.' })
     if (item.status === 'REJECTED') return res.json(item)
     const timestamp = new Date().toISOString()
-    db.prepare(
-      `UPDATE applications SET status = 'REJECTED', current_action = ?, rejection_reason = ?, decided_by = ?, decided_at = ?, required_document = NULL, updated_at = ? WHERE reference = ?`
-    ).run(`رُفضت المعاملة: ${payload.reason}`, payload.reason, session.actor, timestamp, timestamp, reference)
+    const changed = db
+      .prepare(
+        `UPDATE applications SET status = 'REJECTED', current_action = ?, rejection_reason = ?, decided_by = ?, decided_at = ?, required_document = NULL, updated_at = ? WHERE reference = ? AND status NOT IN ('APPROVED', 'REJECTED')`
+      )
+      .run(`رُفضت المعاملة: ${payload.reason}`, payload.reason, session.actor, timestamp, timestamp, reference)
+    if (!changed.changes) return res.status(409).json({ message: 'تغيرت حالة المعاملة. أعد تحميل الصفحة.' })
     addEvent(item.id as number, {
       type: 'REJECTED',
       title: 'تم رفض المعاملة',
@@ -402,7 +430,7 @@ export function registerApplicationsRoutes(app: express.Express) {
   app.post('/api/applications/:reference/approve', requireSession('EMPLOYEE', 'SUPER_ADMIN'), async (req, res) => {
     const session = currentSession(res)
     const item = getApplicationByReference(param(req, 'reference'))
-    if (!item) return res.status(404).json({ message: 'المعاملة غير موجودة.' })
+    if (!item || !canActOnApplication(session, item)) return res.status(404).json({ message: 'المعاملة غير موجودة.' })
     if (item.status === 'ACTION_REQUIRED')
       return res.status(409).json({ message: 'لا يمكن الموافقة قبل استكمال المستند المطلوب.' })
     if (item.status === 'REJECTED')
@@ -418,9 +446,16 @@ export function registerApplicationsRoutes(app: express.Express) {
         message: 'لا يمكن اعتماد المعاملة قبل استكمال فيديو توثيق الوجه. استخدم «طلب استكمال التوثيق» لإشعار المواطن.',
       })
     const timestamp = new Date().toISOString()
-    if ((item.fee as number) > 0) {
+    // Claim the approval atomically so two employees clicking at once cannot issue two documents.
+    const claimed = db
+      .prepare(
+        `UPDATE applications SET status = 'APPROVING', updated_at = ? WHERE reference = ? AND status IN ('SUBMITTED', 'UNDER_REVIEW', 'PAYMENT_REQUIRED')`
+      )
+      .run(timestamp, param(req, 'reference'))
+    if (!claimed.changes) return res.status(409).json({ message: 'تغيرت حالة المعاملة. أعد تحميل الصفحة.' })
+    if ((item.fee as number) > 0 && item.paymentStatus !== 'PAID') {
       db.prepare(
-        `UPDATE applications SET status = 'PAYMENT_REQUIRED', current_action = 'تمت الموافقة الإدارية. بانتظار تهيئة بوابة الدفع المعتمدة لإكمال سداد الرسم وإصدار الوثيقة.', payment_status = 'PENDING', updated_at = ? WHERE reference = ?`
+        `UPDATE applications SET status = 'PAYMENT_REQUIRED', current_action = 'تمت الموافقة الإدارية. يُسدد الرسم في الدائرة أو عبر بوابة الدفع عند تفعيلها، ثم تُصدر الوثيقة.', payment_status = 'PENDING', updated_at = ? WHERE reference = ?`
       ).run(timestamp, param(req, 'reference'))
       addEvent(item.id as number, {
         type: 'PAYMENT_REQUIRED',
@@ -447,7 +482,9 @@ export function registerApplicationsRoutes(app: express.Express) {
       })
       return res.json(getApplicationByReference(param(req, 'reference')))
     }
-    const issuedDocument = await createIssuedDocument({
+    let issuedDocument: Awaited<ReturnType<typeof createIssuedDocument>>
+    try {
+      issuedDocument = await createIssuedDocument({
       sourceKind: 'APPLICATION',
       applicationReference: String(item.reference),
       citizenId: Number(item.citizenId),
@@ -465,6 +502,15 @@ export function registerApplicationsRoutes(app: express.Express) {
         { label: 'نوع الإشغال', value: String(item.ownershipType || '') },
       ],
     })
+    } catch (error) {
+      // release the claim so the employee can retry
+      db.prepare(`UPDATE applications SET status = ?, updated_at = ? WHERE reference = ? AND status = 'APPROVING'`).run(
+        String(item.status),
+        new Date().toISOString(),
+        param(req, 'reference')
+      )
+      throw error
+    }
     const documentNumber = issuedDocument.documentNumber
     const verificationId = issuedDocument.verificationId
     db.exec('BEGIN')

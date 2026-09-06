@@ -4,7 +4,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { randomUUID } from 'node:crypto'
-import { db } from './db.js'
+import { db, nextReference } from './db.js'
 import { storeEncryptedMedia } from './media.js'
 
 const currentDir = dirname(fileURLToPath(import.meta.url))
@@ -54,8 +54,7 @@ function sanitizePdfText(value: string, max = 220) {
 
 function uniqueDocumentNumber(prefix: string) {
   const year = new Date().getFullYear()
-  const count =
-    Number((db.prepare('SELECT COUNT(*) AS count FROM issued_documents').get() as { count: number }).count || 0) + 1
+  const count = nextReference('issued_documents', 'SELECT COUNT(*) AS value FROM issued_documents')
   return `${prefix}-${year}-${String(count).padStart(6, '0')}`
 }
 
