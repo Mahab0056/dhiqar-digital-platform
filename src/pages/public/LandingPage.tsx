@@ -30,6 +30,7 @@ import {
   Zap,
 } from 'lucide-react'
 import { CircleMarker, MapContainer, TileLayer, Tooltip as LeafletTooltip, ZoomControl, useMap } from 'react-leaflet'
+import { serviceCount } from '../../lib/arabic-count'
 import { api } from '../../api'
 import { services } from '../../data'
 import { dhiqarNews } from '../../news'
@@ -76,7 +77,7 @@ const quickActions = [
     tone: 'red',
     icon: MessageSquareWarning,
     title: 'الشكاوى والمقترحات',
-    text: 'تواصل مع الجهات الحكومية',
+    text: 'تواصل مع الدوائر الحكومية',
     href: '/citizen/feedback',
   },
 ] as const
@@ -100,7 +101,7 @@ const trustItems = [
   { icon: FileCheck2, label: 'وثائق قابلة للتحقق' },
   { icon: LockKeyhole, label: 'حماية البيانات' },
   { icon: Bell, label: 'إشعارات المعاملات' },
-  { icon: History, label: 'سجل إلكتروني' },
+  { icon: History, label: 'سجل رقمي لكل معاملة' },
 ]
 
 const entityFilters = [
@@ -180,9 +181,9 @@ export function LandingPage() {
           <div className="gov-hero-art gov-hero-art-left" aria-hidden="true" />
           <div className="gov-container gov-hero-inner">
             <aside className="gov-hero-side gov-hero-side-right" aria-hidden="true">
-              <span className="gov-hero-tagline">ذي قار..</span>
+              <span className="gov-hero-tagline">ذي قار…</span>
               <p>
-                أرض الإنسان..
+                أرض الإنسان،
                 <br />
                 تصنع المستقبل
               </p>
@@ -207,7 +208,7 @@ export function LandingPage() {
             <aside className="gov-hero-side gov-hero-side-left" aria-hidden="true">
               <span className="gov-hero-tagline">هويتنا</span>
               <p>
-                تراث عريق..
+                تراث عريق
                 <br />
                 ومستقبل رقمي
               </p>
@@ -265,7 +266,7 @@ export function LandingPage() {
           <div className="gov-container">
             <header className="gov-band-head">
               <h2>اكتشف ذي قار رقمياً</h2>
-              <p>استكشف الجهات الحكومية والخدمات المتاحة في محافظة ذي قار من خلال الخريطة الرقمية.</p>
+              <p>استكشف الدوائر الحكومية والخدمات المتاحة في محافظة ذي قار من خلال الخريطة الرقمية.</p>
             </header>
             <div className="gov-gis">
               <aside className="gov-gis-browser">
@@ -274,8 +275,8 @@ export function LandingPage() {
                   <input
                     value={entityQuery}
                     onChange={event => setEntityQuery(event.target.value)}
-                    placeholder="ابحث عن جهة حكومية"
-                    aria-label="ابحث عن جهة حكومية"
+                    placeholder="ابحث عن دائرة حكومية"
+                    aria-label="ابحث عن دائرة حكومية"
                   />
                 </label>
                 <div className="gov-gis-filters" role="tablist" aria-label="تصفية الجهات">
@@ -308,7 +309,7 @@ export function LandingPage() {
                           <small>
                             <MapPin size={11} /> {item.district}
                             {' • '}
-                            {(item.services.length + (item.digitalServices || 0)).toLocaleString('en-US')} خدمة
+                            {serviceCount(item.services.length + (item.digitalServices || 0))}
                           </small>
                         </span>
                         <span className={item.dataStatus === 'VERIFIED_SOURCE' ? 'gov-gis-status on' : 'gov-gis-status'}>
@@ -320,7 +321,7 @@ export function LandingPage() {
                   {!filteredEntities.length && <li className="gov-gis-empty">لا توجد جهة مطابقة.</li>}
                 </ul>
                 <Link href="/departments" className="gov-link">
-                  دليل الجهات الحكومية الكامل <ArrowLeft size={14} />
+                  دليل الدوائر الكامل <ArrowLeft size={14} />
                 </Link>
               </aside>
               <div className="gov-gis-map-wrap">

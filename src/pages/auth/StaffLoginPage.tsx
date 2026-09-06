@@ -116,7 +116,7 @@ export function StaffLoginPage() {
       <main className="container login-content">
         <div className="login-intro">
           <span className="eyebrow">
-            <ShieldCheck size={16} /> STAFF ACCESS
+            <ShieldCheck size={16} /> دخول الموظفين
           </span>
           <h1>دخول موظفي المنصة</h1>
           <p>

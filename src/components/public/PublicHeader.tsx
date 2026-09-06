@@ -7,10 +7,10 @@ import { useSession } from '../../lib/session'
 const navItems = [
   { label: 'الرئيسية', href: '/', match: (path: string) => path === '/' },
   { label: 'الخدمات', href: '/directory', match: (path: string) => path.startsWith('/directory') || path.startsWith('/service/') },
-  { label: 'الجهات الحكومية', href: '/departments', match: (path: string) => path.startsWith('/departments') },
+  { label: 'الدوائر الحكومية', href: '/departments', match: (path: string) => path.startsWith('/departments') },
   { label: 'متابعة المعاملات', href: '/citizen#my-requests', match: (path: string) => path.startsWith('/citizen') },
   { label: 'الشكاوى والمقترحات', href: '/citizen/feedback', match: (path: string) => path.startsWith('/citizen/feedback') },
-  { label: 'دليل المستخدم', href: '/#journey', match: () => false },
+  { label: 'كيف تعمل المنصة؟', href: '/#journey', match: () => false },
 ]
 
 export function PublicHeader() {

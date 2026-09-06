@@ -428,7 +428,7 @@ export const governmentEntities: GovernmentEntity[] = [
     summary: 'مسار طلب موعد محلي. تأكيد الموعد مرتبط بمراجعة الدائرة المختارة ولا يعني حجزاً في نظام وطني خارجي.',
     services: [
       {
-        name: 'حجز موعد أونلاين',
+        name: 'حجز موعد إلكتروني',
         description: 'اختيار الدائرة والغرض والوقت المقترح، ثم متابعة تأكيد الموعد من الحساب.',
         availability: 'PARTIALLY_DIGITAL',
         serviceKey: 'online-appointment',

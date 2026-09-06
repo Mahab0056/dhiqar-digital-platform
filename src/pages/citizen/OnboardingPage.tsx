@@ -139,7 +139,7 @@ export function OnboardingPage() {
   const analyzeDocument = async (document: File | null = idFront) => {
     if (!document) return
     setAnalysisState('loading')
-    setAnalysisNote('جاري تحليل المستند تلقائياً...')
+    setAnalysisNote('جاري تحليل المستمسك تلقائياً…')
     setMessage('')
     try {
       const result = await api.previewIdentityDocument({ documentType, document })
@@ -213,7 +213,7 @@ export function OnboardingPage() {
     if (!consent || !retainMedia)
       return setMessage('الموافقة على المراجعة والاحتفاظ المشفر بالمرفقات مطلوبة قبل الإرسال.')
     if (!fullName || !documentNumber || !idFront || (!idBack && documentType !== 'PASSPORT') || !faceVideo)
-      return setMessage('أكمل الاسم والرقم وصور المستند وفيديو الوجه قبل الإرسال.')
+      return setMessage('أكمل الاسم والرقم وصور المستمسك وفيديو الوجه قبل الإرسال.')
     setBusy(true)
     setMessage('')
     try {
@@ -240,7 +240,7 @@ export function OnboardingPage() {
       setBusy(false)
     }
   }
-  const titles = ['الهاتف', 'المستند', 'البيانات', 'فيديو الوجه', 'المراجعة']
+  const titles = ['الهاتف', 'المستمسك', 'البيانات', 'فيديو الوجه', 'المراجعة']
   if (savedCitizen)
     return (
       <div className="onboarding-page">
@@ -260,7 +260,7 @@ export function OnboardingPage() {
             <h1>أهلاً بك مجدداً، {savedCitizen.fullName}</h1>
             <p>
               تم العثور على حسابك المرتبط برقم الهاتف. لا تحتاج إلى إنشاء حساب جديد؛ يبقى التقديم موقوفاً حتى تكتمل
-              نتيجة توثيق الوجه والمستند.
+              نتيجة توثيق الوجه والمستمسك.
             </p>
             <div className="saved-account-details">
               <span>
@@ -290,7 +290,7 @@ export function OnboardingPage() {
                     setStep(2)
                   }}
                 >
-                  إعادة تصوير المستند وتوثيق الوجه
+                  إعادة تصوير المستمسك وتوثيق الوجه
                 </button>
               )}
             </div>
@@ -303,7 +303,7 @@ export function OnboardingPage() {
       <CivicUtilityBar />
       <header className="onboarding-header container">
         <Brand />
-        <span>إنشاء الهوية الرقمية</span>
+        <span>إنشاء حساب المواطن</span>
         <Link href="/login">
           <X />
         </Link>
@@ -311,7 +311,7 @@ export function OnboardingPage() {
       <main className="container onboarding-layout">
         <aside className="onboarding-aside">
           <span className="section-kicker">إنشاء حساب المواطن</span>
-          <h1>يبدأ حسابك من مستند موثق.</h1>
+          <h1>يبدأ حسابك بمستمسك رسمي موثق</h1>
           <p>
             يدعم التسجيل البطاقة الوطنية أو جواز السفر أو إجازة السياقة، مع مراجعة بشرية مخولة قبل تغيير حالة الهوية.
           </p>
@@ -320,8 +320,8 @@ export function OnboardingPage() {
             <div>
               <strong>خصوصيتك جزء من التصميم</strong>
               <span>
-                تُحفظ المرفقات بتشفير وعلى نطاق مراجعة محدد بعد موافقتك، ولا يصدر قرار هوية تلقائي من التحليل أو الفيديو
-                وحدهما.
+                تُحفظ مرفقاتك مشفّرة ولا يطّلع عليها إلا الموظف المخوّل بعد موافقتك، ولا يُتخذ قرار بشأن هويتك تلقائياً؛
+                المراجعة بشرية دائماً.
               </span>
             </div>
           </div>
@@ -341,7 +341,7 @@ export function OnboardingPage() {
                 <Phone />
               </span>
               <h2>تأكيد رقم الهاتف</h2>
-              <p>سنرسل رمزاً حقيقياً لمرة واحدة عبر WhatsApp أو Telegram أو SMS مع تحويل تلقائي حسب التوفر.</p>
+              <p>سنرسل رمز تحقق لمرة واحدة عبر واتساب أو تيليغرام أو رسالة نصية، بحسب المتاح.</p>
               <label>
                 رقم الهاتف العراقي
                 <input
@@ -388,7 +388,7 @@ export function OnboardingPage() {
               <span className="stage-icon">
                 <FileCheck2 />
               </span>
-              <h2>اختر المستند وصوّره</h2>
+              <h2>اختر المستمسك وصوّره</h2>
               <p>
                 اختر المستند الذي ستسجل به ثم التقط صورته بوضوح. جواز السفر يحتاج صفحة البيانات فقط، أما الهوية وإجازة
                 السياقة فيحتاجان الوجهين.

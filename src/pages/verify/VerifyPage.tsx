@@ -88,7 +88,7 @@ export function VerifyPage({ verificationId }: { verificationId: string }) {
             <h1>تعذر التحقق</h1>
             <p>{error}</p>
             <Link className="button primary" href="/">
-              العودة للرئيسية
+              العودة إلى الرئيسية
             </Link>
           </div>
         ) : (

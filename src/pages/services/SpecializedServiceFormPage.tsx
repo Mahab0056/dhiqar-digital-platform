@@ -80,7 +80,7 @@ export function SpecializedServiceFormPage({ serviceKey }: { serviceKey: string 
     <PublicServiceFrame>
       <div className="service-form-header">
         <Link href="/">
-          <ArrowRight /> الرجوع للرئيسية
+          <ArrowRight /> العودة إلى الرئيسية
         </Link>
         <span>خدمة رقمية</span>
         <h1>{service.title}</h1>
@@ -117,7 +117,7 @@ export function SpecializedServiceFormPage({ serviceKey }: { serviceKey: string 
               <span>2</span>
               <div>
                 <h2>بيانات المحل</h2>
-                <p>أدخل المعلومات التشغيلية للخدمة.</p>
+                <p>أدخل بيانات المحل والنشاط.</p>
               </div>
             </div>
             <div className="form-grid">
@@ -191,14 +191,14 @@ export function SpecializedServiceFormPage({ serviceKey }: { serviceKey: string 
             <div className="form-card-title">
               <span>4</span>
               <div>
-                <h2>المستندات</h2>
+                <h2>المستمسكات</h2>
                 <p>تتغير المتطلبات تلقائياً بحسب صفة الإشغال ونوع النشاط.</p>
               </div>
             </div>
             <div className="service-document-captures">
               <SecureCameraCapture
                 title={ownership === 'rent' ? 'عقد الإيجار' : 'سند الملكية'}
-                guidance="صوّر المستند كاملاً من الكاميرا أو ارفع صورة / PDF واضحاً."
+                guidance="صوّر المستمسك كاملاً بالكاميرا أو ارفع صورة أو ملف PDF واضحاً."
                 mode="photo"
                 facingMode="environment"
                 allowPdf
@@ -257,12 +257,12 @@ export function SpecializedServiceFormPage({ serviceKey }: { serviceKey: string 
             </div>
             <div>
               <span>الرسم</span>
-              <strong>{service.fee ? formatIQD(service.fee) : 'مجانية'}</strong>
+              <strong>{service.fee ? formatIQD(service.fee) : 'يحدده التدقيق'}</strong>
             </div>
             <hr />
             <p>
-              <ShieldCheck /> تُحفظ مرفقات الطلب مشفرة وتُوجّه للدائرة المختصة. تبقى عملية الدفع معلقة إلى حين تهيئة
-              بوابة دفع معتمدة.
+              <ShieldCheck /> تُحفظ مرفقات الطلب مشفّرة وتُحال إلى الدائرة المختصة. إن حددت الدائرة رسماً بعد التدقيق،
+              يُسدد إلكترونياً أو في الدائرة قبل إصدار الوثيقة.
             </p>
             <button className="button primary full" type="submit" disabled={busy || access === 'checking'}>
               {busy

@@ -79,7 +79,7 @@ export function VerifyScanner() {
           </span>
           <span className="section-kicker">تحقق من وثيقة صادرة</span>
           <h1>امسح رمز QR أو أدخل المعرّف</h1>
-          <p>يفتح المسح سجل التحقق العام ويعرض الحد الأدنى من بيانات الوثيقة. لا ترفع صورة QR إلى خادم المنصة.</p>
+          <p>يُقرأ الرمز على جهازك ثم يُعرض سجل التحقق العام بالحد الأدنى من بيانات الوثيقة؛ لا تُرسل صورة الرمز إلى الخادم.</p>
           {cameraOpen && (
             <div className="scanner-camera">
               <video ref={videoRef} autoPlay playsInline muted />

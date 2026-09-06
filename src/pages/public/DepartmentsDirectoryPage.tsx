@@ -55,10 +55,10 @@ export function DepartmentsDirectoryPage() {
             <span className="section-kicker">
               <Building2 size={14} /> دليل الدوائر الحكومية
             </span>
-            <h1>كل دوائر ومديريات محافظة ذي قار في مكان واحد</h1>
+            <h1>دوائر محافظة ذي قار ومديرياتها في مكان واحد</h1>
             <p>
               {data
-                ? `${data.summary.total.toLocaleString('en-US')} جهة حكومية في ${data.summary.categories.toLocaleString('en-US')} قطاعاً، منها ${data.summary.gisComplete.toLocaleString('en-US')} بموقع جغرافي موثق. المصدر مذكور لكل جهة، ولا تُعرض أرقام أو مواقع غير موثقة.`
+                ? `${data.summary.total.toLocaleString('en-US')} دائرة حكومية في ${data.summary.categories.toLocaleString('en-US')} قطاعاً، منها ${data.summary.gisComplete.toLocaleString('en-US')} بموقع جغرافي موثق. المصدر مذكور لكل دائرة، ولا تُعرض أرقام أو مواقع غير موثقة.`
                 : 'جارٍ تحميل السجل...'}
             </p>
           </div>

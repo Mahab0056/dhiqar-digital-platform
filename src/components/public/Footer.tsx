@@ -30,7 +30,7 @@ export function Footer() {
       </div>
       <div className="container footer-bottom">
         <span>جميع الحقوق محفوظة © محافظة ذي قار</span>
-        <span>واجهة عربية • دعم RTL • أرقام إنجليزية • متوافق مع الهاتف</span>
+        <span>المنصة الرسمية لمحافظة ذي قار — الإصدار 1.0</span>
       </div>
     </footer>
   )

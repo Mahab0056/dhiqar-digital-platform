@@ -41,7 +41,7 @@ export function LoginPage() {
       <header className="login-top container">
         <Brand />
         <Link href="/">
-          <ArrowRight /> العودة للرئيسية
+          <ArrowRight /> العودة إلى الرئيسية
         </Link>
       </header>
       <main className="container login-v3-content">
@@ -51,8 +51,7 @@ export function LoginPage() {
           </span>
           <h1>تسجيل الدخول أو إنشاء حساب</h1>
           <p>
-            يمكن للمواطن استرجاع حسابه المحفوظ برقم الهاتف أو إكمال التسجيل لأول مرة؛ وبوابات العمل الحكومية لها صلاحيات
-            مستقلة. لكل بوابة صلاحيات محددة وفق الغرض الوظيفي.
+            ادخل بحسابك برقم الهاتف أو أنشئ حساباً جديداً. للموظفين والإدارة بوابات دخول مستقلة بصلاحيات محددة.
           </p>
           <div className="login-v3-security">
             <ShieldCheck />
@@ -70,7 +69,7 @@ export function LoginPage() {
                 <option.icon />
               </span>
               <div>
-                <small>{index === 0 ? 'خدمات المواطن' : 'وصول مقيّد'}</small>
+                <small>{index === 0 ? 'خدمات المواطن' : 'للموظفين فقط'}</small>
                 <h2>{option.title}</h2>
                 <p>{option.text}</p>
               </div>

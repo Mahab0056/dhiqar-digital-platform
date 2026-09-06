@@ -12,6 +12,7 @@ import {
   LayoutGrid,
   X,
 } from 'lucide-react'
+import { departmentCount, documentCount, serviceCount } from '../../lib/arabic-count'
 import { api } from '../../api'
 import type { CatalogService, CatalogSummary, DepartmentSummary, ServiceChannel } from '../../types'
 import { Footer } from '../../components/public/Footer'
@@ -163,16 +164,16 @@ export function GovernmentDirectoryPage() {
             <h1>ابحث عن الخدمة، اعرف المستمسكات، وقدّم إلكترونياً</h1>
             <p>
               {summary
-                ? `${summary.total.toLocaleString('en-US')} خدمة من ${departments.length.toLocaleString('en-US')} جهة حكومية — ${(
+                ? `${serviceCount(summary.total)} من ${departmentCount(departments.length)} حكومية: ${(
                     summary.channels.ONLINE_SUBMISSION || 0
-                  ).toLocaleString('en-US')} خدمة تُقدَّم إلكترونياً بالكامل و${(summary.channels.APPOINTMENT_REQUIRED || 0).toLocaleString('en-US')} خدمة تُقدَّم إلكترونياً ثم تُستكمل بالحضور.`
-                : 'ابحث باسم الخدمة أو الجهة أو المستمسك.'}
+                  ).toLocaleString('en-US')} منها تُنجز إلكترونياً بالكامل، و${(summary.channels.APPOINTMENT_REQUIRED || 0).toLocaleString('en-US')} تبدأ إلكترونياً وتُستكمل بالحضور.`
+                : 'ابحث باسم الخدمة أو الدائرة أو المستمسك.'}
             </p>
             <SmartSearch
               value={query}
               onChange={setQuery}
               variant="compact"
-              placeholder="مثال: إجازة بناء، جواز، تقاعد، رخصة سياقة، عقد إيجار… أو اضغط المايك وتكلّم"
+              placeholder="مثال: إجازة بناء، جواز سفر، تقاعد، إجازة سياقة، عقد إيجار… أو اضغط الميكروفون وتكلّم"
               onSubmitQuery={() => undefined}
             />
             <div className="gov-directory-channels" role="group" aria-label="طريقة التقديم">
@@ -216,7 +217,7 @@ export function GovernmentDirectoryPage() {
               ))}
             </select>
             <Link href="/departments" className="gov-link">
-              دليل الجهات الحكومية <ArrowLeft size={14} />
+              دليل الدوائر الحكومية <ArrowLeft size={14} />
             </Link>
           </aside>
 
@@ -301,7 +302,7 @@ export function GovernmentDirectoryPage() {
                       <div>
                         <dt>المستمسكات</dt>
                         <dd>
-                          {requiredCount ? `${requiredCount.toLocaleString('en-US')} مطلوبة` : 'لا تحتاج مستمسكات'}
+                          {requiredCount ? documentCount(requiredCount) : 'لا تحتاج مستمسكات'}
                         </dd>
                       </div>
                       {item.feeStatus === 'OFFICIAL' && item.feeIqd ? (

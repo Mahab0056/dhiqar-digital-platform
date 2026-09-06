@@ -10,7 +10,7 @@ export type NewsItem = {
 export const dhiqarNews: NewsItem[] = [
   {
     title: 'متابعة ملفات محافظة ذي قار والخدمات المحلية',
-    source: 'Iraqi News',
+    source: 'عراق نيوز',
     sourceUrl: 'https://www.iraqinews.com/iraq/dhi-qar-recovers-20-billion-iqd-anti-graft-sweep-2026/',
     image: '/news/dhiqar-governorate.jpg',
     category: 'الحكومة المحلية',

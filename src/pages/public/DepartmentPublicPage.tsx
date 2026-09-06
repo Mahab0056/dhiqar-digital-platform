@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'wouter'
 import { ArrowRight, Building2, ExternalLink, Gauge, Globe, MapPin, Phone, ShieldCheck } from 'lucide-react'
 import { CircleMarker, MapContainer, TileLayer } from 'react-leaflet'
+import { documentCount } from '../../lib/arabic-count'
 import { api } from '../../api'
 import type { CatalogService, DepartmentSummary } from '../../types'
 import { useSession } from '../../lib/session'
@@ -62,7 +63,7 @@ export function DepartmentPublicPage({ id }: { id: string }) {
                   <span>
                     <MapPin size={14} /> {item.district}
                   </span>
-                  {item.parentMinistry && <span>تابعة لـ {item.parentMinistry}</span>}
+                  {item.parentMinistry && <span>تابعة لـ{item.parentMinistry}</span>}
                   <span className={item.dataStatus === 'VERIFIED_SOURCE' ? 'status-pill on' : 'status-pill off'}>
                     <ShieldCheck size={12} /> {item.dataStatus === 'VERIFIED_SOURCE' ? 'مصدر موثق' : 'بحاجة لتحقق رسمي'}
                   </span>
@@ -93,7 +94,7 @@ export function DepartmentPublicPage({ id }: { id: string }) {
                                 ? 'تقديم إلكتروني ثم حضور'
                                 : 'معلوماتية'}
                             {service.requiredDocuments.length
-                              ? ` • ${service.requiredDocuments.filter(doc => doc.required).length.toLocaleString('en-US')} مستمسك مطلوب`
+                              ? ` • ${documentCount(service.requiredDocuments.filter(doc => doc.required).length)} مطلوب`
                               : ''}
                           </small>
                         </Link>
