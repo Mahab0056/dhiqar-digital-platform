@@ -513,7 +513,7 @@ export function registerApplicationsRoutes(app: express.Express) {
         { label: 'اسم المحل', value: String(item.businessName || '') },
         { label: 'نوع النشاط', value: String(item.activityType || '') },
         { label: 'القضاء', value: String(item.district || '') },
-        { label: 'نوع الإشغال', value: String(item.ownershipType || '') },
+        { label: 'نوع الإشغال', value: item.ownershipType === 'rent' ? 'إيجار' : item.ownershipType === 'owned' ? 'ملك' : String(item.ownershipType || '') },
       ],
     })
     } catch (error) {
