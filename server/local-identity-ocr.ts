@@ -16,9 +16,20 @@ async function getWorker() {
     const cachePath =
       process.env.IDENTITY_OCR_CACHE_PATH?.trim() ||
       `${process.env.RAILWAY_VOLUME_MOUNT_PATH || '/tmp'}/dhiqar-ocr-cache`
+    const langPath = process.env.IDENTITY_OCR_LANG_PATH?.trim() || undefined
     workerPromise = createWorker(['ara', 'eng'], 1, {
       cachePath,
+      ...(langPath ? { langPath, gzip: false } : {}),
       logger: () => undefined,
+      // a worker-thread error (e.g. traineddata download failure) must never bubble up as an uncaught exception
+      errorHandler: (error: unknown) => {
+        console.error('[ocr] worker error', error)
+        workerPromise = null
+      },
+    }).catch(error => {
+      // allow a later retry instead of caching the failure forever
+      workerPromise = null
+      throw error
     })
   }
   return workerPromise

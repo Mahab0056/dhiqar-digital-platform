@@ -4,7 +4,7 @@ import helmet from 'helmet'
 import { randomUUID } from 'node:crypto'
 import { createServer } from 'node:http'
 import { allowedOrigins, isLocalPreviewOrigin, secureHostedRuntime } from '../config.js'
-import { apiLimiter, sensitiveLimiter } from './rate-limit.js'
+import { apiLimiter, identityUploadLimiter, otpRequestLimiter, otpVerifyLimiter } from './rate-limit.js'
 
 export function createApp() {
   const app = express()
@@ -60,16 +60,10 @@ export function createApp() {
   })
   app.use(express.json({ limit: '1mb' }))
   app.use(express.urlencoded({ extended: false, limit: '64kb' }))
-  app.use(
-    [
-      '/api/onboarding/request-otp',
-      '/api/onboarding/verify-phone',
-      '/api/onboarding/identity-review',
-      '/api/onboarding/identity-extract-preview',
-      '/api/admin',
-    ],
-    sensitiveLimiter
-  )
+  // Separate budgets so one abused path never locks an office (shared NAT IP) out of the staff API.
+  app.use('/api/onboarding/request-otp', otpRequestLimiter)
+  app.use('/api/onboarding/verify-phone', otpVerifyLimiter)
+  app.use(['/api/onboarding/identity-review', '/api/onboarding/identity-extract-preview'], identityUploadLimiter)
 
   return { app, httpServer }
 }

@@ -3,7 +3,7 @@ import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto'
 import QRCode from 'qrcode'
 import { z } from 'zod'
 import { addAudit } from '../db.js'
-import { sensitiveLimiter } from '../http/rate-limit.js'
+import { loginLimiter } from '../http/rate-limit.js'
 import {
   clearSession,
   createSession,
@@ -105,7 +105,7 @@ export function registerAuthRoutes(app: express.Express) {
   })
 
   // ---- staff login (password → optional TOTP) --------------------------------
-  app.post('/api/auth/staff/login', sensitiveLimiter, (req, res) => {
+  app.post('/api/auth/staff/login', loginLimiter, (req, res) => {
     const payload = z
       .object({ username: z.string().trim().min(3).max(60), password: z.string().min(1).max(200) })
       .parse(req.body)
@@ -132,7 +132,7 @@ export function registerAuthRoutes(app: express.Express) {
     return issueStaffSession(req, res, result.account.id, 'PASSWORD')
   })
 
-  app.post('/api/auth/staff/mfa', sensitiveLimiter, (req, res) => {
+  app.post('/api/auth/staff/mfa', loginLimiter, (req, res) => {
     const payload = z
       .object({ challengeToken: z.string().min(10), code: z.string().trim().min(6).max(8) })
       .parse(req.body)
@@ -167,7 +167,7 @@ export function registerAuthRoutes(app: express.Express) {
   })
 
   // ---- self-service security ---------------------------------------------------
-  app.post('/api/auth/staff/change-password', requireStaff, sensitiveLimiter, (req, res) => {
+  app.post('/api/auth/staff/change-password', requireStaff, loginLimiter, (req, res) => {
     const session = currentSession(res)
     const payload = z
       .object({ currentPassword: z.string().min(1).max(200), newPassword: z.string().min(1).max(200) })
@@ -192,7 +192,7 @@ export function registerAuthRoutes(app: express.Express) {
     res.json({ success: true, otherSessionsRevoked: revoked })
   })
 
-  app.post('/api/auth/staff/mfa/setup', requireStaff, sensitiveLimiter, async (_req, res) => {
+  app.post('/api/auth/staff/mfa/setup', requireStaff, loginLimiter, async (_req, res) => {
     const session = currentSession(res)
     const account = getStaffById(session.staffId!)!
     if (account.totpEnabled)
@@ -203,7 +203,7 @@ export function registerAuthRoutes(app: express.Express) {
     res.json({ secret, otpauthUrl: url, qrDataUrl })
   })
 
-  app.post('/api/auth/staff/mfa/confirm', requireStaff, sensitiveLimiter, (req, res) => {
+  app.post('/api/auth/staff/mfa/confirm', requireStaff, loginLimiter, (req, res) => {
     const session = currentSession(res)
     const payload = z.object({ code: z.string().trim().min(6).max(8) }).parse(req.body)
     let ok = false
@@ -223,7 +223,7 @@ export function registerAuthRoutes(app: express.Express) {
     res.json({ success: true })
   })
 
-  app.post('/api/auth/staff/mfa/disable', requireStaff, sensitiveLimiter, (req, res) => {
+  app.post('/api/auth/staff/mfa/disable', requireStaff, loginLimiter, (req, res) => {
     const session = currentSession(res)
     const payload = z
       .object({ password: z.string().min(1).max(200), code: z.string().trim().min(6).max(8) })
