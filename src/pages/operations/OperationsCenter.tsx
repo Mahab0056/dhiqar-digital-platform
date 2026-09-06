@@ -221,7 +221,9 @@ export function OperationsCenter() {
               <div className={`health-row health-${component.status.toLowerCase()}`} key={component.key}>
                 <span>{component.label}</span>
                 <div>
-                  <i style={{ width: component.status === 'OK' ? '100%' : component.status === 'WARN' ? '55%' : '12%' }} />
+                  <i
+                    style={{ width: component.status === 'OK' ? '100%' : component.status === 'WARN' ? '55%' : '12%' }}
+                  />
                 </div>
                 <b title={component.detail}>
                   {component.status === 'OK' ? 'سليم' : component.status === 'WARN' ? 'يحتاج انتباه' : 'غير مفعّل'}
@@ -279,7 +281,9 @@ export function OperationsCenter() {
             <div className="alert-item low">
               <CircleDollarSign />
               <span>
-                <strong>{paymentMode === 'UNAVAILABLE' ? 'بوابة الدفع غير مربوطة' : 'بوابة الدفع في وضع المحاكاة'}</strong>
+                <strong>
+                  {paymentMode === 'UNAVAILABLE' ? 'بوابة الدفع غير مربوطة' : 'بوابة الدفع في وضع المحاكاة'}
+                </strong>
                 <small>
                   {paymentMode === 'UNAVAILABLE'
                     ? 'الرسوم الرسمية تُستوفى في الدائرة ولا تُعفى؛ يُفعّل الدفع الإلكتروني عند ربط المزود.'

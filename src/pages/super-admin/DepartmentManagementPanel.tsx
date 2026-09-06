@@ -112,7 +112,9 @@ export function DepartmentManagementPanel() {
               <span>الدائرة</span>
               <select value={selected?.id || ''} onChange={event => setSelectedId(event.target.value)}>
                 {departments
-                  .filter(item => !filter.trim() || `${item.name} ${item.category} ${item.district}`.includes(filter.trim()))
+                  .filter(
+                    item => !filter.trim() || `${item.name} ${item.category} ${item.district}`.includes(filter.trim())
+                  )
                   .map(item => (
                     <option key={item.id} value={item.id}>
                       {item.name} — {item.requests.length.toLocaleString('en-US')} طلب
@@ -224,7 +226,9 @@ export function DepartmentManagementPanel() {
                                   onChange={event => setEditing({ id: service.id, text: event.target.value })}
                                 />
                               </label>
-                              <small>اكتب المستمسكات فقط (هوية، عقد، صورة…). التعليمات العامة تُكتب في وصف الخدمة.</small>
+                              <small>
+                                اكتب المستمسكات فقط (هوية، عقد، صورة…). التعليمات العامة تُكتب في وصف الخدمة.
+                              </small>
                             </div>
                           ) : (
                             <ul>
@@ -254,7 +258,9 @@ export function DepartmentManagementPanel() {
                               <button
                                 type="button"
                                 className="button outline"
-                                onClick={() => setEditing({ id: service.id, text: service.requiredDocuments.join('\n') })}
+                                onClick={() =>
+                                  setEditing({ id: service.id, text: service.requiredDocuments.join('\n') })
+                                }
                                 disabled={busyService === service.id}
                               >
                                 تعديل المستمسكات

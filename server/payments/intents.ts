@@ -76,7 +76,10 @@ export function createPaymentForRequest(input: {
   requestedBy: string
 }) {
   const timestamp = new Date().toISOString()
-  const serial = String(nextReference('payment_intents', 'SELECT COUNT(*) AS value FROM payment_intents')).padStart(5, '0')
+  const serial = String(nextReference('payment_intents', 'SELECT COUNT(*) AS value FROM payment_intents')).padStart(
+    5,
+    '0'
+  )
   const reference = `PAY-${new Date().getFullYear()}-${serial}`
   const id = `pay_${randomUUID().replaceAll('-', '')}`
   const provider = paymentProvider()

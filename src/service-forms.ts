@@ -181,7 +181,10 @@ export const serviceDefinitions: DigitalServiceDefinition[] = [
     mode: 'EXTERNAL',
     fields: [],
     officialLinks: [
-      { label: 'خدمة البطاقة الوطنية على بوابة «أور» الحكومية', url: 'https://ur.gov.iq/index/show-eservice/62015/10042/cat' },
+      {
+        label: 'خدمة البطاقة الوطنية على بوابة «أور» الحكومية',
+        url: 'https://ur.gov.iq/index/show-eservice/62015/10042/cat',
+      },
       { label: 'تنزيل تطبيق عين العراق', url: 'https://play.google.com/store/apps/details?id=com.moi.ayniq&hl=ar' },
       { label: 'تعليمات تطبيق البطاقة الوطنية', url: 'https://ur.gov.iq/index/show-eservice/51434/10042/cat' },
     ],

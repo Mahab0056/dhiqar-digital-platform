@@ -5,7 +5,14 @@ import { randomUUID } from 'node:crypto'
 import { z } from 'zod'
 import { upload, validateUploadedFile } from '../http/upload.js'
 import { departmentById } from '../department-registry.js'
-import { type SessionData, setSession, requireSession, currentCitizen, currentSession, requireReviewAccess } from '../auth/session.js'
+import {
+  type SessionData,
+  setSession,
+  requireSession,
+  currentCitizen,
+  currentSession,
+  requireReviewAccess,
+} from '../auth/session.js'
 import { notifyCitizen, employeeWorkQueueRealtime } from '../realtime.js'
 import { addAudit, db, getCitizenById, getOrCreateCitizen } from '../db.js'
 import { createOtpChallenge, processOtpDeliveryWebhook, verifyOtpChallenge } from '../otp.js'
@@ -39,8 +46,7 @@ const identityPurposes = new Set([
 function staffMayOpenMedia(session: SessionData, mediaId: string) {
   if (session.role === 'SUPER_ADMIN') return true
   const media = db.prepare('SELECT purpose FROM media_objects WHERE id = ?').get(mediaId) as
-    | { purpose: string }
-    | undefined
+    { purpose: string } | undefined
   if (!media) return false
   if (identityPurposes.has(media.purpose)) {
     if (session.role !== 'IDENTITY_REVIEWER') return false
@@ -251,7 +257,9 @@ export function registerOnboardingRoutes(app: express.Express) {
         if (pending)
           return res
             .status(409)
-            .json({ message: 'طلب مراجعة هويتك قيد التدقيق حالياً. ستصلك النتيجة عبر الإشعارات قبل إمكانية إعادة الإرسال.' })
+            .json({
+              message: 'طلب مراجعة هويتك قيد التدقيق حالياً. ستصلك النتيجة عبر الإشعارات قبل إمكانية إعادة الإرسال.',
+            })
         const files = req.files as Record<string, Express.Multer.File[]> | undefined
         const idFront = files?.idFront?.[0]
         const idBack = files?.idBack?.[0]

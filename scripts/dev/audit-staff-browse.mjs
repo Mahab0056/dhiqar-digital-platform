@@ -19,7 +19,15 @@ const accounts = {
 }
 
 const routesByRole = {
-  anon: ['/staff/login', '/employee', '/department/dhiqar-municipalities', '/operations', '/governor', '/super-admin', '/staff/security'],
+  anon: [
+    '/staff/login',
+    '/employee',
+    '/department/dhiqar-municipalities',
+    '/operations',
+    '/governor',
+    '/super-admin',
+    '/staff/security',
+  ],
   employee: [
     '/employee#employee-service-requests',
     '/employee#employee-applications',
@@ -33,7 +41,12 @@ const routesByRole = {
     '/operations',
     '/super-admin',
   ],
-  reviewer: ['/employee#employee-service-requests', '/employee#employee-identity-reviews', '/employee#employee-applications', '/staff/security'],
+  reviewer: [
+    '/employee#employee-service-requests',
+    '/employee#employee-identity-reviews',
+    '/employee#employee-applications',
+    '/staff/security',
+  ],
   operations: ['/operations', '/governor', '/department/dhiqar-municipalities', '/staff/security', '/employee'],
   nodept: ['/employee#employee-service-requests', '/employee#employee-applications'],
   superadmin: [
@@ -92,7 +105,8 @@ for (const [role, routes] of Object.entries(routesByRole)) {
         try {
           await page.goto(`${base}${route}`, { waitUntil: 'networkidle', timeout: 20000 })
           await page.waitForTimeout(900)
-          if (theme === 'dark') await page.evaluate(() => document.documentElement.setAttribute('data-gov-theme', 'dark'))
+          if (theme === 'dark')
+            await page.evaluate(() => document.documentElement.setAttribute('data-gov-theme', 'dark'))
           await page.waitForTimeout(300)
           const info = await page.evaluate(() => {
             const doc = document.documentElement
@@ -102,13 +116,17 @@ for (const [role, routes] of Object.entries(routesByRole)) {
               for (const el of document.querySelectorAll('body *')) {
                 const r = el.getBoundingClientRect()
                 if (r.right > doc.clientWidth + 2 && r.width > 40) {
-                  offenders.push(`${el.tagName.toLowerCase()}.${String(el.className).split(' ').slice(0, 2).join('.')} right=${Math.round(r.right)}`)
+                  offenders.push(
+                    `${el.tagName.toLowerCase()}.${String(el.className).split(' ').slice(0, 2).join('.')} right=${Math.round(r.right)}`
+                  )
                   if (offenders.length > 6) break
                 }
               }
             }
             const text = document.body.innerText
-            const englishEnums = (text.match(/\b[A-Z_]{6,}\b/g) || []).filter(w => !/^(STAFF|ACCESS|GIS|SLA|TOTP|PDF|OCR|MFA|KB|QR)$/.test(w))
+            const englishEnums = (text.match(/\b[A-Z_]{6,}\b/g) || []).filter(
+              w => !/^(STAFF|ACCESS|GIS|SLA|TOTP|PDF|OCR|MFA|KB|QR)$/.test(w)
+            )
             return {
               title: document.title,
               url: location.href,
@@ -122,10 +140,32 @@ for (const [role, routes] of Object.entries(routesByRole)) {
             }
           })
           await page.screenshot({ path: `${outDir}/${slug}.png`, fullPage: true })
-          report.push({ role, route, viewport: vp.name, theme, ...info, consoleErrors: [...errors], failedRequests: [...failed] })
-          console.log(slug, `overflow=${info.overflow}`, failed.length ? failed.join(' | ') : '', errors.length ? `ERR:${errors.join(' | ')}` : '', info.gate ? `GATE:${info.gate.slice(0, 40)}` : '')
+          report.push({
+            role,
+            route,
+            viewport: vp.name,
+            theme,
+            ...info,
+            consoleErrors: [...errors],
+            failedRequests: [...failed],
+          })
+          console.log(
+            slug,
+            `overflow=${info.overflow}`,
+            failed.length ? failed.join(' | ') : '',
+            errors.length ? `ERR:${errors.join(' | ')}` : '',
+            info.gate ? `GATE:${info.gate.slice(0, 40)}` : ''
+          )
         } catch (error) {
-          report.push({ role, route, viewport: vp.name, theme, error: error.message, consoleErrors: [...errors], failedRequests: [...failed] })
+          report.push({
+            role,
+            route,
+            viewport: vp.name,
+            theme,
+            error: error.message,
+            consoleErrors: [...errors],
+            failedRequests: [...failed],
+          })
           console.log(slug, 'FAILED', error.message.slice(0, 200))
         }
       }

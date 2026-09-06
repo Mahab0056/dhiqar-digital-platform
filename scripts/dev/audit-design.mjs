@@ -152,7 +152,16 @@ const probe = () => {
       const k = sel(el) + '|' + cs.color + '|' + cs.backgroundColor
       if (cr < need && !seen.has(k)) {
         seen.add(k)
-        contrast.push({ sel: sel(el), text, fs, fw: cs.fontWeight, color: cs.color, bg: `rgb(${Math.round(bg.r)},${Math.round(bg.g)},${Math.round(bg.b)})`, ratio: +cr.toFixed(2), need })
+        contrast.push({
+          sel: sel(el),
+          text,
+          fs,
+          fw: cs.fontWeight,
+          color: cs.color,
+          bg: `rgb(${Math.round(bg.r)},${Math.round(bg.g)},${Math.round(bg.b)})`,
+          ratio: +cr.toFixed(2),
+          need,
+        })
       }
     }
   }
@@ -174,7 +183,7 @@ const probe = () => {
       nat: img.naturalWidth + 'x' + img.naturalHeight,
       rend: Math.round(r.width) + 'x' + Math.round(r.height),
       fit: cs.objectFit,
-      upscale: img.naturalWidth > 0 ? +(r.width * devicePixelRatio / img.naturalWidth).toFixed(2) : null,
+      upscale: img.naturalWidth > 0 ? +((r.width * devicePixelRatio) / img.naturalWidth).toFixed(2) : null,
       distort:
         img.naturalWidth && cs.objectFit === 'fill'
           ? +(r.width / r.height / (img.naturalWidth / img.naturalHeight)).toFixed(2)
@@ -204,8 +213,26 @@ const probe = () => {
     .map(sel)
   const text = document.body.innerText
   return {
-    fonts, sizes, colors, bgs, borders, radii, small, contrast, lineHeights, headings, buttons, ltr, overflow, wide,
-    images, links, smallTargets, svgs, iconsNoLabel, text,
+    fonts,
+    sizes,
+    colors,
+    bgs,
+    borders,
+    radii,
+    small,
+    contrast,
+    lineHeights,
+    headings,
+    buttons,
+    ltr,
+    overflow,
+    wide,
+    images,
+    links,
+    smallTargets,
+    svgs,
+    iconsNoLabel,
+    text,
     title: document.title,
     h1: Array.from(document.querySelectorAll('h1')).map(h => h.textContent.trim()),
     hasNotFound: /الصفحة غير موجودة/.test(text),
@@ -214,13 +241,20 @@ const probe = () => {
 
 const results = {}
 for (const [vname, viewport] of viewports) {
-  const context = await browser.newContext({ viewport, isMobile: vname === '390', deviceScaleFactor: vname === '390' ? 2 : 1 })
+  const context = await browser.newContext({
+    viewport,
+    isMobile: vname === '390',
+    deviceScaleFactor: vname === '390' ? 2 : 1,
+  })
   for (const theme of ['light', 'dark']) {
     for (const [rname, path] of routes) {
       const page = await context.newPage()
       const errors = []
       page.on('pageerror', e => errors.push(String(e.message).slice(0, 200)))
-      page.on('console', m => m.type() === 'error' && !/ERR_TUNNEL|net::/.test(m.text()) && errors.push(m.text().slice(0, 200)))
+      page.on(
+        'console',
+        m => m.type() === 'error' && !/ERR_TUNNEL|net::/.test(m.text()) && errors.push(m.text().slice(0, 200))
+      )
       await page.addInitScript(t => {
         if (t === 'dark') document.documentElement.setAttribute('data-gov-theme', 'dark')
       }, theme)

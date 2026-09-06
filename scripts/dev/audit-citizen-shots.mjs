@@ -1,15 +1,21 @@
 import { chromium } from 'playwright'
-const base = 'http://localhost:8787', phone = '07801112233'
+const base = 'http://localhost:8787',
+  phone = '07801112233'
 const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' })
 const ctx = await browser.newContext({ locale: 'ar-IQ' })
 const otp = await (await ctx.request.post(`${base}/api/onboarding/request-otp`, { data: { phone } })).json()
-await ctx.request.post(`${base}/api/onboarding/verify-phone`, { data: { phone, challengeId: otp.challengeId, otp: '246810' } })
+await ctx.request.post(`${base}/api/onboarding/verify-phone`, {
+  data: { phone, challengeId: otp.challengeId, otp: '246810' },
+})
 const page = await ctx.newPage()
 await page.setViewportSize({ width: 390, height: 844 })
 await page.goto(`${base}/citizen`, { waitUntil: 'networkidle' })
 await page.waitForTimeout(600)
 const h = await page.evaluate(() => document.documentElement.scrollHeight)
-for (let y = 0; y < h; y += 400) { await page.evaluate(y => scrollTo(0, y), y); await page.waitForTimeout(120) }
+for (let y = 0; y < h; y += 400) {
+  await page.evaluate(y => scrollTo(0, y), y)
+  await page.waitForTimeout(120)
+}
 await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight))
 await page.waitForTimeout(500)
 await page.screenshot({ path: 'qa-screens/audit-citizen-mobile-bottom-nav-overlap.png' })

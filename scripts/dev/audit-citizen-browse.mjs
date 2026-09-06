@@ -55,7 +55,9 @@ const probe = async page => {
     for (const el of document.querySelectorAll('body *')) {
       const r = el.getBoundingClientRect()
       if (r.width > 0 && (r.right > vw + 2 || r.left < -2) && getComputedStyle(el).position !== 'fixed') {
-        wide.push(`${el.tagName.toLowerCase()}.${String(el.className).toString().split(' ').slice(0, 2).join('.')} right=${Math.round(r.right)} left=${Math.round(r.left)}`)
+        wide.push(
+          `${el.tagName.toLowerCase()}.${String(el.className).toString().split(' ').slice(0, 2).join('.')} right=${Math.round(r.right)} left=${Math.round(r.left)}`
+        )
         if (wide.length > 6) break
       }
     }
@@ -65,21 +67,33 @@ const probe = async page => {
       .map(b => `${b.tagName.toLowerCase()}.${b.className} href=${b.getAttribute('href') || ''}`)
       .slice(0, 8)
     const inputsNoLabel = [...document.querySelectorAll('input:not([type=hidden]):not([hidden]), select, textarea')]
-      .filter(i => !i.closest('label') && !i.getAttribute('aria-label') && !(i.id && document.querySelector(`label[for="${i.id}"]`)))
-      .map(i => `${i.tagName.toLowerCase()} name=${i.getAttribute('name') || ''} ph=${i.getAttribute('placeholder') || ''}`)
+      .filter(
+        i =>
+          !i.closest('label') &&
+          !i.getAttribute('aria-label') &&
+          !(i.id && document.querySelector(`label[for="${i.id}"]`))
+      )
+      .map(
+        i => `${i.tagName.toLowerCase()} name=${i.getAttribute('name') || ''} ph=${i.getAttribute('placeholder') || ''}`
+      )
       .slice(0, 8)
     const small = []
     if (vw < 500)
       for (const el of document.querySelectorAll('button, a[href], input, select, label.button')) {
         const r = el.getBoundingClientRect()
         if (r.width > 0 && r.height > 0 && (r.height < 32 || r.width < 32) && getComputedStyle(el).display !== 'none') {
-          small.push(`${el.tagName.toLowerCase()}.${String(el.className).split(' ')[0]} "${(el.textContent || '').trim().slice(0, 25)}" ${Math.round(r.width)}x${Math.round(r.height)}`)
+          small.push(
+            `${el.tagName.toLowerCase()}.${String(el.className).split(' ')[0]} "${(el.textContent || '').trim().slice(0, 25)}" ${Math.round(r.width)}x${Math.round(r.height)}`
+          )
           if (small.length > 10) break
         }
       }
     const fixedBars = [...document.querySelectorAll('body *')]
       .filter(el => ['fixed', 'sticky'].includes(getComputedStyle(el).position))
-      .map(el => `${el.tagName.toLowerCase()}.${String(el.className).split(' ')[0]} h=${Math.round(el.getBoundingClientRect().height)}`)
+      .map(
+        el =>
+          `${el.tagName.toLowerCase()}.${String(el.className).split(' ')[0]} h=${Math.round(el.getBoundingClientRect().height)}`
+      )
       .slice(0, 6)
     const fonts = new Set()
     for (const el of document.querySelectorAll('h1,h2,h3,p,button,a,strong,small,span,input'))
@@ -91,7 +105,19 @@ const probe = async page => {
       .slice(0, 10)
     const title = document.title
     const text = (document.body.innerText || '').replace(/\s+/g, ' ').slice(0, 160)
-    return { overflowX, wide, imgsNoAlt, btnsNoName, inputsNoLabel, small, fixedBars, fonts: [...fonts], latin, title, text }
+    return {
+      overflowX,
+      wide,
+      imgsNoAlt,
+      btnsNoName,
+      inputsNoLabel,
+      small,
+      fixedBars,
+      fonts: [...fonts],
+      latin,
+      title,
+      text,
+    }
   })
 }
 
@@ -102,11 +128,13 @@ const run = async (ctx, label, routes, width) => {
   let failed = []
   page.on('pageerror', e => errors.push(`pageerror: ${e.message}`))
   page.on('console', m => {
-    if (m.type() === 'error' && !/ERR_TUNNEL|tile\.openstreetmap|nominatim/.test(m.text())) errors.push(`console: ${m.text().slice(0, 200)}`)
+    if (m.type() === 'error' && !/ERR_TUNNEL|tile\.openstreetmap|nominatim/.test(m.text()))
+      errors.push(`console: ${m.text().slice(0, 200)}`)
   })
   page.on('response', r => {
     const u = r.url()
-    if (u.startsWith(base) && r.status() >= 400 && !/profile-photo/.test(u)) failed.push(`${r.status()} ${u.replace(base, '')}`)
+    if (u.startsWith(base) && r.status() >= 400 && !/profile-photo/.test(u))
+      failed.push(`${r.status()} ${u.replace(base, '')}`)
   })
   for (const route of routes) {
     errors = []
@@ -132,7 +160,10 @@ const run = async (ctx, label, routes, width) => {
         const m = c.match(/\d+(\.\d+)?/g)
         if (!m) return null
         const [r, g, b] = m.map(Number)
-        const f = v => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4 }
+        const f = v => {
+          v /= 255
+          return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4
+        }
         return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b)
       }
       const bgOf = el => {
@@ -149,11 +180,14 @@ const run = async (ctx, label, routes, width) => {
         const r = el.getBoundingClientRect()
         if (!r.width || !r.height) continue
         const cs = getComputedStyle(el)
-        const l1 = lum(cs.color), l2 = lum(bgOf(el))
+        const l1 = lum(cs.color),
+          l2 = lum(bgOf(el))
         if (l1 === null || l2 === null) continue
         const ratio = (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05)
         if (ratio < 3) {
-          bad.push(`${el.tagName.toLowerCase()}.${String(el.className).split(' ')[0]} "${(el.textContent || '').trim().slice(0, 30)}" ${ratio.toFixed(2)} ${cs.color} on ${bgOf(el)}`)
+          bad.push(
+            `${el.tagName.toLowerCase()}.${String(el.className).split(' ')[0]} "${(el.textContent || '').trim().slice(0, 30)}" ${ratio.toFixed(2)} ${cs.color} on ${bgOf(el)}`
+          )
           if (bad.length > 8) break
         }
       }
@@ -167,7 +201,10 @@ const run = async (ctx, label, routes, width) => {
         const m = c.match(/\d+(\.\d+)?/g)
         if (!m) return null
         const [r, g, b] = m.map(Number)
-        const f = v => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4 }
+        const f = v => {
+          v /= 255
+          return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4
+        }
         return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b)
       }
       const bgOf = el => {
@@ -184,17 +221,31 @@ const run = async (ctx, label, routes, width) => {
         const r = el.getBoundingClientRect()
         if (!r.width || !r.height) continue
         const cs = getComputedStyle(el)
-        const l1 = lum(cs.color), l2 = lum(bgOf(el))
+        const l1 = lum(cs.color),
+          l2 = lum(bgOf(el))
         if (l1 === null || l2 === null) continue
         const ratio = (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05)
         if (ratio < 3) {
-          bad.push(`${el.tagName.toLowerCase()}.${String(el.className).split(' ')[0]} "${(el.textContent || '').trim().slice(0, 30)}" ${ratio.toFixed(2)} ${cs.color} on ${bgOf(el)}`)
+          bad.push(
+            `${el.tagName.toLowerCase()}.${String(el.className).split(' ')[0]} "${(el.textContent || '').trim().slice(0, 30)}" ${ratio.toFixed(2)} ${cs.color} on ${bgOf(el)}`
+          )
           if (bad.length > 8) break
         }
       }
       return bad
     })
-    report.push({ label, width, route, url: page.url().replace(base, ''), errors: [...errors], failed: [...failed], ...info, darkBg: dark.bg, darkLowContrast: dark.bad, lightLowContrast: light })
+    report.push({
+      label,
+      width,
+      route,
+      url: page.url().replace(base, ''),
+      errors: [...errors],
+      failed: [...failed],
+      ...info,
+      darkBg: dark.bg,
+      darkLowContrast: dark.bad,
+      lightLowContrast: light,
+    })
   }
   await page.close()
 }
@@ -205,7 +256,9 @@ for (const width of [1366, 390]) {
   await guest.close()
   const cit = await browser.newContext({ locale: 'ar-IQ' })
   const otp = await (await cit.request.post(`${base}/api/onboarding/request-otp`, { data: { phone } })).json()
-  await cit.request.post(`${base}/api/onboarding/verify-phone`, { data: { phone, challengeId: otp.challengeId, otp: '246810' } })
+  await cit.request.post(`${base}/api/onboarding/verify-phone`, {
+    data: { phone, challengeId: otp.challengeId, otp: '246810' },
+  })
   await run(cit, 'citizen', citizenRoutes, width)
   await cit.close()
 }

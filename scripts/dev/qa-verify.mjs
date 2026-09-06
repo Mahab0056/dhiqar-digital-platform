@@ -21,14 +21,24 @@ for (const [role, list] of Object.entries(routes)) {
     extraHTTPHeaders: { 'X-Forwarded-For': `10.7.${ip++}.3` },
   })
   const login = await ctx.request.post(`${base}/api/auth/staff/login`, { data: accounts[role] })
-  if (login.status() !== 200) { console.log('LOGIN FAILED', role, login.status()); continue }
+  if (login.status() !== 200) {
+    console.log('LOGIN FAILED', role, login.status())
+    continue
+  }
   const page = await ctx.newPage()
-  const errors = [], failed = []
-  page.on('console', m => { if (m.type() === 'error' && !/ERR_TUNNEL|net::ERR|tile/.test(m.text())) errors.push(m.text().slice(0, 160)) })
+  const errors = [],
+    failed = []
+  page.on('console', m => {
+    if (m.type() === 'error' && !/ERR_TUNNEL|net::ERR|tile/.test(m.text())) errors.push(m.text().slice(0, 160))
+  })
   page.on('pageerror', e => errors.push('PAGEERROR ' + e.message.slice(0, 160)))
-  page.on('response', r => { if (r.status() >= 400 && !/openstreetmap|tile|profile-photo/.test(r.url())) failed.push(`${r.status()} ${r.url().replace(base, '')}`) })
+  page.on('response', r => {
+    if (r.status() >= 400 && !/openstreetmap|tile|profile-photo/.test(r.url()))
+      failed.push(`${r.status()} ${r.url().replace(base, '')}`)
+  })
   for (const route of list) {
-    errors.length = 0; failed.length = 0
+    errors.length = 0
+    failed.length = 0
     await page.goto(base + route, { waitUntil: 'networkidle', timeout: 20000 }).catch(() => {})
     await page.waitForTimeout(900)
     const info = await page.evaluate(() => ({
@@ -37,7 +47,9 @@ for (const [role, list] of Object.entries(routes)) {
       gate: document.querySelector('.access-gate-page')?.innerText.slice(0, 60) || null,
       height: document.body.scrollHeight,
     }))
-    console.log(`${role} ${route} :: h1="${info.h1}" gate=${info.gate ? JSON.stringify(info.gate) : 'none'} overflow=${info.overflow} h=${info.height} errors=${errors.length ? JSON.stringify(errors.slice(0, 2)) : 0} failed=${failed.length ? JSON.stringify(failed.slice(0, 3)) : 0}`)
+    console.log(
+      `${role} ${route} :: h1="${info.h1}" gate=${info.gate ? JSON.stringify(info.gate) : 'none'} overflow=${info.overflow} h=${info.height} errors=${errors.length ? JSON.stringify(errors.slice(0, 2)) : 0} failed=${failed.length ? JSON.stringify(failed.slice(0, 3)) : 0}`
+    )
   }
   await ctx.close()
 }

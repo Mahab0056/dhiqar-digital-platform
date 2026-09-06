@@ -226,6 +226,28 @@ describe('application workflow', () => {
     reference = response.body.reference
     expect(reference).toMatch(/^TQD-/)
   })
+  it('ignores a client-supplied fee, service name and department (catalog is the source of truth)', async () => {
+    const response = await request(app)
+      .post('/api/applications')
+      .set('Cookie', citizen)
+      .field('serviceKey', 'store-license')
+      .field('serviceName', 'خدمة مزيفة')
+      .field('department', 'دائرة مزيفة')
+      .field('fee', '0')
+      .field('businessName', 'متجر ثانٍ')
+      .field('activityType', 'تجزئة')
+      .field('address', 'الناصرية - شارع النيل')
+      .field('district', 'الناصرية')
+      .field('ownershipType', 'owned')
+      .field('coordinates', JSON.stringify({ lat: 31.05, lng: 46.25 }))
+      .field('faceConsent', 'true')
+      .attach('propertyDocument', pdf, { filename: 'deed.pdf', contentType: 'application/pdf' })
+      .attach('storefrontPhoto', jpeg, { filename: 'front.jpg', contentType: 'image/jpeg' })
+      .attach('faceVideo', webm, { filename: 'face.webm', contentType: 'video/webm' })
+    expect([200, 201]).toContain(response.status)
+    expect(response.body.serviceName).not.toBe('خدمة مزيفة')
+    expect(response.body.department).not.toBe('دائرة مزيفة')
+  })
   it('employee requests a document and cannot approve while ACTION_REQUIRED', async () => {
     employee = await staffLogin('emp.one', 'Rotated-emp.one-2026!')
     const requested = await request(app)
@@ -236,6 +258,37 @@ describe('application workflow', () => {
     expect(requested.body.status).toBe('ACTION_REQUIRED')
     const approve = await request(app).post(`/api/applications/${reference}/approve`).set('Cookie', employee)
     expect(approve.status).toBe(409)
+  })
+  it('citizen can only upload a document while one is actually requested', async () => {
+    const { db } = await import('../server/db.ts')
+    const uploaded = await request(app)
+      .post(`/api/applications/${reference}/upload-document`)
+      .set('Cookie', citizen)
+      .field('documentName', 'عقد الإيجار')
+      .attach('document', pdf, { filename: 'lease.pdf', contentType: 'application/pdf' })
+    expect(uploaded.status).toBe(200)
+    expect(uploaded.body.status).toBe('UNDER_REVIEW')
+    // a second upload with nothing requested must not re-open or re-queue the file
+    const again = await request(app)
+      .post(`/api/applications/${reference}/upload-document`)
+      .set('Cookie', citizen)
+      .field('documentName', 'عقد الإيجار')
+      .attach('document', pdf, { filename: 'lease.pdf', contentType: 'application/pdf' })
+    expect(again.status).toBe(409)
+    db.prepare(`UPDATE applications SET status = 'UNDER_REVIEW' WHERE reference = ?`).run(reference)
+  })
+  it('an employee of another department cannot see or decide the application', async () => {
+    const other = await createStaff('EMPLOYEE', 'emp.other', 'dhi-qar-provincial-council')
+    const list = await request(app).get('/api/applications').set('Cookie', other)
+    expect(list.status).toBe(200)
+    expect(list.body.some((item: { reference: string }) => item.reference === reference)).toBe(false)
+    const detail = await request(app).get(`/api/applications/${reference}`).set('Cookie', other)
+    expect(detail.status).toBe(404)
+    const reject = await request(app)
+      .post(`/api/applications/${reference}/reject`)
+      .set('Cookie', other)
+      .send({ reason: 'محاولة من دائرة أخرى لا يجوز قبولها' })
+    expect(reject.status).toBe(404)
   })
   it('rejects a rejection without a reason and accepts a justified one', async () => {
     const noReason = await request(app)
@@ -591,5 +644,41 @@ describe('push notifications', () => {
       .set('Cookie', citizen)
       .send({ endpoint: 'https://push.example.test/sub/abc' })
     expect(off.body.devices).toBe(0)
+  })
+})
+
+describe('public verification exposes only what a verifier needs', () => {
+  it('never returns the citizen address, coordinates or attachment ids', async () => {
+    const { db } = await import('../server/db.ts')
+    const row = db.prepare(`SELECT verification_id FROM issued_documents LIMIT 1`).get() as
+      { verification_id: string } | undefined
+    if (!row) return
+    const response = await request(app).get(`/api/verify/${row.verification_id}`)
+    expect(response.status).toBe(200)
+    for (const field of ['address', 'coordinates', 'citizenId', 'attachments', 'events', 'lat', 'lng'])
+      expect(response.body).not.toHaveProperty(field)
+    expect(response.body.status).toBe('APPROVED')
+  })
+})
+
+describe('media access is scoped to the staff who own the record', () => {
+  it('an employee cannot open identity media through /api/admin/media', async () => {
+    const { db } = await import('../server/db.ts')
+    const media = db
+      .prepare(`SELECT id FROM media_objects WHERE purpose IN ('IDENTITY_DOCUMENT_FRONT', 'FACE_VIDEO') LIMIT 1`)
+      .get() as { id: string } | undefined
+    if (!media) return
+    const response = await request(app).get(`/api/admin/media/${media.id}`).set('Cookie', employee)
+    expect(response.status).toBe(404)
+  })
+})
+
+describe('reference numbers survive deletions', () => {
+  it('does not reuse a reference after rows are removed', async () => {
+    const { nextReference, db } = await import('../server/db.ts')
+    const first = nextReference('regression_counter')
+    const second = nextReference('regression_counter')
+    expect(second).toBe(first + 1)
+    db.prepare('DELETE FROM reference_counters WHERE key = ?').run('regression_counter')
   })
 })

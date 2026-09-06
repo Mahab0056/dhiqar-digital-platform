@@ -2,9 +2,23 @@
 import { chromium } from 'playwright'
 const base = 'http://localhost:8787'
 const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' })
-const routes = [['home', '/'], ['directory', '/directory'], ['svc-special', '/service/store-license'], ['departments', '/departments']]
-for (const [vname, viewport] of [['1440', { width: 1440, height: 900 }], ['1024', { width: 1024, height: 800 }], ['390', { width: 390, height: 844 }]]) {
-  const ctx = await browser.newContext({ viewport, isMobile: vname === '390', deviceScaleFactor: vname === '390' ? 2 : 1, reducedMotion: 'reduce' })
+const routes = [
+  ['home', '/'],
+  ['directory', '/directory'],
+  ['svc-special', '/service/store-license'],
+  ['departments', '/departments'],
+]
+for (const [vname, viewport] of [
+  ['1440', { width: 1440, height: 900 }],
+  ['1024', { width: 1024, height: 800 }],
+  ['390', { width: 390, height: 844 }],
+]) {
+  const ctx = await browser.newContext({
+    viewport,
+    isMobile: vname === '390',
+    deviceScaleFactor: vname === '390' ? 2 : 1,
+    reducedMotion: 'reduce',
+  })
   for (const theme of ['light', 'dark']) {
     for (const [r, path] of routes) {
       if (r !== 'home' && vname === '1024') continue
@@ -19,7 +33,10 @@ for (const [vname, viewport] of [['1440', { width: 1440, height: 900 }], ['1024'
         const out = []
         for (const el of document.querySelectorAll('body *')) {
           const rc = el.getBoundingClientRect()
-          if (rc.right > vw + 2 && !el.closest('.leaflet-container')) out.push(`${el.tagName.toLowerCase()}.${String(el.className).split(' ').slice(0, 2).join('.')} r=${Math.round(rc.right)}`)
+          if (rc.right > vw + 2 && !el.closest('.leaflet-container'))
+            out.push(
+              `${el.tagName.toLowerCase()}.${String(el.className).split(' ').slice(0, 2).join('.')} r=${Math.round(rc.right)}`
+            )
           if (out.length > 6) break
         }
         return { vw, sw, out }

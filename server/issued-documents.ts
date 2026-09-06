@@ -101,7 +101,12 @@ function writeText(
 ) {
   const clean = sanitizePdfText(text, 400)
   if (!ARABIC.test(clean) || !arabicFontAvailable()) {
-    pdf.text(clean, x, y, { width: options.width, align: options.align || 'right', lineGap: options.lineGap, lineBreak: false })
+    pdf.text(clean, x, y, {
+      width: options.width,
+      align: options.align || 'right',
+      lineGap: options.lineGap,
+      lineBreak: false,
+    })
     return
   }
   const fontSize = (pdf as unknown as { _fontSize: number })._fontSize
@@ -133,7 +138,11 @@ function writeText(
     const runs = runsOf(value).map(run => ({ ...run, width: runWidth(pdf, run) }))
     const total = runs.reduce((sum, run) => sum + run.width, 0)
     let cursor =
-      options.align === 'center' ? x + options.width / 2 + total / 2 : options.align === 'left' ? x + total : x + options.width
+      options.align === 'center'
+        ? x + options.width / 2 + total / 2
+        : options.align === 'left'
+          ? x + total
+          : x + options.width
     const lineY = y + index * lineHeight
     for (const run of runs) {
       cursor -= run.width
@@ -193,12 +202,26 @@ async function renderIssuedDocumentPdf(input: IssuedDocumentSource, documentNumb
   pdf.fillColor('#51645A').fontSize(9)
   writeText(pdf, 'إشعار اعتماد وإتمام معاملة ضمن سجل ذي قار الرقمية', 42, 154, { align: 'center', width: 511 })
   pdf.roundedRect(42, 182, 511, 55, 8).fill('#F1F7F3')
-  pdf.font(existsSync(arabicFontPath) ? 'Arabic' : 'Helvetica').fillColor('#62746A').fontSize(8)
+  pdf
+    .font(existsSync(arabicFontPath) ? 'Arabic' : 'Helvetica')
+    .fillColor('#62746A')
+    .fontSize(8)
   writeText(pdf, 'رقم الوثيقة', 62, 196, { align: 'right', width: 195 })
-  pdf.font('Helvetica').fillColor(green).fontSize(12).text(documentNumber, 62, 210, { align: 'right', width: 195, lineBreak: false })
-  pdf.font(existsSync(arabicFontPath) ? 'Arabic' : 'Helvetica').fillColor('#62746A').fontSize(8)
+  pdf
+    .font('Helvetica')
+    .fillColor(green)
+    .fontSize(12)
+    .text(documentNumber, 62, 210, { align: 'right', width: 195, lineBreak: false })
+  pdf
+    .font(existsSync(arabicFontPath) ? 'Arabic' : 'Helvetica')
+    .fillColor('#62746A')
+    .fontSize(8)
   writeText(pdf, 'معرّف التحقق', 338, 196, { align: 'right', width: 195 })
-  pdf.font('Helvetica').fillColor(green).fontSize(10).text(verificationId, 338, 211, { align: 'right', width: 195, lineBreak: false })
+  pdf
+    .font('Helvetica')
+    .fillColor(green)
+    .fontSize(10)
+    .text(verificationId, 338, 211, { align: 'right', width: 195, lineBreak: false })
   const topDetails = [
     { label: 'صاحب الطلب', value: input.citizenName },
     { label: 'الخدمة', value: input.serviceName },
@@ -216,7 +239,10 @@ async function renderIssuedDocumentPdf(input: IssuedDocumentSource, documentNumb
       if (!item) continue
       const x = col === 0 ? 42 : 304
       pdf.roundedRect(x, y, 249, 56, 6).lineWidth(0.6).strokeColor('#D7E3DB').stroke()
-      pdf.font(existsSync(arabicFontPath) ? 'Arabic' : 'Helvetica').fillColor('#718178').fontSize(8)
+      pdf
+        .font(existsSync(arabicFontPath) ? 'Arabic' : 'Helvetica')
+        .fillColor('#718178')
+        .fontSize(8)
       writeText(pdf, sanitizePdfText(item.label, 70), x + 12, y + 11, { align: 'right', width: 225, maxLines: 1 })
       const value = sanitizePdfText(item.value)
       pdf
@@ -235,20 +261,32 @@ async function renderIssuedDocumentPdf(input: IssuedDocumentSource, documentNumb
   const footerY = Math.min(Math.max(y + 8, 500), 610)
   pdf.roundedRect(42, footerY, 511, 124, 8).fill('#F7FAF8')
   pdf.image(qrData, 64, footerY + 18, { fit: [82, 82] })
-  pdf.font(existsSync(arabicFontPath) ? 'Arabic' : 'Helvetica').fillColor(green).fontSize(11)
+  pdf
+    .font(existsSync(arabicFontPath) ? 'Arabic' : 'Helvetica')
+    .fillColor(green)
+    .fontSize(11)
   writeText(pdf, 'تحقق من الأصل الرقمي', 166, footerY + 28, { align: 'right', width: 350 })
   pdf.fillColor('#56685D').fontSize(9)
-  writeText(pdf, 'امسح رمز QR أو أدخل معرّف التحقق في منصة ذي قار الرقمية لفتح ملف PDF الأصلي المؤرشف.', 166, footerY + 48, {
-    align: 'right',
-    width: 350,
-    lineGap: 4,
-  })
+  writeText(
+    pdf,
+    'امسح رمز QR أو أدخل معرّف التحقق في منصة ذي قار الرقمية لفتح ملف PDF الأصلي المؤرشف.',
+    166,
+    footerY + 48,
+    {
+      align: 'right',
+      width: 350,
+      lineGap: 4,
+    }
+  )
   pdf
     .font('Helvetica')
     .fillColor(navy)
     .fontSize(9)
     .text(verificationId, 166, footerY + 87, { align: 'right', width: 350, lineBreak: false })
-  pdf.font(existsSync(arabicFontPath) ? 'Arabic' : 'Helvetica').fillColor('#5D6C64').fontSize(8)
+  pdf
+    .font(existsSync(arabicFontPath) ? 'Arabic' : 'Helvetica')
+    .fillColor('#5D6C64')
+    .fontSize(8)
   writeText(
     pdf,
     `تاريخ الإصدار: ${new Date(input.issuedAt).toLocaleString('en-GB')} • الاعتماد المسجل بواسطة: ${sanitizePdfText(input.issuedBy, 70)}`,

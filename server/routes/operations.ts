@@ -86,7 +86,9 @@ function systemHealth(): { generatedAt: string; components: HealthComponent[] } 
     key: 'identity',
     label: 'التحقق الآلي من الهوية',
     status: faceMatchAvailable() ? 'OK' : 'WARN',
-    detail: faceMatchAvailable() ? 'مطابقة الوجه والاسم فعّالة — القرار بشري' : 'محرك المطابقة غير مفعّل — مراجعة بشرية فقط',
+    detail: faceMatchAvailable()
+      ? 'مطابقة الوجه والاسم فعّالة — القرار بشري'
+      : 'محرك المطابقة غير مفعّل — مراجعة بشرية فقط',
   })
   const uptimeHours = process.uptime() / 3600
   components.push({

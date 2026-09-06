@@ -296,7 +296,10 @@ export function ServiceRequestAdminPanel({
               {selected.paymentStatus === 'PAY_AT_OFFICE' && !pendingPayment && paidPayments.length === 0 && (
                 <div className="service-request-current-action">
                   <ReceiptText />
-                  <span>رسم رسمي يُستوفى في الدائرة عند إكمال الإجراء (الدفع الإلكتروني غير مفعّل). تأكد من الاستيفاء قبل الموافقة.</span>
+                  <span>
+                    رسم رسمي يُستوفى في الدائرة عند إكمال الإجراء (الدفع الإلكتروني غير مفعّل). تأكد من الاستيفاء قبل
+                    الموافقة.
+                  </span>
                 </div>
               )}
               {(pendingPayment || paidPayments.length > 0) && (

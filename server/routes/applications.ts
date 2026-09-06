@@ -29,34 +29,38 @@ export function registerApplicationsRoutes(app: express.Express) {
       const scopedName = scoped ? departmentById.get(scoped)?.name || '' : null
       // reviewers (and department-less employees) have no case queue of their own
       const hasCaseQueue = session.role === 'SUPER_ADMIN' || Boolean(scoped)
-      const applications = !hasCaseQueue ? 0 : Number(
-        (
-          (scopedName !== null
-            ? db
-                .prepare(
-                  `SELECT COUNT(*) AS count FROM applications WHERE status IN ('UNDER_REVIEW', 'SUBMITTED') AND (department_id = ? OR (department_id IS NULL AND department = ?))`
-                )
-                .get(scoped, scopedName)
-            : db
-                .prepare(`SELECT COUNT(*) AS count FROM applications WHERE status IN ('UNDER_REVIEW', 'SUBMITTED')`)
-                .get()) as { count: number }
-        ).count
-      )
-      const serviceRequests = !hasCaseQueue ? 0 : Number(
-        (
-          (scoped
-            ? db
-                .prepare(
-                  `SELECT COUNT(*) AS count FROM service_requests WHERE status IN ('SUBMITTED', 'UNDER_REVIEW', 'APPOINTMENT_REQUESTED') AND department_id = ?`
-                )
-                .get(scoped)
-            : db
-                .prepare(
-                  `SELECT COUNT(*) AS count FROM service_requests WHERE status IN ('SUBMITTED', 'UNDER_REVIEW', 'APPOINTMENT_REQUESTED')`
-                )
-                .get()) as { count: number }
-        ).count
-      )
+      const applications = !hasCaseQueue
+        ? 0
+        : Number(
+            (
+              (scopedName !== null
+                ? db
+                    .prepare(
+                      `SELECT COUNT(*) AS count FROM applications WHERE status IN ('UNDER_REVIEW', 'SUBMITTED') AND (department_id = ? OR (department_id IS NULL AND department = ?))`
+                    )
+                    .get(scoped, scopedName)
+                : db
+                    .prepare(`SELECT COUNT(*) AS count FROM applications WHERE status IN ('UNDER_REVIEW', 'SUBMITTED')`)
+                    .get()) as { count: number }
+            ).count
+          )
+      const serviceRequests = !hasCaseQueue
+        ? 0
+        : Number(
+            (
+              (scoped
+                ? db
+                    .prepare(
+                      `SELECT COUNT(*) AS count FROM service_requests WHERE status IN ('SUBMITTED', 'UNDER_REVIEW', 'APPOINTMENT_REQUESTED') AND department_id = ?`
+                    )
+                    .get(scoped)
+                : db
+                    .prepare(
+                      `SELECT COUNT(*) AS count FROM service_requests WHERE status IN ('SUBMITTED', 'UNDER_REVIEW', 'APPOINTMENT_REQUESTED')`
+                    )
+                    .get()) as { count: number }
+            ).count
+          )
       const identityReviews =
         session.role === 'IDENTITY_REVIEWER' || session.role === 'SUPER_ADMIN'
           ? Number(
@@ -175,9 +179,10 @@ export function registerApplicationsRoutes(app: express.Express) {
       if (storefrontPhoto) validateUploadedFile(storefrontPhoto, ['image'])
       validateUploadedFile(faceVideo, ['video'])
       const timestamp = new Date().toISOString()
-      const serial = String(
-        nextReference('applications', 'SELECT COUNT(*) AS value FROM applications')
-      ).padStart(4, '0')
+      const serial = String(nextReference('applications', 'SELECT COUNT(*) AS value FROM applications')).padStart(
+        4,
+        '0'
+      )
       const reference = `TQD-${new Date().getFullYear()}-${serial}`
       const result = db
         .prepare(
@@ -258,7 +263,12 @@ export function registerApplicationsRoutes(app: express.Express) {
         message: `سُجل طلب ${service.title} بالرقم ${reference} ووُجه إلى ${service.departmentName}.`,
         link: `/citizen/application/${reference}`,
       })
-      employeeWorkQueueRealtime.publish({ entity: 'APPLICATION', action: 'CREATED', reference, departmentId: service.departmentId })
+      employeeWorkQueueRealtime.publish({
+        entity: 'APPLICATION',
+        action: 'CREATED',
+        reference,
+        departmentId: service.departmentId,
+      })
       addAudit({
         actor: citizen.fullName,
         role: 'CITIZEN',
@@ -501,23 +511,31 @@ export function registerApplicationsRoutes(app: express.Express) {
     let issuedDocument: Awaited<ReturnType<typeof createIssuedDocument>>
     try {
       issuedDocument = await createIssuedDocument({
-      sourceKind: 'APPLICATION',
-      applicationReference: String(item.reference),
-      citizenId: Number(item.citizenId),
-      citizenName: String(item.citizenName),
-      serviceName: String(item.serviceName),
-      departmentName: String(item.department),
-      documentTitle: `إجازة ممارسة نشاط تجاري — ${String(item.businessName)}`,
-      issuedBy: session.actor,
-      issuedAt: timestamp,
-      preferredDocumentNumber: `LIC-${new Date().getFullYear()}-${String(item.id).padStart(5, '0')}`,
-      details: [
-        { label: 'اسم المحل', value: String(item.businessName || '') },
-        { label: 'نوع النشاط', value: String(item.activityType || '') },
-        { label: 'القضاء', value: String(item.district || '') },
-        { label: 'نوع الإشغال', value: item.ownershipType === 'rent' ? 'إيجار' : item.ownershipType === 'owned' ? 'ملك' : String(item.ownershipType || '') },
-      ],
-    })
+        sourceKind: 'APPLICATION',
+        applicationReference: String(item.reference),
+        citizenId: Number(item.citizenId),
+        citizenName: String(item.citizenName),
+        serviceName: String(item.serviceName),
+        departmentName: String(item.department),
+        documentTitle: `إجازة ممارسة نشاط تجاري — ${String(item.businessName)}`,
+        issuedBy: session.actor,
+        issuedAt: timestamp,
+        preferredDocumentNumber: `LIC-${new Date().getFullYear()}-${String(item.id).padStart(5, '0')}`,
+        details: [
+          { label: 'اسم المحل', value: String(item.businessName || '') },
+          { label: 'نوع النشاط', value: String(item.activityType || '') },
+          { label: 'القضاء', value: String(item.district || '') },
+          {
+            label: 'نوع الإشغال',
+            value:
+              item.ownershipType === 'rent'
+                ? 'إيجار'
+                : item.ownershipType === 'owned'
+                  ? 'ملك'
+                  : String(item.ownershipType || ''),
+          },
+        ],
+      })
     } catch (error) {
       // release the claim so the employee can retry
       db.prepare(`UPDATE applications SET status = ?, updated_at = ? WHERE reference = ? AND status = 'APPROVING'`).run(

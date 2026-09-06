@@ -79,41 +79,46 @@ export function registerSuperAdminRoutes(app: express.Express) {
     })
   })
 
-  app.patch('/api/super-admin/platform-services/:key', requireSession('SUPER_ADMIN'), adminMutationLimiter, (req, res) => {
-    const session = currentSession(res)
-    const payload = z
-      .object({
-        requiredDocuments: z.array(z.string().trim().min(2).max(240)).min(1).max(24).optional(),
-        active: z.boolean().optional(),
+  app.patch(
+    '/api/super-admin/platform-services/:key',
+    requireSession('SUPER_ADMIN'),
+    adminMutationLimiter,
+    (req, res) => {
+      const session = currentSession(res)
+      const payload = z
+        .object({
+          requiredDocuments: z.array(z.string().trim().min(2).max(240)).min(1).max(24).optional(),
+          active: z.boolean().optional(),
+        })
+        .safeParse(req.body)
+      if (!payload.success || (!payload.data.requiredDocuments && payload.data.active === undefined))
+        return res.status(400).json({ message: 'أدخل متطلباً واحداً على الأقل أو حدّث حالة الخدمة.' })
+      const current = db
+        .prepare('SELECT id, required_documents, active FROM service_catalog WHERE id = ?')
+        .get(param(req, 'key')) as Record<string, unknown> | undefined
+      if (!current) return res.status(404).json({ message: 'الخدمة غير موجودة في سجل المنصة.' })
+      const timestamp = new Date().toISOString()
+      db.prepare('UPDATE service_catalog SET required_documents = ?, active = ?, updated_at = ? WHERE id = ?').run(
+        JSON.stringify(payload.data.requiredDocuments || JSON.parse(String(current.required_documents || '[]'))),
+        payload.data.active === undefined ? Number(current.active) : Number(payload.data.active),
+        timestamp,
+        param(req, 'key')
+      )
+      addAudit({
+        actor: session.actor,
+        role: 'SUPER_ADMIN',
+        action: 'PLATFORM_SERVICE_UPDATED',
+        entityType: 'ServiceCatalog',
+        entityId: param(req, 'key'),
+        previousValue: {
+          requiredDocuments: JSON.parse(String(current.required_documents || '[]')),
+          active: Boolean(current.active),
+        },
+        newValue: payload.data,
       })
-      .safeParse(req.body)
-    if (!payload.success || (!payload.data.requiredDocuments && payload.data.active === undefined))
-      return res.status(400).json({ message: 'أدخل متطلباً واحداً على الأقل أو حدّث حالة الخدمة.' })
-    const current = db
-      .prepare('SELECT id, required_documents, active FROM service_catalog WHERE id = ?')
-      .get(param(req, 'key')) as Record<string, unknown> | undefined
-    if (!current) return res.status(404).json({ message: 'الخدمة غير موجودة في سجل المنصة.' })
-    const timestamp = new Date().toISOString()
-    db.prepare('UPDATE service_catalog SET required_documents = ?, active = ?, updated_at = ? WHERE id = ?').run(
-      JSON.stringify(payload.data.requiredDocuments || JSON.parse(String(current.required_documents || '[]'))),
-      payload.data.active === undefined ? Number(current.active) : Number(payload.data.active),
-      timestamp,
-      param(req, 'key')
-    )
-    addAudit({
-      actor: session.actor,
-      role: 'SUPER_ADMIN',
-      action: 'PLATFORM_SERVICE_UPDATED',
-      entityType: 'ServiceCatalog',
-      entityId: param(req, 'key'),
-      previousValue: {
-        requiredDocuments: JSON.parse(String(current.required_documents || '[]')),
-        active: Boolean(current.active),
-      },
-      newValue: payload.data,
-    })
-    res.json({ success: true, updatedAt: timestamp })
-  })
+      res.json({ success: true, updatedAt: timestamp })
+    }
+  )
 
   app.post('/api/super-admin/operations/cameras', requireSession('SUPER_ADMIN'), adminMutationLimiter, (req, res) => {
     const session = currentSession(res)

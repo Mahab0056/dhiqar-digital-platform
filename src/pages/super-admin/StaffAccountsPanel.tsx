@@ -285,7 +285,9 @@ export function StaffAccountsPanel() {
                     aria-label={`إلغاء المصادقة الثنائية لـ ${item.username}`}
                     disabled={busy || !item.totpEnabled}
                     onClick={() =>
-                      window.confirm(`إلغاء المصادقة الثنائية للحساب ${item.username}؟ سيدخل بكلمة المرور فقط حتى يعيد التفعيل.`) &&
+                      window.confirm(
+                        `إلغاء المصادقة الثنائية للحساب ${item.username}؟ سيدخل بكلمة المرور فقط حتى يعيد التفعيل.`
+                      ) &&
                       void act(() =>
                         api
                           .resetStaffMfa(item.id)
@@ -302,7 +304,9 @@ export function StaffAccountsPanel() {
                     disabled={busy}
                     onClick={() =>
                       (item.status !== 'ACTIVE' ||
-                        window.confirm(`تعطيل حساب ${item.fullName} (${item.username})؟ ستُنهى جلساته ولن يتمكن من الدخول.`)) &&
+                        window.confirm(
+                          `تعطيل حساب ${item.fullName} (${item.username})؟ ستُنهى جلساته ولن يتمكن من الدخول.`
+                        )) &&
                       void act(() =>
                         api
                           .setStaffStatus(item.id, item.status === 'ACTIVE' ? 'DISABLED' : 'ACTIVE')

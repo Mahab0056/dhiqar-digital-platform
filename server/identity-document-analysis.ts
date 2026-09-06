@@ -53,10 +53,7 @@ async function withTimeout(work: Promise<IdentityAnalysisResult>, ms: number): P
     timer = setTimeout(() => resolve(unavailable('PROVIDER_UNAVAILABLE', 'PROVIDER_UNAVAILABLE')), ms)
   })
   try {
-    return await Promise.race([
-      work.catch(() => unavailable('PROVIDER_UNAVAILABLE', 'PROVIDER_UNAVAILABLE')),
-      guard,
-    ])
+    return await Promise.race([work.catch(() => unavailable('PROVIDER_UNAVAILABLE', 'PROVIDER_UNAVAILABLE')), guard])
   } finally {
     if (timer) clearTimeout(timer)
   }

@@ -823,7 +823,9 @@ export function listCitizensForSuperAdmin(
   const limit = Math.min(Math.max(Number(filters.limit) || 100, 1), 250)
   if (query) {
     const search = `%${query.replace(/[\\%_]/g, char => `\\${char}`)}%`
-    where.push("(c.full_name LIKE ? ESCAPE '\\' OR c.phone_masked LIKE ? ESCAPE '\\' OR c.national_id_masked LIKE ? ESCAPE '\\')")
+    where.push(
+      "(c.full_name LIKE ? ESCAPE '\\' OR c.phone_masked LIKE ? ESCAPE '\\' OR c.national_id_masked LIKE ? ESCAPE '\\')"
+    )
     values.push(search, search, search)
   }
   if (adminCitizenVerificationStatuses.has(verificationStatus)) {
@@ -871,7 +873,8 @@ export function listCitizensForSuperAdmin(
  * Seeds from the current maximum so existing rows keep their numbers.
  */
 export function nextReference(key: string, seedSql?: string) {
-  const existing = db.prepare('SELECT value FROM reference_counters WHERE key = ?').get(key) as { value: number } | undefined
+  const existing = db.prepare('SELECT value FROM reference_counters WHERE key = ?').get(key) as
+    { value: number } | undefined
   if (!existing) {
     const seed = seedSql ? Number((db.prepare(seedSql).get() as { value: number | null })?.value || 0) : 0
     db.prepare('INSERT OR IGNORE INTO reference_counters (key, value) VALUES (?, ?)').run(key, seed)
@@ -886,7 +889,9 @@ export function getApplications(scope?: { departmentId?: string; departmentName?
   const rows = (
     scope?.departmentId
       ? db
-          .prepare('SELECT * FROM applications WHERE department_id = ? OR (department_id IS NULL AND department = ?) ORDER BY id DESC')
+          .prepare(
+            'SELECT * FROM applications WHERE department_id = ? OR (department_id IS NULL AND department = ?) ORDER BY id DESC'
+          )
           .all(scope.departmentId, scope.departmentName || '')
       : db.prepare('SELECT * FROM applications ORDER BY id DESC').all()
   ) as Array<Record<string, unknown>>

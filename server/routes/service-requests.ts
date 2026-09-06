@@ -315,11 +315,11 @@ export function registerServiceRequestsRoutes(app: express.Express) {
       ? `بانتظار سداد رسم الخدمة (${(service.feeIqd || 0).toLocaleString('en-US')} د.ع). يُحال الطلب إلى الدائرة فور تأكيد الدفع.`
       : payAtOffice
         ? `أُرسل الطلب إلى الدائرة المختصة. رسم الخدمة ${(service.feeIqd || 0).toLocaleString('en-US')} د.ع يُسدد في الدائرة عند إكمال الإجراء (الدفع الإلكتروني غير مفعّل بعد).`
-      : service.mode === 'APPOINTMENT'
-        ? 'أُرسل طلب الموعد إلى الدائرة وبانتظار التأكيد.'
-        : service.channel === 'APPOINTMENT_REQUIRED'
-          ? 'أُرسل الطلب والمستمسكات للتدقيق الأولي؛ ستحدد الدائرة موعد الحضور لإكمال الإجراء.'
-          : 'أُرسل الطلب والمستمسكات إلى الدائرة المختصة للتدقيق.'
+        : service.mode === 'APPOINTMENT'
+          ? 'أُرسل طلب الموعد إلى الدائرة وبانتظار التأكيد.'
+          : service.channel === 'APPOINTMENT_REQUIRED'
+            ? 'أُرسل الطلب والمستمسكات للتدقيق الأولي؛ ستحدد الدائرة موعد الحضور لإكمال الإجراء.'
+            : 'أُرسل الطلب والمستمسكات إلى الدائرة المختصة للتدقيق.'
     const initialStatus = feeDue
       ? 'PAYMENT_PENDING'
       : service.mode === 'APPOINTMENT'
@@ -442,7 +442,12 @@ export function registerServiceRequestsRoutes(app: express.Express) {
       link: payment ? `/citizen/pay/${payment.reference}` : '/citizen#my-requests',
     })
     if (!feeDue)
-      employeeWorkQueueRealtime.publish({ entity: 'SERVICE_REQUEST', action: 'CREATED', reference, departmentId: department.id })
+      employeeWorkQueueRealtime.publish({
+        entity: 'SERVICE_REQUEST',
+        action: 'CREATED',
+        reference,
+        departmentId: department.id,
+      })
     addAudit({
       actor: citizen.fullName,
       role: 'CITIZEN',
@@ -630,8 +635,7 @@ export function registerServiceRequestsRoutes(app: express.Express) {
       const session = currentSession(res)
       const row = loadRequest(param(req, 'reference'))
       if (!row) return res.status(404).json({ message: 'طلب الخدمة غير موجود.' })
-      if (!canActOn(session, row))
-        return res.status(403).json({ message: 'هذا الطلب يخص دائرة أخرى.' })
+      if (!canActOn(session, row)) return res.status(403).json({ message: 'هذا الطلب يخص دائرة أخرى.' })
       const mediaId = param(req, 'mediaId')
       const owned = db
         .prepare('SELECT 1 FROM service_request_media WHERE service_request_id = ? AND media_id = ?')
