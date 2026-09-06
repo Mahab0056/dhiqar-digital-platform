@@ -1,7 +1,7 @@
 import type { IncomingMessage, Server as HttpServer } from 'node:http'
 import { WebSocket, WebSocketServer } from 'ws'
 
-type EmployeeRole = 'EMPLOYEE' | 'IDENTITY_REVIEWER' | 'SUPER_ADMIN'
+type EmployeeRole = 'EMPLOYEE' | 'IDENTITY_REVIEWER' | 'OPERATIONS' | 'SUPER_ADMIN'
 export type WorkQueueEvent = {
   entity: 'APPLICATION' | 'SERVICE_REQUEST' | 'IDENTITY_REVIEW' | 'FEEDBACK'
   action: 'CREATED' | 'UPDATED'
@@ -87,7 +87,7 @@ export function installEmployeeWorkQueueRealtime({ server, authenticateEmployee,
         const who = audience.get(subject)
         if (!who) return
         // identity events go to reviewers/super admins only; department events only to that department
-        if (event.entity === 'IDENTITY_REVIEW' && who.role === 'EMPLOYEE') return
+        if (event.entity === 'IDENTITY_REVIEW' && (who.role === 'EMPLOYEE' || who.role === 'OPERATIONS')) return
         if (event.entity !== 'IDENTITY_REVIEW' && who.role === 'IDENTITY_REVIEWER') return
         if (event.departmentId && who.role === 'EMPLOYEE' && who.departmentId !== event.departmentId) return
         peers.forEach(socket => {

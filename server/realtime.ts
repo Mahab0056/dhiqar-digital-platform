@@ -24,10 +24,10 @@ export function installRealtime(server: Server) {
     server,
     authenticateEmployee(request) {
       const session = readSession(request)
-      if (!session || !['EMPLOYEE', 'IDENTITY_REVIEWER', 'SUPER_ADMIN'].includes(session.role)) return null
+      if (!session || !['EMPLOYEE', 'IDENTITY_REVIEWER', 'OPERATIONS', 'SUPER_ADMIN'].includes(session.role)) return null
       return {
         subject: session.sub,
-        role: session.role as 'EMPLOYEE' | 'IDENTITY_REVIEWER' | 'SUPER_ADMIN',
+        role: session.role as 'EMPLOYEE' | 'IDENTITY_REVIEWER' | 'OPERATIONS' | 'SUPER_ADMIN',
         departmentId: session.departmentId || null,
       }
     },
