@@ -565,3 +565,130 @@
     color: #fff;
   }
 }
+
+/* ---- AI identity verification summary --------------------------------------------------- */
+.ai-verification {
+  margin-top: 14px;
+  border: 1px solid var(--gov-line, #e3e8e5);
+  border-radius: 12px;
+  padding: 14px 16px;
+  background: var(--gov-surface, #fff);
+  display: grid;
+  gap: 12px;
+}
+.ai-verification header {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.ai-verification header > svg {
+  width: 26px;
+  height: 26px;
+  flex: none;
+}
+.ai-verification header div {
+  display: grid;
+  gap: 2px;
+}
+.ai-verification header span {
+  font-size: 13px;
+  color: var(--gov-muted, #667085);
+}
+.ai-verification.tone-ok header > svg {
+  color: #0a8f63;
+}
+.ai-verification.tone-warn header > svg {
+  color: #b7791f;
+}
+.ai-verification.tone-danger header > svg {
+  color: #c8102e;
+}
+.ai-verification.tone-ok {
+  border-color: #b9dfcc;
+  background: #f1f8f4;
+}
+.ai-verification.tone-danger {
+  border-color: #f2c9cf;
+  background: #fdf3f3;
+}
+.ai-verification.tone-warn {
+  border-color: #efe3c9;
+  background: #faf5ec;
+}
+.ai-verification-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 10px;
+}
+.ai-check {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid var(--gov-line, #e3e8e5);
+  background: var(--gov-surface, #fff);
+}
+.ai-check > svg {
+  width: 22px;
+  height: 22px;
+  flex: none;
+  color: var(--gov-muted, #667085);
+}
+.ai-check.tone-ok > svg {
+  color: #0a8f63;
+}
+.ai-check.tone-warn > svg {
+  color: #b7791f;
+}
+.ai-check.tone-danger > svg {
+  color: #c8102e;
+}
+.ai-check div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  flex: 1;
+}
+.ai-check b {
+  font-size: 13px;
+}
+.ai-check span {
+  font-size: 13px;
+  color: var(--gov-ink-2, #344054);
+}
+.ai-check small {
+  font-size: 12px;
+  color: var(--gov-muted, #667085);
+}
+.ai-check small.ai-error {
+  color: #c8102e;
+}
+.ai-meter {
+  position: relative;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--gov-line-soft, #eef1ef);
+  overflow: visible;
+  margin: 4px 0 8px;
+}
+.ai-meter i {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #c8102e 0%, #e0a100 45%, #0a8f63 75%);
+}
+.ai-meter em {
+  position: absolute;
+  inset-inline-end: 0;
+  top: 10px;
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--gov-ink-2, #344054);
+}
+.ai-verification-note {
+  margin: 0;
+  font-size: 12px;
+  color: var(--gov-muted, #667085);
+}

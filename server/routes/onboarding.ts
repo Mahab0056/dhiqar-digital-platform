@@ -10,6 +10,15 @@ import { createOtpChallenge, processOtpDeliveryWebhook, verifyOtpChallenge } fro
 import { readDecryptedMedia, storeEncryptedMedia } from '../media.js'
 import { screenIdentitySubmission } from '../identity-screening.js'
 import { analyzeIdentityDocument } from '../identity-document-analysis.js'
+import { runIdentityVerification } from '../identity-verification.js'
+
+const parseJson = (value: unknown) => {
+  try {
+    return value ? (JSON.parse(String(value)) as Record<string, unknown>) : null
+  } catch {
+    return null
+  }
+}
 
 export function registerOnboardingRoutes(app: express.Express) {
   app.post('/api/onboarding/request-otp', async (req, res) => {
@@ -279,9 +288,9 @@ export function registerOnboardingRoutes(app: express.Express) {
           screening.qualityStatus,
           screening.qualityScore,
           JSON.stringify(screening.qualityChecks),
-          analysis.faceComparison.status,
-          analysis.faceComparison.confidence,
-          analysis.provider,
+          'PENDING',
+          null,
+          null,
           payload.documentType,
           now.toISOString(),
           now.toISOString(),
@@ -325,6 +334,15 @@ export function registerOnboardingRoutes(app: express.Express) {
           link: '/citizen',
         })
         employeeWorkQueueRealtime.publish({ entity: 'IDENTITY_REVIEW', action: 'CREATED', reference: reviewId })
+        // automated face + name checks run in the background and update the review when done
+        void runIdentityVerification({
+          reviewId,
+          documentImage: idFront.buffer,
+          faceVideo: faceVideo.buffer,
+          typedName: payload.fullName,
+          extractedName: analysis.fields.fullName,
+          ocrText: analysis.rawText || null,
+        }).catch(error => console.warn('[identity] auto verification failed', error))
         addAudit({
           actor: payload.fullName,
           role: 'CITIZEN',
@@ -403,7 +421,7 @@ export function registerOnboardingRoutes(app: express.Express) {
         .prepare(
           `
       SELECT r.id, r.status, r.national_id_masked, r.consent_at, r.submitted_at, r.reviewed_at, r.reviewed_by, r.review_notes, r.retention_until,
-             r.quality_status, r.quality_score, r.quality_checks, r.face_match_status, r.face_match_score, r.face_match_provider, r.extracted_data,
+             r.quality_status, r.quality_score, r.quality_checks, r.face_match_status, r.face_match_score, r.face_match_provider, r.face_match_details, r.name_match_status, r.name_match_score, r.name_match_details, r.auto_assessment, r.extracted_data,
              c.full_name, c.phone_masked, c.location_lat, c.location_lng, c.location_accuracy_m, c.location_updated_at,
              front.id AS front_id, front.mime_type AS front_mime, front.size_bytes AS front_size,
              back.id AS back_id, back.mime_type AS back_mime, back.size_bytes AS back_size,
@@ -478,6 +496,11 @@ export function registerOnboardingRoutes(app: express.Express) {
             faceMatchStatus: row.face_match_status,
             faceMatchScore: row.face_match_score,
             faceMatchProvider: row.face_match_provider,
+            faceMatchDetails: parseJson(row.face_match_details),
+            nameMatchStatus: row.name_match_status || 'PENDING',
+            nameMatchScore: row.name_match_score,
+            nameMatch: parseJson(row.name_match_details),
+            autoAssessment: row.auto_assessment || 'PENDING',
           },
           media: [
             { id: row.front_id, label: 'وجه الهوية', mimeType: row.front_mime, sizeBytes: row.front_size },

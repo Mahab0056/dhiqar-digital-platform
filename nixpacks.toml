@@ -1,0 +1,3 @@
+# Fallback for the Nixpacks builder (Railpack config lives in railpack.json)
+[phases.setup]
+aptPkgs = ["ffmpeg"]

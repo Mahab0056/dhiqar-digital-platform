@@ -584,6 +584,17 @@ export const api = {
           faceMatchStatus: string
           faceMatchScore: number | null
           faceMatchProvider: string | null
+          faceMatchDetails: {
+            similarity?: number | null
+            framesAnalysed?: number
+            framesWithFace?: number
+            frameConsistency?: number | null
+            error?: string | null
+          } | null
+          nameMatchStatus: string
+          nameMatchScore: number | null
+          nameMatch: { extracted?: string | null; method?: string; matchedTokens?: string[] } | null
+          autoAssessment: 'PENDING' | 'READY_TO_APPROVE' | 'NEEDS_ATTENTION' | 'LIKELY_MISMATCH' | 'UNAVAILABLE'
         }
         media: Array<{ id: string; label: string; mimeType: string; sizeBytes: number }>
       }>

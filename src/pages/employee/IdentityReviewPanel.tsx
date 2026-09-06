@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { AlertTriangle, Check, CheckCircle2, Eye, FileArchive, Fingerprint, MapPin, X } from 'lucide-react'
+import { AlertTriangle, Check, CheckCircle2, Eye, FileArchive, MapPin, X } from 'lucide-react'
 import { api } from '../../api'
+import { AiVerificationSummary } from './AiVerificationSummary'
 
 export function IdentityReviewPanel() {
   type Review = {
@@ -30,6 +31,17 @@ export function IdentityReviewPanel() {
       faceMatchStatus: string
       faceMatchScore: number | null
       faceMatchProvider: string | null
+      faceMatchDetails: {
+        similarity?: number | null
+        framesAnalysed?: number
+        framesWithFace?: number
+        frameConsistency?: number | null
+        error?: string | null
+      } | null
+      nameMatchStatus: string
+      nameMatchScore: number | null
+      nameMatch: { extracted?: string | null; method?: string; matchedTokens?: string[] } | null
+      autoAssessment: 'PENDING' | 'READY_TO_APPROVE' | 'NEEDS_ATTENTION' | 'LIKELY_MISMATCH' | 'UNAVAILABLE'
     }
     media: Array<{ id: string; label: string; mimeType: string; sizeBytes: number }>
   }
@@ -228,19 +240,7 @@ export function IdentityReviewPanel() {
                       </span>
                     ))}
                   </div>
-                  <div className="face-match-boundary">
-                    <Fingerprint />
-                    <div>
-                      <strong>مطابقة الوجه بالهوية</strong>
-                      <span>
-                        {selected.screening.faceMatchStatus === 'MATCH_ASSISTED'
-                          ? `ظهر تشابه تقني أولي${selected.screening.faceMatchScore !== null ? ` (${(selected.screening.faceMatchScore * 100).toFixed(0)}%)` : ''}؛ القرار النهائي للمراجع البشري.`
-                          : selected.screening.faceMatchStatus === 'NO_MATCH_ASSISTED'
-                            ? 'نتيجة التشابه تحتاج تدقيقاً إضافياً؛ لا يُرفض المواطن تلقائياً.'
-                            : 'لم تتوفر نتيجة تشابه تقنية من المزود؛ راجع صورة المستند وفيديو الوجه يدوياً قبل القرار.'}
-                      </span>
-                    </div>
-                  </div>
+                  <AiVerificationSummary screening={selected.screening} />
                 </div>
                 <div className="review-media-grid">
                   {selected.media.map(media => (

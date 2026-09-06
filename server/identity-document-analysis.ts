@@ -26,6 +26,8 @@ const extractedSchema = z.object({
     status: z.enum(['MATCH_ASSISTED', 'NO_MATCH_ASSISTED', 'MANUAL_REVIEW_REQUIRED', 'NOT_PROVIDED']),
     confidence: z.number().min(0).max(1).nullable(),
   }),
+  /** raw OCR text (kept server-side only, used for MRZ/name cross-checks) */
+  rawText: z.string().max(20000).optional(),
 })
 
 export type IdentityAnalysisResult = z.infer<typeof extractedSchema>

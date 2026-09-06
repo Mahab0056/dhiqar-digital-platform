@@ -124,6 +124,7 @@ export async function analyzeIdentityDocumentLocally(input: {
         documentTypeDetected: input.documentType,
         faceCrop: null,
         faceComparison: { status: 'MANUAL_REVIEW_REQUIRED', confidence: null },
+        rawText,
       }
     }
     const confidence = Math.max(0, Math.min(1, Number(result.data.confidence || 0) / 100))
@@ -143,6 +144,7 @@ export async function analyzeIdentityDocumentLocally(input: {
       documentTypeDetected: fields.documentTypeDetected,
       faceCrop: null,
       faceComparison: { status: 'MANUAL_REVIEW_REQUIRED', confidence: null },
+      rawText,
     }
   } catch {
     workerPromise = null

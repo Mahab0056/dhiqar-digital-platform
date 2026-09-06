@@ -1,4 +1,6 @@
 allowBuilds:
   core-js: false
   esbuild: true
+  onnxruntime-node: false
+  sharp: true
   tesseract.js: true
