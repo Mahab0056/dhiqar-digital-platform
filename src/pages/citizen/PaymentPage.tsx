@@ -32,6 +32,8 @@ export function PaymentPage({ reference, sandbox = false }: { reference: string;
   const result = new URLSearchParams(window.location.search).get('result')
 
   useEffect(() => {
+    // the same component instance serves /pay and /pay/sandbox — never carry a busy flag across
+    setBusy(false)
     let active = true
     Promise.all([api.getPayment(reference), api.getPaymentConfig()])
       .then(([payment, paymentConfig]) => {
@@ -47,15 +49,17 @@ export function PaymentPage({ reference, sandbox = false }: { reference: string;
     return () => {
       active = false
     }
-  }, [reference])
+  }, [reference, sandbox])
 
   const startCheckout = async () => {
     setBusy(true)
     setError('')
     try {
       const checkout = await api.startCheckout(reference)
-      if (checkout.checkoutUrl.startsWith('/')) navigate(checkout.checkoutUrl)
-      else window.location.assign(checkout.checkoutUrl)
+      if (checkout.checkoutUrl.startsWith('/')) {
+        setBusy(false)
+        navigate(checkout.checkoutUrl)
+      } else window.location.assign(checkout.checkoutUrl)
     } catch (err) {
       setError((err as Error).message)
       setBusy(false)

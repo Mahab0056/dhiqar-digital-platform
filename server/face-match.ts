@@ -256,7 +256,7 @@ export async function extractVideoFrames(video: Buffer, count = 5): Promise<Buff
   if (!(await ffmpegAvailable())) return []
   const dir = mkdtempSync(join(tmpdir(), 'dhiqar-face-'))
   try {
-    const input = join(dir, 'input.webm')
+    const input = join(dir, 'input.video') // ffmpeg probes the container (webm or mp4) from content
     await import('node:fs/promises').then(fs => fs.writeFile(input, video))
     await execFileAsync(
       'ffmpeg',

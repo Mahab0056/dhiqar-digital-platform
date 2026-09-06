@@ -60,15 +60,25 @@ type RegistryService = {
 
 const registry = registryData as RegistryService[]
 
-/** Standard identity documents used by the legacy platform forms (kept as explicit uploads). */
+/**
+ * Legacy service definitions list "requirements" that mix real documents ("هوية الأحوال المدنية") with
+ * form facts ("تحديد الدائرة والغرض", "العنوان"). Only the documents become upload slots; "عند الحاجة"
+ * / "إن وجد" make a slot optional.
+ */
+const DOCUMENT_WORDS =
+  /هوية|بطاقة|شهادة|سند|عقد|صورة|صور|مخطط|استمارة|وثيقة|وثائق|كتاب|جواز|رخصة|إجازة|مستمسك|مرفق|ملف|فحص|تأييد|قائمة|إيصال/
+const OPTIONAL_WORDS = /عند الحاجة|إن وجد|إن وجدت|اختياري/
 const legacyDocuments = (requirements: string[]): CatalogDocument[] =>
-  requirements.map((label, index) => ({
-    key: `req-${index + 1}`,
-    label,
-    description: '',
-    required: true,
-    accepts: ['image', 'pdf'],
-  }))
+  requirements
+    .map((label, index) => ({ label, index }))
+    .filter(item => DOCUMENT_WORDS.test(item.label))
+    .map(item => ({
+      key: `req-${item.index + 1}`,
+      label: item.label.replace(/\s*(عند الحاجة|إن وجدت?)\s*$/, '').trim() || item.label,
+      description: OPTIONAL_WORDS.test(item.label) ? 'اختياري — أرفقه إن كان متوفراً.' : '',
+      required: !OPTIONAL_WORDS.test(item.label),
+      accepts: ['image', 'pdf'] as CatalogDocument['accepts'],
+    }))
 
 /** Legacy definitions that name a national ministry are anchored to the local office that serves Thi Qar. */
 const legacyDepartmentOverrides: Record<string, string> = {

@@ -35,6 +35,8 @@ export function SecureCameraCapture({
   const [previewUrl, setPreviewUrl] = useState('')
   const [cameraError, setCameraError] = useState('')
   const [cameraReady, setCameraReady] = useState(false)
+  // once the camera has failed (no device, permission denied, recorder unsupported) the upload path is offered
+  const [cameraFailed, setCameraFailed] = useState(false)
   const faceChallenge = !recording
     ? { title: 'استعد لتسجيل فيديو الوجه', detail: 'ضع وجهك داخل الإطار وانتظر بدء العد التنازلي.' }
     : recordingSeconds >= 6
@@ -98,6 +100,7 @@ export function SecureCameraCapture({
     setCameraReady(false)
     stopCamera()
     if (!navigator.mediaDevices?.getUserMedia) {
+      setCameraFailed(true)
       setCameraError('هذا المتصفح لا يدعم فتح الكاميرا. استخدم Chrome أو Safari حديثاً، أو ارفع الملف من الهاتف.')
       return
     }
@@ -121,6 +124,7 @@ export function SecureCameraCapture({
           stream.getTracks().forEach(track => track.stop())
           if (streamRef.current === stream) streamRef.current = null
           setCameraOpen(false)
+          setCameraFailed(true)
           setCameraError('تعذر تجهيز شاشة الكاميرا. أعد المحاولة أو استخدم رفع الملف.')
           return
         }
@@ -139,6 +143,7 @@ export function SecureCameraCapture({
           stream.getTracks().forEach(track => track.stop())
           if (streamRef.current === stream) streamRef.current = null
           setCameraOpen(false)
+          setCameraFailed(true)
           setCameraError(cameraErrorMessage(playError))
         }
       }
@@ -146,6 +151,7 @@ export function SecureCameraCapture({
         void attachStream()
       })
     } catch (error) {
+      setCameraFailed(true)
       setCameraError(cameraErrorMessage(error))
     }
   }
@@ -173,12 +179,22 @@ export function SecureCameraCapture({
 
   const startVideo = (sourceStream?: MediaStream) => {
     const stream = sourceStream || streamRef.current
-    if (!stream || typeof MediaRecorder === 'undefined')
+    if (!stream || typeof MediaRecorder === 'undefined') {
+      setCameraFailed(true)
       return setCameraError('تسجيل الفيديو غير مدعوم في هذا المتصفح. استخدم رفع فيديو قصير.')
-    const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')
-      ? 'video/webm;codecs=vp9,opus'
-      : 'video/webm'
-    const recorder = new MediaRecorder(stream, { mimeType })
+    }
+    // iOS Safari records MP4 only; Chrome/Firefox prefer WebM. Never hard-code a type the browser rejects.
+    const candidates = ['video/mp4', 'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm']
+    const mimeType = candidates.find(type => MediaRecorder.isTypeSupported(type))
+    let recorder: MediaRecorder
+    try {
+      recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream)
+    } catch {
+      setCameraFailed(true)
+      return setCameraError('تعذر بدء تسجيل الفيديو في هذا المتصفح. ارفع فيديو قصيراً لوجهك (٥–٧ ثوانٍ) بدلاً من ذلك.')
+    }
+    const container = (recorder.mimeType || mimeType || 'video/webm').split(';')[0]
+    const extension = container.includes('mp4') ? 'mp4' : 'webm'
     chunksRef.current = []
     discardRecordingRef.current = false
     setRecordingSeconds(7)
@@ -190,8 +206,8 @@ export function SecureCameraCapture({
       recordingTimerRef.current = null
       if (!discardRecordingRef.current && chunksRef.current.length)
         setCapturedFile(
-          new File([new Blob(chunksRef.current, { type: 'video/webm' })], `face-video-7s-${Date.now()}.webm`, {
-            type: 'video/webm',
+          new File([new Blob(chunksRef.current, { type: container })], `face-video-7s-${Date.now()}.${extension}`, {
+            type: container,
           })
         )
       const isCurrentStream = streamRef.current === stream
@@ -321,9 +337,9 @@ export function SecureCameraCapture({
         <button type="button" className="button secondary" onClick={() => void openCamera()}>
           <Camera /> {cameraOpen ? 'إعادة محاولة الكاميرا' : file ? 'إعادة التصوير' : 'فتح الكاميرا'}
         </button>
-        {!cameraOnly && (
+        {(!cameraOnly || cameraFailed) && (
           <button type="button" className="button ghost" onClick={() => inputRef.current?.click()}>
-            <FileText /> {mode === 'photo' ? 'رفع صورة' : 'رفع فيديو'}
+            <FileText /> {mode === 'photo' ? 'رفع صورة' : 'رفع فيديو قصير'}
           </button>
         )}
         {file && (
