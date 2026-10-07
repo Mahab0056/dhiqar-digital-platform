@@ -14,7 +14,6 @@ import {
   FileText,
   Fingerprint,
   RefreshCw,
-  Search,
   ShieldCheck,
   X,
 } from 'lucide-react'
@@ -258,9 +257,6 @@ export function EmployeeDashboard() {
                               <h2>قائمة المعاملات</h2>
                               <span>{apps.length} نتيجة</span>
                             </div>
-                            <button>
-                              <Search />
-                            </button>
                           </div>
                           {apps.length === 0 ? (
                             <div className="empty-queue">
@@ -305,9 +301,14 @@ export function EmployeeDashboard() {
                                   <h2>{selected.serviceName}</h2>
                                   <p>{selected.reference}</p>
                                 </div>
-                                <button>
+                                <a
+                                  className="icon-button"
+                                  href="/employee#employee-archive"
+                                  aria-label="فتح أرشيف المعاملات"
+                                  title="أرشيف المعاملات"
+                                >
                                   <FileArchive />
-                                </button>
+                                </a>
                               </div>
                               <div className="citizen-access-notice">
                                 <ShieldCheck />

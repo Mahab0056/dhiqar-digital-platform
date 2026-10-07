@@ -682,3 +682,12 @@ describe('reference numbers survive deletions', () => {
     db.prepare('DELETE FROM reference_counters WHERE key = ?').run('regression_counter')
   })
 })
+
+describe('unknown API paths', () => {
+  it('answers 404 JSON instead of the SPA page', async () => {
+    const response = await request(app).get('/api/this-route-does-not-exist').set('Cookie', admin)
+    expect(response.status).toBe(404)
+    expect(response.headers['content-type']).toMatch(/json/)
+    expect(response.body.message).toBeTruthy()
+  })
+})

@@ -69,6 +69,11 @@ export function createPlatformServer(options: { serveStatic?: boolean } = {}) {
   registerDepartmentRoutes(app)
   registerSystemRoutes(app)
 
+  // an unknown /api path is a client bug: answer 404 JSON instead of falling through to the SPA's index.html
+  app.use('/api', (_req, res) => {
+    res.status(404).json({ message: 'المسار المطلوب غير موجود في واجهة المنصة.' })
+  })
+
   const currentDir = dirname(fileURLToPath(import.meta.url))
   const distDir = join(currentDir, '..', 'dist')
   if (options.serveStatic !== false && existsSync(distDir)) {
