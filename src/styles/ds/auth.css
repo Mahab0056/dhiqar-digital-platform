@@ -147,12 +147,13 @@
   padding: 18px;
   border-color: var(--ds-primary);
   background: var(--ds-primary);
-  color: #fff;
+  color: var(--ds-primary-fg);
   box-shadow: var(--ds-shadow-sm);
 }
 .auth-choice.is-primary:hover {
-  border-color: var(--ds-primary-hover);
-  background: var(--ds-primary-hover);
+  border-color: transparent;
+  background: var(--ds-gold-gradient);
+  filter: brightness(1.06);
 }
 .auth-choice-icon {
   display: grid;
@@ -165,8 +166,8 @@
   color: var(--ds-text-2);
 }
 .auth-choice.is-primary .auth-choice-icon {
-  background: rgba(255, 255, 255, 0.16);
-  color: #fff;
+  background: color-mix(in srgb, var(--ds-primary-fg) 12%, transparent);
+  color: var(--ds-primary-fg);
 }
 .auth-choice-icon svg {
   width: 22px;
@@ -188,7 +189,7 @@
   line-height: 1.5;
 }
 .auth-choice.is-primary .auth-choice-text small {
-  color: rgba(255, 255, 255, 0.82);
+  color: color-mix(in srgb, var(--ds-primary-fg) 78%, transparent);
 }
 .auth-choice-arrow {
   flex: none;
@@ -412,7 +413,7 @@
 .onb-panel .stepper .active span {
   border-color: var(--ds-primary);
   background: var(--ds-primary);
-  color: #fff;
+  color: var(--ds-primary-fg);
   box-shadow: 0 0 0 4px var(--ds-primary-soft);
 }
 .onb-panel .stepper .done span {
@@ -625,4 +626,15 @@
   .onb-panel .document-type-options {
     grid-template-columns: 1fr;
   }
+}
+
+.access-gate-loading {
+  display: grid;
+  place-items: center;
+}
+.auth-grid:not(.has-aside) .access-gate {
+  max-width: 520px;
+  margin-inline: auto;
+  text-align: center;
+  justify-items: center;
 }

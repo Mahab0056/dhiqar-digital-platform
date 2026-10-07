@@ -194,7 +194,7 @@
   height: 48px;
   border-radius: 50%;
   background: var(--ds-primary);
-  color: #fff;
+  color: var(--ds-primary-fg);
   font-size: var(--ds-text-lg);
   font-weight: 700;
 }
@@ -467,7 +467,7 @@
 .citizen-v2 .citizen-service-controls nav button.active {
   border-color: var(--ds-primary);
   background: var(--ds-primary);
-  color: #fff;
+  color: var(--ds-primary-fg);
 }
 .citizen-v2 .citizen-service-controls small {
   color: var(--ds-text-muted);

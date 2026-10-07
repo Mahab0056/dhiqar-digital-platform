@@ -27,7 +27,7 @@ for (const theme of ['light', 'dark']) {
   const page = await ctx.newPage()
   await page.addInitScript(t => {
     try {
-      localStorage.setItem('tqd-theme', t)
+      localStorage.setItem('tqd-theme-v2', t)
     } catch {
       /* ignore */
     }

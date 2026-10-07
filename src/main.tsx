@@ -13,6 +13,13 @@ import { registerServiceWorker } from './lib/push'
 
 registerServiceWorker()
 
+// apply a saved day-mode choice before the first paint (index.html ships the night theme)
+try {
+  if (localStorage.getItem('tqd-theme-v2') === 'light') document.documentElement.setAttribute('data-gov-theme', 'light')
+} catch {
+  /* storage unavailable: keep the default theme */
+}
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <App />

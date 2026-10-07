@@ -27,7 +27,7 @@
   padding: 10px 16px;
   border-radius: var(--ds-radius-sm);
   background: var(--ds-primary);
-  color: #fff;
+  color: var(--ds-primary-fg);
   font-weight: 600;
   text-decoration: none;
   transition: top var(--ds-fast) var(--ds-ease);

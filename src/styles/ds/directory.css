@@ -69,7 +69,7 @@
 }
 .dir-filter-group li button.is-active b {
   background: var(--ds-primary);
-  color: #fff;
+  color: var(--ds-primary-fg);
 }
 
 /* results */

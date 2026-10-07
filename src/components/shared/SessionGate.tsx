@@ -1,9 +1,10 @@
 import type React from 'react'
 import { useEffect, useState } from 'react'
 import { Link, useLocation } from 'wouter'
-import { ArrowLeft, LockKeyhole, RefreshCw } from 'lucide-react'
+import { ArrowLeft, LockKeyhole } from 'lucide-react'
 import { api } from '../../api'
-import { Brand } from '../public/Brand'
+import { AuthShell } from '../public/AuthShell'
+import { LoadingBlock } from '../public/PageHeader'
 
 export function SessionGate({
   role,
@@ -38,34 +39,35 @@ export function SessionGate({
   }, [role, navigate])
   if (state === 'loading')
     return (
-      <div className="access-gate-page">
-        <RefreshCw className="spin" />
-        <span>جاري التحقق من الجلسة...</span>
+      <div className="auth-page access-gate-loading">
+        <LoadingBlock label="جاري التحقق من الجلسة…" />
       </div>
     )
   if (state === 'denied')
     return (
-      <div className="access-gate-page denied">
-        <Brand />
-        <span className="access-gate-icon">
-          <LockKeyhole />
-        </span>
-        <h1>الدخول مطلوب</h1>
-        <p>
-          {role === 'CITIZEN'
-            ? 'أكد رقم هاتفك لإدارة معاملاتك وبياناتك بأمان.'
-            : 'سجّل دخولك بحسابك الوظيفي. هذه الصفحة تتطلب صلاحية محددة.'}
-        </p>
-        <Link
-          className="button primary"
-          href={
-            role === 'CITIZEN' ? '/onboarding' : `/staff/login?next=${encodeURIComponent(window.location.pathname)}`
-          }
-        >
-          {role === 'CITIZEN' ? 'تأكيد الهاتف' : 'دخول الموظفين'}
-          <ArrowLeft />
-        </Link>
-      </div>
+      <AuthShell context={role === 'CITIZEN' ? 'حساب المواطن' : 'دخول الموظفين'}>
+        <div className="auth-card access-gate">
+          <span className="auth-card-icon">
+            <LockKeyhole />
+          </span>
+          <span className="section-kicker">صفحة محمية</span>
+          <h1>سجّل الدخول للمتابعة</h1>
+          <p className="auth-lead">
+            {role === 'CITIZEN'
+              ? 'أكّد رقم هاتفك لإدارة معاملاتك وبياناتك بأمان.'
+              : 'سجّل دخولك بحسابك الوظيفي. هذه الصفحة تتطلب صلاحية محددة.'}
+          </p>
+          <Link
+            className="button primary full auth-submit"
+            href={
+              role === 'CITIZEN' ? '/onboarding' : `/staff/login?next=${encodeURIComponent(window.location.pathname)}`
+            }
+          >
+            {role === 'CITIZEN' ? 'الدخول برقم الهاتف' : 'دخول الموظفين'}
+            <ArrowLeft />
+          </Link>
+        </div>
+      </AuthShell>
     )
   return <>{children}</>
 }

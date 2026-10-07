@@ -55,7 +55,7 @@
 }
 .app-shell .workspace-tabbar button:is(.active, [aria-selected='true']) {
   background: var(--ds-primary);
-  color: #fff;
+  color: var(--ds-primary-fg);
 }
 .app-shell .workspace-tabbar button svg {
   width: 17px;
@@ -67,4 +67,48 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
   gap: 12px;
+}
+
+/* selected tabs and segments paint their own foreground — legacy rules painted inner spans white */
+.app-shell :is(.workspace-tabbar button.active, .workspace-tabbar button[aria-selected='true']),
+.app-shell :is(.workspace-tabbar button.active, .workspace-tabbar button[aria-selected='true']) * {
+  color: var(--ds-primary-fg);
+}
+.app-shell .gov-segmented {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-pill);
+  background: var(--ds-surface-sunken);
+}
+.app-shell .gov-segmented button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: var(--ds-radius-pill);
+  background: transparent;
+  color: var(--ds-text-2);
+  font-family: var(--ds-font-ui);
+  font-size: var(--ds-text-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+.app-shell .gov-segmented button.active,
+.app-shell .gov-segmented button.active * {
+  background: var(--ds-primary);
+  color: var(--ds-primary-fg);
+}
+.app-shell .gov-segmented button.active b {
+  background: color-mix(in srgb, var(--ds-primary-fg) 14%, transparent);
+}
+.app-shell .gov-segmented button b {
+  min-width: 20px;
+  padding: 0 6px;
+  border-radius: var(--ds-radius-pill);
+  background: var(--ds-surface);
+  font-size: 11px;
 }

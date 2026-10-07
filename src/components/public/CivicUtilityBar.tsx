@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react'
 import { Accessibility, Globe, Moon, Sun } from 'lucide-react'
 
-const THEME_KEY = 'tqd-theme'
+// v2: the night theme became the platform default; the old key stored "light" for every visitor
+const THEME_KEY = 'tqd-theme-v2'
 
 function readTheme(): 'light' | 'dark' {
   try {
-    return localStorage.getItem(THEME_KEY) === 'dark' ? 'dark' : 'light'
+    return localStorage.getItem(THEME_KEY) === 'light' ? 'light' : 'dark'
   } catch {
-    return 'light'
+    return 'dark'
   }
 }
 

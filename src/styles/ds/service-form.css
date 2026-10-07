@@ -69,7 +69,7 @@
 }
 .svc-stepper li.is-current b {
   background: var(--ds-primary);
-  color: #fff;
+  color: var(--ds-primary-fg);
 }
 @media (max-width: 720px) {
   .svc-stepper {
@@ -95,7 +95,7 @@
   height: 36px;
   border-radius: var(--ds-radius-sm);
   background: var(--ds-primary);
-  color: #fff;
+  color: var(--ds-primary-fg);
   font-size: var(--ds-text-md);
   font-weight: 700;
 }

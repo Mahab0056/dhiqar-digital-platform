@@ -38,6 +38,14 @@ export function PublicHeader() {
             : null
   const portalLabel = session?.role === 'CITIZEN' ? 'حسابي ومعاملاتي' : 'لوحة العمل'
 
+  // over the home photograph the header is transparent until the page scrolls
+  const [scrolled, setScrolled] = useState(false)
+  useEffect(() => {
+    const update = () => setScrolled(window.scrollY > 24)
+    update()
+    window.addEventListener('scroll', update, { passive: true })
+    return () => window.removeEventListener('scroll', update)
+  }, [])
   // the mobile menu closes with Escape
   useEffect(() => {
     if (!open) return
@@ -54,7 +62,7 @@ export function PublicHeader() {
         تخطَّ إلى المحتوى الرئيسي
       </a>
       <CivicUtilityBar />
-      <header className={open ? 'tq-header is-open' : 'tq-header'}>
+      <header className={['tq-header', open ? 'is-open' : '', scrolled ? 'is-scrolled' : ''].filter(Boolean).join(' ')}>
         <div className="tq-container tq-header-row">
           <Link href="/" className="tq-brand" aria-label="ذي قار الرقمية — الرئيسية">
             <img src="/brand/dhiqar-unified-logo.png" alt="" />

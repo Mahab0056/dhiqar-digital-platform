@@ -17,9 +17,9 @@
   justify-content: center;
   gap: 8px;
   min-height: var(--ds-control-md);
-  padding: 0 18px;
+  padding: 0 22px;
   border: 1px solid var(--btn-border);
-  border-radius: var(--ds-radius-sm);
+  border-radius: var(--ds-radius-pill);
   background: var(--btn-bg);
   color: var(--btn-fg);
   box-shadow: none;
@@ -74,6 +74,28 @@
 .button.primary:hover:not(:disabled),
 .gov-btn.primary:hover:not(:disabled) {
   box-shadow: var(--ds-shadow-sm);
+}
+/* primary actions wear the signature gradient (gold at night, green by day) */
+.button.primary,
+.gov-btn.primary {
+  border-color: transparent;
+  background: var(--ds-gold-gradient);
+  color: var(--ds-primary-fg);
+  font-weight: 700;
+}
+.button.primary:hover:not(:disabled),
+.gov-btn.primary:hover:not(:disabled) {
+  border-color: transparent;
+  background: var(--ds-gold-gradient);
+  color: var(--ds-primary-fg);
+  filter: brightness(1.07);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--ds-primary) 30%, transparent);
+}
+:root[data-gov-theme='dark'] :is(.button, .gov-btn):is(.outline, .secondary):not(.danger) {
+  --btn-bg: var(--ds-glass);
+  --btn-border: var(--ds-glass-border);
+  --btn-bg-hover: var(--ds-glass-strong);
+  --btn-border-hover: rgba(232, 199, 126, 0.45);
 }
 .button.outline,
 .gov-btn.outline,
@@ -131,7 +153,7 @@
   min-width: 40px;
   padding: 0;
   border: 1px solid var(--ds-border);
-  border-radius: var(--ds-radius-sm);
+  border-radius: var(--ds-radius-pill);
   background: var(--ds-surface);
   color: var(--ds-text-2);
   cursor: pointer;
@@ -240,7 +262,7 @@
   height: 40px;
   border-radius: var(--ds-radius-pill);
   background: var(--ds-primary);
-  color: #fff;
+  color: var(--ds-primary-fg);
   font-family: var(--ds-font-ui);
   font-size: var(--ds-text-base);
   font-weight: 700;
