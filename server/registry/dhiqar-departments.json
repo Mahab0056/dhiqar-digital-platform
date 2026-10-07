@@ -36,9 +36,9 @@
     "phone": null,
     "website": "http://www.thiqarpc.gov.iq/",
     "facebook": null,
-    "lat": null,
-    "lng": null,
-    "gisStatus": "AWAITING_OFFICIAL_COORDINATES",
+    "lat": 31.05285,
+    "lng": 46.23963,
+    "gisStatus": "COORDINATES_VERIFIED",
     "dataStatus": "NEEDS_VERIFICATION",
     "sourceUrl": "http://www.thiqarpc.gov.iq/",
     "services": [
@@ -47,7 +47,7 @@
       "المصادقة على الخطط والموازنة المحلية",
       "لجان الخدمات والتربية والصحة"
     ],
-    "notes": "الموقع الرسمي لم يُفتح وقت البحث (DNS). تغطية إخبارية في شبكة أخبار الناصرية."
+    "notes": "الموقع الرسمي لم يُفتح وقت البحث (DNS). تغطية إخبارية في شبكة أخبار الناصرية. إحداثيات المنشأة من OpenStreetMap way/467592267 (عنصر موسوم باسم الجهة)، تحقق 2026-10-07."
   },
   {
     "id": "nasiriyah-qaimaqamiya",
@@ -236,13 +236,13 @@
     "phone": null,
     "website": null,
     "facebook": null,
-    "lat": null,
-    "lng": null,
-    "gisStatus": "AWAITING_OFFICIAL_COORDINATES",
+    "lat": 31.16632,
+    "lng": 46.59627,
+    "gisStatus": "COORDINATES_VERIFIED",
     "dataStatus": "NEEDS_VERIFICATION",
     "sourceUrl": "https://ar.wikipedia.org/wiki/محافظة_ذي_قار",
     "services": ["تصديق المعاملات الإدارية", "شكاوى المواطنين"],
-    "notes": "قضاء مستحدث حسب ويكيبيديا."
+    "notes": "قضاء مستحدث حسب ويكيبيديا. إحداثيات المنشأة من OpenStreetMap node/4551645392 (عنصر موسوم باسم الجهة)، تحقق 2026-10-07."
   },
   {
     "id": "dawaya-qaimaqamiya",
@@ -375,9 +375,9 @@
     "phone": null,
     "website": "https://nasiriyah-municipality.gov.iq/",
     "facebook": null,
-    "lat": null,
-    "lng": null,
-    "gisStatus": "AWAITING_OFFICIAL_COORDINATES",
+    "lat": 31.04913,
+    "lng": 46.25483,
+    "gisStatus": "COORDINATES_VERIFIED",
     "dataStatus": "VERIFIED_SOURCE",
     "sourceUrl": "https://nasiriyah-municipality.gov.iq/",
     "services": [
@@ -389,7 +389,7 @@
       "صندوق الشكاوى",
       "الاستمارات الإلكترونية"
     ],
-    "notes": "موقع رسمي مع استمارات إلكترونية: https://forms.nasiriyah-municipality.gov.iq/ . لم يُعثر على إحداثيات موثقة للمبنى."
+    "notes": "موقع رسمي مع استمارات إلكترونية: https://forms.nasiriyah-municipality.gov.iq/ . لم يُعثر على إحداثيات موثقة للمبنى. إحداثيات المنشأة من OpenStreetMap node/5679296036 (عنصر موسوم باسم الجهة)، تحقق 2026-10-07."
   },
   {
     "id": "shatrah-municipality",
@@ -402,13 +402,13 @@
     "phone": null,
     "website": null,
     "facebook": null,
-    "lat": null,
-    "lng": null,
-    "gisStatus": "AWAITING_OFFICIAL_COORDINATES",
+    "lat": 31.40739,
+    "lng": 46.16068,
+    "gisStatus": "COORDINATES_VERIFIED",
     "dataStatus": "NEEDS_VERIFICATION",
     "sourceUrl": "https://ar.nasiriyah.org/taxonomy/term/149",
     "services": ["إجازات البناء", "الأملاك والإيجارات", "النظافة والتبليط", "الشكاوى الخدمية"],
-    "notes": "مذكورة في الأخبار المحلية؛ لا صفحة رسمية."
+    "notes": "مذكورة في الأخبار المحلية؛ لا صفحة رسمية. إحداثيات المنشأة من OpenStreetMap node/6779620785 (عنصر موسوم باسم الجهة)، تحقق 2026-10-07."
   },
   {
     "id": "suq-al-shuyukh-municipality",
@@ -440,13 +440,13 @@
     "phone": null,
     "website": null,
     "facebook": null,
-    "lat": null,
-    "lng": null,
-    "gisStatus": "AWAITING_OFFICIAL_COORDINATES",
+    "lat": 31.72211,
+    "lng": 46.10468,
+    "gisStatus": "COORDINATES_VERIFIED",
     "dataStatus": "NEEDS_VERIFICATION",
     "sourceUrl": "https://mapcarta.com/N5082492026",
     "services": ["إجازات البناء", "الأملاك والإيجارات", "النظافة والتبليط"],
-    "notes": "OSM يظهر 'المجلس البلدي في قضاء الرفاعي' غرب القائممقامية؛ لم تُستخرج إحداثياته."
+    "notes": "OSM يظهر 'المجلس البلدي في قضاء الرفاعي' غرب القائممقامية؛ لم تُستخرج إحداثياته. إحداثيات المنشأة من OpenStreetMap node/5226354624 (عنصر موسوم باسم الجهة)، تحقق 2026-10-07."
   },
   {
     "id": "chibayish-municipality",
@@ -459,13 +459,13 @@
     "phone": null,
     "website": null,
     "facebook": null,
-    "lat": null,
-    "lng": null,
-    "gisStatus": "AWAITING_OFFICIAL_COORDINATES",
+    "lat": 30.96306,
+    "lng": 46.99395,
+    "gisStatus": "COORDINATES_VERIFIED",
     "dataStatus": "NEEDS_VERIFICATION",
     "sourceUrl": "https://nasiriyah.org/ar/post/80056/",
     "services": ["إجازات البناء", "النظافة", "الشكاوى الخدمية"],
-    "notes": "مذكورة ضمن أخبار مشاريع ماء الجبايش."
+    "notes": "مذكورة ضمن أخبار مشاريع ماء الجبايش. إحداثيات المنشأة من OpenStreetMap node/9978509617 (عنصر موسوم باسم الجهة)، تحقق 2026-10-07."
   },
   {
     "id": "nasr-municipality",
@@ -794,9 +794,9 @@
     "phone": null,
     "website": "https://moi.gov.iq/",
     "facebook": "https://www.facebook.com/DhiQarPolice/",
-    "lat": null,
-    "lng": null,
-    "gisStatus": "AWAITING_OFFICIAL_COORDINATES",
+    "lat": 31.03415,
+    "lng": 46.23198,
+    "gisStatus": "COORDINATES_VERIFIED",
     "dataStatus": "VERIFIED_SOURCE",
     "sourceUrl": "https://www.facebook.com/DhiQarPolice/",
     "services": [
@@ -806,7 +806,7 @@
       "حماية المنشآت",
       "الطوارئ 104"
     ],
-    "notes": "صفحة فيسبوك رسمية؛ لم تُحدد نقطة المقر في OSM. أكاديمية شرطة ذي قار في 31.15578,46.23787."
+    "notes": "صفحة فيسبوك رسمية؛ لم تُحدد نقطة المقر في OSM. أكاديمية شرطة ذي قار في 31.15578,46.23787. إحداثيات المنشأة من OpenStreetMap way/849963540 (عنصر موسوم باسم الجهة)، تحقق 2026-10-07."
   },
   {
     "id": "dhi-qar-civil-defense-directorate",
@@ -857,13 +857,13 @@
     "phone": null,
     "website": null,
     "facebook": "https://www.facebook.com/p/إعلام-مديرية-مرور-ذي-قار-100064632914355/",
-    "lat": null,
-    "lng": null,
-    "gisStatus": "AWAITING_OFFICIAL_COORDINATES",
+    "lat": 31.0692,
+    "lng": 46.24926,
+    "gisStatus": "COORDINATES_VERIFIED",
     "dataStatus": "VERIFIED_SOURCE",
     "sourceUrl": "https://thiqar.gov.iq/أخبار-عامّة/مرور-ذي-قار-تباشر-بحملة-لتنظيم-حركة-السير-والمرور-وفك-الاختناقات",
     "services": ["إجازات السياقة", "تسجيل المركبات واللوحات", "نقل الملكية", "الغرامات المرورية", "الفحص الفني"],
-    "notes": "لا نقطة OSM موثقة للمقر."
+    "notes": "لا نقطة OSM موثقة للمقر. إحداثيات المنشأة من OpenStreetMap node/5411423046 (عنصر موسوم باسم الجهة)، تحقق 2026-10-07."
   },
   {
     "id": "dhi-qar-forensic-evidence-department",
@@ -914,9 +914,9 @@
     "phone": null,
     "website": "https://www.sjc.iq/",
     "facebook": null,
-    "lat": null,
-    "lng": null,
-    "gisStatus": "AWAITING_OFFICIAL_COORDINATES",
+    "lat": 31.07484,
+    "lng": 46.2491,
+    "gisStatus": "COORDINATES_VERIFIED",
     "dataStatus": "VERIFIED_SOURCE",
     "sourceUrl": "https://www.sjc.iq/members-sjc-ar.78249/",
     "services": [
@@ -926,7 +926,7 @@
       "التنفيذ",
       "الحجج الشرعية (نظام إلكتروني)"
     ],
-    "notes": "أخبار رسمية على sjc.iq. لم تُحدد نقطة المبنى في OSM."
+    "notes": "أخبار رسمية على sjc.iq. لم تُحدد نقطة المبنى في OSM. إحداثيات المنشأة من OpenStreetMap way/467569986 (عنصر موسوم باسم الجهة)، تحقق 2026-10-07."
   },
   {
     "id": "dhi-qar-criminal-court-second-panel",
@@ -958,13 +958,13 @@
     "phone": null,
     "website": null,
     "facebook": null,
-    "lat": null,
-    "lng": null,
-    "gisStatus": "AWAITING_OFFICIAL_COORDINATES",
+    "lat": 31.04482,
+    "lng": 46.24522,
+    "gisStatus": "COORDINATES_VERIFIED",
     "dataStatus": "NEEDS_VERIFICATION",
     "sourceUrl": "https://mapy.com/en/?id=112591159",
     "services": ["عقود الزواج", "الطلاق والنفقة", "الحضانة", "القسامات الشرعية"],
-    "notes": "مصدر خرائطي فقط (mapy.com) دون إحداثيات مستخرجة."
+    "notes": "مصدر خرائطي فقط (mapy.com) دون إحداثيات مستخرجة. إحداثيات المنشأة من OpenStreetMap node/4271044391 (عنصر موسوم باسم الجهة)، تحقق 2026-10-07."
   },
   {
     "id": "tax-authority-dhi-qar-branch",
@@ -1003,13 +1003,13 @@
     "phone": null,
     "website": "https://tax.mof.gov.iq/محافظة-ذي-قار/",
     "facebook": null,
-    "lat": null,
-    "lng": null,
-    "gisStatus": "AWAITING_OFFICIAL_COORDINATES",
+    "lat": 31.41248,
+    "lng": 46.1681,
+    "gisStatus": "COORDINATES_VERIFIED",
     "dataStatus": "VERIFIED_SOURCE",
     "sourceUrl": "https://mapcarta.com/N8184909617",
     "services": ["ضريبة الدخل", "براءة الذمة الضريبية", "ضريبة العقار"],
-    "notes": "نقطة OSM 'دائرة ضريبة الشطرة' موجودة؛ لم تُستخرج إحداثياتها."
+    "notes": "نقطة OSM 'دائرة ضريبة الشطرة' موجودة؛ لم تُستخرج إحداثياتها. إحداثيات المنشأة من OpenStreetMap node/8184909617 (عنصر موسوم باسم الجهة)، تحقق 2026-10-07."
   },
   {
     "id": "integrity-commission-dhi-qar",
@@ -1085,9 +1085,9 @@
     "phone": null,
     "website": null,
     "facebook": "https://www.facebook.com/p/دائرة-العمل-والتدريب-المهني-ذي-قار-100064618062699/",
-    "lat": null,
-    "lng": null,
-    "gisStatus": "AWAITING_OFFICIAL_COORDINATES",
+    "lat": 31.02302,
+    "lng": 46.24825,
+    "gisStatus": "COORDINATES_VERIFIED",
     "dataStatus": "VERIFIED_SOURCE",
     "sourceUrl": "https://www.facebook.com/p/دائرة-العمل-والتدريب-المهني-ذي-قار-100064618062699/",
     "services": [
@@ -1096,7 +1096,7 @@
       "قروض المشاريع الصغيرة",
       "إجازات العمل للأجانب"
     ],
-    "notes": "الموقع مستنتج من عنوان الحماية الاجتماعية 'قرب دائرة التدريب المهني'."
+    "notes": "الموقع مستنتج من عنوان الحماية الاجتماعية 'قرب دائرة التدريب المهني'. إحداثيات المنشأة من OpenStreetMap node/13119654293 (عنصر موسوم باسم الجهة)، تحقق 2026-10-07."
   },
   {
     "id": "dhi-qar-pension-directorate",
@@ -1159,13 +1159,13 @@
     "phone": null,
     "website": "https://oil.gov.iq/",
     "facebook": "https://www.facebook.com/Oil.Company.Th/",
-    "lat": null,
-    "lng": null,
-    "gisStatus": "AWAITING_OFFICIAL_COORDINATES",
+    "lat": 31.09119,
+    "lng": 46.29848,
+    "gisStatus": "COORDINATES_VERIFIED",
     "dataStatus": "VERIFIED_SOURCE",
     "sourceUrl": "https://toc.oil.gov.iq/?article=623",
     "services": ["التعيينات والتدريب", "المنفعة الاجتماعية للمناطق النفطية", "العقود والمقاولات", "الشكاوى البيئية"],
-    "notes": "صفحة وزارة النفط أعادت 403 وقت الفحص؛ التأسيس موثق على thiqar.gov.iq."
+    "notes": "صفحة وزارة النفط أعادت 403 وقت الفحص؛ التأسيس موثق على thiqar.gov.iq. إحداثيات المنشأة من OpenStreetMap node/6844143401 (عنصر موسوم باسم الجهة)، تحقق 2026-10-07."
   },
   {
     "id": "oil-products-distribution-dhi-qar",
@@ -1178,13 +1178,13 @@
     "phone": null,
     "website": "https://opdc.oil.gov.iq/",
     "facebook": null,
-    "lat": null,
-    "lng": null,
-    "gisStatus": "AWAITING_OFFICIAL_COORDINATES",
+    "lat": 31.01018,
+    "lng": 46.27018,
+    "gisStatus": "COORDINATES_VERIFIED",
     "dataStatus": "NEEDS_VERIFICATION",
     "sourceUrl": "https://opdc.oil.gov.iq/",
     "services": ["توزيع الغاز السائل", "النفط الأبيض", "البنزين ومحطات الوقود", "إجازات محطات التعبئة"],
-    "notes": "لم يُعثر على صفحة خاصة بالفرع."
+    "notes": "لم يُعثر على صفحة خاصة بالفرع. إحداثيات المنشأة من OpenStreetMap node/13119654290 (عنصر موسوم باسم الجهة)، تحقق 2026-10-07."
   },
   {
     "id": "dhi-qar-antiquities-inspectorate",
@@ -1197,9 +1197,9 @@
     "phone": null,
     "website": null,
     "facebook": null,
-    "lat": null,
-    "lng": null,
-    "gisStatus": "AWAITING_OFFICIAL_COORDINATES",
+    "lat": 31.04695,
+    "lng": 46.23748,
+    "gisStatus": "COORDINATES_VERIFIED",
     "dataStatus": "NEEDS_VERIFICATION",
     "sourceUrl": "https://www.al-mirbad.com/detail/178868",
     "services": [
@@ -1208,7 +1208,7 @@
       "زيارة المواقع الأثرية (أور، لكش، أريدو)",
       "البعثات التنقيبية"
     ],
-    "notes": "تغطية إخبارية فقط."
+    "notes": "تغطية إخبارية فقط. إحداثيات المنشأة من OpenStreetMap node/8505879818 (عنصر موسوم باسم الجهة)، تحقق 2026-10-07."
   },
   {
     "id": "nasiriyah-museum",
@@ -1221,13 +1221,13 @@
     "phone": null,
     "website": null,
     "facebook": null,
-    "lat": null,
-    "lng": null,
-    "gisStatus": "AWAITING_OFFICIAL_COORDINATES",
+    "lat": 31.04705,
+    "lng": 46.23724,
+    "gisStatus": "COORDINATES_VERIFIED",
     "dataStatus": "VERIFIED_SOURCE",
     "sourceUrl": "https://ar.wikipedia.org/wiki/متحف_الناصرية",
     "services": ["زيارة المتحف", "الفعاليات الثقافية"],
-    "notes": "ويكيبيديا؛ لا إحداثيات مستخرجة."
+    "notes": "ويكيبيديا؛ لا إحداثيات مستخرجة. إحداثيات المنشأة من OpenStreetMap way/437260904 (عنصر موسوم باسم الجهة)، تحقق 2026-10-07."
   },
   {
     "id": "dhi-qar-youth-sports-directorate",
@@ -1240,13 +1240,13 @@
     "phone": null,
     "website": null,
     "facebook": null,
-    "lat": null,
-    "lng": null,
-    "gisStatus": "AWAITING_OFFICIAL_COORDINATES",
+    "lat": 31.06624,
+    "lng": 46.24777,
+    "gisStatus": "COORDINATES_VERIFIED",
     "dataStatus": "VERIFIED_SOURCE",
     "sourceUrl": "https://thiqar.gov.iq/أخبار-عامّة/مديرية-شباب-ورياضة-ذي-قار-وبالتعاون-مع-مكتب-شؤون-العشائر-في-المحافظة-تقيم-ورشة-عن-السلم",
     "services": ["المنتديات والمراكز الشبابية", "الملاعب الرياضية", "الدورات والفعاليات", "دعم الأندية"],
-    "notes": "العنوان مستنتج من صفحة هيئة الحج 'حي أور شارع المصطفى مجاور دائرة الشباب والرياضة'."
+    "notes": "العنوان مستنتج من صفحة هيئة الحج 'حي أور شارع المصطفى مجاور دائرة الشباب والرياضة'. إحداثيات المنشأة من OpenStreetMap node/4483676591 (عنصر موسوم باسم الجهة)، تحقق 2026-10-07."
   },
   {
     "id": "dhiqar-environment",
@@ -1436,13 +1436,13 @@
     "phone": null,
     "website": "https://uos.edu.iq/",
     "facebook": null,
-    "lat": null,
-    "lng": null,
-    "gisStatus": "AWAITING_OFFICIAL_COORDINATES",
+    "lat": 31.72309,
+    "lng": 46.1041,
+    "gisStatus": "COORDINATES_VERIFIED",
     "dataStatus": "VERIFIED_SOURCE",
     "sourceUrl": "https://sci.uos.edu.iq/",
     "services": ["القبول والتسجيل", "تصديق الوثائق", "الدراسات العليا"],
-    "notes": "الكليات لها مواقع فرعية على uos.edu.iq. كلية القانون قرب النصر حسب OSM."
+    "notes": "الكليات لها مواقع فرعية على uos.edu.iq. كلية القانون قرب النصر حسب OSM. إحداثيات المنشأة من OpenStreetMap node/11033439305 (عنصر موسوم باسم الجهة)، تحقق 2026-10-07."
   },
   {
     "id": "shatrah-university",
@@ -1455,13 +1455,13 @@
     "phone": null,
     "website": "https://shu.edu.iq/",
     "facebook": null,
-    "lat": null,
-    "lng": null,
-    "gisStatus": "AWAITING_OFFICIAL_COORDINATES",
+    "lat": 31.32864,
+    "lng": 46.2037,
+    "gisStatus": "COORDINATES_VERIFIED",
     "dataStatus": "VERIFIED_SOURCE",
     "sourceUrl": "https://shu.edu.iq/news/details/209",
     "services": ["القبول والتسجيل", "تصديق الوثائق"],
-    "notes": "العنوان من الموقع الرسمي."
+    "notes": "العنوان من الموقع الرسمي. إحداثيات المنشأة من OpenStreetMap node/11297347369 (عنصر موسوم باسم الجهة)، تحقق 2026-10-07."
   },
   {
     "id": "nasiriyah-technical-institute",
@@ -1474,13 +1474,13 @@
     "phone": null,
     "website": "https://www.stu.edu.iq/المعهد-التقني-الناصرية/",
     "facebook": null,
-    "lat": null,
-    "lng": null,
-    "gisStatus": "AWAITING_OFFICIAL_COORDINATES",
+    "lat": 31.03644,
+    "lng": 46.22692,
+    "gisStatus": "COORDINATES_VERIFIED",
     "dataStatus": "VERIFIED_SOURCE",
     "sourceUrl": "https://www.stu.edu.iq/المعهد-التقني-الناصرية/",
     "services": ["القبول والتسجيل", "الدبلوم التقني", "تصديق الوثائق"],
-    "notes": "صفحة رسمية؛ العنوان المعروض على الصفحة هو عنوان رئاسة الجامعة في البصرة."
+    "notes": "صفحة رسمية؛ العنوان المعروض على الصفحة هو عنوان رئاسة الجامعة في البصرة. إحداثيات المنشأة من OpenStreetMap way/849963542 (عنصر موسوم باسم الجهة)، تحقق 2026-10-07."
   },
   {
     "id": "shatrah-technical-institute",
@@ -1493,13 +1493,13 @@
     "phone": null,
     "website": "https://www.stu.edu.iq/المعهد-التقني-الشطرة/",
     "facebook": null,
-    "lat": null,
-    "lng": null,
-    "gisStatus": "AWAITING_OFFICIAL_COORDINATES",
+    "lat": 31.42538,
+    "lng": 46.17374,
+    "gisStatus": "COORDINATES_VERIFIED",
     "dataStatus": "VERIFIED_SOURCE",
     "sourceUrl": "https://www.stu.edu.iq/المعهد-التقني-الشطرة/",
     "services": ["القبول والتسجيل", "الدبلوم التقني"],
-    "notes": "صفحة رسمية."
+    "notes": "صفحة رسمية. إحداثيات المنشأة من OpenStreetMap node/5184749022 (عنصر موسوم باسم الجهة)، تحقق 2026-10-07."
   },
   {
     "id": "dhi-qar-water-resources-directorate",
@@ -1607,13 +1607,13 @@
     "phone": null,
     "website": "https://hajj.gov.iq/branchs/view/details?id=6",
     "facebook": null,
-    "lat": null,
-    "lng": null,
-    "gisStatus": "AWAITING_OFFICIAL_COORDINATES",
+    "lat": 31.0668,
+    "lng": 46.24751,
+    "gisStatus": "COORDINATES_VERIFIED",
     "dataStatus": "VERIFIED_SOURCE",
     "sourceUrl": "https://hajj.gov.iq/branchs/view/details?id=6",
     "services": ["التسجيل في قرعة الحج", "العمرة", "الاستعلام عن الحملات"],
-    "notes": "العنوان من الموقع الرسمي؛ الهاتف المنشور 000000 (غير صالح)."
+    "notes": "العنوان من الموقع الرسمي؛ الهاتف المنشور 000000 (غير صالح). إحداثيات المنشأة من OpenStreetMap way/467570330 (عنصر موسوم باسم الجهة)، تحقق 2026-10-07."
   },
   {
     "id": "political-prisoners-foundation-dhi-qar",
@@ -1626,12 +1626,12 @@
     "phone": null,
     "website": "https://www.ppf.gov.iq/",
     "facebook": null,
-    "lat": null,
-    "lng": null,
-    "gisStatus": "AWAITING_OFFICIAL_COORDINATES",
+    "lat": 31.05207,
+    "lng": 46.24024,
+    "gisStatus": "COORDINATES_VERIFIED",
     "dataStatus": "VERIFIED_SOURCE",
     "sourceUrl": "https://www.ppf.gov.iq/2024/12/03/39089/",
     "services": ["شمول السجناء السياسيين", "الرواتب والامتيازات", "قطع الأراضي"],
-    "notes": "مذكورة على الموقع الرسمي للمؤسسة."
+    "notes": "مذكورة على الموقع الرسمي للمؤسسة. إحداثيات المنشأة من OpenStreetMap node/5153580524 (عنصر موسوم باسم الجهة)، تحقق 2026-10-07."
   }
 ]
