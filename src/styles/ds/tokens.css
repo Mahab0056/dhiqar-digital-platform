@@ -56,8 +56,8 @@
   --blue-700: #174ea6;
 
   /* ---- type --------------------------------------------------------------------------------- */
-  --ds-font-display: 'Noto Kufi Arabic', 'IBM Plex Sans Arabic', system-ui, sans-serif;
-  --ds-font-ui: 'IBM Plex Sans Arabic', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --ds-font-display: 'Readex Pro', 'IBM Plex Sans Arabic', system-ui, sans-serif;
+  --ds-font-ui: 'Readex Pro', 'IBM Plex Sans Arabic', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --ds-font-mono: ui-monospace, 'SFMono-Regular', Consolas, monospace;
 
   --ds-text-xs: 0.75rem; /* 12 */
@@ -100,29 +100,30 @@
   --ds-fast: 140ms;
   --ds-base: 220ms;
 
-  /* ---- semantic: light ---------------------------------------------------------------------- */
-  --ds-bg: var(--neutral-50);
-  --ds-bg-tint: var(--green-25);
-  --ds-surface: var(--neutral-0);
-  --ds-surface-muted: var(--neutral-25);
-  --ds-surface-sunken: var(--neutral-100);
-  --ds-border: var(--neutral-200);
-  --ds-border-strong: var(--neutral-300);
-  --ds-text: var(--neutral-900);
-  --ds-text-2: var(--neutral-700);
-  --ds-text-muted: var(--neutral-500);
+  /* ---- semantic: light (default) — airy white, Dhi Qar green, bronze titles ------------------ */
+  --ds-bg: #f6f7f5;
+  --ds-bg-tint: #f1f7f3;
+  --ds-surface: #ffffff;
+  --ds-surface-muted: #fafbfa;
+  --ds-surface-sunken: #f0f2f0;
+  --ds-border: #e6e9e6;
+  --ds-border-strong: #d3d8d4;
+  --ds-text: #17201c;
+  --ds-text-2: #3c4842;
+  --ds-text-muted: #66726c;
+  --ds-heading: #8a5a2b;
 
-  --ds-primary: var(--green-700);
-  --ds-primary-hover: var(--green-800);
-  --ds-primary-active: var(--green-900);
+  --ds-primary: #0b7a55;
+  --ds-primary-hover: #086446;
+  --ds-primary-active: #065238;
   --ds-primary-fg: #ffffff;
-  --ds-primary-soft: var(--green-50);
-  --ds-primary-soft-2: var(--green-100);
-  --ds-primary-text: var(--green-700);
+  --ds-primary-soft: #eaf5ef;
+  --ds-primary-soft-2: #d6ecdf;
+  --ds-primary-text: #0a6f4d;
 
-  --ds-accent: var(--brass-500);
-  --ds-accent-soft: var(--brass-50);
-  --ds-accent-text: var(--brass-600);
+  --ds-accent: #b07d3c;
+  --ds-accent-soft: #fbf4e8;
+  --ds-accent-text: #8a5a2b;
 
   --ds-success: var(--green-600);
   --ds-success-soft: var(--green-50);
@@ -134,21 +135,21 @@
   --ds-info: var(--blue-700);
   --ds-info-soft: var(--blue-50);
 
-  --ds-chrome: var(--green-900); /* national top bar, footer */
-  --ds-chrome-2: var(--green-950);
+  --ds-chrome: #0b3d2c;
+  --ds-chrome-2: #082e21;
   --ds-chrome-fg: #eaf3ee;
   --ds-chrome-muted: #a9c4b6;
 
-  --ds-shadow-xs: 0 1px 2px rgba(12, 32, 24, 0.06);
-  --ds-shadow-sm: 0 1px 2px rgba(12, 32, 24, 0.05), 0 2px 8px rgba(12, 32, 24, 0.05);
-  --ds-shadow-md: 0 2px 4px rgba(12, 32, 24, 0.04), 0 10px 28px rgba(12, 32, 24, 0.08);
-  --ds-shadow-lg: 0 4px 10px rgba(12, 32, 24, 0.05), 0 24px 56px rgba(12, 32, 24, 0.14);
-  --ds-focus: 0 0 0 3px rgba(23, 132, 93, 0.32);
-  --ds-focus-color: var(--green-500);
-  --ds-gold-gradient: linear-gradient(135deg, #0a7a55 0%, #075e45 100%);
-  --ds-glass: rgba(255, 255, 255, 0.7);
-  --ds-glass-strong: rgba(255, 255, 255, 0.85);
-  --ds-glass-border: rgba(12, 32, 24, 0.08);
+  --ds-shadow-xs: 0 1px 2px rgba(23, 32, 28, 0.05);
+  --ds-shadow-sm: 0 2px 6px rgba(23, 32, 28, 0.05), 0 8px 24px rgba(23, 32, 28, 0.05);
+  --ds-shadow-md: 0 4px 10px rgba(23, 32, 28, 0.05), 0 16px 40px rgba(23, 32, 28, 0.08);
+  --ds-shadow-lg: 0 8px 20px rgba(23, 32, 28, 0.06), 0 30px 70px rgba(23, 32, 28, 0.12);
+  --ds-focus: 0 0 0 3px rgba(11, 122, 85, 0.28);
+  --ds-focus-color: #0b7a55;
+  --ds-gold-gradient: linear-gradient(135deg, #0d8a60 0%, #0a6f4d 100%);
+  --ds-glass: rgba(255, 255, 255, 0.75);
+  --ds-glass-strong: rgba(255, 255, 255, 0.9);
+  --ds-glass-border: rgba(23, 32, 28, 0.08);
 
   color-scheme: light;
 }
@@ -174,6 +175,7 @@
   --ds-primary-soft: #1d1a10;
   --ds-primary-soft-2: #2a2414;
   --ds-primary-text: #e8c77e;
+  --ds-heading: #e8c77e;
   --ds-gold-gradient: linear-gradient(135deg, #f3dc9f 0%, #d9b05c 45%, #b5883a 100%);
 
   --ds-accent: #e8c77e;
