@@ -28,6 +28,7 @@ import { scheduleBackups } from './db-ops/backup.js'
 import { bootstrapStaffAccounts } from './auth/staff.js'
 import { purgeExpiredSessions } from './auth/session.js'
 import { purgeExpiredMedia } from './media.js'
+import { isClientRoute, registerSeoRoutes } from './routes/seo.js'
 
 export function createPlatformServer(options: { serveStatic?: boolean } = {}) {
   seedVerifiedGovernmentServices()
@@ -68,6 +69,7 @@ export function createPlatformServer(options: { serveStatic?: boolean } = {}) {
   registerStaffAdminRoutes(app)
   registerDepartmentRoutes(app)
   registerSystemRoutes(app)
+  registerSeoRoutes(app)
 
   // an unknown /api path is a client bug: answer 404 JSON instead of falling through to the SPA's index.html
   app.use('/api', (_req, res) => {
@@ -77,8 +79,17 @@ export function createPlatformServer(options: { serveStatic?: boolean } = {}) {
   const currentDir = dirname(fileURLToPath(import.meta.url))
   const distDir = join(currentDir, '..', 'dist')
   if (options.serveStatic !== false && existsSync(distDir)) {
+    // content-hashed bundles never change: cache for a year; a missing chunk is a real 404, not the SPA page
+    app.use(
+      '/assets',
+      express.static(join(distDir, 'assets'), { index: false, immutable: true, maxAge: '1y', fallthrough: false })
+    )
     app.use(express.static(distDir, { index: false, maxAge: '1h' }))
-    app.get('/{*path}', (_req, res) => res.sendFile(join(distDir, 'index.html')))
+    app.get('/{*path}', (req, res) => {
+      // index.html must always be revalidated so a new release is picked up immediately
+      res.setHeader('Cache-Control', 'no-cache')
+      res.status(isClientRoute(req.path) ? 200 : 404).sendFile(join(distDir, 'index.html'))
+    })
   }
 
   app.use(errorHandler)

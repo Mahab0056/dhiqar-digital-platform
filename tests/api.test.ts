@@ -691,3 +691,35 @@ describe('unknown API paths', () => {
     expect(response.body.message).toBeTruthy()
   })
 })
+
+describe('crawler and caching endpoints', () => {
+  it('serves robots.txt that keeps private portals out of search', async () => {
+    const response = await request(app).get('/robots.txt')
+    expect(response.status).toBe(200)
+    expect(response.text).toContain('Disallow: /citizen')
+    expect(response.text).toContain('Sitemap: ')
+  })
+
+  it('serves a sitemap of public pages', async () => {
+    const response = await request(app).get('/sitemap.xml')
+    expect(response.status).toBe(200)
+    expect(response.headers['content-type']).toMatch(/xml/)
+    expect(response.text).toContain('/directory</loc>')
+    expect(response.text).not.toContain('/citizen')
+  })
+
+  it('lets public catalog responses be cached but never personal ones', async () => {
+    const pub = await request(app).get('/api/services')
+    expect(pub.headers['cache-control']).toContain('public')
+    const priv = await request(app).get('/api/auth/session').set('Cookie', admin)
+    expect(priv.headers['cache-control']).toContain('no-store')
+  })
+
+  it('recognizes client routes for real 404 statuses', async () => {
+    const { isClientRoute } = await import('../server/routes/seo.ts')
+    expect(isClientRoute('/')).toBe(true)
+    expect(isClientRoute('/service/building-permit')).toBe(true)
+    expect(isClientRoute('/citizen/pay/abc/sandbox')).toBe(true)
+    expect(isClientRoute('/wp-admin.php')).toBe(false)
+  })
+})

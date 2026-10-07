@@ -1,6 +1,19 @@
+packages:
+  - '.'
+
 allowBuilds:
   core-js: false
   esbuild: true
   onnxruntime-node: false
   sharp: true
   tesseract.js: true
+
+# security: force patched versions of vulnerable transitive dependencies (pnpm audit, 2026-10-07)
+overrides:
+  proxy-addr: '>=2.0.8'
+  qs: '>=6.16.0'
+  ip-address: '>=10.5.1'
+  dompurify: '>=3.4.16'
+  adm-zip: '>=0.6.1'
+  shell-quote: '>=1.11.0'
+  source-map-js: '>=1.2.2'

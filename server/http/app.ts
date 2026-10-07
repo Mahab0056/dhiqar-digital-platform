@@ -1,4 +1,5 @@
 import express from 'express'
+import compression from 'compression'
 import cors from 'cors'
 import helmet from 'helmet'
 import { randomUUID } from 'node:crypto'
@@ -12,6 +13,8 @@ export function createApp() {
 
   app.disable('x-powered-by')
   app.set('trust proxy', 1)
+  // gzip every text response (HTML, JS, CSS, JSON) — the CSS bundle alone is ~525 KB uncompressed
+  app.use(compression({ threshold: 1024 }))
 
   app.use(
     helmet({
@@ -53,9 +56,16 @@ export function createApp() {
     next()
   })
   app.use('/api', apiLimiter)
-  app.use(['/api/onboarding', '/api/admin', '/api/applications'], (_req, res, next) => {
-    res.setHeader('Cache-Control', 'no-store, private')
-    res.setHeader('Pragma', 'no-cache')
+  // API responses are private and uncacheable by default (citizen, staff, payment and verification data);
+  // only the public catalogue reads below may be cached briefly
+  const publicApi = /^\/api\/(health|services|departments|government-services|news|payments\/config|push\/config)(\/|$)/
+  app.use('/api', (req, res, next) => {
+    if (req.method === 'GET' && publicApi.test(req.originalUrl.split('?')[0]) && !/\/dashboard(\/|$)/.test(req.path))
+      res.setHeader('Cache-Control', 'public, max-age=60')
+    else {
+      res.setHeader('Cache-Control', 'no-store, private')
+      res.setHeader('Pragma', 'no-cache')
+    }
     next()
   })
   app.use(express.json({ limit: '1mb' }))
