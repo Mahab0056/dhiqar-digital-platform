@@ -255,11 +255,9 @@ export function registerOnboardingRoutes(app: express.Express) {
           .prepare(`SELECT id FROM identity_reviews WHERE citizen_id = ? AND status = 'PENDING_REVIEW' LIMIT 1`)
           .get(submitter.id)
         if (pending)
-          return res
-            .status(409)
-            .json({
-              message: 'طلب مراجعة هويتك قيد التدقيق حالياً. ستصلك النتيجة عبر الإشعارات قبل إمكانية إعادة الإرسال.',
-            })
+          return res.status(409).json({
+            message: 'طلب مراجعة هويتك قيد التدقيق حالياً. ستصلك النتيجة عبر الإشعارات قبل إمكانية إعادة الإرسال.',
+          })
         const files = req.files as Record<string, Express.Multer.File[]> | undefined
         const idFront = files?.idFront?.[0]
         const idBack = files?.idBack?.[0]
@@ -733,7 +731,8 @@ export function registerOnboardingRoutes(app: express.Express) {
   app.get('/api/citizen/profile-photo', requireSession('CITIZEN'), (_req, res) => {
     try {
       const citizen = currentCitizen(res)
-      if (!citizen?.profileMediaId) return res.status(404).json({ message: 'لا توجد صورة ملف مشتقة بعد.' })
+      // no photo yet is a normal state — 204 lets the <img> fall back silently instead of logging a 404
+      if (!citizen?.profileMediaId) return res.status(204).end()
       const media = readDecryptedMedia(citizen.profileMediaId)
       if (!media) return res.status(404).json({ message: 'صورة الملف غير متاحة.' })
       addAudit({

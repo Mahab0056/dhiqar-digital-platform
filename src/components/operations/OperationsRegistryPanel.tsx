@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import {
   AlertTriangle,
   Building2,
@@ -8,6 +8,7 @@ import {
   Clock3,
   FileText,
   MessageSquareWarning,
+  Search,
   ShieldCheck,
   UsersRound,
   X,
@@ -15,8 +16,32 @@ import {
 import { formatIQD } from '../../data'
 import type { DashboardStats } from '../../types'
 
+// the registry holds 80+ departments: show the busiest first and let the rest load on demand
+const INITIAL_VISIBLE = 12
+const normalize = (value: string) =>
+  value
+    .replace(/[إأآا]/g, 'ا')
+    .replace(/ى/g, 'ي')
+    .replace(/ة/g, 'ه')
+    .toLowerCase()
+    .trim()
+
 export function OperationsRegistryPanel({ stats }: { stats: DashboardStats }) {
   const [cameraDepartment, setCameraDepartment] = useState<DashboardStats['departments'][number] | null>(null)
+  const [query, setQuery] = useState('')
+  const [showAll, setShowAll] = useState(false)
+  const sorted = useMemo(
+    () =>
+      [...stats.departments].sort(
+        (a, b) =>
+          b.submitted + b.openFeedback - (a.submitted + a.openFeedback) ||
+          Number(b.dataStatus === 'VERIFIED_SOURCE') - Number(a.dataStatus === 'VERIFIED_SOURCE')
+      ),
+    [stats.departments]
+  )
+  const term = normalize(query)
+  const matches = term ? sorted.filter(dept => normalize(`${dept.name} ${dept.type}`).includes(term)) : sorted
+  const visible = term || showAll ? matches : matches.slice(0, INITIAL_VISIBLE)
   return (
     <>
       <section className="ops-registry-grid">
@@ -31,8 +56,23 @@ export function OperationsRegistryPanel({ stats }: { stats: DashboardStats }) {
             </div>
             <Building2 />
           </div>
+          <div className="registry-toolbar">
+            <label>
+              <Search aria-hidden="true" />
+              <input
+                type="search"
+                value={query}
+                onChange={event => setQuery(event.target.value)}
+                placeholder="ابحث باسم الدائرة أو نوعها"
+                aria-label="ابحث في سجل الدوائر"
+              />
+            </label>
+            <small aria-live="polite">
+              {term ? `${matches.length} نتيجة` : `يعرض ${visible.length} من ${sorted.length} — الأكثر نشاطاً أولاً`}
+            </small>
+          </div>
           <div className="registry-department-grid">
-            {stats.departments.map(dept => (
+            {visible.map(dept => (
               <article className="registry-department-card" key={dept.id}>
                 <header>
                   <span className={dept.dataStatus === 'VERIFIED_SOURCE' ? 'verified' : 'pending'} />
@@ -112,6 +152,13 @@ export function OperationsRegistryPanel({ stats }: { stats: DashboardStats }) {
               </article>
             ))}
           </div>
+          {!term && matches.length > INITIAL_VISIBLE && (
+            <div className="registry-show-more">
+              <button type="button" onClick={() => setShowAll(value => !value)} aria-expanded={showAll}>
+                {showAll ? 'عرض الأكثر نشاطاً فقط' : `عرض كل الدوائر (${matches.length})`}
+              </button>
+            </div>
+          )}
         </article>
         <article className="dark-panel finance-panel" id="finance">
           <div className="panel-heading">

@@ -66,8 +66,11 @@
 .ops-kpis {
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
 }
-.ops-operations .ops-kpis {
-  grid-template-columns: repeat(7, 1fr);
+/* seven tiles in one row only where they fit — this selector outranks the narrower breakpoints below */
+@media (min-width: 1201px) {
+  .ops-operations .ops-kpis {
+    grid-template-columns: repeat(7, 1fr);
+  }
 }
 @media (max-width: 1200px) {
   .ops-kpis {
@@ -653,13 +656,22 @@
 .health-row.health-off b {
   color: #f08a99;
 }
-@media (max-width: 600px) {
-  .health-row {
-    grid-template-columns: 1fr auto;
-  }
-  .health-row > div {
-    grid-column: 1 / -1;
-  }
+/* the health panel sits in a ~third-width column: label + status on one line, the bar underneath
+   (the old 150px | bar | 120px row truncated every detail and broke the status words) */
+.health-row {
+  grid-template-columns: minmax(0, 1fr) auto;
+  row-gap: 6px;
+}
+.health-row > div {
+  grid-column: 1 / -1;
+  grid-row: 2;
+}
+.health-row b {
+  min-width: 0;
+  white-space: nowrap;
+}
+.health-row b small {
+  max-width: 190px;
 }
 
 /* ---- readable controls in both themes ------------------------------------------------------- */
@@ -837,4 +849,192 @@
 .gov-location-hint,
 :root[data-gov-theme='dark'] .gov-location-hint {
   color: #344054;
+}
+
+/* operations registry: filter + progressive list (80+ departments) */
+.registry-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+.registry-toolbar label {
+  display: flex;
+  flex: 1 1 240px;
+  align-items: center;
+  gap: 8px;
+  max-width: 420px;
+  min-height: 42px;
+  padding: 0 12px;
+  border: 1px solid color-mix(in srgb, currentColor 22%, transparent);
+  border-radius: 6px;
+}
+.registry-toolbar label svg {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  opacity: 0.7;
+}
+.registry-toolbar input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  outline: none;
+}
+.registry-toolbar small {
+  opacity: 0.8;
+}
+.registry-show-more {
+  display: flex;
+  justify-content: center;
+  margin-top: 16px;
+}
+.registry-show-more button {
+  min-height: 42px;
+  padding: 0 20px;
+  border: 1px solid color-mix(in srgb, currentColor 30%, transparent);
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.registry-show-more button:hover {
+  background: color-mix(in srgb, currentColor 8%, transparent);
+}
+
+@media (max-width: 600px) {
+  /* odd tile count: the last KPI spans the row instead of leaving an empty cell */
+  .ops-kpis > div:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
+  /* page title above the identity block so it is not squeezed into two lines */
+  .ops-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+  }
+  .ops-header-actions {
+    justify-content: space-between;
+  }
+}
+
+@media (max-width: 600px) {
+  /* employee workspace: headings take the full width, tools and dates wrap underneath */
+  .service-requests-admin-heading,
+  .service-request-admin-detail > header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+  .service-requests-admin-tools {
+    flex-wrap: wrap;
+  }
+  .service-request-admin-detail header > small {
+    text-align: start;
+  }
+}
+
+@media (max-width: 600px) {
+  /* directory: 25+ sector chips scroll sideways instead of pushing results a screen down */
+  .gov-directory-side ul {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    margin-inline: -16px;
+    padding: 2px 16px 8px;
+    scroll-snap-type: x proximity;
+    scrollbar-width: thin;
+  }
+  .gov-directory-side li {
+    flex: none;
+    scroll-snap-align: start;
+  }
+  .gov-directory-side li button {
+    white-space: nowrap;
+  }
+}
+
+/* operations grid: give the two side columns enough width for charts and legends on laptops */
+@media (min-width: 1201px) {
+  .ops-dashboard-grid {
+    grid-template-columns: 1.3fr 1fr 1fr;
+  }
+}
+.pie-wrap {
+  gap: 8px;
+}
+.pie-legend {
+  min-width: 0;
+}
+
+/* the clock digits stay tabular, but the Arabic caption must use the Arabic stack (monospace breaks letter joining) */
+.clock {
+  font-variant-numeric: tabular-nums;
+}
+.clock small {
+  font-family: var(--font-arabic, 'IBM Plex Sans Arabic', 'Noto Kufi Arabic', system-ui, sans-serif);
+  font-weight: 500;
+  letter-spacing: 0;
+}
+.ops-kpis strong {
+  white-space: nowrap;
+}
+
+/* portal sidebar brand: the 250px rail cannot hold the subtitle (it spilled into the page); the utility
+   bar right above already says «جمهورية العراق | محافظة ذي قار» */
+.sidebar-brand .brand {
+  min-width: 0;
+  flex: 1;
+}
+.sidebar-brand .brand small {
+  display: none;
+}
+
+/* mobile portal drawer: sits above the bottom tab bar (both were z-index 70, so the bar hid
+   «تسجيل الخروج»), scrolls on short screens, and has a dimmed backdrop that closes it */
+.portal-sidebar-backdrop {
+  display: none;
+}
+@media (max-width: 900px) {
+  .portal-sidebar.open {
+    z-index: 90;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  .portal-sidebar-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 85;
+    border: 0;
+    padding: 0;
+    background: rgba(8, 24, 17, 0.45);
+    cursor: pointer;
+  }
+}
+
+/* staff bottom bar on phones: logout was hidden there, leaving no way to end the session */
+@media (max-width: 600px) {
+  .ops-sidebar .ops-exit {
+    display: grid;
+    place-items: center;
+    flex: none;
+    width: 40px;
+    height: 40px;
+    margin-inline-start: 4px;
+    padding: 0;
+    border-radius: 6px;
+  }
+  .ops-sidebar .ops-exit span {
+    display: none;
+  }
+  .ops-sidebar nav a:nth-child(n + 8) {
+    display: none;
+  }
 }

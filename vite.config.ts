@@ -28,6 +28,8 @@ export default defineConfig({
     proxy: {
       '/api': 'http://localhost:8787',
       '/uploads': 'http://localhost:8787',
+      // realtime notifications (citizen + employee work queue)
+      '/ws': { target: 'ws://localhost:8787', ws: true },
     },
   },
 })

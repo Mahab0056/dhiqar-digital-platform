@@ -187,6 +187,15 @@ export function PortalLayout({
       socket?.close()
     }
   }, [role])
+  // mobile drawer: Escape closes it, like the backdrop
+  useEffect(() => {
+    if (!mobileNav) return
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setMobileNav(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [mobileNav])
   useEffect(() => {
     void api.heartbeatPresence().catch(() => {})
     const timer = window.setInterval(() => void api.heartbeatPresence().catch(() => {}), 60_000)
@@ -245,10 +254,18 @@ export function PortalLayout({
   return (
     <div className="portal-shell">
       <CivicUtilityBar />
+      {mobileNav && (
+        <button
+          type="button"
+          className="portal-sidebar-backdrop"
+          aria-label="إغلاق القائمة"
+          onClick={() => setMobileNav(false)}
+        />
+      )}
       <aside className={mobileNav ? 'portal-sidebar open' : 'portal-sidebar'}>
         <div className="sidebar-brand">
           <Brand />
-          <button onClick={() => setMobileNav(false)}>
+          <button type="button" aria-label="إغلاق القائمة" onClick={() => setMobileNav(false)}>
             <X />
           </button>
         </div>
@@ -297,7 +314,13 @@ export function PortalLayout({
       </aside>
       <div className="portal-main">
         <header className="portal-topbar">
-          <button className="mobile-sidebar-button" onClick={() => setMobileNav(true)}>
+          <button
+            type="button"
+            className="mobile-sidebar-button"
+            aria-label="فتح القائمة"
+            aria-expanded={mobileNav}
+            onClick={() => setMobileNav(true)}
+          >
             <Menu />
           </button>
           <div className="topbar-search">

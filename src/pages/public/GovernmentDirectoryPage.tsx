@@ -38,6 +38,10 @@ function readParams() {
   }
 }
 
+// phones get shorter batches: a 437-service list is ~28k px tall at 60 cards per page
+const pageSize = () =>
+  typeof window !== 'undefined' && window.matchMedia('(max-width: 600px)').matches ? 20 : 60
+
 export function GovernmentDirectoryPage() {
   const [initial] = useState(readParams)
   const [query, setQuery] = useState(initial.q)
@@ -48,7 +52,7 @@ export function GovernmentDirectoryPage() {
   const [summary, setSummary] = useState<CatalogSummary | null>(null)
   const [departments, setDepartments] = useState<DepartmentSummary[]>([])
   const [loading, setLoading] = useState(true)
-  const [visible, setVisible] = useState(60)
+  const [visible, setVisible] = useState(pageSize)
 
   useEffect(() => {
     let active = true
@@ -82,7 +86,7 @@ export function GovernmentDirectoryPage() {
     if (channel) params.set('channel', channel)
     const next = params.toString()
     window.history.replaceState(null, '', `${window.location.pathname}${next ? `?${next}` : ''}`)
-    setVisible(60)
+    setVisible(pageSize())
   }, [query, category, department, channel])
 
   const normalize = (value: string) =>
@@ -334,7 +338,7 @@ export function GovernmentDirectoryPage() {
             </ul>
             {results.length > visible && (
               <div className="gov-center">
-                <button className="gov-btn outline" onClick={() => setVisible(value => value + 60)}>
+                <button className="gov-btn outline" onClick={() => setVisible(value => value + pageSize())}>
                   عرض المزيد ({(results.length - visible).toLocaleString('en-US')} خدمة أخرى)
                 </button>
               </div>
