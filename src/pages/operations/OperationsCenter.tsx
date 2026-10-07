@@ -165,24 +165,10 @@ export function OperationsCenter() {
           <em>نقطة منشأة</em>
         </div>
       </section>
+      <section className="ops-gis" aria-label="الخريطة التشغيلية">
+        <DhiQarMap departments={stats.departments} unstaffed={stats.unstaffedDepartments} />
+      </section>
       <section className="ops-dashboard-grid">
-        <div className="ops-map-panel">
-          <div className="panel-heading">
-            <div>
-              <h2>خريطة ذي قار التشغيلية</h2>
-              <p>المواقع الموثقة وحالة الخدمات والدوائر</p>
-            </div>
-            <div className="map-legend">
-              <span>
-                <i className="online" /> موقع موثّق
-              </span>
-              <span>
-                <i className="degraded" /> بانتظار GIS
-              </span>
-            </div>
-          </div>
-          <DhiQarMap departments={stats.departments} />
-        </div>
         <div className="ops-side-stack">
           <div className="dark-panel">
             <div className="panel-heading">

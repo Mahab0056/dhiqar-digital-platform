@@ -110,7 +110,7 @@ export function GovernorDashboard() {
               عرض GIS الكامل <ArrowLeft />
             </Link>
           </div>
-          <DhiQarMap departments={stats.departments} />
+          <DhiQarMap departments={stats.departments} unstaffed={stats.unstaffedDepartments} />
         </div>
         <div className="ranking-card">
           <div className="panel-heading">
