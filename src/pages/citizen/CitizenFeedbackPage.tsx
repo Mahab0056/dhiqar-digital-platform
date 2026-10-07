@@ -94,7 +94,7 @@ export function CitizenFeedbackPage() {
           <span>
             <CheckCircle2 />
           </span>
-          <div className="section-kicker">REQUEST REGISTERED</div>
+          <div className="section-kicker">تم تسجيل الطلب</div>
           <h1>{kind === 'COMPLAINT' ? 'تم تسجيل الشكوى' : 'تم تسجيل المقترح'}</h1>
           <p>{created.currentAction}</p>
           <div>
@@ -123,7 +123,7 @@ export function CitizenFeedbackPage() {
           <Link href="/citizen">
             <ArrowRight /> حساب المواطن
           </Link>
-          <span className="section-kicker">YOUR VOICE</span>
+          <span className="section-kicker">الشكاوى والمقترحات</span>
           <h1>
             شكوى أو مقترح،<em> صوتك يوصل</em>
           </h1>

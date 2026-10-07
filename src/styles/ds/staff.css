@@ -1,0 +1,70 @@
+/* =============================================================================================
+   Staff workspaces (employee, department, operations, governor, super admin) — normalisation of
+   the existing page markup inside the app shell.
+   ============================================================================================= */
+
+/* one title scale for every portal page */
+.app-content h1 {
+  font-size: var(--ds-text-2xl);
+  font-weight: 800;
+  line-height: 1.35;
+  letter-spacing: 0;
+}
+.app-content .ops-header h1,
+.app-content .employee-heading h1,
+.app-content .dashboard-welcome h1 {
+  margin: 0;
+}
+
+/* the shell's top bar already shows who is signed in */
+.app-shell .ops-header-identity,
+.app-shell .ops-header .clock {
+  display: none;
+}
+
+/* tab rows wrap instead of clipping the last tabs */
+.app-shell .workspace-tabbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 6px;
+  overflow: visible;
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-md);
+  background: var(--ds-surface);
+}
+.app-shell .workspace-tabbar button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: var(--ds-radius-sm);
+  background: transparent;
+  color: var(--ds-text-2);
+  font-family: var(--ds-font-ui);
+  font-size: var(--ds-text-sm);
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.app-shell .workspace-tabbar button:hover {
+  background: var(--ds-surface-muted);
+  color: var(--ds-text);
+}
+.app-shell .workspace-tabbar button:is(.active, [aria-selected='true']) {
+  background: var(--ds-primary);
+  color: #fff;
+}
+.app-shell .workspace-tabbar button svg {
+  width: 17px;
+  height: 17px;
+}
+
+/* KPI grids: never leave an orphan tile on its own row */
+.app-shell :is(.department-kpis, .employee-kpis, .super-admin-kpis) {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 12px;
+}
