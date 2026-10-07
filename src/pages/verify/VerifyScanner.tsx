@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link, useLocation } from 'wouter'
-import { AlertTriangle, ArrowLeft, ArrowRight, Camera, QrCode } from 'lucide-react'
-import { Brand } from '../../components/public/Brand'
-import { CivicUtilityBar } from '../../components/public/CivicUtilityBar'
+import { useLocation } from 'wouter'
+import { AlertTriangle, ArrowLeft, BadgeCheck, Camera, LockKeyhole, QrCode, ShieldCheck } from 'lucide-react'
+import { Footer } from '../../components/public/Footer'
+import { PageHeader } from '../../components/public/PageHeader'
+import { PublicHeader } from '../../components/public/PublicHeader'
 
 export function VerifyScanner() {
   const [, navigate] = useLocation()
@@ -64,60 +65,80 @@ export function VerifyScanner() {
     }
   }
   return (
-    <div className="verify-page">
-      <CivicUtilityBar />
-      <header className="verify-header container">
-        <Brand />
-        <Link href="/">
-          <ArrowRight /> الرئيسية
-        </Link>
-      </header>
-      <main className="container scanner-content">
-        <section className="scanner-card">
-          <span className="scanner-icon">
-            <QrCode />
-          </span>
-          <span className="section-kicker">تحقق من وثيقة صادرة</span>
-          <h1>امسح رمز QR أو أدخل المعرّف</h1>
-          <p>
-            يُقرأ الرمز على جهازك ثم يُعرض سجل التحقق العام بالحد الأدنى من بيانات الوثيقة؛ لا تُرسل صورة الرمز إلى
-            الخادم.
-          </p>
-          {cameraOpen && (
-            <div className="scanner-camera">
-              <video ref={videoRef} autoPlay playsInline muted />
-              <button className="button ghost" onClick={stopCamera}>
-                إيقاف الكاميرا
+    <div className="tq-page">
+      <PublicHeader />
+      <main id="main-content">
+        <PageHeader
+          compact
+          crumbs={[{ label: 'التحقق من وثيقة' }]}
+          kicker={
+            <>
+              <QrCode size={15} /> تحقق من وثيقة صادرة
+            </>
+          }
+          title="امسح رمز QR أو أدخل معرّف الوثيقة"
+          description="يُقرأ الرمز على جهازك ثم يُعرض سجل التحقق العام بالحد الأدنى من بيانات الوثيقة؛ لا تُرسل صورة الرمز إلى الخادم."
+        />
+        <section className="tq-content">
+          <div className="tq-container verify-wrap is-start">
+            <div className="tq-panel verify-card">
+              {cameraOpen && (
+                <div className="verify-camera">
+                  <video ref={videoRef} autoPlay playsInline muted />
+                  <span className="verify-camera-frame" aria-hidden="true" />
+                  <button type="button" className="button outline small" onClick={stopCamera}>
+                    إيقاف الكاميرا
+                  </button>
+                </div>
+              )}
+              <button type="button" className="button primary full verify-scan" onClick={startScanner}>
+                <Camera /> مسح الرمز بالكاميرا
               </button>
+              <div className="verify-divider">
+                <span>أو أدخل المعرّف يدوياً</span>
+              </div>
+              <form
+                className="verify-manual"
+                onSubmit={event => {
+                  event.preventDefault()
+                  parseAndOpen(value)
+                }}
+              >
+                <label className="tq-field">
+                  <span>معرّف التحقق أو رابط QR</span>
+                  <input
+                    value={value}
+                    onChange={event => setValue(event.target.value)}
+                    placeholder="TQD-..."
+                    autoComplete="off"
+                    dir="ltr"
+                  />
+                </label>
+                <button type="submit" className="button outline">
+                  تحقق الآن <ArrowLeft />
+                </button>
+              </form>
+              {error && (
+                <div className="form-error" role="alert">
+                  <AlertTriangle /> {error}
+                </div>
+              )}
             </div>
-          )}
-          <div className="scanner-actions">
-            <button className="button primary" onClick={startScanner}>
-              <Camera /> مسح بالكاميرا
-            </button>
-            <div className="scanner-divider">
-              <span>أو</span>
-            </div>
-            <label>
-              معرّف التحقق أو رابط QR
-              <input
-                value={value}
-                onChange={event => setValue(event.target.value)}
-                placeholder="TQD-..."
-                autoComplete="off"
-              />
-            </label>
-            <button className="button outline" onClick={() => parseAndOpen(value)}>
-              تحقق الآن <ArrowLeft />
-            </button>
+            <ul className="verify-facts">
+              <li>
+                <ShieldCheck aria-hidden="true" /> كل وثيقة تصدرها المنصة تحمل معرّفاً ورمز QR فريداً.
+              </li>
+              <li>
+                <LockKeyhole aria-hidden="true" /> تُعرض بيانات الحد الأدنى فقط حفاظاً على خصوصية صاحب الوثيقة.
+              </li>
+              <li>
+                <BadgeCheck aria-hidden="true" /> الوثيقة الملغاة تظهر بوضوح على أنها غير نافذة.
+              </li>
+            </ul>
           </div>
-          {error && (
-            <div className="form-error">
-              <AlertTriangle /> {error}
-            </div>
-          )}
         </section>
       </main>
+      <Footer />
     </div>
   )
 }

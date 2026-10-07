@@ -4,11 +4,11 @@ import { Link, useLocation } from 'wouter'
 import {
   AlertTriangle,
   ArrowLeft,
-  ArrowRight,
   BadgeCheck,
   Building2,
   CalendarClock,
   CheckCircle2,
+  Circle,
   Clock3,
   CreditCard,
   ExternalLink,
@@ -17,7 +17,6 @@ import {
   Info,
   Landmark,
   ReceiptText,
-  RefreshCw,
   Send,
   ShieldCheck,
 } from 'lucide-react'
@@ -25,6 +24,7 @@ import { api } from '../../api'
 import { getServiceDefinition } from '../../service-forms'
 import type { CatalogService } from '../../types'
 import { SecureCameraCapture } from '../../components/camera/SecureCameraCapture'
+import { LoadingBlock, PageHeader } from '../../components/public/PageHeader'
 import { NotFound } from '../NotFound'
 import {
   onboardingPathForService,
@@ -47,28 +47,101 @@ const applicantLabel: Record<CatalogService['applicantType'], string> = {
   BOTH: 'للمواطنين والأعمال',
 }
 
-function FeeLine({ service }: { service: CatalogService }) {
-  if (service.feeStatus === 'OFFICIAL' && service.feeIqd)
-    return (
-      <span>
-        <ReceiptText /> {service.feeIqd.toLocaleString('en-US')} د.ع — يُسدَّد إلكترونياً بعد التقديم{' '}
-        {service.feeSource && (
-          <a href={service.feeSource} target="_blank" rel="noreferrer" className="gov-inline-source">
-            (المصدر الرسمي)
-          </a>
-        )}
-      </span>
-    )
-  if (service.feeStatus === 'NOT_REQUIRED')
-    return (
-      <span>
-        <ReceiptText /> تُحدَّد الرسوم من الدائرة عند التدقيق
-      </span>
-    )
+function feeText(service: CatalogService) {
+  if (service.feeStatus === 'OFFICIAL' && service.feeIqd) return `${service.feeIqd.toLocaleString('en-US')} د.ع`
+  if (service.feeStatus === 'NOT_REQUIRED') return 'تحددها الدائرة عند التدقيق'
+  return 'غير مؤكدة — تُثبَّت من الدائرة'
+}
+
+/** Sticky summary next to the form: what the service is, what it costs, and which documents are ready. */
+function ServiceSummary({
+  service,
+  documents,
+  showDocuments,
+}: {
+  service: CatalogService
+  documents?: Record<string, File | null>
+  showDocuments: boolean
+}) {
+  const docs = service.requiredDocuments
+  const ready = documents ? docs.filter(doc => documents[doc.key]).length : 0
   return (
-    <span>
-      <ReceiptText /> الرسوم غير مؤكدة — تُثبَّت من الدائرة
-    </span>
+    <aside className="tq-stack tq-sticky svc-summary" aria-label="ملخص الخدمة">
+      <article className="tq-panel">
+        <h2>
+          <ReceiptText /> ملخص الخدمة
+        </h2>
+        <dl className="tq-dl">
+          <div>
+            <dt>طريقة التقديم</dt>
+            <dd>{channelLabel[service.channel]}</dd>
+          </div>
+          <div>
+            <dt>الرسوم</dt>
+            <dd>
+              {feeText(service)}
+              {service.feeStatus === 'OFFICIAL' && service.feeSource && (
+                <a href={service.feeSource} target="_blank" rel="noreferrer" className="svc-fee-source">
+                  المصدر الرسمي
+                </a>
+              )}
+            </dd>
+          </div>
+          {service.estimatedDuration && (
+            <div>
+              <dt>مدة الإنجاز</dt>
+              <dd>{service.estimatedDuration}</dd>
+            </div>
+          )}
+          <div>
+            <dt>الجهة</dt>
+            <dd>
+              <Link href={`/departments/${service.departmentId}`} className="gov-link">
+                {service.departmentName}
+              </Link>
+            </dd>
+          </div>
+        </dl>
+      </article>
+      {showDocuments && docs.length > 0 && (
+        <article className="tq-panel">
+          <div className="tq-panel-head">
+            <div>
+              <h2>
+                <FileCheck2 /> المستمسكات
+              </h2>
+              {documents && (
+                <p>
+                  {ready.toLocaleString('en-US')} من {docs.length.toLocaleString('en-US')} جاهزة
+                </p>
+              )}
+            </div>
+          </div>
+          {documents && (
+            <div className="svc-progress" aria-hidden="true">
+              <i style={{ width: `${docs.length ? (ready / docs.length) * 100 : 0}%` }} />
+            </div>
+          )}
+          <ul className="svc-checklist">
+            {docs.map(doc => {
+              const done = Boolean(documents?.[doc.key])
+              return (
+                <li key={doc.key} className={done ? 'is-done' : ''}>
+                  {done ? <CheckCircle2 aria-hidden="true" /> : <Circle aria-hidden="true" />}
+                  <span>{doc.label}</span>
+                  {!doc.required && <small>اختياري</small>}
+                </li>
+              )
+            })}
+          </ul>
+        </article>
+      )}
+      {service.sourceUrl && (
+        <a href={service.sourceUrl} target="_blank" rel="noreferrer" className="gov-link svc-source">
+          <ExternalLink size={14} /> المصدر الرسمي لبيانات الخدمة
+        </a>
+      )}
+    </aside>
   )
 }
 
@@ -138,8 +211,10 @@ export function DynamicServiceFormPage({ serviceKey }: { serviceKey: string }) {
   if (service === undefined)
     return (
       <PublicServiceFrame>
-        <div className="service-loading">
-          <RefreshCw className="spin" /> جاري تحميل بيانات الخدمة…
+        <div className="tq-content">
+          <div className="tq-container">
+            <LoadingBlock label="جاري تحميل بيانات الخدمة…" />
+          </div>
         </div>
       </PublicServiceFrame>
     )
@@ -191,122 +266,129 @@ export function DynamicServiceFormPage({ serviceKey }: { serviceKey: string }) {
   }
 
   const header = (
-    <div className="service-form-header gov-service-header">
-      <Link href="/directory">
-        <ArrowRight /> الرجوع إلى دليل الخدمات
-      </Link>
-      <span>
-        {isInformation
+    <PageHeader
+      crumbs={[{ label: 'دليل الخدمات', href: '/directory' }, { label: service.title }]}
+      kicker={
+        isInformation
           ? 'خدمة معلوماتية'
           : isAppointmentFlow
             ? 'حجز موعد'
             : service.channel === 'APPOINTMENT_REQUIRED'
               ? 'تقديم إلكتروني ثم حضور'
-              : 'استمارة خدمة إلكترونية'}
-      </span>
-      <h1>{service.title}</h1>
-      <p>{service.description}</p>
-      <div>
-        <Link href={`/departments/${service.departmentId}`} className="gov-service-department">
-          <Building2 /> {service.departmentName}
-        </Link>
-        {service.estimatedDuration && (
+              : 'استمارة خدمة إلكترونية'
+      }
+      title={service.title}
+      description={service.description}
+      meta={
+        <>
           <span>
-            <Clock3 /> {service.estimatedDuration}
+            <Building2 />
+            <Link href={`/departments/${service.departmentId}`} className="gov-link">
+              {service.departmentName}
+            </Link>
           </span>
-        )}
-        <FeeLine service={service} />
-        <span>
-          <Landmark /> {applicantLabel[service.applicantType]}
-        </span>
-      </div>
+          {service.estimatedDuration && (
+            <span>
+              <Clock3 /> {service.estimatedDuration}
+            </span>
+          )}
+          <span>
+            <ReceiptText /> {feeText(service)}
+          </span>
+          <span>
+            <Landmark /> {applicantLabel[service.applicantType]}
+          </span>
+        </>
+      }
+    >
       {service.sourceQuality === 'UNVERIFIED' && (
-        <div className="gov-unverified-note">
-          <Info />
+        <p className="tq-note is-warning">
+          <Info aria-hidden="true" />
           <span>
             بيانات هذه الخدمة مأخوذة من مصادر عامة ولم تؤكدها الدائرة بعد. قد تطلب الدائرة مستمسكاً إضافياً أو تعدّل
             الشروط عند التدقيق.
           </span>
-        </div>
+        </p>
       )}
-    </div>
+    </PageHeader>
   )
 
   if (isInformation)
     return (
       <PublicServiceFrame>
         {header}
-        <section className="gov-info-service">
-          <article className="form-card">
-            <div className="form-card-title">
-              <span>
-                <FileCheck2 />
-              </span>
-              <div>
-                <h2>ما تحتاجه قبل مراجعة الجهة</h2>
-                <p>هذه الخدمة تُنجز لدى الجهة المالكة مباشرة أو عبر موقعها الرسمي. جهّز ما يلي.</p>
-              </div>
+        <section className="tq-content">
+          <div className="tq-container tq-layout">
+            <div className="tq-stack">
+              <article className="tq-panel">
+                <div className="tq-panel-head">
+                  <div>
+                    <h2>
+                      <FileCheck2 /> ما تحتاجه قبل مراجعة الجهة
+                    </h2>
+                    <p>تُنجز هذه الخدمة لدى الجهة مباشرةً أو عبر موقعها الرسمي. جهّز ما يلي.</p>
+                  </div>
+                </div>
+                {service.requiredDocuments.length ? (
+                  <ul className="tq-doc-list">
+                    {service.requiredDocuments.map(doc => (
+                      <li key={doc.key}>
+                        <CheckCircle2 aria-hidden="true" />
+                        <span>
+                          <strong>{doc.label}</strong>
+                          {doc.description && <small>{doc.description}</small>}
+                        </span>
+                        {!doc.required && <span className="tq-badge">اختياري</span>}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p>لا توجد مستمسكات مسجلة لهذه الخدمة؛ راجع الجهة أو رابطها الرسمي.</p>
+                )}
+                {service.notes && (
+                  <p className="tq-note is-info">
+                    <Info aria-hidden="true" />
+                    <span>{service.notes}</span>
+                  </p>
+                )}
+              </article>
             </div>
-            {service.requiredDocuments.length ? (
-              <ul className="gov-doc-list">
-                {service.requiredDocuments.map(doc => (
-                  <li key={doc.key}>
-                    <CheckCircle2 />
-                    <span>
-                      <strong>{doc.label}</strong>
-                      {doc.description && <small>{doc.description}</small>}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="gov-muted">لا توجد مستمسكات مسجلة لهذه الخدمة؛ راجع الجهة أو رابطها الرسمي.</p>
-            )}
-            {service.notes && (
-              <div className="service-policy-note">
-                <Info />
-                <span>{service.notes}</span>
-              </div>
-            )}
-          </article>
-          <aside className="form-card">
-            <div className="form-card-title">
-              <span>
-                <ShieldCheck />
-              </span>
-              <div>
-                <h2>الروابط الرسمية</h2>
-                <p>تأكد أن النطاق المفتوح يعود إلى الجهة الحكومية قبل إدخال بياناتك.</p>
-              </div>
-            </div>
-            <div className="official-handoff-links">
-              {legacy?.officialLinks?.map((link, index) => (
-                <a
-                  className={index === 0 ? 'button primary' : 'button outline'}
-                  href={link.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  key={link.url}
-                >
-                  {link.label} <ExternalLink />
-                </a>
-              ))}
-              {!legacy?.officialLinks?.length && service.sourceUrl && (
-                <a className="button primary" href={service.sourceUrl} target="_blank" rel="noreferrer">
-                  الموقع الرسمي للجهة <ExternalLink />
-                </a>
-              )}
-              <Link className="button outline" href={`/departments/${service.departmentId}`}>
-                صفحة الجهة على المنصة <ArrowLeft />
-              </Link>
-            </div>
-            {legacy?.boundaryNote && legacy.boundaryNote !== service.notes && (
-              <div className="handoff-security">
-                <ShieldCheck />
-                <span>{legacy.boundaryNote}</span>
-              </div>
-            )}
-          </aside>
+            <aside className="tq-stack tq-sticky">
+              <article className="tq-panel is-accent">
+                <h2>
+                  <ShieldCheck /> الروابط الرسمية
+                </h2>
+                <p className="svc-muted">تأكد أن النطاق المفتوح يعود إلى الجهة الحكومية قبل إدخال بياناتك.</p>
+                <div className="svc-handoff">
+                  {legacy?.officialLinks?.map((link, index) => (
+                    <a
+                      className={index === 0 ? 'button primary full' : 'button outline full'}
+                      href={link.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      key={link.url}
+                    >
+                      <ExternalLink /> {link.label}
+                    </a>
+                  ))}
+                  {!legacy?.officialLinks?.length && service.sourceUrl && (
+                    <a className="button primary full" href={service.sourceUrl} target="_blank" rel="noreferrer">
+                      <ExternalLink /> الموقع الرسمي للجهة
+                    </a>
+                  )}
+                  <Link className="button outline full" href={`/departments/${service.departmentId}`}>
+                    صفحة الجهة على المنصة <ArrowLeft />
+                  </Link>
+                </div>
+                {legacy?.boundaryNote && legacy.boundaryNote !== service.notes && (
+                  <p className="tq-note">
+                    <ShieldCheck aria-hidden="true" />
+                    <span>{legacy.boundaryNote}</span>
+                  </p>
+                )}
+              </article>
+            </aside>
+          </div>
         </section>
       </PublicServiceFrame>
     )
@@ -314,287 +396,293 @@ export function DynamicServiceFormPage({ serviceKey }: { serviceKey: string }) {
   if (result)
     return (
       <PublicServiceFrame>
-        <section className="service-success">
-          <span>
-            <CheckCircle2 />
-          </span>
-          <div className="section-kicker">تم تسجيل الطلب</div>
-          <h1>
-            {result.payment
-              ? 'سُجّل الطلب — بقي سداد الرسم'
-              : isAppointmentFlow
-                ? 'تم إرسال طلب الموعد'
-                : 'تم إرسال الطلب والمستمسكات إلى الدائرة'}
-          </h1>
-          <p>{result.currentAction}</p>
-          <div className="service-success-data">
-            <span>
-              <small>رقم الطلب</small>
-              <strong>{result.reference}</strong>
-            </span>
-            <span>
-              <small>الدائرة</small>
-              <strong>{result.department}</strong>
-            </span>
-            {result.appointment && (
-              <>
-                <span>
-                  <small>التاريخ المفضل</small>
-                  <strong>
-                    {new Date(`${result.appointment.preferredDate}T00:00:00`).toLocaleDateString('en-GB')}
-                  </strong>
-                </span>
-                <span>
-                  <small>الوقت المفضل</small>
-                  <strong>{result.appointment.preferredTime}</strong>
-                </span>
-              </>
-            )}
+        <section className="tq-content">
+          <div className="tq-container">
+            <div className="svc-success">
+              <span className="svc-success-icon">
+                <CheckCircle2 />
+              </span>
+              <span className="section-kicker">تم تسجيل الطلب</span>
+              <h1>
+                {result.payment
+                  ? 'سُجّل الطلب — بقي سداد الرسم'
+                  : isAppointmentFlow
+                    ? 'تم إرسال طلب الموعد'
+                    : 'تم إرسال الطلب والمستمسكات إلى الدائرة'}
+              </h1>
+              <p>{result.currentAction}</p>
+              <dl className="svc-success-data">
+                <div>
+                  <dt>رقم الطلب</dt>
+                  <dd dir="ltr">{result.reference}</dd>
+                </div>
+                <div>
+                  <dt>الدائرة</dt>
+                  <dd>{result.department}</dd>
+                </div>
+                {result.appointment && (
+                  <>
+                    <div>
+                      <dt>التاريخ المفضل</dt>
+                      <dd>{new Date(`${result.appointment.preferredDate}T00:00:00`).toLocaleDateString('en-GB')}</dd>
+                    </div>
+                    <div>
+                      <dt>الوقت المفضل</dt>
+                      <dd>{result.appointment.preferredTime}</dd>
+                    </div>
+                  </>
+                )}
+              </dl>
+              {result.payment ? (
+                <>
+                  <p className="svc-muted">
+                    يبقى الطلب محجوزاً باسمك ولا يُحال إلى الدائرة إلا بعد سداد الرسم. يصدر إيصال إلكتروني فور الدفع.
+                  </p>
+                  <div className="tq-page-actions">
+                    <Link className="button primary" href={`/citizen/pay/${result.payment.reference}`}>
+                      <CreditCard /> سدّد الرسم الآن ({result.payment.amountIqd.toLocaleString('en-US')} د.ع)
+                    </Link>
+                    <Link className="button outline" href="/citizen#my-requests">
+                      الدفع لاحقاً من حسابي
+                    </Link>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p className="svc-muted">
+                    ستصلك إشعارات المنصة عند بدء التدقيق أو عند طلب أي استكمال. يمكنك متابعة الطلب ورفع النواقص من
+                    حسابك.
+                  </p>
+                  <div className="tq-page-actions">
+                    <Link className="button primary" href="/citizen#my-requests">
+                      متابعة الطلب في حسابي <ArrowLeft />
+                    </Link>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
-          {result.payment ? (
-            <>
-              <p className="gov-muted">
-                يبقى الطلب محجوزاً باسمك ولا يُحال إلى الدائرة إلا بعد سداد الرسم. يصدر إيصال إلكتروني فور الدفع.
-              </p>
-              <Link className="button primary" href={`/citizen/pay/${result.payment.reference}`}>
-                <CreditCard /> سدّد الرسم الآن ({result.payment.amountIqd.toLocaleString('en-US')} د.ع)
-              </Link>
-              <Link className="button outline" href="/citizen#my-requests">
-                الدفع لاحقاً من حساب المواطن
-              </Link>
-            </>
-          ) : (
-            <>
-              <p className="gov-muted">
-                ستصلك إشعارات المنصة عند بدء التدقيق أو عند طلب أي استكمال. يمكنك متابعة الطلب ورفع النواقص من حساب
-                المواطن.
-              </p>
-              <Link className="button primary" href="/citizen#my-requests">
-                متابعة الطلب في حساب المواطن <ArrowLeft />
-              </Link>
-            </>
-          )}
         </section>
       </PublicServiceFrame>
     )
 
   const stepDocs = service.requiredDocuments.length > 0
+  const steps = [
+    isAppointmentFlow ? 'بيانات الموعد' : 'بيانات الطلب',
+    ...(stepDocs ? ['المستمسكات'] : []),
+    'توثيق الوجه والإرسال',
+    'تدقيق الدائرة',
+  ]
   const stepNumbers = { data: 1, docs: 2, face: stepDocs ? 3 : 2 }
 
   return (
     <PublicServiceFrame>
       {header}
-      <form className="dynamic-service-form" onSubmit={submit}>
-        <nav className="service-form-progress" aria-label="خطوات تقديم الخدمة">
-          <span className="active">
-            <b>01</b>
-            <small>بيانات الطلب</small>
-          </span>
-          {stepDocs && (
-            <span>
-              <b>02</b>
-              <small>المستمسكات</small>
-            </span>
-          )}
-          <span>
-            <b>{stepDocs ? '03' : '02'}</b>
-            <small>توثيق الوجه والإرسال</small>
-          </span>
-          <span>
-            <b>{stepDocs ? '04' : '03'}</b>
-            <small>تدقيق الدائرة</small>
-          </span>
-        </nav>
-
-        <section className="form-card">
-          <div className="form-card-title">
-            <span>{stepNumbers.data}</span>
-            <div>
-              <h2>{isAppointmentFlow ? 'بيانات الموعد' : 'بيانات الطلب'}</h2>
-              <p>
-                {service.channel === 'APPOINTMENT_REQUIRED'
-                  ? 'تُدقَّق بياناتك ومستمسكاتك إلكترونياً أولاً، ثم تحدد الدائرة موعد حضورك لإكمال الإجراء (توقيع، بصمة، أو استلام).'
-                  : 'تُرسل هذه البيانات إلى الدائرة المختصة مباشرةً وتتحقق منها المنصة قبل الإرسال.'}
-              </p>
-            </div>
-          </div>
-          <ServiceSubmissionNotice access={access} />
-          {service.fields.length ? (
-            <div className="form-grid dynamic-fields">
-              {service.fields.map(field => (
-                <label className={field.type === 'textarea' ? 'wide' : ''} key={field.key}>
-                  {field.label}
-                  {field.required && <b aria-hidden="true"> *</b>}
-                  {field.type === 'select' ? (
-                    <select name={field.key} required={field.required} defaultValue={draft[field.key] || ''}>
-                      <option value="" disabled>
-                        اختر
-                      </option>
-                      {field.options?.map(option => (
-                        <option value={option} key={option}>
-                          {option}
-                        </option>
-                      ))}
-                    </select>
-                  ) : field.type === 'textarea' ? (
-                    <textarea
-                      name={field.key}
-                      required={field.required}
-                      defaultValue={draft[field.key] || ''}
-                      maxLength={field.maxLength}
-                      placeholder={field.placeholder}
-                      rows={4}
-                    />
-                  ) : (
-                    <input
-                      name={field.key}
-                      type={field.type === 'number' ? 'text' : field.type}
-                      inputMode={field.type === 'number' ? 'numeric' : field.type === 'tel' ? 'tel' : undefined}
-                      required={field.required}
-                      defaultValue={draft[field.key] || (field.key === 'fullName' ? profile?.fullName || '' : '')}
-                      key={`${field.key}-${field.key === 'fullName' ? profile?.fullName || '' : ''}`}
-                      maxLength={field.maxLength}
-                      placeholder={field.placeholder}
-                      min={field.type === 'date' && isAppointmentFlow ? today : undefined}
-                      max={field.type === 'date' && isAppointmentFlow ? maxDate : undefined}
-                    />
-                  )}
-                </label>
+      <section className="tq-content">
+        <div className="tq-container tq-layout">
+          <form className="tq-stack svc-form" onSubmit={submit} noValidate={false}>
+            <ol className="svc-stepper" aria-label="خطوات تقديم الخدمة">
+              {steps.map((label, index) => (
+                <li key={label} className={index === 0 ? 'is-current' : ''}>
+                  <b>{index + 1}</b>
+                  <span>{label}</span>
+                </li>
               ))}
-            </div>
-          ) : (
-            <p className="gov-muted">لا تحتاج هذه الخدمة إلى بيانات إضافية؛ تُستخدم بيانات حسابك الموثق.</p>
-          )}
-        </section>
+            </ol>
 
-        {stepDocs && (
-          <section className="form-card">
-            <div className="form-card-title">
-              <span>{stepNumbers.docs}</span>
-              <div>
-                <h2>المستمسكات المطلوبة</h2>
-                <p>
-                  صوّر كل مستمسك بوضوح أو ارفعه بصيغة PDF. يفحص موظف الدائرة كل مستمسك على حدة ويطلب إعادة رفع أي مستمسك
-                  غير واضح.
-                </p>
-              </div>
-            </div>
-            <div className="gov-doc-slots">
-              {[...requiredDocs, ...optionalDocs].map(doc => (
-                <div className={documents[doc.key] ? 'gov-doc-slot is-ready' : 'gov-doc-slot'} key={doc.key}>
-                  <div className="gov-doc-slot-head">
-                    <strong>
-                      {doc.label} {doc.required ? <b aria-hidden="true">*</b> : <em>اختياري</em>}
-                    </strong>
-                    {doc.description && <small>{doc.description}</small>}
-                  </div>
-                  {access === 'verified' ? (
-                    <SecureCameraCapture
-                      title={doc.label}
-                      guidance="ضع المستمسك على سطح مستوٍ بإضاءة جيدة بحيث تظهر كل حوافه."
-                      mode="photo"
-                      facingMode="environment"
-                      allowPdf={doc.accepts.includes('pdf')}
-                      file={documents[doc.key] || null}
-                      onChange={file => setDocuments(current => ({ ...current, [doc.key]: file }))}
-                    />
-                  ) : (
-                    <div className="gov-doc-slot-locked">
-                      <Fingerprint />{' '}
-                      {access === 'identity-required'
-                        ? 'يُفعَّل رفع المستمسكات بعد إكمال توثيق حسابك.'
-                        : 'يُفعَّل رفع المستمسكات بعد تسجيل الدخول وتوثيق الحساب.'}
-                    </div>
-                  )}
+            <ServiceSubmissionNotice access={access} />
+
+            <section className="tq-panel svc-step">
+              <header className="svc-step-head">
+                <b>{stepNumbers.data}</b>
+                <div>
+                  <h2>{isAppointmentFlow ? 'بيانات الموعد' : 'بيانات الطلب'}</h2>
+                  <p>
+                    {service.channel === 'APPOINTMENT_REQUIRED'
+                      ? 'تُدقَّق بياناتك ومستمسكاتك إلكترونياً أولاً، ثم تحدد الدائرة موعد حضورك لإكمال الإجراء (توقيع، بصمة، أو استلام).'
+                      : 'تُرسل هذه البيانات إلى الدائرة المختصة مباشرةً وتتحقق منها المنصة قبل الإرسال.'}
+                  </p>
                 </div>
-              ))}
-            </div>
-            {access === 'verified' && (
-              <label className="consent-box">
-                <input
-                  type="checkbox"
-                  checked={documentConsent}
-                  onChange={event => setDocumentConsent(event.target.checked)}
-                />
-                <span>أُقرّ بأن المستمسكات المرفوعة أصلية وصحيحة وتعود لي أو لمن أمثّله قانونياً.</span>
-              </label>
-            )}
-          </section>
-        )}
+              </header>
+              {service.fields.length ? (
+                <div className="svc-fields">
+                  {service.fields.map(field => (
+                    <label className={field.type === 'textarea' ? 'tq-field is-wide' : 'tq-field'} key={field.key}>
+                      <span>
+                        {field.label}
+                        {field.required && (
+                          <b className="svc-required" aria-hidden="true">
+                            *
+                          </b>
+                        )}
+                      </span>
+                      {field.type === 'select' ? (
+                        <select name={field.key} required={field.required} defaultValue={draft[field.key] || ''}>
+                          <option value="" disabled>
+                            اختر
+                          </option>
+                          {field.options?.map(option => (
+                            <option value={option} key={option}>
+                              {option}
+                            </option>
+                          ))}
+                        </select>
+                      ) : field.type === 'textarea' ? (
+                        <textarea
+                          name={field.key}
+                          required={field.required}
+                          defaultValue={draft[field.key] || ''}
+                          maxLength={field.maxLength}
+                          placeholder={field.placeholder}
+                          rows={4}
+                        />
+                      ) : (
+                        <input
+                          name={field.key}
+                          type={field.type === 'number' ? 'text' : field.type}
+                          inputMode={field.type === 'number' ? 'numeric' : field.type === 'tel' ? 'tel' : undefined}
+                          required={field.required}
+                          defaultValue={draft[field.key] || (field.key === 'fullName' ? profile?.fullName || '' : '')}
+                          key={`${field.key}-${field.key === 'fullName' ? profile?.fullName || '' : ''}`}
+                          maxLength={field.maxLength}
+                          placeholder={field.placeholder}
+                          min={field.type === 'date' && isAppointmentFlow ? today : undefined}
+                          max={field.type === 'date' && isAppointmentFlow ? maxDate : undefined}
+                        />
+                      )}
+                    </label>
+                  ))}
+                </div>
+              ) : (
+                <p className="svc-muted">لا تحتاج هذه الخدمة إلى بيانات إضافية؛ تُستخدم بيانات حسابك الموثق.</p>
+              )}
+            </section>
 
-        <section className="form-card requirements-card">
-          <div className="form-card-title">
-            <span>{stepNumbers.face}</span>
-            <div>
-              <h2>توثيق الوجه والإرسال</h2>
-              <p>يربط فيديو الوجه القصير الطلب بصاحب الحساب الموثق ويمنع التقديم نيابةً عن الغير.</p>
-            </div>
-          </div>
-          <div className="service-policy-note">
-            <CalendarClock />
-            <span>
-              {service.channel === 'APPOINTMENT_REQUIRED'
-                ? 'بعد الموافقة على المستمسكات تحدد الدائرة موعد الحضور ويصلك إشعار به داخل حسابك.'
-                : isAppointmentFlow
-                  ? 'حجز الموعد يبقى بانتظار تأكيد الموظف ولا يتحول إلى موعد نهائي تلقائياً.'
-                  : 'يصلك قرار الدائرة داخل حسابك، وعند الموافقة تُصدر وثيقة إتمام رقمية قابلة للتحقق.'}
-            </span>
-          </div>
-          {access === 'verified' && (
-            <div className="service-face-confirmation">
-              <div>
-                <Fingerprint />
-                <strong>توثيق الوجه لهذا الطلب</strong>
-                <p>سجّل فيديو قصيراً بالكاميرا الأمامية. يُحفظ مشفراً ضمن مرفقات الطلب ويظهر للمراجع المخول فقط.</p>
-              </div>
-              <SecureCameraCapture
-                title="فيديو توثيق الوجه"
-                guidance="افتح الكاميرا الأمامية، انظر للكاميرا مباشرةً وحرّك رأسك ببطء لليمين واليسار."
-                mode="video"
-                facingMode="user"
-                cameraOnly
-                file={faceVideo}
-                onChange={setFaceVideo}
-              />
-              <label className="consent-box">
-                <input type="checkbox" checked={faceConsent} onChange={event => setFaceConsent(event.target.checked)} />
-                <span>أوافق على إرفاق فيديو الوجه المشفر بهذا الطلب لغرض التدقيق لدى الجهة المخولة.</span>
-              </label>
-            </div>
-          )}
-        </section>
-        {error && (
-          <div className="form-error" role="alert">
-            <AlertTriangle /> {error}
-          </div>
-        )}
-        <div className="dynamic-form-submit">
-          <button className="button primary" type="submit" disabled={busy || access === 'checking'}>
-            {busy
-              ? 'جاري تسجيل الطلب...'
-              : access === 'guest'
-                ? 'تسجيل الدخول وتوثيق الحساب ثم الإرسال'
-                : access === 'identity-required'
-                  ? 'إكمال توثيق الحساب ثم الإرسال'
-                  : isAppointmentFlow
-                    ? 'إرسال طلب الموعد'
-                    : 'إرسال الطلب إلى الدائرة'}{' '}
-            <Send />
-          </button>
-          <small className="gov-muted">
-            <BadgeCheck /> {channelLabel[service.channel]}
-            {service.sourceUrl && (
-              <>
-                {' '}
-                ·{' '}
-                <a href={service.sourceUrl} target="_blank" rel="noreferrer">
-                  المصدر الرسمي
-                </a>
-              </>
+            {stepDocs && (
+              <section className="tq-panel svc-step">
+                <header className="svc-step-head">
+                  <b>{stepNumbers.docs}</b>
+                  <div>
+                    <h2>المستمسكات المطلوبة</h2>
+                    <p>
+                      صوّر كل مستمسك بوضوح أو ارفعه بصيغة PDF. يفحص موظف الدائرة كل مستمسك على حدة ويطلب إعادة رفع أي
+                      مستمسك غير واضح.
+                    </p>
+                  </div>
+                </header>
+                <div className="svc-doc-slots">
+                  {[...requiredDocs, ...optionalDocs].map(doc => (
+                    <div className={documents[doc.key] ? 'svc-doc-slot is-ready' : 'svc-doc-slot'} key={doc.key}>
+                      <div className="svc-doc-slot-head">
+                        <strong>{doc.label}</strong>
+                        {doc.required ? (
+                          <span className="tq-badge is-danger">مطلوب</span>
+                        ) : (
+                          <span className="tq-badge">اختياري</span>
+                        )}
+                      </div>
+                      {doc.description && <small className="svc-doc-hint">{doc.description}</small>}
+                      {access === 'verified' ? (
+                        <SecureCameraCapture
+                          title={doc.label}
+                          guidance="ضع المستمسك على سطح مستوٍ بإضاءة جيدة بحيث تظهر كل حوافه."
+                          mode="photo"
+                          facingMode="environment"
+                          allowPdf={doc.accepts.includes('pdf')}
+                          file={documents[doc.key] || null}
+                          onChange={file => setDocuments(current => ({ ...current, [doc.key]: file }))}
+                        />
+                      ) : (
+                        <div className="svc-doc-locked">
+                          <Fingerprint aria-hidden="true" />
+                          {access === 'identity-required'
+                            ? 'يُفعَّل رفع المستمسكات بعد إكمال توثيق حسابك.'
+                            : 'يُفعَّل رفع المستمسكات بعد تسجيل الدخول وتوثيق الحساب.'}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                {access === 'verified' && (
+                  <label className="tq-check svc-consent">
+                    <input
+                      type="checkbox"
+                      checked={documentConsent}
+                      onChange={event => setDocumentConsent(event.target.checked)}
+                    />
+                    <span>أُقرّ بأن المستمسكات المرفوعة أصلية وصحيحة وتعود لي أو لمن أمثّله قانونياً.</span>
+                  </label>
+                )}
+              </section>
             )}
-          </small>
+
+            <section className="tq-panel svc-step">
+              <header className="svc-step-head">
+                <b>{stepNumbers.face}</b>
+                <div>
+                  <h2>توثيق الوجه والإرسال</h2>
+                  <p>يربط فيديو الوجه القصير الطلب بصاحب الحساب الموثق ويمنع التقديم نيابةً عن الغير.</p>
+                </div>
+              </header>
+              <p className="tq-note is-info">
+                <CalendarClock aria-hidden="true" />
+                <span>
+                  {service.channel === 'APPOINTMENT_REQUIRED'
+                    ? 'بعد الموافقة على المستمسكات تحدد الدائرة موعد الحضور ويصلك إشعار به داخل حسابك.'
+                    : isAppointmentFlow
+                      ? 'حجز الموعد يبقى بانتظار تأكيد الموظف ولا يتحول إلى موعد نهائي تلقائياً.'
+                      : 'يصلك قرار الدائرة داخل حسابك، وعند الموافقة تُصدر وثيقة إتمام رقمية قابلة للتحقق.'}
+                </span>
+              </p>
+              {access === 'verified' && (
+                <div className="svc-face">
+                  <SecureCameraCapture
+                    title="فيديو توثيق الوجه"
+                    guidance="افتح الكاميرا الأمامية، انظر للكاميرا مباشرةً وحرّك رأسك ببطء لليمين واليسار. يُحفظ مشفراً ويظهر للمراجع المخول فقط."
+                    mode="video"
+                    facingMode="user"
+                    cameraOnly
+                    file={faceVideo}
+                    onChange={setFaceVideo}
+                  />
+                  <label className="tq-check svc-consent">
+                    <input
+                      type="checkbox"
+                      checked={faceConsent}
+                      onChange={event => setFaceConsent(event.target.checked)}
+                    />
+                    <span>أوافق على إرفاق فيديو الوجه المشفر بهذا الطلب لغرض التدقيق لدى الجهة المخولة.</span>
+                  </label>
+                </div>
+              )}
+            </section>
+
+            {error && (
+              <div className="form-error" role="alert">
+                <AlertTriangle /> {error}
+              </div>
+            )}
+            <div className="svc-submit">
+              <button className="button primary" type="submit" disabled={busy || access === 'checking'}>
+                <Send />
+                {busy
+                  ? 'جاري تسجيل الطلب…'
+                  : access === 'guest'
+                    ? 'سجّل الدخول ووثّق حسابك ثم أرسل'
+                    : access === 'identity-required'
+                      ? 'أكمل توثيق الحساب ثم أرسل'
+                      : isAppointmentFlow
+                        ? 'إرسال طلب الموعد'
+                        : 'إرسال الطلب إلى الدائرة'}
+              </button>
+              <small>
+                <BadgeCheck aria-hidden="true" /> {channelLabel[service.channel]}
+              </small>
+            </div>
+          </form>
+          <ServiceSummary service={service} documents={access === 'verified' ? documents : undefined} showDocuments />
         </div>
-      </form>
+      </section>
     </PublicServiceFrame>
   )
 }

@@ -1,11 +1,12 @@
 import type React from 'react'
 import { useState } from 'react'
-import { Link, useLocation } from 'wouter'
-import { AlertTriangle, ArrowRight, Building2, Clock3, ReceiptText, Send, ShieldCheck } from 'lucide-react'
+import { useLocation } from 'wouter'
+import { AlertTriangle, Building2, Clock3, ReceiptText, Send, ShieldCheck } from 'lucide-react'
 import { api } from '../../api'
 import { formatIQD, services } from '../../data'
 import { LocationPicker, type PickedLocation } from '../../components/maps/LocationPicker'
 import { SecureCameraCapture } from '../../components/camera/SecureCameraCapture'
+import { PageHeader } from '../../components/public/PageHeader'
 import {
   onboardingPathForService,
   useCitizenSubmissionAccess,
@@ -76,212 +77,274 @@ export function SpecializedServiceFormPage({ serviceKey }: { serviceKey: string 
       setBusy(false)
     }
   }
+  const steps = ['الحساب', 'بيانات المحل', 'الموقع', 'المستمسكات', 'توثيق الوجه']
   return (
     <PublicServiceFrame>
-      <div className="service-form-header">
-        <Link href="/">
-          <ArrowRight /> العودة إلى الرئيسية
-        </Link>
-        <span>خدمة رقمية</span>
-        <h1>{service.title}</h1>
-        <p>{service.description}</p>
-        <div>
-          <span>
-            <Building2 /> {service.department}
-          </span>
-          <span>
-            <Clock3 /> {service.estimatedTime}
-          </span>
-          <span>
-            <ReceiptText /> {service.fee ? formatIQD(service.fee) : 'مجانية'}
-          </span>
-        </div>
-      </div>
-      <form className="service-form-layout" onSubmit={submit}>
-        <div className="service-form-main">
-          <section className="form-card">
-            <div className="form-card-title">
-              <span>1</span>
-              <div>
-                <h2>الحساب وتوثيق الوجه</h2>
-                <p>
-                  يمكنك الاطلاع على المتطلبات وتعبئة بيانات النشاط الآن؛ يُطلب الدخول وتوثيق الوجه عند إرسال المعاملة
-                  فقط.
-                </p>
-              </div>
-            </div>
-            <ServiceSubmissionNotice access={access} />
-          </section>
-          <section className="form-card">
-            <div className="form-card-title">
-              <span>2</span>
-              <div>
-                <h2>بيانات المحل</h2>
-                <p>أدخل بيانات المحل والنشاط.</p>
-              </div>
-            </div>
-            <div className="form-grid">
-              <label>
-                نوع النشاط
-                <select name="activityType" required defaultValue={draft.activityType || ''}>
-                  <option value="" disabled>
-                    اختر نوع النشاط
-                  </option>
-                  <option>متجر إلكترونيات</option>
-                  <option>مطعم</option>
-                  <option>مكتب خدمات</option>
-                  <option>ورشة</option>
-                </select>
-              </label>
-              <label>
-                اسم المحل
-                <input name="businessName" defaultValue={draft.businessName || ''} required />
-              </label>
-              <label className="wide">
-                العنوان التفصيلي
-                <input name="address" defaultValue={draft.address || ''} required />
-              </label>
-              <label>
-                القضاء
-                <select name="district" required defaultValue={draft.district || ''}>
-                  <option value="" disabled>
-                    اختر القضاء
-                  </option>
-                  <option>الناصرية</option>
-                  <option>الشطرة</option>
-                  <option>سوق الشيوخ</option>
-                  <option>الرفاعي</option>
-                </select>
-              </label>
-              <div className="ownership-field">
-                <span>صفة إشغال العقار</span>
+      <PageHeader
+        crumbs={[{ label: 'دليل الخدمات', href: '/directory' }, { label: service.title }]}
+        kicker="خدمة رقمية متكاملة"
+        title={service.title}
+        description={service.description}
+        meta={
+          <>
+            <span>
+              <Building2 /> {service.department}
+            </span>
+            <span>
+              <Clock3 /> {service.estimatedTime}
+            </span>
+            <span>
+              <ReceiptText /> {service.fee ? formatIQD(service.fee) : 'يحدده التدقيق'}
+            </span>
+          </>
+        }
+      />
+      <section className="tq-content">
+        <form className="tq-container tq-layout" onSubmit={submit}>
+          <div className="tq-stack svc-form">
+            <ol className="svc-stepper" aria-label="خطوات تقديم الخدمة">
+              {steps.map((label, index) => (
+                <li key={label} className={index === 0 ? 'is-current' : ''}>
+                  <b>{index + 1}</b>
+                  <span>{label}</span>
+                </li>
+              ))}
+            </ol>
+
+            <section className="tq-panel svc-step">
+              <header className="svc-step-head">
+                <b>1</b>
                 <div>
-                  <button
-                    type="button"
-                    className={ownership === 'rent' ? 'active' : ''}
-                    onClick={() => setOwnership('rent')}
-                  >
-                    إيجار
-                  </button>
-                  <button
-                    type="button"
-                    className={ownership === 'owned' ? 'active' : ''}
-                    onClick={() => setOwnership('owned')}
-                  >
-                    ملك
-                  </button>
+                  <h2>الحساب وتوثيق الهوية</h2>
+                  <p>
+                    يمكنك الاطلاع على المتطلبات وتعبئة بيانات النشاط الآن؛ يُطلب الدخول وتوثيق الوجه عند إرسال المعاملة
+                    فقط.
+                  </p>
                 </div>
-              </div>
-            </div>
-          </section>
-          <section className="form-card">
-            <div className="form-card-title">
-              <span>3</span>
-              <div>
-                <h2>موقع المحل</h2>
-                <p>
-                  حدده على الخريطة الحقيقية، أو اضغط «موقعي الحالي»، أو اكتب العنوان واختره — يوجَّه فريق الكشف إليه
-                  مباشرة.
-                </p>
-              </div>
-            </div>
-            <LocationPicker value={location} onChange={setLocation} height={340} />
-          </section>
-          <section className="form-card">
-            <div className="form-card-title">
-              <span>4</span>
-              <div>
-                <h2>المستمسكات</h2>
-                <p>تتغير المتطلبات تلقائياً بحسب صفة الإشغال ونوع النشاط.</p>
-              </div>
-            </div>
-            <div className="service-document-captures">
-              <SecureCameraCapture
-                title={ownership === 'rent' ? 'عقد الإيجار' : 'سند الملكية'}
-                guidance="صوّر المستمسك كاملاً بالكاميرا أو ارفع صورة أو ملف PDF واضحاً."
-                mode="photo"
-                facingMode="environment"
-                allowPdf
-                file={propertyDocument}
-                onChange={setPropertyDocument}
-              />
-              <SecureCameraCapture
-                title="صورة واجهة المحل"
-                guidance="التقط صورة حديثة من كاميرا الهاتف يظهر فيها مدخل المحل واللافتة إن وجدت."
-                mode="photo"
-                facingMode="environment"
-                file={storefrontPhoto}
-                onChange={setStorefrontPhoto}
-              />
-            </div>
-          </section>
-          {access === 'verified' && (
-            <section className="form-card service-face-confirmation">
-              <div className="form-card-title">
-                <span>5</span>
-                <div>
-                  <h2>توثيق الوجه لهذا الطلب</h2>
-                  <p>سجل فيديو قصيراً بالكاميرا الأمامية. يحفظ مشفراً ضمن مرفقات المعاملة ويظهر للمراجع المخول فقط.</p>
-                </div>
-              </div>
-              <SecureCameraCapture
-                title="فيديو توثيق الوجه"
-                guidance="افتح الكاميرا الأمامية، انظر للكاميرا مباشرةً وحرّك رأسك ببطء لليمين واليسار."
-                mode="video"
-                facingMode="user"
-                cameraOnly
-                file={faceVideo}
-                onChange={setFaceVideo}
-              />
-              <label className="consent-box">
-                <input type="checkbox" checked={faceConsent} onChange={event => setFaceConsent(event.target.checked)} />
-                <span>أوافق على إرفاق فيديو الوجه المشفر بهذه المعاملة لغرض التدقيق لدى الجهة المخولة.</span>
-              </label>
+              </header>
+              <ServiceSubmissionNotice access={access} />
             </section>
-          )}
-        </div>
-        <aside className="service-form-aside">
-          <div className="form-summary">
-            <h3>ملخص الطلب</h3>
-            <div>
-              <span>الخدمة</span>
-              <strong>{service.title}</strong>
-            </div>
-            <div>
-              <span>الجهة</span>
-              <strong>{service.department}</strong>
-            </div>
-            <div>
-              <span>مدة الإنجاز</span>
-              <strong>{service.estimatedTime}</strong>
-            </div>
-            <div>
-              <span>الرسم</span>
-              <strong>{service.fee ? formatIQD(service.fee) : 'يحدده التدقيق'}</strong>
-            </div>
-            <hr />
-            <p>
-              <ShieldCheck /> تُحفظ مرفقات الطلب مشفّرة وتُحال إلى الدائرة المختصة. إن حددت الدائرة رسماً بعد التدقيق،
-              يُسدد إلكترونياً أو في الدائرة قبل إصدار الوثيقة.
-            </p>
-            <button className="button primary full" type="submit" disabled={busy || access === 'checking'}>
-              {busy
-                ? 'جاري الإرسال...'
-                : access === 'guest'
-                  ? 'تسجيل الدخول وتوثيق الوجه ثم الإرسال'
-                  : access === 'identity-required'
-                    ? 'إكمال توثيق الوجه ثم الإرسال'
-                    : 'إرسال المعاملة'}{' '}
-              <Send />
-            </button>
-            {error && (
-              <div className="form-error">
-                <AlertTriangle /> {error}
+
+            <section className="tq-panel svc-step">
+              <header className="svc-step-head">
+                <b>2</b>
+                <div>
+                  <h2>بيانات المحل</h2>
+                  <p>أدخل بيانات المحل والنشاط كما ستظهر في الإجازة.</p>
+                </div>
+              </header>
+              <div className="svc-fields">
+                <label className="tq-field">
+                  <span>
+                    نوع النشاط<b className="svc-required">*</b>
+                  </span>
+                  <select name="activityType" required defaultValue={draft.activityType || ''}>
+                    <option value="" disabled>
+                      اختر نوع النشاط
+                    </option>
+                    <option>متجر إلكترونيات</option>
+                    <option>مطعم</option>
+                    <option>مكتب خدمات</option>
+                    <option>ورشة</option>
+                  </select>
+                </label>
+                <label className="tq-field">
+                  <span>
+                    اسم المحل<b className="svc-required">*</b>
+                  </span>
+                  <input name="businessName" defaultValue={draft.businessName || ''} required />
+                </label>
+                <label className="tq-field is-wide">
+                  <span>
+                    العنوان التفصيلي<b className="svc-required">*</b>
+                  </span>
+                  <input
+                    name="address"
+                    defaultValue={draft.address || ''}
+                    required
+                    placeholder="المحلة، الزقاق، أقرب معلم"
+                  />
+                </label>
+                <label className="tq-field">
+                  <span>
+                    القضاء<b className="svc-required">*</b>
+                  </span>
+                  <select name="district" required defaultValue={draft.district || ''}>
+                    <option value="" disabled>
+                      اختر القضاء
+                    </option>
+                    <option>الناصرية</option>
+                    <option>الشطرة</option>
+                    <option>سوق الشيوخ</option>
+                    <option>الرفاعي</option>
+                  </select>
+                </label>
+                <div className="tq-field">
+                  <span id="ownership-label">صفة إشغال العقار</span>
+                  <div className="tq-segmented" role="radiogroup" aria-labelledby="ownership-label">
+                    <button
+                      type="button"
+                      role="radio"
+                      aria-checked={ownership === 'rent'}
+                      className={ownership === 'rent' ? 'is-active' : ''}
+                      onClick={() => setOwnership('rent')}
+                    >
+                      إيجار
+                    </button>
+                    <button
+                      type="button"
+                      role="radio"
+                      aria-checked={ownership === 'owned'}
+                      className={ownership === 'owned' ? 'is-active' : ''}
+                      onClick={() => setOwnership('owned')}
+                    >
+                      ملك
+                    </button>
+                  </div>
+                </div>
               </div>
+            </section>
+
+            <section className="tq-panel svc-step">
+              <header className="svc-step-head">
+                <b>3</b>
+                <div>
+                  <h2>موقع المحل</h2>
+                  <p>
+                    حدده على الخريطة، أو اضغط «موقعي الحالي»، أو اكتب العنوان واختره — يوجَّه فريق الكشف إليه مباشرة.
+                  </p>
+                </div>
+              </header>
+              <LocationPicker value={location} onChange={setLocation} height={340} />
+            </section>
+
+            <section className="tq-panel svc-step">
+              <header className="svc-step-head">
+                <b>4</b>
+                <div>
+                  <h2>المستمسكات</h2>
+                  <p>تتغير المتطلبات تلقائياً بحسب صفة الإشغال ونوع النشاط.</p>
+                </div>
+              </header>
+              <div className="svc-doc-slots">
+                <div className={propertyDocument ? 'svc-doc-slot is-ready' : 'svc-doc-slot'}>
+                  <div className="svc-doc-slot-head">
+                    <strong>{ownership === 'rent' ? 'عقد الإيجار' : 'سند الملكية'}</strong>
+                    <span className="tq-badge is-danger">مطلوب</span>
+                  </div>
+                  <SecureCameraCapture
+                    title={ownership === 'rent' ? 'عقد الإيجار' : 'سند الملكية'}
+                    guidance="صوّر المستمسك كاملاً بالكاميرا أو ارفع صورة أو ملف PDF واضحاً."
+                    mode="photo"
+                    facingMode="environment"
+                    allowPdf
+                    file={propertyDocument}
+                    onChange={setPropertyDocument}
+                  />
+                </div>
+                <div className={storefrontPhoto ? 'svc-doc-slot is-ready' : 'svc-doc-slot'}>
+                  <div className="svc-doc-slot-head">
+                    <strong>صورة واجهة المحل</strong>
+                    <span className="tq-badge is-danger">مطلوب</span>
+                  </div>
+                  <SecureCameraCapture
+                    title="صورة واجهة المحل"
+                    guidance="التقط صورة حديثة يظهر فيها مدخل المحل واللافتة إن وجدت."
+                    mode="photo"
+                    facingMode="environment"
+                    file={storefrontPhoto}
+                    onChange={setStorefrontPhoto}
+                  />
+                </div>
+              </div>
+            </section>
+
+            {access === 'verified' && (
+              <section className="tq-panel svc-step">
+                <header className="svc-step-head">
+                  <b>5</b>
+                  <div>
+                    <h2>توثيق الوجه لهذا الطلب</h2>
+                    <p>
+                      سجّل فيديو قصيراً بالكاميرا الأمامية. يُحفظ مشفراً ضمن مرفقات المعاملة ويظهر للمراجع المخول فقط.
+                    </p>
+                  </div>
+                </header>
+                <div className="svc-face">
+                  <SecureCameraCapture
+                    title="فيديو توثيق الوجه"
+                    guidance="افتح الكاميرا الأمامية، انظر للكاميرا مباشرةً وحرّك رأسك ببطء لليمين واليسار."
+                    mode="video"
+                    facingMode="user"
+                    cameraOnly
+                    file={faceVideo}
+                    onChange={setFaceVideo}
+                  />
+                  <label className="tq-check svc-consent">
+                    <input
+                      type="checkbox"
+                      checked={faceConsent}
+                      onChange={event => setFaceConsent(event.target.checked)}
+                    />
+                    <span>أوافق على إرفاق فيديو الوجه المشفر بهذه المعاملة لغرض التدقيق لدى الجهة المخولة.</span>
+                  </label>
+                </div>
+              </section>
             )}
           </div>
-        </aside>
-      </form>
+          <aside className="tq-stack tq-sticky svc-summary" aria-label="ملخص الطلب">
+            <article className="tq-panel">
+              <h2>
+                <ReceiptText /> ملخص الطلب
+              </h2>
+              <dl className="tq-dl">
+                <div>
+                  <dt>الخدمة</dt>
+                  <dd>{service.title}</dd>
+                </div>
+                <div>
+                  <dt>الجهة</dt>
+                  <dd>{service.department}</dd>
+                </div>
+                <div>
+                  <dt>مدة الإنجاز</dt>
+                  <dd>{service.estimatedTime}</dd>
+                </div>
+                <div>
+                  <dt>الرسم</dt>
+                  <dd>{service.fee ? formatIQD(service.fee) : 'يحدده التدقيق'}</dd>
+                </div>
+              </dl>
+              <p className="tq-note">
+                <ShieldCheck aria-hidden="true" />
+                <span>
+                  تُحفظ مرفقات الطلب مشفّرة وتُحال إلى الدائرة المختصة. إن حددت الدائرة رسماً بعد التدقيق يُسدد
+                  إلكترونياً أو في الدائرة قبل إصدار الوثيقة.
+                </span>
+              </p>
+              <button
+                className="button primary full svc-aside-submit"
+                type="submit"
+                disabled={busy || access === 'checking'}
+              >
+                <Send />
+                {busy
+                  ? 'جاري الإرسال…'
+                  : access === 'guest'
+                    ? 'سجّل الدخول ووثّق حسابك ثم أرسل'
+                    : access === 'identity-required'
+                      ? 'أكمل توثيق الوجه ثم أرسل'
+                      : 'إرسال المعاملة'}
+              </button>
+              {error && (
+                <div className="form-error" role="alert">
+                  <AlertTriangle /> {error}
+                </div>
+              )}
+            </article>
+          </aside>
+        </form>
+      </section>
     </PublicServiceFrame>
   )
 }

@@ -1,0 +1,221 @@
+/* =============================================================================================
+   Document verification (/verify, /verify/:id) — the page third parties land on from a QR code.
+   ============================================================================================= */
+.verify-wrap {
+  display: grid;
+  gap: 20px;
+  max-width: 760px;
+}
+.verify-card {
+  display: grid;
+  gap: 16px;
+}
+.verify-scan {
+  min-height: var(--ds-control-lg);
+  font-size: var(--ds-text-md);
+}
+.verify-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--ds-text-muted);
+  font-size: var(--ds-text-sm);
+}
+.verify-divider::before,
+.verify-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--ds-border);
+}
+.verify-manual {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+}
+.verify-manual .tq-field {
+  flex: 1;
+}
+.verify-manual input {
+  font-family: var(--ds-font-mono);
+  letter-spacing: 0.03em;
+}
+@media (max-width: 520px) {
+  .verify-manual {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+.verify-camera {
+  position: relative;
+  display: grid;
+  gap: 10px;
+  justify-items: center;
+}
+.verify-camera video {
+  width: 100%;
+  max-height: 360px;
+  border-radius: var(--ds-radius-md);
+  background: var(--neutral-950);
+  object-fit: cover;
+}
+.verify-camera-frame {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: min(220px, 50%);
+  aspect-ratio: 1;
+  border: 3px solid rgba(255, 255, 255, 0.85);
+  border-radius: var(--ds-radius-md);
+  box-shadow: 0 0 0 999px rgba(0, 0, 0, 0.35);
+  transform: translate(-50%, -62%);
+  pointer-events: none;
+}
+.verify-facts {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.verify-facts li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--ds-text-2);
+  font-size: var(--ds-text-sm);
+}
+.verify-facts svg {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  color: var(--ds-primary-text);
+}
+
+/* result */
+.verify-result {
+  overflow: hidden;
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-xl);
+  background: var(--ds-surface);
+  box-shadow: var(--ds-shadow-md);
+}
+.verify-result-banner {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 24px 28px;
+  color: #fff;
+}
+.verify-result.is-valid .verify-result-banner {
+  background: linear-gradient(135deg, var(--green-800), var(--green-600));
+}
+.verify-result.is-invalid .verify-result-banner {
+  background: linear-gradient(135deg, var(--red-700), var(--red-600));
+}
+.verify-result-icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.16);
+}
+.verify-result-icon svg {
+  width: 30px;
+  height: 30px;
+}
+.verify-result-banner span:not(.verify-result-icon) {
+  display: block;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: var(--ds-text-sm);
+  font-weight: 600;
+}
+.verify-result-banner h1 {
+  margin: 2px 0 0;
+  color: #fff;
+  font-size: var(--ds-text-2xl);
+  line-height: 1.4;
+}
+.verify-result-body {
+  display: grid;
+  gap: 18px;
+  padding: 24px 28px 28px;
+}
+.verify-result-body > p {
+  margin: 0;
+  color: var(--ds-text-2);
+  line-height: 1.85;
+}
+.verify-result-body > .button {
+  justify-self: start;
+}
+.verify-data {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-md);
+  background: var(--ds-border);
+}
+.verify-data > div {
+  display: grid;
+  gap: 4px;
+  padding: 14px 16px;
+  background: var(--ds-surface);
+}
+.verify-data dt {
+  color: var(--ds-text-muted);
+  font-size: var(--ds-text-xs);
+}
+.verify-data dd {
+  margin: 0;
+  color: var(--ds-text);
+  font-size: var(--ds-text-base);
+  font-weight: 700;
+  text-align: start;
+}
+@media (max-width: 560px) {
+  .verify-data {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .verify-result-banner,
+  .verify-result-body {
+    padding-inline: 18px;
+  }
+}
+.verify-id {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border: 1px dashed var(--ds-border-strong);
+  border-radius: var(--ds-radius-md);
+  background: var(--ds-surface-muted);
+}
+.verify-id > svg {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  color: var(--ds-text);
+}
+.verify-id small {
+  display: block;
+  color: var(--ds-text-muted);
+  font-size: var(--ds-text-xs);
+}
+.verify-id code {
+  display: block;
+  color: var(--ds-text);
+  font-family: var(--ds-font-mono);
+  font-size: var(--ds-text-sm);
+  word-break: break-all;
+}
+/* under a full-width page header the card lines up with the title instead of centring */
+.verify-wrap.is-start {
+  max-width: calc(var(--ds-container) + 2 * var(--ds-gutter));
+  grid-template-columns: minmax(0, 760px);
+}

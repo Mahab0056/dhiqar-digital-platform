@@ -253,3 +253,36 @@
   accent-color: var(--ds-primary);
   cursor: pointer;
 }
+
+/* ---- segmented control ----------------------------------------------------------------------- */
+.tq-segmented {
+  display: inline-flex;
+  gap: 4px;
+  width: fit-content;
+  padding: 4px;
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-surface-sunken);
+}
+.tq-segmented button {
+  min-height: 36px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: var(--ds-radius-xs);
+  background: transparent;
+  color: var(--ds-text-2);
+  font-family: var(--ds-font-ui);
+  font-size: var(--ds-text-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+.tq-segmented button:hover {
+  color: var(--ds-text);
+}
+.tq-segmented button.is-active,
+.tq-segmented button[aria-checked='true'],
+.tq-segmented button[aria-pressed='true'] {
+  background: var(--ds-surface);
+  color: var(--ds-primary-text);
+  box-shadow: var(--ds-shadow-xs);
+}

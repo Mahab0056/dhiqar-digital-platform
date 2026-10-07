@@ -26,3 +26,6 @@
 @import './ds/public.css' layer(ds);
 @import './ds/pages.css' layer(ds);
 @import './ds/directory.css' layer(ds);
+@import './ds/service-form.css' layer(ds);
+@import './ds/verify.css' layer(ds);
+@import './ds/auth.css' layer(ds);

@@ -1,7 +1,8 @@
 import { Link } from 'wouter'
-import { ArrowRight, Accessibility, FileText, ShieldCheck } from 'lucide-react'
+import { Accessibility, FileText, MessageSquareWarning, ShieldCheck } from 'lucide-react'
 import { PublicHeader } from '../../components/public/PublicHeader'
 import { Footer } from '../../components/public/Footer'
+import { PageHeader } from '../../components/public/PageHeader'
 
 type Section = { title: string; body: string[] }
 type InfoKind = 'privacy' | 'terms' | 'accessibility'
@@ -95,40 +96,53 @@ export function InfoPage({ kind }: { kind: InfoKind }) {
   const page = content[kind]
   const Icon = icons[kind]
   return (
-    <div className="public-shell gov-info-page">
+    <div className="tq-page">
       <PublicHeader />
-      <main className="gov-container gov-info-main">
-        <nav className="gov-breadcrumb" aria-label="مسار الصفحة">
-          <Link href="/">الرئيسية</Link>
-          <span aria-hidden="true">/</span>
-          <span>{page.kicker}</span>
-        </nav>
-        <header className="gov-info-header">
-          <span className="gov-info-icon">
-            <Icon />
-          </span>
-          <div>
-            <span className="gov-kicker">{page.kicker}</span>
-            <h1>{page.title}</h1>
-            <p>{page.intro}</p>
-          </div>
-        </header>
-        <div className="gov-info-sections">
-          {page.sections.map(section => (
-            <section key={section.title} className="gov-info-section">
-              <h2>{section.title}</h2>
-              {section.body.map(paragraph => (
-                <p key={paragraph}>{paragraph}</p>
+      <main id="main-content">
+        <PageHeader
+          crumbs={[{ label: page.kicker }]}
+          kicker={
+            <>
+              <Icon size={15} /> {page.kicker}
+            </>
+          }
+          title={page.title}
+          description={page.intro}
+        />
+        <section className="tq-content">
+          <div className="tq-container tq-layout is-aside-start">
+            <nav className="tq-panel tq-sticky info-toc" aria-label="محتويات الصفحة">
+              <strong>في هذه الصفحة</strong>
+              <ol>
+                {page.sections.map((section, index) => (
+                  <li key={section.title}>
+                    <a href={`#info-${index}`}>{section.title}</a>
+                  </li>
+                ))}
+              </ol>
+            </nav>
+            <article className="tq-panel info-body">
+              {page.sections.map((section, index) => (
+                <section key={section.title} id={`info-${index}`}>
+                  <h2>{section.title}</h2>
+                  {section.body.map(paragraph => (
+                    <p key={paragraph}>{paragraph}</p>
+                  ))}
+                </section>
               ))}
-            </section>
-          ))}
-        </div>
-        <footer className="gov-info-footer">
-          <small>آخر تحديث: {new Date().toLocaleDateString('en-GB')}</small>
-          <Link href="/" className="gov-btn outline">
-            <ArrowRight size={16} /> العودة إلى الرئيسية
-          </Link>
-        </footer>
+              <p className="tq-note is-info">
+                <MessageSquareWarning aria-hidden="true" />
+                <span>
+                  لديك سؤال أو ملاحظة حول هذه الصفحة؟{' '}
+                  <Link href="/citizen/feedback" className="gov-link">
+                    أرسلها من صفحة الشكاوى والمقترحات
+                  </Link>
+                  .
+                </span>
+              </p>
+            </article>
+          </div>
+        </section>
       </main>
       <Footer />
     </div>

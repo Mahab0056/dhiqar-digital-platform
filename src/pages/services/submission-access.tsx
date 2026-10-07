@@ -39,7 +39,7 @@ export function useCitizenSubmissionAccess() {
 export function ServiceSubmissionNotice({ access }: { access: CitizenSubmissionAccess }) {
   if (access === 'verified')
     return (
-      <div className="service-submission-notice verified">
+      <div className="tq-note is-success svc-access">
         <BadgeCheck />
         <div>
           <strong>حسابك موثق وجاهز للإرسال</strong>
@@ -49,7 +49,7 @@ export function ServiceSubmissionNotice({ access }: { access: CitizenSubmissionA
     )
   if (access === 'identity-required')
     return (
-      <div className="service-submission-notice pending">
+      <div className="tq-note is-warning svc-access">
         <Fingerprint />
         <div>
           <strong>أكمل توثيق الوجه قبل الإرسال</strong>
@@ -59,7 +59,7 @@ export function ServiceSubmissionNotice({ access }: { access: CitizenSubmissionA
     )
   if (access === 'guest')
     return (
-      <div className="service-submission-notice">
+      <div className="tq-note svc-access">
         <LockKeyhole />
         <div>
           <strong>الاستمارة متاحة للمشاهدة والتعبئة</strong>
@@ -68,7 +68,7 @@ export function ServiceSubmissionNotice({ access }: { access: CitizenSubmissionA
       </div>
     )
   return (
-    <div className="service-submission-notice">
+    <div className="tq-note svc-access">
       <RefreshCw className="spin" />
       <div>
         <strong>جاري التحقق من حالة الحساب</strong>
@@ -80,9 +80,9 @@ export function ServiceSubmissionNotice({ access }: { access: CitizenSubmissionA
 
 export function PublicServiceFrame({ children }: { children: React.ReactNode }) {
   return (
-    <div className="public-shell public-service-shell">
+    <div className="tq-page">
       <PublicHeader />
-      <main className="container public-service-main">{children}</main>
+      <main id="main-content">{children}</main>
       <Footer />
     </div>
   )

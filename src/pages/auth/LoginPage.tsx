@@ -1,83 +1,82 @@
 import { Link } from 'wouter'
-import { ArrowLeft, ArrowRight, Building2, LockKeyhole, MonitorCheck, ShieldCheck, UserRound } from 'lucide-react'
-import { Brand } from '../../components/public/Brand'
-import { CivicUtilityBar } from '../../components/public/CivicUtilityBar'
+import { Building2, ChevronLeft, MonitorCheck, ShieldCheck, UserRound } from 'lucide-react'
+import { AuthAside, AuthShell } from '../../components/public/AuthShell'
+
+const staffOptions = [
+  {
+    icon: Building2,
+    title: 'بوابة الموظفين',
+    text: 'المعاملات ومراجعة الهوية وأعمال الدائرة',
+    href: '/staff/login?next=%2Femployee',
+  },
+  {
+    icon: MonitorCheck,
+    title: 'غرفة العمليات',
+    text: 'المؤشرات التشغيلية للدوائر المسجلة',
+    href: '/staff/login?next=%2Foperations',
+  },
+  {
+    icon: ShieldCheck,
+    title: 'إدارة المنصة',
+    text: 'الحسابات والصلاحيات وسجل الإجراءات',
+    href: '/staff/login?next=%2Fsuper-admin',
+  },
+]
 
 export function LoginPage() {
-  const options = [
-    {
-      icon: UserRound,
-      title: 'دخول أو إنشاء حساب المواطن',
-      text: 'استرجع حسابك برقم الهاتف أو أكمل تسجيلك وتوثيق الوجه',
-      href: '/onboarding',
-      tone: 'citizen',
-    },
-    {
-      icon: Building2,
-      title: 'بوابة الموظفين',
-      text: 'حساب شخصي لكل موظف: المعاملات، مراجعة الهوية، الدوائر',
-      href: '/staff/login?next=%2Femployee',
-      tone: 'employee',
-    },
-    {
-      icon: MonitorCheck,
-      title: 'غرفة العمليات',
-      text: 'متابعة المؤشرات التشغيلية للدوائر المسجلة',
-      href: '/staff/login?next=%2Foperations',
-      tone: 'operations',
-    },
-    {
-      icon: ShieldCheck,
-      title: 'إدارة المنصة',
-      text: 'الحسابات والصلاحيات وسجل الإجراءات',
-      href: '/staff/login?next=%2Fsuper-admin',
-      tone: 'super-admin',
-    },
-  ]
   return (
-    <div className="login-page login-v3">
-      <CivicUtilityBar />
-      <div className="login-backdrop" />
-      <header className="login-top container">
-        <Brand />
-        <Link href="/">
-          <ArrowRight /> العودة إلى الرئيسية
-        </Link>
-      </header>
-      <main className="container login-v3-content">
-        <section className="login-v3-intro">
-          <span className="login-v3-kicker">
-            <LockKeyhole size={15} /> منصة ذي قار الرقمية
+    <AuthShell
+      aside={
+        <AuthAside
+          kicker="حساب واحد لكل الخدمات"
+          title="ادخل مرة واحدة وأنجز معاملاتك من أي مكان"
+          points={[
+            'الدخول برقم هاتفك ورمز تحقق لمرة واحدة، دون كلمة مرور',
+            'توثيق هويتك مرة واحدة يكفي لكل الخدمات',
+            'تابع طلباتك واستلم إشعاراً عند كل تحديث',
+            'وثائقك الصادرة محفوظة في حسابك وقابلة للتحقق',
+          ]}
+        />
+      }
+    >
+      <div className="auth-card">
+        <span className="section-kicker">تسجيل الدخول</span>
+        <h1>مرحباً بك في ذي قار الرقمية</h1>
+        <p className="auth-lead">اختر طريقة الدخول المناسبة لك.</p>
+
+        <Link href="/onboarding" className="auth-choice is-primary">
+          <span className="auth-choice-icon">
+            <UserRound />
           </span>
-          <h1>تسجيل الدخول أو إنشاء حساب</h1>
-          <p>ادخل بحسابك برقم الهاتف أو أنشئ حساباً جديداً. للموظفين والإدارة بوابات دخول مستقلة بصلاحيات محددة.</p>
-          <div className="login-v3-security">
-            <ShieldCheck />
-            <span>جلسات محمية وصلاحيات وصول محددة</span>
-          </div>
-        </section>
-        <section className="login-v3-choices" aria-label="اختيار بوابة الدخول">
-          {options.map((option, index) => (
-            <Link
-              href={option.href}
-              className={`login-v3-option ${option.tone} ${index === 0 ? 'primary-access' : ''}`}
-              key={option.title}
-            >
-              <span className="login-v3-icon">
+          <span className="auth-choice-text">
+            <strong>دخول المواطن أو إنشاء حساب</strong>
+            <small>برقم الهاتف — يُسترجع حسابك تلقائياً إن كان مسجلاً</small>
+          </span>
+          <ChevronLeft className="auth-choice-arrow" aria-hidden="true" />
+        </Link>
+
+        <div className="auth-divider">
+          <span>للموظفين الحكوميين فقط</span>
+        </div>
+
+        <div className="auth-choices">
+          {staffOptions.map(option => (
+            <Link href={option.href} className="auth-choice" key={option.title}>
+              <span className="auth-choice-icon">
                 <option.icon />
               </span>
-              <div>
-                <small>{index === 0 ? 'خدمات المواطن' : 'للموظفين فقط'}</small>
-                <h2>{option.title}</h2>
-                <p>{option.text}</p>
-              </div>
-              <span className="login-v3-arrow">
-                <ArrowLeft />
+              <span className="auth-choice-text">
+                <strong>{option.title}</strong>
+                <small>{option.text}</small>
               </span>
+              <ChevronLeft className="auth-choice-arrow" aria-hidden="true" />
             </Link>
           ))}
-        </section>
-      </main>
-    </div>
+        </div>
+        <p className="auth-fine">
+          <ShieldCheck aria-hidden="true" /> جلسات محمية وصلاحيات محددة لكل دور. لن يطلب منك أي موظف رمز التحقق.
+        </p>
+      </div>
+    </AuthShell>
   )
 }

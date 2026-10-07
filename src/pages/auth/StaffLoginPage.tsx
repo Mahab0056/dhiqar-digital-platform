@@ -1,10 +1,9 @@
 import { useEffect, useState } from 'react'
-import { Link, useLocation } from 'wouter'
-import { AlertTriangle, ArrowRight, KeyRound, LockKeyhole, ShieldCheck, Smartphone } from 'lucide-react'
+import { useLocation } from 'wouter'
+import { AlertTriangle, KeyRound, LockKeyhole, ShieldCheck, Smartphone } from 'lucide-react'
 import { api } from '../../api'
 import type { SessionRole, StaffSession } from '../../types'
-import { Brand } from '../../components/public/Brand'
-import { CivicUtilityBar } from '../../components/public/CivicUtilityBar'
+import { AuthAside, AuthShell } from '../../components/public/AuthShell'
 
 export const staffHomeForRole = (role: SessionRole) => {
   if (role === 'SUPER_ADMIN') return '/super-admin'
@@ -104,163 +103,165 @@ export function StaffLoginPage() {
   }
 
   return (
-    <div className="login-page staff-login">
-      <CivicUtilityBar />
-      <div className="login-backdrop" />
-      <div className="login-top container">
-        <Brand />
-        <Link href="/login">
-          <ArrowRight /> بوابات الدخول
-        </Link>
+    <AuthShell
+      back={{ href: '/login', label: 'بوابات الدخول' }}
+      context="دخول الموظفين"
+      aside={
+        <AuthAside
+          kicker="بوابة الموظفين الحكوميين"
+          title="حساب شخصي لكل موظف وسجل تدقيق لكل إجراء"
+          points={[
+            'صلاحيات محددة حسب الدور والدائرة',
+            'كل إجراء يُسجَّل باسم صاحبه في سجل التدقيق',
+            'مصادقة ثنائية متاحة من صفحة الأمان بعد الدخول',
+            'قفل مؤقت للحساب بعد 5 محاولات فاشلة',
+          ]}
+        />
+      }
+    >
+      <div className="auth-card" aria-live="polite">
+        <span className="auth-card-icon">
+          {step === 'mfa' ? <Smartphone /> : step === 'password-change' ? <KeyRound /> : <LockKeyhole />}
+        </span>
+        {step === 'credentials' && (
+          <form
+            className="auth-form"
+            onSubmit={event => {
+              event.preventDefault()
+              void submitCredentials()
+            }}
+          >
+            <span className="section-kicker">دخول الموظفين</span>
+            <h1>تسجيل الدخول إلى حسابك</h1>
+            <p className="auth-lead">استخدم اسم المستخدم وكلمة المرور الممنوحين لك من إدارة المنصة.</p>
+            <label className="tq-field">
+              <span>اسم المستخدم</span>
+              <input
+                value={username}
+                onChange={event => setUsername(event.target.value)}
+                autoComplete="username"
+                dir="ltr"
+                autoFocus
+              />
+            </label>
+            <label className="tq-field">
+              <span>كلمة المرور</span>
+              <input
+                type="password"
+                value={password}
+                onChange={event => setPassword(event.target.value)}
+                autoComplete="current-password"
+                dir="ltr"
+              />
+            </label>
+            {error && (
+              <div className="form-error" role="alert">
+                <AlertTriangle /> {error}
+              </div>
+            )}
+            <button className="button primary full auth-submit" type="submit" disabled={busy || !username || !password}>
+              <LockKeyhole /> {busy ? 'جاري التحقق…' : 'دخول آمن'}
+            </button>
+          </form>
+        )}
+        {step === 'mfa' && (
+          <form
+            className="auth-form"
+            onSubmit={event => {
+              event.preventDefault()
+              void submitMfa()
+            }}
+          >
+            <span className="section-kicker">المصادقة الثنائية</span>
+            <h1>أدخل رمز التحقق</h1>
+            <p className="auth-lead">افتح تطبيق المصادقة على هاتفك وأدخل الرمز المكوّن من 6 أرقام.</p>
+            <label className="tq-field">
+              <span>الرمز</span>
+              <input
+                className="auth-code"
+                value={code}
+                onChange={event => setCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                dir="ltr"
+                autoFocus
+              />
+            </label>
+            {error && (
+              <div className="form-error" role="alert">
+                <AlertTriangle /> {error}
+              </div>
+            )}
+            <button className="button primary full auth-submit" type="submit" disabled={busy || code.length !== 6}>
+              {busy ? 'جاري التحقق…' : 'تأكيد'}
+            </button>
+            <button
+              type="button"
+              className="button ghost full"
+              onClick={() => {
+                setStep('credentials')
+                setCode('')
+                setError('')
+              }}
+            >
+              رجوع
+            </button>
+          </form>
+        )}
+        {step === 'password-change' && (
+          <form
+            className="auth-form"
+            onSubmit={event => {
+              event.preventDefault()
+              void submitPasswordChange()
+            }}
+          >
+            <span className="section-kicker">أول دخول</span>
+            <h1>اختر كلمة مرور جديدة</h1>
+            <p className="auth-lead">
+              هذه أول جلسة بكلمة مرور مؤقتة. اختر كلمة مرور من 12 حرفاً على الأقل تجمع ثلاثة أنواع من الأحرف والأرقام
+              والرموز.
+            </p>
+            <label className="tq-field">
+              <span>كلمة المرور الجديدة</span>
+              <input
+                type="password"
+                value={newPassword}
+                onChange={event => setNewPassword(event.target.value)}
+                autoComplete="new-password"
+                dir="ltr"
+                autoFocus
+              />
+            </label>
+            <label className="tq-field">
+              <span>تأكيد كلمة المرور</span>
+              <input
+                type="password"
+                value={confirmPassword}
+                onChange={event => setConfirmPassword(event.target.value)}
+                autoComplete="new-password"
+                dir="ltr"
+              />
+            </label>
+            {error && (
+              <div className="form-error" role="alert">
+                <AlertTriangle /> {error}
+              </div>
+            )}
+            <button
+              className="button primary full auth-submit"
+              type="submit"
+              disabled={busy || newPassword.length < 12 || confirmPassword.length < 12}
+            >
+              {busy ? 'جاري الحفظ…' : 'حفظ ومتابعة'}
+            </button>
+          </form>
+        )}
+        <p className="auth-fine">
+          <ShieldCheck aria-hidden="true" /> تُسجَّل محاولات الدخول الناجحة والفاشلة. لا تشارك بيانات حسابك مع أي شخص.
+        </p>
       </div>
-      <main className="container login-content">
-        <div className="login-intro">
-          <span className="eyebrow">
-            <ShieldCheck size={16} /> دخول الموظفين
-          </span>
-          <h1>دخول موظفي المنصة</h1>
-          <p>
-            حساب شخصي لكل موظف بصلاحيات محددة حسب الدور والدائرة. كل إجراء يُسجل باسم صاحبه في سجل التدقيق. المصادقة
-            الثنائية متاحة من صفحة الأمان بعد الدخول.
-          </p>
-        </div>
-        <section className="staff-login-card" aria-live="polite">
-          <span className="staff-login-icon">
-            {step === 'mfa' ? <Smartphone /> : step === 'password-change' ? <KeyRound /> : <LockKeyhole />}
-          </span>
-          {step === 'credentials' && (
-            <form
-              onSubmit={event => {
-                event.preventDefault()
-                void submitCredentials()
-              }}
-            >
-              <strong>بيانات الحساب</strong>
-              <label>
-                اسم المستخدم
-                <input
-                  value={username}
-                  onChange={event => setUsername(event.target.value)}
-                  autoComplete="username"
-                  dir="ltr"
-                  autoFocus
-                />
-              </label>
-              <label>
-                كلمة المرور
-                <input
-                  type="password"
-                  value={password}
-                  onChange={event => setPassword(event.target.value)}
-                  autoComplete="current-password"
-                  dir="ltr"
-                />
-              </label>
-              {error && (
-                <div className="form-error">
-                  <AlertTriangle /> {error}
-                </div>
-              )}
-              <button className="button primary full" type="submit" disabled={busy || !username || !password}>
-                {busy ? 'جاري التحقق...' : 'دخول آمن'}
-              </button>
-            </form>
-          )}
-          {step === 'mfa' && (
-            <form
-              onSubmit={event => {
-                event.preventDefault()
-                void submitMfa()
-              }}
-            >
-              <strong>رمز المصادقة الثنائية</strong>
-              <p className="staff-login-hint">افتح تطبيق المصادقة على هاتفك وأدخل الرمز المكون من 6 أرقام.</p>
-              <label>
-                الرمز
-                <input
-                  value={code}
-                  onChange={event => setCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
-                  inputMode="numeric"
-                  autoComplete="one-time-code"
-                  dir="ltr"
-                  autoFocus
-                />
-              </label>
-              {error && (
-                <div className="form-error">
-                  <AlertTriangle /> {error}
-                </div>
-              )}
-              <button className="button primary full" type="submit" disabled={busy || code.length !== 6}>
-                {busy ? 'جاري التحقق...' : 'تأكيد'}
-              </button>
-              <button
-                type="button"
-                className="button ghost full"
-                onClick={() => {
-                  setStep('credentials')
-                  setCode('')
-                  setError('')
-                }}
-              >
-                رجوع
-              </button>
-            </form>
-          )}
-          {step === 'password-change' && (
-            <form
-              onSubmit={event => {
-                event.preventDefault()
-                void submitPasswordChange()
-              }}
-            >
-              <strong>تغيير كلمة المرور المؤقتة</strong>
-              <p className="staff-login-hint">
-                هذه أول جلسة بكلمة مرور مؤقتة. اختر كلمة مرور جديدة (12 حرفاً على الأقل، بثلاثة أنواع من الأحرف والأرقام
-                والرموز).
-              </p>
-              <label>
-                كلمة المرور الجديدة
-                <input
-                  type="password"
-                  value={newPassword}
-                  onChange={event => setNewPassword(event.target.value)}
-                  autoComplete="new-password"
-                  dir="ltr"
-                  autoFocus
-                />
-              </label>
-              <label>
-                تأكيد كلمة المرور
-                <input
-                  type="password"
-                  value={confirmPassword}
-                  onChange={event => setConfirmPassword(event.target.value)}
-                  autoComplete="new-password"
-                  dir="ltr"
-                />
-              </label>
-              {error && (
-                <div className="form-error">
-                  <AlertTriangle /> {error}
-                </div>
-              )}
-              <button
-                className="button primary full"
-                type="submit"
-                disabled={busy || newPassword.length < 12 || confirmPassword.length < 12}
-              >
-                {busy ? 'جاري الحفظ...' : 'حفظ ومتابعة'}
-              </button>
-            </form>
-          )}
-          <small>
-            تُسجل محاولات الدخول الناجحة والفاشلة. يُقفل الحساب مؤقتاً بعد 5 محاولات فاشلة. لا تشارك بيانات حسابك مع أي
-            شخص.
-          </small>
-        </section>
-      </main>
-    </div>
+    </AuthShell>
   )
 }
 
