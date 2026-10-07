@@ -1,0 +1,251 @@
+/* =============================================================================================
+   Core components — one definition per component, every surface.
+   Legacy markup uses two button families (.button and .gov-btn); both map onto the same system.
+   ============================================================================================= */
+
+/* ---- buttons --------------------------------------------------------------------------------- */
+.button,
+.gov-btn {
+  --btn-bg: var(--ds-surface);
+  --btn-fg: var(--ds-text);
+  --btn-border: var(--ds-border-strong);
+  --btn-bg-hover: var(--ds-surface-muted);
+  --btn-border-hover: var(--neutral-400);
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: var(--ds-control-md);
+  padding: 0 18px;
+  border: 1px solid var(--btn-border);
+  border-radius: var(--ds-radius-sm);
+  background: var(--btn-bg);
+  color: var(--btn-fg);
+  box-shadow: none;
+  font-family: var(--ds-font-ui);
+  font-size: var(--ds-text-base);
+  font-weight: 600;
+  line-height: 1.2;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transform: none;
+  transition:
+    background-color var(--ds-fast) var(--ds-ease),
+    border-color var(--ds-fast) var(--ds-ease),
+    color var(--ds-fast) var(--ds-ease),
+    box-shadow var(--ds-fast) var(--ds-ease);
+}
+.button svg,
+.gov-btn svg {
+  width: 18px;
+  height: 18px;
+  flex: none;
+}
+.button:hover:not(:disabled),
+.gov-btn:hover:not(:disabled) {
+  background: var(--btn-bg-hover);
+  border-color: var(--btn-border-hover);
+  color: var(--btn-fg);
+  transform: none;
+  box-shadow: none;
+}
+.button:active:not(:disabled),
+.gov-btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+.button:disabled,
+.gov-btn:disabled,
+.button[aria-disabled='true'] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.button.primary,
+.gov-btn.primary {
+  --btn-bg: var(--ds-primary);
+  --btn-fg: var(--ds-primary-fg);
+  --btn-border: var(--ds-primary);
+  --btn-bg-hover: var(--ds-primary-hover);
+  --btn-border-hover: var(--ds-primary-hover);
+  box-shadow: var(--ds-shadow-xs);
+}
+.button.primary:hover:not(:disabled),
+.gov-btn.primary:hover:not(:disabled) {
+  box-shadow: var(--ds-shadow-sm);
+}
+.button.outline,
+.gov-btn.outline,
+.button.secondary {
+  --btn-bg: var(--ds-surface);
+  --btn-fg: var(--ds-text);
+  --btn-border: var(--ds-border-strong);
+}
+.button.ghost {
+  --btn-bg: transparent;
+  --btn-fg: var(--ds-text-2);
+  --btn-border: transparent;
+  --btn-bg-hover: var(--ds-surface-sunken);
+  --btn-border-hover: transparent;
+}
+.button.danger {
+  --btn-bg: var(--ds-danger-solid);
+  --btn-fg: #fff;
+  --btn-border: var(--ds-danger-solid);
+  --btn-bg-hover: var(--red-700);
+  --btn-border-hover: var(--red-700);
+}
+.button.outline.danger,
+.button.ghost.danger {
+  --btn-bg: transparent;
+  --btn-fg: var(--ds-danger);
+  --btn-border: color-mix(in srgb, var(--ds-danger) 40%, transparent);
+  --btn-bg-hover: var(--ds-danger-soft);
+  --btn-border-hover: var(--ds-danger);
+}
+.button.small,
+.gov-btn.small {
+  min-height: var(--ds-control-sm);
+  padding: 0 12px;
+  font-size: var(--ds-text-sm);
+  gap: 6px;
+}
+.button.small svg,
+.gov-btn.small svg {
+  width: 16px;
+  height: 16px;
+}
+.button.full {
+  width: 100%;
+}
+
+/* square icon buttons (header actions, close, menu) */
+.icon-button,
+.mobile-sidebar-button,
+.gov-menu-button {
+  display: inline-grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  padding: 0;
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-surface);
+  color: var(--ds-text-2);
+  cursor: pointer;
+  transition:
+    background-color var(--ds-fast) var(--ds-ease),
+    border-color var(--ds-fast) var(--ds-ease);
+}
+.icon-button:hover:not(:disabled),
+.mobile-sidebar-button:hover,
+.gov-menu-button:hover {
+  background: var(--ds-surface-muted);
+  border-color: var(--ds-border-strong);
+  color: var(--ds-text);
+}
+.icon-button svg,
+.mobile-sidebar-button svg,
+.gov-menu-button svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* text link with arrow */
+.gov-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ds-primary-text);
+  font-weight: 600;
+  text-decoration: none;
+}
+.gov-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+/* ---- section kicker (small label above a title) ----------------------------------------------- */
+.section-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 6px;
+  color: var(--ds-accent-text);
+  font-family: var(--ds-font-ui);
+  font-size: var(--ds-text-sm);
+  font-weight: 600;
+  letter-spacing: 0;
+}
+.section-kicker::before {
+  content: '';
+  width: 18px;
+  height: 2px;
+  border-radius: 2px;
+  background: currentColor;
+}
+
+/* ---- feedback messages --------------------------------------------------------------------- */
+.form-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--ds-danger) 30%, transparent);
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-danger-soft);
+  color: var(--ds-danger);
+  font-size: var(--ds-text-sm);
+  font-weight: 500;
+  line-height: 1.6;
+}
+.form-error svg {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin-top: 1px;
+}
+
+/* ---- loading ---------------------------------------------------------------------------------- */
+.spin {
+  animation: ds-spin 0.9s linear infinite;
+}
+@keyframes ds-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.loading-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: var(--ds-space-8) var(--ds-space-4);
+  color: var(--ds-text-muted);
+  font-size: var(--ds-text-sm);
+}
+.loading-state svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* ---- user avatar ------------------------------------------------------------------------------ */
+.user-avatar {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--ds-radius-pill);
+  background: var(--ds-primary);
+  color: #fff;
+  font-family: var(--ds-font-ui);
+  font-size: var(--ds-text-base);
+  font-weight: 700;
+  object-fit: cover;
+}
+.user-avatar.gold {
+  background: var(--brass-500);
+}

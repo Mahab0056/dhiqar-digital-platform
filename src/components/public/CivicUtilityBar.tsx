@@ -28,25 +28,27 @@ export function useNightMode() {
 export function CivicUtilityBar() {
   const { theme, toggle } = useNightMode()
   return (
-    <div className="gov-utility">
-      <div className="gov-container">
-        <span className="gov-utility-identity">
+    <div className="tq-utility">
+      <div className="tq-container tq-utility-row">
+        <span className="tq-utility-identity">
           <img src="/brand/iraq-coat-of-arms.png" alt="" aria-hidden="true" />
           <strong>جمهورية العراق</strong>
           <i aria-hidden="true" />
           <span>محافظة ذي قار</span>
         </span>
-        <nav className="gov-utility-links" aria-label="خيارات العرض">
+        <nav className="tq-utility-links" aria-label="خيارات العرض">
           <button type="button" onClick={toggle} aria-pressed={theme === 'dark'}>
-            {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />} {theme === 'dark' ? 'الوضع النهاري' : 'الوضع الليلي'}
+            {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
+            <span>{theme === 'dark' ? 'الوضع النهاري' : 'الوضع الليلي'}</span>
           </button>
           <a href="/accessibility">
-            <Accessibility size={14} /> إمكانية الوصول
+            <Accessibility size={14} />
+            <span>إمكانية الوصول</span>
           </a>
-          <span className="gov-utility-lang is-muted" title="النسخة الإنجليزية قيد الإعداد" aria-disabled="true">
-            English (قريباً)
+          <span className="tq-utility-lang" title="النسخة الإنجليزية قيد الإعداد" aria-disabled="true">
+            English <small>(قريباً)</small>
           </span>
-          <span className="gov-utility-lang is-active">
+          <span className="tq-utility-lang is-active">
             <Globe size={14} /> العربية
           </span>
         </nav>

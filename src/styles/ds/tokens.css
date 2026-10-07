@@ -1,0 +1,233 @@
+/* =============================================================================================
+   Thi Qar Digital — design tokens
+   Identity: Dhi Qar green (marshes, palms) + Sumerian brass, on calm green-tinted neutrals.
+   Iraqi flag red is reserved for the emblem and destructive states.
+   Raw scales are theme-independent; semantic tokens (--ds-*) switch with data-gov-theme.
+   ============================================================================================= */
+:root {
+  /* ---- raw scales --------------------------------------------------------------------------- */
+  --green-25: #f6fbf8;
+  --green-50: #eef7f2;
+  --green-100: #d7ece1;
+  --green-200: #b0d8c4;
+  --green-300: #7dbda0;
+  --green-400: #46a07a;
+  --green-500: #17845d;
+  --green-600: #0a6f4e;
+  --green-700: #075e45;
+  --green-800: #064c38;
+  --green-900: #053b2c;
+  --green-950: #03231a;
+
+  --brass-50: #fbf6ea;
+  --brass-100: #f4e7c5;
+  --brass-200: #e8cf95;
+  --brass-300: #d9b464;
+  --brass-400: #c69a42;
+  --brass-500: #a98032;
+  --brass-600: #8a6727;
+  --brass-700: #6b501f;
+
+  --neutral-0: #ffffff;
+  --neutral-25: #fbfcfb;
+  --neutral-50: #f5f7f6;
+  --neutral-100: #edf0ee;
+  --neutral-200: #e0e5e2;
+  --neutral-300: #c9d1cc;
+  --neutral-400: #9aa8a1;
+  --neutral-500: #6b7a73;
+  --neutral-600: #4f5c56;
+  --neutral-700: #38433e;
+  --neutral-800: #232c28;
+  --neutral-900: #151c19;
+  --neutral-950: #0b110e;
+
+  --red-50: #fef3f2;
+  --red-100: #fde3e0;
+  --red-600: #c8102e;
+  --red-700: #a50d26;
+  --amber-50: #fff8eb;
+  --amber-100: #fdecc8;
+  --amber-600: #b45309;
+  --amber-700: #92400e;
+  --blue-50: #eff5ff;
+  --blue-100: #dbe8fe;
+  --blue-600: #1d5fc9;
+  --blue-700: #174ea6;
+
+  /* ---- type --------------------------------------------------------------------------------- */
+  --ds-font-display: 'Noto Kufi Arabic', 'IBM Plex Sans Arabic', system-ui, sans-serif;
+  --ds-font-ui: 'IBM Plex Sans Arabic', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --ds-font-mono: ui-monospace, 'SFMono-Regular', Consolas, monospace;
+
+  --ds-text-xs: 0.75rem; /* 12 */
+  --ds-text-sm: 0.8125rem; /* 13 */
+  --ds-text-base: 0.9375rem; /* 15 */
+  --ds-text-md: 1rem; /* 16 */
+  --ds-text-lg: 1.125rem; /* 18 */
+  --ds-text-xl: 1.375rem; /* 22 */
+  --ds-text-2xl: 1.75rem; /* 28 */
+  --ds-text-3xl: clamp(1.625rem, 1.25rem + 1.3vw, 2.125rem); /* 26 → 34 */
+  --ds-text-4xl: clamp(2rem, 1.4rem + 2.6vw, 3.25rem); /* 32 → 52 */
+
+  /* ---- space / shape ------------------------------------------------------------------------ */
+  --ds-space-1: 4px;
+  --ds-space-2: 8px;
+  --ds-space-3: 12px;
+  --ds-space-4: 16px;
+  --ds-space-5: 20px;
+  --ds-space-6: 24px;
+  --ds-space-8: 32px;
+  --ds-space-10: 40px;
+  --ds-space-12: 48px;
+  --ds-space-16: 64px;
+
+  --ds-radius-xs: 6px;
+  --ds-radius-sm: 8px;
+  --ds-radius-md: 12px;
+  --ds-radius-lg: 16px;
+  --ds-radius-xl: 24px;
+  --ds-radius-pill: 999px;
+
+  --ds-control-sm: 36px;
+  --ds-control-md: 44px;
+  --ds-control-lg: 52px;
+
+  --ds-container: 1320px;
+  --ds-gutter: clamp(16px, 3vw, 32px);
+
+  --ds-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ds-fast: 140ms;
+  --ds-base: 220ms;
+
+  /* ---- semantic: light ---------------------------------------------------------------------- */
+  --ds-bg: var(--neutral-50);
+  --ds-bg-tint: var(--green-25);
+  --ds-surface: var(--neutral-0);
+  --ds-surface-muted: var(--neutral-25);
+  --ds-surface-sunken: var(--neutral-100);
+  --ds-border: var(--neutral-200);
+  --ds-border-strong: var(--neutral-300);
+  --ds-text: var(--neutral-900);
+  --ds-text-2: var(--neutral-700);
+  --ds-text-muted: var(--neutral-500);
+
+  --ds-primary: var(--green-700);
+  --ds-primary-hover: var(--green-800);
+  --ds-primary-active: var(--green-900);
+  --ds-primary-fg: #ffffff;
+  --ds-primary-soft: var(--green-50);
+  --ds-primary-soft-2: var(--green-100);
+  --ds-primary-text: var(--green-700);
+
+  --ds-accent: var(--brass-500);
+  --ds-accent-soft: var(--brass-50);
+  --ds-accent-text: var(--brass-600);
+
+  --ds-success: var(--green-600);
+  --ds-success-soft: var(--green-50);
+  --ds-warning: var(--amber-700);
+  --ds-warning-soft: var(--amber-50);
+  --ds-danger: var(--red-700);
+  --ds-danger-solid: var(--red-600);
+  --ds-danger-soft: var(--red-50);
+  --ds-info: var(--blue-700);
+  --ds-info-soft: var(--blue-50);
+
+  --ds-chrome: var(--green-900); /* national top bar, footer */
+  --ds-chrome-2: var(--green-950);
+  --ds-chrome-fg: #eaf3ee;
+  --ds-chrome-muted: #a9c4b6;
+
+  --ds-shadow-xs: 0 1px 2px rgba(12, 32, 24, 0.06);
+  --ds-shadow-sm: 0 1px 2px rgba(12, 32, 24, 0.05), 0 2px 8px rgba(12, 32, 24, 0.05);
+  --ds-shadow-md: 0 2px 4px rgba(12, 32, 24, 0.04), 0 10px 28px rgba(12, 32, 24, 0.08);
+  --ds-shadow-lg: 0 4px 10px rgba(12, 32, 24, 0.05), 0 24px 56px rgba(12, 32, 24, 0.14);
+  --ds-focus: 0 0 0 3px rgba(23, 132, 93, 0.32);
+  --ds-focus-color: var(--green-500);
+
+  color-scheme: light;
+}
+
+/* ---- semantic: dark ------------------------------------------------------------------------- */
+:root[data-gov-theme='dark'] {
+  --ds-bg: #0b1210;
+  --ds-bg-tint: #0d1613;
+  --ds-surface: #111a16;
+  --ds-surface-muted: #141f1a;
+  --ds-surface-sunken: #0e1613;
+  --ds-border: #233029;
+  --ds-border-strong: #31403a;
+  --ds-text: #e9efec;
+  --ds-text-2: #c3cec8;
+  --ds-text-muted: #8d9e96;
+
+  --ds-primary: #1f9a6d;
+  --ds-primary-hover: #26b07e;
+  --ds-primary-active: #178a5f;
+  --ds-primary-fg: #ffffff;
+  --ds-primary-soft: #12271e;
+  --ds-primary-soft-2: #183428;
+  --ds-primary-text: #5fd0a2;
+
+  --ds-accent: #d9b464;
+  --ds-accent-soft: #241f14;
+  --ds-accent-text: #e2c27e;
+
+  --ds-success: #5fd0a2;
+  --ds-success-soft: #12271e;
+  --ds-warning: #f0b45a;
+  --ds-warning-soft: #2a2010;
+  --ds-danger: #ff8a8f;
+  --ds-danger-solid: #d63a4a;
+  --ds-danger-soft: #2c1517;
+  --ds-info: #8ab8ff;
+  --ds-info-soft: #13203a;
+
+  --ds-chrome: #07261c;
+  --ds-chrome-2: #041a13;
+
+  --ds-shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --ds-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35), 0 2px 8px rgba(0, 0, 0, 0.3);
+  --ds-shadow-md: 0 2px 4px rgba(0, 0, 0, 0.3), 0 12px 30px rgba(0, 0, 0, 0.4);
+  --ds-shadow-lg: 0 4px 10px rgba(0, 0, 0, 0.35), 0 24px 60px rgba(0, 0, 0, 0.5);
+  --ds-focus: 0 0 0 3px rgba(95, 208, 162, 0.35);
+  --ds-focus-color: #5fd0a2;
+
+  color-scheme: dark;
+}
+
+/* ---- legacy token bridge: older sheets read these names; point them at the system ------------ */
+:root,
+:root[data-gov-theme='dark'] {
+  --gov-green-900: var(--green-900);
+  --gov-green-800: var(--ds-primary);
+  --gov-green-700: var(--ds-primary-text);
+  --gov-green-600: var(--green-600);
+  --gov-green-100: var(--ds-primary-soft-2);
+  --gov-green-050: var(--ds-primary-soft);
+  --gov-green-text: var(--ds-primary-text);
+  --gov-ink: var(--ds-text);
+  --gov-ink-2: var(--ds-text-2);
+  --gov-muted: var(--ds-text-muted);
+  --gov-line: var(--ds-border);
+  --gov-line-soft: var(--neutral-100);
+  --gov-bg: var(--ds-bg);
+  --gov-surface: var(--ds-surface);
+  --gov-radius-sm: var(--ds-radius-sm);
+  --gov-radius: var(--ds-radius-md);
+  --gov-radius-lg: var(--ds-radius-lg);
+  --gov-shadow: var(--ds-shadow-sm);
+  --gov-shadow-hover: var(--ds-shadow-md);
+  --gov-container: var(--ds-container);
+  --p-bg: var(--ds-bg);
+  --p-surface: var(--ds-surface);
+  --p-surface-2: var(--ds-surface-muted);
+  --p-line: var(--ds-border);
+  --p-text: var(--ds-text);
+  --p-muted: var(--ds-text-muted);
+  --p-shadow: var(--ds-shadow-sm);
+}
+:root[data-gov-theme='dark'] {
+  --gov-line-soft: #1b2621;
+}

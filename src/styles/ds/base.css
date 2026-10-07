@@ -1,0 +1,115 @@
+/* =============================================================================================
+   Global rules that must hold on every surface. Lives in the `ds` layer (wins over legacy), so it
+   is deliberately small: type families, rendering, focus, selection, scrollbars, reduced motion.
+   ============================================================================================= */
+:root {
+  font-family: var(--ds-font-ui);
+  font-size: 100%;
+  line-height: 1.6;
+  color: var(--ds-text);
+  background: var(--ds-bg);
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+body {
+  background: var(--ds-bg);
+  color: var(--ds-text);
+  font-feature-settings: 'kern' 1;
+}
+
+/* Kufi is a display face: page/section titles only. Everything you read or click uses Plex,
+   which stays legible at UI sizes (Kufi bold at 13px was the main source of visual noise). */
+h1,
+h2,
+h3 {
+  font-family: var(--ds-font-display);
+  letter-spacing: 0;
+  text-wrap: balance;
+}
+h4,
+h5,
+h6,
+strong,
+b,
+button,
+input,
+select,
+textarea,
+label,
+small,
+em,
+p,
+li,
+td,
+th {
+  font-family: var(--ds-font-ui);
+}
+p {
+  text-wrap: pretty;
+}
+em {
+  font-style: normal;
+}
+
+/* numbers line up in tables, KPIs and references */
+:where(td, th, time, .tabular, [class*='kpi'] strong, [class*='metric'] b) {
+  font-variant-numeric: tabular-nums;
+}
+
+/* focus: one visible ring everywhere (keyboard only) */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--ds-focus-color);
+  outline-offset: 2px;
+  box-shadow: none;
+}
+::selection {
+  color: #fff;
+  background: var(--green-600);
+}
+
+/* calm, thin scrollbars on inner scroll areas */
+* {
+  scrollbar-color: var(--ds-border-strong) transparent;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--ds-border-strong);
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background-clip: padding-box;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+img,
+svg,
+video {
+  max-width: 100%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+.sr-only {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  margin: -1px !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  clip: rect(0 0 0 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}

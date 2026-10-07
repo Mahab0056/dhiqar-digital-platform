@@ -1,20 +1,10 @@
 import { lazy, Suspense } from 'react'
 import { Route, Switch, useLocation } from 'wouter'
 import { useHashScroll } from './lib/use-hash-scroll'
-import 'leaflet/dist/leaflet.css'
 import { SessionGate } from './components/shared/SessionGate'
 import { NotFound } from './pages/NotFound'
 import { RouteFallback } from './components/shared/RouteFallback'
 import { LegacyLoginRedirect } from './pages/auth/StaffLoginPage'
-import './App.css'
-import './styles/staff.css'
-import './styles/departments.css'
-import './styles/home.css'
-import './styles/services.css'
-import './styles/motion.css'
-import './styles/portal-theme-tokens.css'
-import './styles/portal-theme.css'
-import './styles/unify.css'
 
 const LandingPage = lazy(() => import('./pages/public/LandingPage').then(m => ({ default: m.LandingPage })))
 const GovernmentDirectoryPage = lazy(() =>

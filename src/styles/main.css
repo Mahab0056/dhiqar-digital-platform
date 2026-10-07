@@ -1,0 +1,28 @@
+/* =============================================================================================
+   Stylesheet entry. Two cascade layers:
+   - legacy: every pre-design-system sheet, in its original order (kept until each surface is migrated)
+   - ds:     the Thi Qar design system — later layer, so it wins without specificity games
+   Unlayered CSS (fontsource @font-face) is unaffected.
+   ============================================================================================= */
+@layer legacy, ds;
+
+@import '../index.css' layer(legacy);
+@import 'leaflet/dist/leaflet.css' layer(legacy);
+@import '../App.css' layer(legacy);
+@import './staff.css' layer(legacy);
+@import './departments.css' layer(legacy);
+@import './home.css' layer(legacy);
+@import './services.css' layer(legacy);
+@import './motion.css' layer(legacy);
+@import './portal-theme-tokens.css' layer(legacy);
+@import './portal-theme.css' layer(legacy);
+@import './unify.css' layer(legacy);
+
+/* design system */
+@import './ds/tokens.css' layer(ds);
+@import './ds/base.css' layer(ds);
+@import './ds/components.css' layer(ds);
+@import './ds/layout.css' layer(ds);
+@import './ds/public.css' layer(ds);
+@import './ds/pages.css' layer(ds);
+@import './ds/directory.css' layer(ds);

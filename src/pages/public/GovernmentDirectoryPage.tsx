@@ -1,12 +1,14 @@
-import type React from 'react'
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'wouter'
 import {
   ArrowLeft,
   Building2,
   CalendarClock,
+  CircleDollarSign,
+  Clock3,
   ExternalLink,
   FileCheck2,
+  FileText,
   Globe2,
   Info,
   LayoutGrid,
@@ -19,6 +21,7 @@ import { Footer } from '../../components/public/Footer'
 import { OfficialGovernmentServiceCatalog } from '../../components/public/OfficialGovernmentServiceCatalog'
 import { PublicHeader } from '../../components/public/PublicHeader'
 import { SmartSearch } from '../../components/public/SmartSearch'
+import { EmptyState, PageHeader } from '../../components/public/PageHeader'
 
 const channelMeta: Record<ServiceChannel, { label: string; short: string; icon: typeof Globe2 }> = {
   ONLINE_SUBMISSION: { label: 'تقديم إلكتروني كامل', short: 'إلكترونية', icon: Globe2 },
@@ -156,204 +159,275 @@ export function GovernmentDirectoryPage() {
   const departmentName = departments.find(item => item.id === department)?.name
   const activeFilters = [category, department, channel].filter(Boolean).length + (query.trim() ? 1 : 0)
 
+  const resetFilters = () => {
+    setQuery('')
+    setCategory('')
+    setDepartment('')
+    setChannel('')
+  }
+
   return (
-    <div className="public-shell directory-page gov-directory-page">
+    <div className="tq-page">
       <PublicHeader />
-      <main>
-        <section className="gov-directory-hero">
-          <div className="gov-container">
-            <span className="gov-eyebrow">
-              <LayoutGrid size={15} /> دليل الخدمات الحكومية في ذي قار
-            </span>
-            <h1>ابحث عن الخدمة، اعرف المستمسكات، وقدّم إلكترونياً</h1>
-            <p>
-              {summary
-                ? `${serviceCount(summary.total)} من ${departmentCount(departments.length)} حكومية: ${(
-                    summary.channels.ONLINE_SUBMISSION || 0
-                  ).toLocaleString('en-US')} منها تُنجز إلكترونياً بالكامل، و${(summary.channels.APPOINTMENT_REQUIRED || 0).toLocaleString('en-US')} تبدأ إلكترونياً وتُستكمل بالحضور.`
-                : 'ابحث باسم الخدمة أو الدائرة أو المستمسك.'}
-            </p>
-            <SmartSearch
-              value={query}
-              onChange={setQuery}
-              variant="compact"
-              placeholder="مثال: إجازة بناء، جواز سفر، تقاعد، إجازة سياقة، عقد إيجار… أو اضغط الميكروفون وتكلّم"
-              onSubmitQuery={() => undefined}
-            />
-            <div className="gov-directory-channels" role="group" aria-label="طريقة التقديم">
-              <button className={channel === '' ? 'active' : ''} onClick={() => setChannel('')}>
-                الكل
-              </button>
-              {channelOrder.map(item => (
-                <button className={channel === item ? 'active' : ''} onClick={() => setChannel(item)} key={item}>
-                  {channelMeta[item].short}
+      <main id="main-content">
+        <PageHeader
+          crumbs={[{ label: 'دليل الخدمات' }]}
+          kicker={
+            <>
+              <LayoutGrid size={15} /> دليل الخدمات الحكومية
+            </>
+          }
+          title="ابحث عن خدمتك واعرف ما تحتاجه قبل أن تبدأ"
+          description={
+            summary
+              ? `${serviceCount(summary.total)} من ${departmentCount(departments.length)} حكومية، لكل خدمة المستمسكات المطلوبة وطريقة التقديم ومصدرها الرسمي.`
+              : 'ابحث باسم الخدمة أو الدائرة أو المستمسك.'
+          }
+          aside={
+            summary ? (
+              <dl className="tq-figures">
+                <div>
+                  <dt>إلكترونية بالكامل</dt>
+                  <dd>{(summary.channels.ONLINE_SUBMISSION || 0).toLocaleString('en-US')}</dd>
+                </div>
+                <div>
+                  <dt>إلكترونية + حضور</dt>
+                  <dd>{(summary.channels.APPOINTMENT_REQUIRED || 0).toLocaleString('en-US')}</dd>
+                </div>
+                <div>
+                  <dt>معلوماتية</dt>
+                  <dd>{(summary.channels.INFORMATION_ONLY || 0).toLocaleString('en-US')}</dd>
+                </div>
+              </dl>
+            ) : undefined
+          }
+        >
+          <SmartSearch
+            value={query}
+            onChange={setQuery}
+            variant="compact"
+            placeholder="مثال: إجازة بناء، جواز سفر، تقاعد، عقد إيجار… أو اضغط الميكروفون وتكلّم"
+            onSubmitQuery={() => undefined}
+          />
+          <div className="tq-chips dir-channels" role="group" aria-label="طريقة التقديم">
+            <button
+              type="button"
+              className={channel === '' ? 'tq-chip is-active' : 'tq-chip'}
+              aria-pressed={channel === ''}
+              onClick={() => setChannel('')}
+            >
+              كل طرق التقديم
+            </button>
+            {channelOrder.map(item => {
+              const Icon = channelMeta[item].icon
+              return (
+                <button
+                  type="button"
+                  className={channel === item ? 'tq-chip is-active' : 'tq-chip'}
+                  aria-pressed={channel === item}
+                  onClick={() => setChannel(item)}
+                  key={item}
+                >
+                  <Icon size={14} /> {channelMeta[item].short}
                   {summary?.channels[item] ? <b>{summary.channels[item]?.toLocaleString('en-US')}</b> : null}
                 </button>
-              ))}
-            </div>
+              )
+            })}
           </div>
-        </section>
+        </PageHeader>
 
-        <section className="gov-container gov-directory-body">
-          <aside className="gov-directory-side">
-            <h2>القطاعات</h2>
-            <ul>
-              <li>
-                <button className={category === '' ? 'active' : ''} onClick={() => setCategory('')}>
-                  كل القطاعات <b>{summary?.total.toLocaleString('en-US')}</b>
-                </button>
-              </li>
-              {summary?.categories.map(item => (
-                <li key={item.label}>
-                  <button className={category === item.label ? 'active' : ''} onClick={() => setCategory(item.label)}>
-                    {item.label} <b>{item.total.toLocaleString('en-US')}</b>
+        <section className="tq-content">
+          <div className="tq-container tq-layout is-aside-start">
+            <aside className="dir-filters tq-sticky" aria-label="تصفية الخدمات">
+              <div className="dir-filter-group">
+                <h2>القطاع</h2>
+                <ul>
+                  <li>
+                    <button
+                      type="button"
+                      className={category === '' ? 'is-active' : ''}
+                      aria-pressed={category === ''}
+                      onClick={() => setCategory('')}
+                    >
+                      <span>كل القطاعات</span>
+                      <b>{summary?.total.toLocaleString('en-US')}</b>
+                    </button>
+                  </li>
+                  {summary?.categories.map(item => (
+                    <li key={item.label}>
+                      <button
+                        type="button"
+                        className={category === item.label ? 'is-active' : ''}
+                        aria-pressed={category === item.label}
+                        onClick={() => setCategory(item.label)}
+                      >
+                        <span>{item.label}</span>
+                        <b>{item.total.toLocaleString('en-US')}</b>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <label className="tq-field dir-filter-group">
+                <span>الجهة</span>
+                <select value={department} onChange={event => setDepartment(event.target.value)}>
+                  <option value="">كل الجهات</option>
+                  {departments.map(item => (
+                    <option value={item.id} key={item.id}>
+                      {item.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <Link href="/departments" className="gov-link">
+                دليل الدوائر الحكومية <ArrowLeft size={14} />
+              </Link>
+            </aside>
+
+            <div className="dir-results">
+              <header className="dir-results-head">
+                <div>
+                  <h2 aria-live="polite">
+                    {loading ? 'جاري التحميل…' : `${results.length.toLocaleString('en-US')} خدمة`}
+                    {departmentName ? ` — ${departmentName}` : category ? ` — ${category}` : ''}
+                  </h2>
+                  <p>
+                    {channel ? channelMeta[channel].label : 'كل طرق التقديم'}
+                    {query.trim() ? ` · نتائج البحث عن «${query.trim()}»` : ''}
+                  </p>
+                </div>
+                {activeFilters > 0 && (
+                  <button type="button" className="button outline small" onClick={resetFilters}>
+                    <X /> إزالة التصفية
                   </button>
-                </li>
-              ))}
-            </ul>
-            <h2>الجهة</h2>
-            <select value={department} onChange={event => setDepartment(event.target.value)} aria-label="تصفية حسب الجهة">
-              <option value="">كل الجهات</option>
-              {departments.map(item => (
-                <option value={item.id} key={item.id}>
-                  {item.name}
-                </option>
-              ))}
-            </select>
-            <Link href="/departments" className="gov-link">
-              دليل الدوائر الحكومية <ArrowLeft size={14} />
-            </Link>
-          </aside>
+                )}
+              </header>
 
-          <div className="gov-directory-results">
-            <header className="gov-directory-results-head">
-              <div>
-                <h2>
-                  {loading ? 'جاري التحميل…' : `${results.length.toLocaleString('en-US')} خدمة`}
-                  {departmentName ? ` — ${departmentName}` : category ? ` — ${category}` : ''}
-                </h2>
-                <p>
-                  {channel ? channelMeta[channel].label : 'كل طرق التقديم'}
-                  {query.trim() ? ` · نتائج البحث عن «${query.trim()}»` : ''}
-                </p>
-              </div>
-              {activeFilters > 0 && (
-                <button
-                  className="gov-btn outline small"
-                  onClick={() => {
-                    setQuery('')
-                    setCategory('')
-                    setDepartment('')
-                    setChannel('')
-                  }}
-                >
-                  <X size={14} /> إزالة التصفية
-                </button>
+              {loading && (
+                <ul className="dir-list" aria-hidden="true">
+                  {Array.from({ length: 5 }).map((_, index) => (
+                    <li className="dir-row is-skeleton" key={index}>
+                      <div className="dir-row-main">
+                        <i className="tq-skeleton w30" />
+                        <i className="tq-skeleton w70 h20" />
+                        <i className="tq-skeleton w90" />
+                        <i className="tq-skeleton w50" />
+                      </div>
+                    </li>
+                  ))}
+                </ul>
               )}
-            </header>
-
-            {loading && (
-              <ul className="gov-service-cards" aria-hidden="true">
-                {Array.from({ length: 6 }).map((_, index) => (
-                  <li className="gov-service-card" key={index}>
-                    <div className="skeleton" style={{ width: '40%' }} />
-                    <div className="skeleton" style={{ width: '85%', minHeight: 20 }} />
-                    <div className="skeleton" style={{ width: '100%', minHeight: 44 }} />
-                    <div className="skeleton" style={{ width: '60%' }} />
-                  </li>
-                ))}
-              </ul>
-            )}
-            {!loading && results.length === 0 && (
-              <div className="gov-directory-empty">
-                <Building2 />
-                <h3>لا توجد خدمة مطابقة</h3>
-                <p>جرّب كلمة أقصر أو أزل التصفية. إذا كانت الخدمة غير مسجلة بعد، راجع صفحة الجهة أو أرسل مقترحاً.</p>
-                <Link href="/citizen/feedback" className="gov-btn outline">
-                  اقترح إضافة خدمة
-                </Link>
-              </div>
-            )}
-
-            <ul className="gov-service-cards">
-              {results.slice(0, visible).map((item, index) => {
-                const Icon = channelMeta[item.channel].icon
-                const requiredCount = item.requiredDocuments.filter(doc => doc.required).length
-                return (
-                  <li
-                    key={item.key}
-                    className={`gov-service-card channel-${item.channel.toLowerCase()}`}
-                    style={{ '--i': index } as React.CSSProperties}
-                  >
-                    <div className="gov-service-card-top">
-                      <span className={`gov-chip channel-${item.channel.toLowerCase()}`}>
-                        <Icon size={13} /> {channelMeta[item.channel].short}
-                      </span>
-                      {item.sourceQuality === 'OFFICIAL' && <span className="gov-chip official">مصدر رسمي</span>}
-                      {item.sourceQuality === 'UNVERIFIED' && <span className="gov-chip muted">بانتظار تأكيد الدائرة</span>}
-                    </div>
-                    <h3>
-                      <Link href={`/service/${item.key}`}>{item.title}</Link>
-                    </h3>
-                    <p>{item.description}</p>
-                    <dl>
-                      <div>
-                        <dt>الجهة</dt>
-                        <dd>
-                          <Link href={`/departments/${item.departmentId}`}>{item.departmentName}</Link>
-                        </dd>
-                      </div>
-                      <div>
-                        <dt>المستمسكات</dt>
-                        <dd>
-                          {requiredCount ? documentCount(requiredCount) : 'لا تحتاج مستمسكات'}
-                        </dd>
-                      </div>
-                      {item.feeStatus === 'OFFICIAL' && item.feeIqd ? (
-                        <div>
-                          <dt>الرسوم</dt>
-                          <dd>{item.feeIqd.toLocaleString('en-US')} د.ع</dd>
-                        </div>
-                      ) : null}
-                      {item.estimatedDuration && (
-                        <div>
-                          <dt>المدة</dt>
-                          <dd>{item.estimatedDuration}</dd>
-                        </div>
+              {!loading && results.length === 0 && (
+                <EmptyState
+                  icon={<Building2 />}
+                  title="لا توجد خدمة مطابقة"
+                  text="جرّب كلمة أقصر أو أزل التصفية. إذا كانت الخدمة غير مسجلة بعد، راجع صفحة الجهة أو أرسل مقترحاً."
+                  action={
+                    <div className="tq-page-actions">
+                      {activeFilters > 0 && (
+                        <button type="button" className="button outline" onClick={resetFilters}>
+                          إزالة التصفية
+                        </button>
                       )}
-                    </dl>
-                    <footer>
-                      <Link href={`/service/${item.key}`} className="gov-btn primary small">
-                        {item.channel === 'INFORMATION_ONLY' ? 'التفاصيل' : 'ابدأ الطلب'} <ArrowLeft size={14} />
+                      <Link href="/citizen/feedback" className="button primary">
+                        اقترح إضافة خدمة
                       </Link>
-                      {item.sourceUrl && (
-                        <a href={item.sourceUrl} target="_blank" rel="noreferrer" className="gov-link" aria-label={`المصدر الرسمي: ${item.title}`}>
-                          <ExternalLink size={14} /> المصدر
-                        </a>
-                      )}
-                    </footer>
-                  </li>
-                )
-              })}
-            </ul>
-            {results.length > visible && (
-              <div className="gov-center">
-                <button className="gov-btn outline" onClick={() => setVisible(value => value + pageSize())}>
-                  عرض المزيد ({(results.length - visible).toLocaleString('en-US')} خدمة أخرى)
-                </button>
-              </div>
-            )}
-            <div className="gov-directory-note">
-              <FileCheck2 />
-              <span>
-                الرسوم تُعرض فقط عندما تكون موثقة من مصدر رسمي. الخدمات المعلَّمة «بانتظار تأكيد الدائرة» جُمعت من مصادر عامة
-                وستُحدَّث عند اعتماد الدائرة لها داخل المنصة.
-              </span>
+                    </div>
+                  }
+                />
+              )}
+
+              <ul className="dir-list">
+                {results.slice(0, visible).map(item => {
+                  const Icon = channelMeta[item.channel].icon
+                  const requiredCount = item.requiredDocuments.filter(doc => doc.required).length
+                  return (
+                    <li key={item.key} className="dir-row">
+                      <div className="dir-row-main">
+                        <div className="dir-row-tags">
+                          <span className={`tq-channel channel-${item.channel.toLowerCase()}`}>
+                            <Icon size={12} /> {channelMeta[item.channel].short}
+                          </span>
+                          {item.sourceQuality === 'OFFICIAL' && <span className="tq-badge is-accent">مصدر رسمي</span>}
+                          {item.sourceQuality === 'UNVERIFIED' && (
+                            <span className="tq-badge">بانتظار تأكيد الدائرة</span>
+                          )}
+                        </div>
+                        <h3>
+                          <Link href={`/service/${item.key}`}>{item.title}</Link>
+                        </h3>
+                        {item.description && <p>{item.description}</p>}
+                        <ul className="dir-row-meta">
+                          <li>
+                            <Building2 aria-hidden="true" />
+                            <Link href={`/departments/${item.departmentId}`}>{item.departmentName}</Link>
+                          </li>
+                          <li>
+                            <FileText aria-hidden="true" />
+                            {requiredCount ? documentCount(requiredCount) : 'لا تحتاج مستمسكات'}
+                          </li>
+                          {item.feeStatus === 'OFFICIAL' && item.feeIqd ? (
+                            <li>
+                              <CircleDollarSign aria-hidden="true" />
+                              {item.feeIqd.toLocaleString('en-US')} د.ع
+                            </li>
+                          ) : null}
+                          {item.estimatedDuration && (
+                            <li>
+                              <Clock3 aria-hidden="true" />
+                              {item.estimatedDuration}
+                            </li>
+                          )}
+                        </ul>
+                      </div>
+                      <div className="dir-row-actions">
+                        <Link
+                          href={`/service/${item.key}`}
+                          className={item.channel === 'INFORMATION_ONLY' ? 'button outline small' : 'button primary small'}
+                        >
+                          {item.channel === 'INFORMATION_ONLY' ? 'التفاصيل' : 'ابدأ الطلب'} <ArrowLeft />
+                        </Link>
+                        {item.sourceUrl && (
+                          <a
+                            href={item.sourceUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="gov-link dir-source"
+                            aria-label={`المصدر الرسمي: ${item.title}`}
+                          >
+                            <ExternalLink size={14} /> المصدر
+                          </a>
+                        )}
+                      </div>
+                    </li>
+                  )
+                })}
+              </ul>
+              {results.length > visible && (
+                <div className="dir-more">
+                  <button
+                    type="button"
+                    className="button outline"
+                    onClick={() => setVisible(value => value + pageSize())}
+                  >
+                    عرض المزيد ({(results.length - visible).toLocaleString('en-US')} خدمة أخرى)
+                  </button>
+                </div>
+              )}
+              <p className="tq-note dir-note">
+                <FileCheck2 aria-hidden="true" />
+                <span>
+                  الرسوم تُعرض فقط عندما تكون موثقة من مصدر رسمي. الخدمات المعلَّمة «بانتظار تأكيد الدائرة» جُمعت من
+                  مصادر عامة وستُحدَّث عند اعتماد الدائرة لها داخل المنصة.
+                </span>
+              </p>
             </div>
           </div>
         </section>
-        <section className="gov-container">
-          <OfficialGovernmentServiceCatalog query={query} />
+        <section className="tq-section">
+          <div className="tq-container">
+            <OfficialGovernmentServiceCatalog query={query} />
+          </div>
         </section>
       </main>
       <Footer />

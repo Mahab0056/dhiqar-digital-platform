@@ -158,12 +158,12 @@ export function SmartSearch({
 
   return (
     <form
-      className={`gov-search smart-search ${variant} ${listening ? 'is-listening' : ''}`}
+      className={`tq-search ${variant} ${listening ? 'is-listening' : ''}`}
       onSubmit={submit}
       role="search"
       ref={boxRef}
     >
-      <Search className="gov-search-icon" aria-hidden="true" />
+      <Search className="tq-search-icon" aria-hidden="true" />
       <input
         ref={inputRef}
         value={value}
@@ -179,34 +179,35 @@ export function SmartSearch({
         enterKeyHint="search"
       />
       {value && (
-        <button type="button" className="gov-search-clear" onClick={() => onChange('')} aria-label="مسح">
+        <button type="button" className="tq-search-clear" onClick={() => onChange('')} aria-label="مسح">
           <X size={16} />
         </button>
       )}
       {voiceSupported && (
         <button
           type="button"
-          className={`gov-search-voice ${listening ? 'active' : ''}`}
+          className={`tq-search-voice ${listening ? 'active' : ''}`}
           onClick={listening ? stopVoice : startVoice}
           aria-label={listening ? 'إيقاف الاستماع' : 'البحث بالصوت'}
           title={listening ? 'إيقاف الاستماع' : 'البحث بالصوت'}
         >
           {listening ? <MicOff size={18} /> : <Mic size={18} />}
-          {listening && <span className="voice-pulse" aria-hidden="true" />}
+          {listening && <span className="tq-voice-pulse" aria-hidden="true" />}
         </button>
       )}
-      <button type="submit" className="gov-search-submit" aria-label="بحث">
+      <button type="submit" className="tq-search-submit" aria-label="بحث">
         <Search />
+        <span>بحث</span>
       </button>
-      {voiceError && <div className="smart-search-hint error">{voiceError}</div>}
+      {voiceError && <div className="tq-search-hint">{voiceError}</div>}
       {open && results.length > 0 && (
-        <ul className="gov-search-results" role="listbox">
+        <ul className="tq-search-results" role="listbox">
           {results.map((service, index) => {
             const Icon = channelIcon[service.channel]
             return (
               <li key={service.key} className={index === active ? 'active' : ''} role="option" aria-selected={index === active}>
                 <Link href={`/service/${service.key}`} onClick={() => setOpen(false)}>
-                  <span className={`gov-chip channel-${service.channel.toLowerCase()}`}>
+                  <span className={`tq-channel channel-${service.channel.toLowerCase()}`}>
                     <Icon size={12} /> {channelShort[service.channel]}
                   </span>
                   <strong>{service.title}</strong>
@@ -216,7 +217,7 @@ export function SmartSearch({
               </li>
             )
           })}
-          <li className="gov-search-more">
+          <li className="tq-search-more">
             <Link href={`/directory?q=${encodeURIComponent(value.trim())}`} onClick={() => setOpen(false)}>
               عرض كل النتائج في دليل الخدمات
             </Link>

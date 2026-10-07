@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'wouter'
-import { AlertTriangle, ArrowLeft, ExternalLink, RefreshCw, Search } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, BadgeCheck, Building2, Clock3, ExternalLink, MapPin, Search } from 'lucide-react'
 import { api } from '../../api'
 import type { GovernmentServiceDirectoryEntry } from '../../types'
+import { EmptyState, LoadingBlock } from './PageHeader'
 
 export function OfficialGovernmentServiceCatalog({ query }: { query: string }) {
   const [items, setItems] = useState<GovernmentServiceDirectoryEntry[]>([])
@@ -35,64 +36,79 @@ export function OfficialGovernmentServiceCatalog({ query }: { query: string }) {
         ? 'مراجعة حضورية'
         : 'دليل إجراءات رسمي'
   return (
-    <section className="directory-results official-government-services">
-      <header>
-        <span className="section-kicker">الخدمات الوطنية الموثقة</span>
-        <h2>خدمات موثقة من مصادر حكومية رسمية</h2>
-        <p>
-          تُعرض الرسوم والمستمسكات والخطوات كما نُشرت في المصدر. لا تنشئ المنصة رقماً أو معاملة موازية للخدمة الوطنية.
-        </p>
-        <label className="directory-dhiqar-filter">
-          <input type="checkbox" checked={onlyDhiQar} onChange={event => setOnlyDhiQar(event.target.checked)} /> إظهار
-          الخدمات التي تذكر ذي قار أو المحافظات صراحةً
+    <section className="official-catalog" aria-labelledby="official-catalog-title">
+      <header className="tq-section-head">
+        <div>
+          <span className="section-kicker">الخدمات الوطنية الموثقة</span>
+          <h2 id="official-catalog-title">خدمات موثقة من مصادر حكومية رسمية</h2>
+          <p>
+            تُعرض الرسوم والمستمسكات والخطوات كما نُشرت في المصدر. لا تنشئ المنصة رقماً أو معاملة موازية للخدمة
+            الوطنية.
+          </p>
+        </div>
+        <label className="tq-check">
+          <input type="checkbox" checked={onlyDhiQar} onChange={event => setOnlyDhiQar(event.target.checked)} />
+          <span>الخدمات التي تذكر ذي قار أو المحافظات صراحةً</span>
         </label>
       </header>
       {loading ? (
-        <div className="loading-state">
-          <RefreshCw className="spin" /> جاري تحميل السجل الموثق...
-        </div>
+        <LoadingBlock label="جاري تحميل السجل الموثق…" />
       ) : error ? (
-        <div className="form-error">
+        <div className="form-error" role="alert">
           <AlertTriangle /> {error}
         </div>
       ) : items.length ? (
-        <div className="directory-result-list">
+        <ul className="official-grid">
           {items.map(service => (
-            <article key={service.id}>
-              <span className="availability available">
-                {service.verificationStatus === 'VERIFIED_UR_PORTAL' ? 'موثق من بوابة أور' : 'مصدر حكومي موثق'}
-              </span>
-              <div>
-                <small>
-                  {service.responsibleMinistry || service.responsibleAuthority || 'الجهة المختصة'} • {service.category}
-                </small>
-                <h3>{service.citizenFriendlyName || service.shortNameAr || service.officialNameAr}</h3>
-                <p>{service.description || 'تفاصيل الخدمة منشورة لدى الجهة المختصة.'}</p>
-                <div className="government-record-meta">
-                  <span>{channelLabel(service)}</span>
-                  {service.availableInDhiQar && <span>متاح أو مذكور لذي قار</span>}
-                  {service.processingTime && <span>{service.processingTime}</span>}
-                </div>
+            <li key={service.id} className="official-card">
+              <div className="dir-row-tags">
+                <span className="tq-badge is-success">
+                  <BadgeCheck />
+                  {service.verificationStatus === 'VERIFIED_UR_PORTAL' ? 'موثق من بوابة أور' : 'مصدر حكومي موثق'}
+                </span>
+                <span className="tq-badge">{channelLabel(service)}</span>
               </div>
-              <div className="directory-record-actions">
-                <Link href={`/government-services/${service.canonicalServiceId}`} className="button outline">
-                  عرض التفاصيل <ArrowLeft />
+              <h3>
+                <Link href={`/government-services/${service.canonicalServiceId}`}>
+                  {service.citizenFriendlyName || service.shortNameAr || service.officialNameAr}
+                </Link>
+              </h3>
+              <p>{service.description || 'تفاصيل الخدمة منشورة لدى الجهة المختصة.'}</p>
+              <ul className="dir-row-meta">
+                <li>
+                  <Building2 aria-hidden="true" />
+                  <span>{service.responsibleMinistry || service.responsibleAuthority || 'الجهة المختصة'}</span>
+                </li>
+                {service.availableInDhiQar && (
+                  <li>
+                    <MapPin aria-hidden="true" /> متاح في ذي قار
+                  </li>
+                )}
+                {service.processingTime && (
+                  <li>
+                    <Clock3 aria-hidden="true" /> {service.processingTime}
+                  </li>
+                )}
+              </ul>
+              <div className="official-card-actions">
+                <Link href={`/government-services/${service.canonicalServiceId}`} className="button outline small">
+                  التفاصيل <ArrowLeft />
                 </Link>
                 {service.externalServiceUrl && (
-                  <a href={service.externalServiceUrl} target="_blank" rel="noreferrer" className="button primary">
-                    فتح الجهة الرسمية <ExternalLink />
+                  <a href={service.externalServiceUrl} target="_blank" rel="noreferrer" className="gov-link">
+                    <ExternalLink size={14} /> الجهة الرسمية
                   </a>
                 )}
               </div>
-            </article>
+            </li>
           ))}
-        </div>
+        </ul>
       ) : (
-        <div className="gov-directory-empty">
-          <Search />
-          <h3>لا توجد خدمة موثقة مطابقة</h3>
-          <p>جرّب اسماً آخر أو أزل فلتر ذي قار. لا تظهر السجلات التي ما زالت قيد التحقق.</p>
-        </div>
+        <EmptyState
+          icon={<Search />}
+          title="لا توجد خدمة موثقة مطابقة"
+          text="جرّب اسماً آخر أو أزل فلتر ذي قار. لا تظهر السجلات التي ما زالت قيد التحقق."
+        />
       )}
     </section>
   )

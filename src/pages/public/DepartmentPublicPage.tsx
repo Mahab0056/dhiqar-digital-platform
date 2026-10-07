@@ -1,6 +1,18 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'wouter'
-import { ArrowRight, Building2, ExternalLink, Gauge, Globe, MapPin, Phone, ShieldCheck } from 'lucide-react'
+import {
+  ArrowRight,
+  ChevronLeft,
+  ExternalLink,
+  Gauge,
+  Info,
+  Landmark,
+  LayoutGrid,
+  MapPin,
+  Navigation,
+  Phone,
+  ShieldCheck,
+} from 'lucide-react'
 import { CircleMarker, MapContainer, TileLayer } from 'react-leaflet'
 import { documentCount } from '../../lib/arabic-count'
 import { api } from '../../api'
@@ -8,6 +20,7 @@ import type { CatalogService, DepartmentSummary } from '../../types'
 import { useSession } from '../../lib/session'
 import { PublicHeader } from '../../components/public/PublicHeader'
 import { Footer } from '../../components/public/Footer'
+import { EmptyState, LoadingBlock, PageHeader } from '../../components/public/PageHeader'
 
 export function DepartmentPublicPage({ id }: { id: string }) {
   const [item, setItem] = useState<DepartmentSummary | null>(null)
@@ -41,155 +54,224 @@ export function DepartmentPublicPage({ id }: { id: string }) {
     session.role !== 'CITIZEN' &&
     (session.role === 'SUPER_ADMIN' || session.role === 'OPERATIONS' || session.departmentId === id)
 
-  return (
-    <div className="public-shell department-page">
-      <PublicHeader />
-      <main className="container">
-        <Link href="/departments" className="back-link">
-          <ArrowRight /> دليل الدوائر
-        </Link>
-        {error && <div className="form-error">{error}</div>}
-        {item && (
-          <>
-            <section className="department-hero">
-              <span className="department-hero-icon">
-                <Building2 />
-              </span>
-              <div>
-                <span className="section-kicker">{item.category}</span>
-                <h1>{item.name}</h1>
-                {item.nameEn && <p className="department-hero-en">{item.nameEn}</p>}
-                <div className="department-hero-meta">
-                  <span>
-                    <MapPin size={14} /> {item.district}
-                  </span>
-                  {item.parentMinistry && <span>تابعة لـ{item.parentMinistry}</span>}
-                  <span className={item.dataStatus === 'VERIFIED_SOURCE' ? 'status-pill on' : 'status-pill off'}>
-                    <ShieldCheck size={12} /> {item.dataStatus === 'VERIFIED_SOURCE' ? 'مصدر موثق' : 'بحاجة لتحقق رسمي'}
-                  </span>
-                </div>
-              </div>
-              {canOpenDashboard && (
-                <Link href={`/department/${item.id}`} className="button primary">
-                  <Gauge /> لوحة الدائرة
-                </Link>
-              )}
-            </section>
+  if (!item)
+    return (
+      <div className="tq-page">
+        <PublicHeader />
+        <main id="main-content" className="tq-content">
+          <div className="tq-container">
+            {error ? (
+              <EmptyState
+                tone="danger"
+                title="تعذر فتح صفحة الجهة"
+                text={error}
+                action={
+                  <Link href="/departments" className="button primary">
+                    <ArrowRight /> دليل الدوائر
+                  </Link>
+                }
+              />
+            ) : (
+              <LoadingBlock label="جاري تحميل بيانات الجهة…" />
+            )}
+          </div>
+        </main>
+        <Footer />
+      </div>
+    )
 
-            <section className="department-columns">
-              <div className="department-main">
-                {digitalServices.length > 0 ? (
-                  <article className="department-block">
-                    <h2>
-                      خدمات الدائرة على المنصة <small>({digitalServices.length.toLocaleString('en-US')})</small>
-                    </h2>
-                    <div className="department-digital-services">
-                      {digitalServices.map(service => (
-                        <Link href={`/service/${service.key}`} key={service.key}>
-                          <strong>{service.title}</strong>
-                          <small>
-                            {service.channel === 'ONLINE_SUBMISSION'
-                              ? 'تقديم إلكتروني'
-                              : service.channel === 'APPOINTMENT_REQUIRED'
-                                ? 'تقديم إلكتروني ثم حضور'
-                                : 'معلوماتية'}
-                            {service.requiredDocuments.length
-                              ? ` • ${documentCount(service.requiredDocuments.filter(doc => doc.required).length)} مطلوب`
-                              : ''}
-                          </small>
-                        </Link>
-                      ))}
+  const hasLocation = typeof item.lat === 'number' && typeof item.lng === 'number'
+
+  return (
+    <div className="tq-page">
+      <PublicHeader />
+      <main id="main-content">
+        <PageHeader
+          crumbs={[{ label: 'الدوائر الحكومية', href: '/departments' }, { label: item.name }]}
+          kicker={item.category}
+          title={item.name}
+          description={item.nameEn ? <span dir="ltr">{item.nameEn}</span> : undefined}
+          meta={
+            <>
+              <span>
+                <MapPin /> {item.district}
+              </span>
+              {item.parentMinistry && (
+                <span>
+                  <Landmark /> تابعة لـ{item.parentMinistry}
+                </span>
+              )}
+              {item.dataStatus === 'VERIFIED_SOURCE' ? (
+                <span className="tq-badge is-success">
+                  <ShieldCheck /> مصدر موثق
+                </span>
+              ) : (
+                <span className="tq-badge is-warning">بحاجة لتحقق رسمي</span>
+              )}
+            </>
+          }
+          actions={
+            canOpenDashboard || digitalServices.length > 0 ? (
+              <>
+                {digitalServices.length > 0 && (
+                  <Link href={`/directory?department=${encodeURIComponent(id)}`} className="button primary">
+                    <LayoutGrid /> خدمات الجهة ({digitalServices.length.toLocaleString('en-US')})
+                  </Link>
+                )}
+                {canOpenDashboard && (
+                  <Link href={`/department/${item.id}`} className="button outline">
+                    <Gauge /> لوحة الدائرة
+                  </Link>
+                )}
+              </>
+            ) : undefined
+          }
+        />
+
+        <section className="tq-content">
+          <div className="tq-container tq-layout">
+            <div className="tq-stack">
+              {digitalServices.length > 0 ? (
+                <article className="tq-panel">
+                  <div className="tq-panel-head">
+                    <div>
+                      <h2>
+                        <LayoutGrid /> خدمات الجهة على المنصة
+                      </h2>
+                      <p>{digitalServices.length.toLocaleString('en-US')} خدمة بمستمسكاتها وطريقة تقديمها</p>
                     </div>
-                    <Link href={`/directory?department=${encodeURIComponent(id)}`} className="gov-link">
-                      عرضها في دليل الخدمات مع التصفية
-                    </Link>
-                  </article>
-                ) : (
-                  <article className="department-block">
-                    <h2>الخدمات التي تقدمها الدائرة</h2>
-                    <ul className="department-services">
+                  </div>
+                  <ul className="dept-services">
+                    {digitalServices.map(service => (
+                      <li key={service.key}>
+                        <Link href={`/service/${service.key}`}>
+                          <span className="dept-service-text">
+                            <strong>{service.title}</strong>
+                            <small>
+                              {service.channel === 'ONLINE_SUBMISSION'
+                                ? 'تقديم إلكتروني'
+                                : service.channel === 'APPOINTMENT_REQUIRED'
+                                  ? 'تقديم إلكتروني ثم حضور'
+                                  : 'خدمة معلوماتية'}
+                              {service.requiredDocuments.length
+                                ? ` • ${documentCount(service.requiredDocuments.filter(doc => doc.required).length)} مطلوب`
+                                : ''}
+                            </small>
+                          </span>
+                          <ChevronLeft aria-hidden="true" />
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </article>
+              ) : (
+                <article className="tq-panel">
+                  <h2>
+                    <LayoutGrid /> الخدمات التي تقدمها الجهة
+                  </h2>
+                  {item.services.length ? (
+                    <ul className="dept-plain-services">
                       {item.services.map(service => (
                         <li key={service}>{service}</li>
                       ))}
                     </ul>
-                  </article>
-                )}
-                {item.notes && (
-                  <article className="department-block muted-block">
-                    <h2>ملاحظات السجل</h2>
-                    <p>{item.notes}</p>
-                  </article>
-                )}
-              </div>
-              <aside className="department-side">
-                <article className="department-block">
-                  <h2>معلومات الاتصال</h2>
-                  <dl className="department-contact">
+                  ) : (
+                    <p>لم تُسجل خدمات لهذه الجهة بعد.</p>
+                  )}
+                </article>
+              )}
+              {item.notes && (
+                <p className="tq-note is-info">
+                  <Info aria-hidden="true" />
+                  <span>{item.notes}</span>
+                </p>
+              )}
+            </div>
+            <aside className="tq-stack tq-sticky">
+              <article className="tq-panel">
+                <h2>
+                  <Phone /> معلومات الاتصال
+                </h2>
+                <dl className="tq-dl is-stacked">
+                  <div>
                     <dt>العنوان</dt>
                     <dd>{item.address || 'غير مسجل بعد'}</dd>
-                    <dt>
-                      <Phone size={13} /> الهاتف
-                    </dt>
-                    <dd dir="ltr">{item.phone || '—'}</dd>
-                    <dt>
-                      <Globe size={13} /> الموقع الرسمي
-                    </dt>
+                  </div>
+                  <div>
+                    <dt>الهاتف</dt>
+                    <dd dir="ltr" className="dept-ltr">
+                      {item.phone || '—'}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>الموقع الرسمي</dt>
                     <dd>
                       {item.website ? (
-                        <a href={item.website} target="_blank" rel="noreferrer" dir="ltr">
-                          {item.website.replace(/^https?:\/\//, '')} <ExternalLink size={12} />
+                        <a href={item.website} target="_blank" rel="noreferrer" dir="ltr" className="gov-link">
+                          {item.website.replace(/^https?:\/\//, '')} <ExternalLink size={13} />
                         </a>
                       ) : (
                         '—'
                       )}
                     </dd>
-                    {item.facebook && (
-                      <>
-                        <dt>فيسبوك</dt>
-                        <dd>
-                          <a href={item.facebook} target="_blank" rel="noreferrer">
-                            الصفحة الرسمية <ExternalLink size={12} />
-                          </a>
-                        </dd>
-                      </>
-                    )}
+                  </div>
+                  {item.facebook && (
+                    <div>
+                      <dt>فيسبوك</dt>
+                      <dd>
+                        <a href={item.facebook} target="_blank" rel="noreferrer" className="gov-link">
+                          الصفحة الرسمية <ExternalLink size={13} />
+                        </a>
+                      </dd>
+                    </div>
+                  )}
+                  <div>
                     <dt>مصدر البيانات</dt>
                     <dd>
-                      <a href={item.sourceUrl} target="_blank" rel="noreferrer" dir="ltr">
-                        {item.sourceUrl.replace(/^https?:\/\//, '').slice(0, 40)} <ExternalLink size={12} />
+                      <a href={item.sourceUrl} target="_blank" rel="noreferrer" dir="ltr" className="gov-link dept-source">
+                        {item.sourceUrl.replace(/^https?:\/\//, '').slice(0, 40)} <ExternalLink size={13} />
                       </a>
                     </dd>
-                  </dl>
-                </article>
-                <article className="department-block department-map-block">
-                  <h2>الموقع</h2>
-                  {typeof item.lat === 'number' && typeof item.lng === 'number' ? (
-                    <>
-                      <MapContainer center={[item.lat, item.lng]} zoom={15} scrollWheelZoom={false} className="department-map">
+                  </div>
+                </dl>
+              </article>
+              <article className="tq-panel">
+                <h2>
+                  <MapPin /> الموقع
+                </h2>
+                {hasLocation ? (
+                  <>
+                    <div className="dept-map">
+                      <MapContainer
+                        center={[item.lat as number, item.lng as number]}
+                        zoom={15}
+                        scrollWheelZoom={false}
+                        className="dept-leaflet"
+                      >
                         <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
                         <CircleMarker
-                          center={[item.lat, item.lng]}
+                          center={[item.lat as number, item.lng as number]}
                           radius={10}
-                          pathOptions={{ color: '#ffffff', weight: 2, fillColor: '#0a8f50', fillOpacity: 1 }}
+                          pathOptions={{ color: '#ffffff', weight: 2, fillColor: '#075e45', fillOpacity: 1 }}
                         />
                       </MapContainer>
-                      <a
-                        href={`https://www.openstreetmap.org/?mlat=${item.lat}&mlon=${item.lng}#map=17/${item.lat}/${item.lng}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="button outline"
-                      >
-                        فتح في الخريطة <ExternalLink size={13} />
-                      </a>
-                    </>
-                  ) : (
-                    <p className="muted">لم تُسجل إحداثيات رسمية لهذه الجهة بعد.</p>
-                  )}
-                </article>
-              </aside>
-            </section>
-          </>
-        )}
+                    </div>
+                    <a
+                      href={`https://www.openstreetmap.org/directions?to=${item.lat}%2C${item.lng}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="button outline full"
+                    >
+                      <Navigation /> الاتجاهات إلى الجهة
+                    </a>
+                  </>
+                ) : (
+                  <p>لم تُسجل إحداثيات رسمية لهذه الجهة بعد.</p>
+                )}
+              </article>
+            </aside>
+          </div>
+        </section>
       </main>
       <Footer />
     </div>
