@@ -5,7 +5,6 @@ import {
   Activity,
   ArrowLeft,
   KeyRound,
-  LogOut,
   Bell,
   BriefcaseBusiness,
   Building2,
@@ -14,20 +13,16 @@ import {
   FileArchive,
   FileText,
   Gauge,
-  LogIn,
-  Menu,
   MessageSquareWarning,
   QrCode,
   Search,
-  ShieldCheck,
   UserRound,
   X,
 } from 'lucide-react'
 import { api } from '../../api'
 import { logoutAndRedirect, useSession } from '../../lib/session'
 import type { CitizenNotification } from '../../types'
-import { Brand } from '../public/Brand'
-import { CivicUtilityBar } from '../public/CivicUtilityBar'
+import { AppShell, type AppNavItem } from '../shared/AppShell'
 
 export const citizenNav = [
   { icon: Gauge, label: 'الرئيسية', href: '/citizen' },
@@ -39,7 +34,7 @@ export const citizenNav = [
   { icon: QrCode, label: 'التحقق', href: '/verify' },
 ]
 
-export function CitizenProfileAvatar() {
+export function CitizenProfileAvatar({ initial = 'م' }: { initial?: string }) {
   const [hasPhoto, setHasPhoto] = useState(true)
   return hasPhoto ? (
     <img
@@ -49,9 +44,9 @@ export function CitizenProfileAvatar() {
       onError={() => setHasPhoto(false)}
     />
   ) : (
-    <div className="user-avatar" aria-label="حساب المواطن">
-      ح
-    </div>
+    <span className="user-avatar" aria-label="حساب المواطن">
+      {initial || 'م'}
+    </span>
   )
 }
 
@@ -63,7 +58,6 @@ export function PortalLayout({
   role?: 'citizen' | 'employee'
 }) {
   const [location, navigate] = useLocation()
-  const [mobileNav, setMobileNav] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [liveUnread, setLiveUnread] = useState(0)
   const [liveNotification, setLiveNotification] = useState<CitizenNotification | null>(null)
@@ -187,20 +181,34 @@ export function PortalLayout({
       socket?.close()
     }
   }, [role])
-  // mobile drawer: Escape closes it, like the backdrop
-  useEffect(() => {
-    if (!mobileNav) return
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setMobileNav(false)
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [mobileNav])
   useEffect(() => {
     void api.heartbeatPresence().catch(() => {})
     const timer = window.setInterval(() => void api.heartbeatPresence().catch(() => {}), 60_000)
     return () => window.clearInterval(timer)
   }, [])
+  // in-page sections (#services, #my-requests…) drive the active nav item
+  const [hash, setHash] = useState(() => window.location.hash)
+  useEffect(() => {
+    const update = () => setHash(window.location.hash)
+    window.addEventListener('hashchange', update)
+    return () => window.removeEventListener('hashchange', update)
+  }, [])
+  useEffect(() => setHash(window.location.hash), [location])
+  // the citizen's own name in the shell (the session carries no display name for citizens)
+  const [citizenName, setCitizenName] = useState('')
+  useEffect(() => {
+    if (role !== 'citizen') return
+    let active = true
+    api
+      .getDemoCitizen()
+      .then(citizen => {
+        if (active) setCitizenName(citizen.fullName)
+      })
+      .catch(() => {})
+    return () => {
+      active = false
+    }
+  }, [role])
   // portal search runs against the full catalog (synonyms, fuzzy Arabic) — not the 12 legacy services
   const [searchResults, setSearchResults] = useState<
     Array<{ key: string; title: string; departmentName: string; category: string }>
@@ -223,7 +231,8 @@ export function PortalLayout({
     }, 180)
     return () => window.clearTimeout(timer)
   }, [searchQuery])
-  const nav =
+  const { session } = useSession()
+  const baseNav =
     role === 'citizen'
       ? citizenNav
       : [
@@ -235,13 +244,27 @@ export function PortalLayout({
           { icon: Activity, label: 'سجل الإجراءات', href: '/employee#employee-activity' },
           { icon: KeyRound, label: 'الأمان والحساب', href: '/staff/security' },
         ]
-  const { session } = useSession()
-  if (role === 'employee' && session && session.role !== 'IDENTITY_REVIEWER' && session.role !== 'SUPER_ADMIN') {
-    const index = nav.findIndex(item => item.href === '/employee#employee-identity-reviews')
-    if (index >= 0) nav.splice(index, 1)
-  }
+  const nav = baseNav.filter(
+    item =>
+      role !== 'employee' ||
+      item.href !== '/employee#employee-identity-reviews' ||
+      !session ||
+      session.role === 'IDENTITY_REVIEWER' ||
+      session.role === 'SUPER_ADMIN'
+  )
   if (role === 'employee' && session?.departmentId)
     nav.splice(1, 0, { icon: Building2, label: 'لوحة دائرتي', href: `/department/${session.departmentId}` })
+  const items: AppNavItem[] = nav.map((item, index) => {
+    const [path, anchor] = item.href.split('#')
+    const active = anchor
+      ? location === path && (hash === `#${anchor}` || (!hash && index === 0))
+      : location === item.href || (index === 0 && location === path)
+    return {
+      ...item,
+      active,
+      badge: role === 'citizen' && item.href === '/citizen/notifications' ? liveUnread : undefined,
+    }
+  })
   const staffName = session && session.role !== 'CITIZEN' ? session.displayName || session.username || 'موظف' : null
   const staffRoleLabel =
     session?.role === 'SUPER_ADMIN'
@@ -251,163 +274,89 @@ export function PortalLayout({
         : session?.role === 'OPERATIONS'
           ? 'غرفة العمليات'
           : session?.departmentName || 'التدقيق والمعاملات'
+
   return (
-    <div className="portal-shell">
-      <CivicUtilityBar />
-      {mobileNav && (
-        <button
-          type="button"
-          className="portal-sidebar-backdrop"
-          aria-label="إغلاق القائمة"
-          onClick={() => setMobileNav(false)}
-        />
-      )}
-      <aside className={mobileNav ? 'portal-sidebar open' : 'portal-sidebar'}>
-        <div className="sidebar-brand">
-          <Brand />
-          <button type="button" aria-label="إغلاق القائمة" onClick={() => setMobileNav(false)}>
-            <X />
-          </button>
-        </div>
-        <div className="role-chip">
-          {role === 'citizen' ? <UserRound /> : <Building2 />} {role === 'citizen' ? 'بوابة المواطن' : 'بوابة الموظف'}
-        </div>
-        <nav>
-          {nav.map((item, index) => (
-            <a
-              href={item.href}
-              onClick={() => setMobileNav(false)}
-              className={location === item.href || (index === 0 && location === '/citizen') ? 'active' : ''}
-              key={item.label}
-            >
-              <item.icon /> {item.label}
-            </a>
-          ))}
-        </nav>
-        <div className="sidebar-security">
-          <ShieldCheck />
-          <span>جلسة محمية</span>
-          <small>آخر نشاط: الآن</small>
-        </div>
-        {role === 'employee' ? (
-          <button
-            type="button"
-            className="sidebar-logout"
-            onClick={() => void logoutAndRedirect(path => navigate(path), '/staff/login')}
-          >
-            <LogOut /> تسجيل الخروج
-          </button>
-        ) : (
-          <div className="sidebar-logout-group">
-            <button
-              type="button"
-              className="sidebar-logout"
-              onClick={() => void logoutAndRedirect(path => navigate(path), '/')}
-            >
-              <LogOut /> تسجيل الخروج
-            </button>
-            <Link href="/login" className="sidebar-switch">
-              <LogIn /> تبديل البوابة
-            </Link>
-          </div>
-        )}
-      </aside>
-      <div className="portal-main">
-        <header className="portal-topbar">
-          <button
-            type="button"
-            className="mobile-sidebar-button"
-            aria-label="فتح القائمة"
-            aria-expanded={mobileNav}
-            onClick={() => setMobileNav(true)}
-          >
-            <Menu />
-          </button>
-          <div className="topbar-search">
-            <Search />
-            <input
-              value={searchQuery}
-              onChange={event => setSearchQuery(event.target.value)}
-              placeholder="ابحث عن خدمة أو دائرة"
-              aria-label="ابحث داخل المنصة"
-            />
-            {!searchQuery && <span className="search-help">بحث</span>}
-            {searchResults.length > 0 && (
-              <div className="topbar-search-results">
-                {searchResults.map(service => (
-                  <Link href={`/service/${service.key}`} key={service.key} onClick={() => setSearchQuery('')}>
-                    <span>
-                      <BriefcaseBusiness />
-                    </span>
-                    <div>
-                      <strong>{service.title}</strong>
-                      <small>
-                        {service.departmentName} • {service.category}
-                      </small>
-                    </div>
-                    <ArrowLeft />
-                  </Link>
-                ))}
-              </div>
-            )}
-          </div>
-          <div className="topbar-actions">
-            <Link
-              className="topbar-notification-link"
-              href={role === 'citizen' ? '/citizen/notifications' : '/employee'}
-              aria-label={role === 'citizen' ? 'فتح الإشعارات' : 'فتح قائمة المعاملات'}
-            >
-              <Bell />
-              {role === 'citizen' && liveUnread > 0 && (
-                <b className="realtime-unread-badge">{liveUnread > 99 ? '99+' : liveUnread.toLocaleString('en-US')}</b>
-              )}
-            </Link>
-            {role === 'citizen' ? (
-              <CitizenProfileAvatar />
-            ) : (
-              <div className="user-avatar" aria-hidden="true">
-                {(staffName || 'م').slice(0, 1)}
-              </div>
-            )}
-            <div>
-              <strong>{role === 'citizen' ? 'حساب المواطن' : staffName || 'حساب الموظف'}</strong>
-              <small>{role === 'citizen' ? 'الخدمات والإشعارات' : staffRoleLabel}</small>
+    <AppShell
+      portalLabel={role === 'citizen' ? 'بوابة المواطن' : 'بوابة الموظف'}
+      portalIcon={role === 'citizen' ? UserRound : Building2}
+      nav={items}
+      user={
+        role === 'citizen'
+          ? {
+              name: citizenName || 'حساب المواطن',
+              detail: 'حساب موثّق برقم الهاتف',
+              avatar: <CitizenProfileAvatar initial={citizenName.slice(0, 1)} />,
+            }
+          : {
+              name: staffName || 'حساب الموظف',
+              detail: staffRoleLabel,
+              avatar: (
+                <span className="user-avatar" aria-hidden="true">
+                  {(staffName || 'م').slice(0, 1)}
+                </span>
+              ),
+            }
+      }
+      notifications={
+        role === 'citizen'
+          ? { href: '/citizen/notifications', label: 'الإشعارات', unread: liveUnread }
+          : { href: '/employee', label: 'قائمة العمل' }
+      }
+      search={
+        <div className="app-search">
+          <Search aria-hidden="true" />
+          <input
+            value={searchQuery}
+            onChange={event => setSearchQuery(event.target.value)}
+            placeholder="ابحث عن خدمة أو دائرة"
+            aria-label="ابحث داخل المنصة"
+            type="search"
+          />
+          {searchResults.length > 0 && (
+            <div className="app-search-results">
+              {searchResults.map(service => (
+                <Link href={`/service/${service.key}`} key={service.key} onClick={() => setSearchQuery('')}>
+                  <span className="app-search-icon">
+                    <BriefcaseBusiness />
+                  </span>
+                  <span className="app-search-text">
+                    <strong>{service.title}</strong>
+                    <small>
+                      {service.departmentName} • {service.category}
+                    </small>
+                  </span>
+                  <ArrowLeft aria-hidden="true" />
+                </Link>
+              ))}
             </div>
-          </div>
-        </header>
-        <main className="portal-content">{children}</main>
-        <nav className="mobile-bottom-nav" aria-label="التنقل السريع">
-          {nav.slice(0, 4).map((item, index) => (
-            <a
-              href={item.href}
-              onClick={() => setMobileNav(false)}
-              className={location === item.href || (index === 0 && location === '/citizen') ? 'active' : ''}
-              key={`mobile-${item.label}`}
-            >
-              <item.icon />
-              <span>{item.label}</span>
-            </a>
-          ))}
-        </nav>
-      </div>
+          )}
+        </div>
+      }
+      onLogout={() => void logoutAndRedirect(path => navigate(path), role === 'employee' ? '/staff/login' : '/')}
+    >
+      {/* legacy page styles are scoped under these two classes until each page is migrated */}
+      <div className="portal-shell portal-content">{children}</div>
       {role === 'citizen' && liveNotification && (
-        <Link
-          href={liveNotification.link || '/citizen/notifications'}
-          className="citizen-realtime-toast"
-          aria-live="polite"
-        >
-          <Bell />
-          <span>
+        <Link href={liveNotification.link || '/citizen/notifications'} className="app-toast" aria-live="polite">
+          <span className="app-toast-icon">
+            <Bell />
+          </span>
+          <span className="app-toast-text">
             <small>إشعار جديد</small>
             <strong>{liveNotification.title}</strong>
             <em>{liveNotification.message}</em>
           </span>
-          <X
+          <button
+            type="button"
+            className="app-toast-close"
+            aria-label="إغلاق الإشعار"
             onClick={event => {
               event.preventDefault()
               setLiveNotification(null)
             }}
-          />
+          >
+            <X />
+          </button>
         </Link>
       )}
       {role === 'employee' && employeeWorkEvent && (
@@ -421,12 +370,14 @@ export function PortalLayout({
                   ? '#employee-feedback'
                   : '#employee-applications'
           }
-          className="employee-realtime-toast"
+          className="app-toast"
           aria-live="polite"
         >
-          <Bell />
-          <span>
-            <small>تحديث في طابور العمل</small>
+          <span className="app-toast-icon">
+            <Bell />
+          </span>
+          <span className="app-toast-text">
+            <small>تحديث في قائمة العمل</small>
             <strong>
               {employeeWorkEvent.entity === 'IDENTITY_REVIEW'
                 ? employeeWorkEvent.action === 'CREATED'
@@ -448,6 +399,6 @@ export function PortalLayout({
           </span>
         </a>
       )}
-    </div>
+    </AppShell>
   )
 }

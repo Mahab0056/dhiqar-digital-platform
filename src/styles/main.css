@@ -29,3 +29,5 @@
 @import './ds/service-form.css' layer(ds);
 @import './ds/verify.css' layer(ds);
 @import './ds/auth.css' layer(ds);
+@import './ds/app.css' layer(ds);
+@import './ds/portal.css' layer(ds);

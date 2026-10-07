@@ -1,0 +1,571 @@
+/* =============================================================================================
+   App shell — the signed-in frame for every portal (citizen, employee, department, operations,
+   governor, super admin).
+   ============================================================================================= */
+.app-shell {
+  --app-sidebar: 272px;
+  --app-topbar: 64px;
+  min-height: 100vh;
+  background: var(--ds-bg);
+  color: var(--ds-text);
+}
+.app-frame {
+  display: grid;
+  grid-template-columns: var(--app-sidebar) minmax(0, 1fr);
+  min-height: calc(100vh - 38px);
+}
+
+/* ---- sidebar ---------------------------------------------------------------------------------- */
+.app-sidebar {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  border-inline-end: 1px solid var(--ds-border);
+  background: var(--ds-surface);
+}
+.app-sidebar-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: var(--app-topbar);
+  padding: 0 16px;
+  border-bottom: 1px solid var(--ds-border);
+}
+.app-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  color: var(--ds-text);
+  text-decoration: none;
+}
+.app-brand img {
+  flex: none;
+  width: 38px;
+  height: 38px;
+  object-fit: contain;
+}
+.app-brand > span {
+  display: grid;
+  min-width: 0;
+}
+.app-brand strong {
+  font-family: var(--ds-font-display);
+  font-size: var(--ds-text-md);
+  font-weight: 800;
+  line-height: 1.3;
+}
+.app-brand small {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--ds-primary-text);
+  font-size: var(--ds-text-xs);
+  font-weight: 600;
+}
+.app-brand small svg {
+  width: 13px;
+  height: 13px;
+}
+.app-sidebar-close {
+  display: none;
+}
+.app-nav {
+  display: grid;
+  align-content: start;
+  gap: 2px;
+  flex: 1;
+  padding: 14px 12px;
+  overflow-y: auto;
+}
+.app-nav a {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 42px;
+  padding: 0 12px;
+  border-radius: var(--ds-radius-sm);
+  color: var(--ds-text-2);
+  font-size: var(--ds-text-base);
+  font-weight: 500;
+  text-decoration: none;
+  transition:
+    background-color var(--ds-fast) var(--ds-ease),
+    color var(--ds-fast) var(--ds-ease);
+}
+.app-nav a svg {
+  flex: none;
+  width: 19px;
+  height: 19px;
+  color: var(--ds-text-muted);
+  transition: color var(--ds-fast) var(--ds-ease);
+}
+.app-nav a:hover {
+  background: var(--ds-surface-muted);
+  color: var(--ds-text);
+}
+.app-nav a.is-active {
+  background: var(--ds-primary-soft);
+  color: var(--ds-primary-text);
+  font-weight: 600;
+}
+.app-nav a.is-active svg {
+  color: var(--ds-primary-text);
+}
+.app-nav a.is-active::before {
+  content: '';
+  position: absolute;
+  inset-block: 9px;
+  inset-inline-start: -12px;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--ds-primary);
+}
+.app-nav-badge {
+  margin-inline-start: auto;
+  min-width: 22px;
+  padding: 1px 7px;
+  border-radius: var(--ds-radius-pill);
+  background: var(--ds-danger-solid);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+}
+.app-sidebar-foot {
+  display: grid;
+  gap: 10px;
+  padding: 14px 16px 18px;
+  border-top: 1px solid var(--ds-border);
+}
+.app-user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.app-user > span:last-child,
+.app-topbar-user > span:last-child {
+  display: grid;
+  min-width: 0;
+}
+.app-user strong,
+.app-topbar-user strong {
+  overflow: hidden;
+  color: var(--ds-text);
+  font-size: var(--ds-text-sm);
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.app-user small,
+.app-topbar-user small {
+  overflow: hidden;
+  color: var(--ds-text-muted);
+  font-size: var(--ds-text-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.app-session {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: var(--ds-text-muted);
+  font-size: var(--ds-text-xs);
+}
+.app-session svg {
+  width: 14px;
+  height: 14px;
+  color: var(--ds-success);
+}
+.app-logout {
+  justify-content: center;
+}
+
+/* ---- top bar ------------------------------------------------------------------------------------ */
+.app-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.app-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-height: var(--app-topbar);
+  padding: 0 clamp(16px, 2.4vw, 32px);
+  border-bottom: 1px solid var(--ds-border);
+  background: color-mix(in srgb, var(--ds-surface) 92%, transparent);
+  backdrop-filter: saturate(1.4) blur(12px);
+  -webkit-backdrop-filter: saturate(1.4) blur(12px);
+}
+.app-menu {
+  display: none;
+}
+.app-topbar-search {
+  flex: 1;
+  min-width: 0;
+  max-width: 520px;
+}
+.app-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-surface-muted);
+}
+.app-search:focus-within {
+  border-color: var(--ds-focus-color);
+  background: var(--ds-surface);
+  box-shadow: var(--ds-focus);
+}
+.app-search > svg {
+  flex: none;
+  width: 17px;
+  height: 17px;
+  color: var(--ds-text-muted);
+}
+.app-search input {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--ds-text);
+  font-family: var(--ds-font-ui);
+  font-size: var(--ds-text-base);
+  outline: none;
+}
+.app-search-results {
+  position: absolute;
+  inset-inline: 0;
+  top: calc(100% + 6px);
+  z-index: 60;
+  display: grid;
+  padding: 6px;
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-md);
+  background: var(--ds-surface);
+  box-shadow: var(--ds-shadow-lg);
+}
+.app-search-results a {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border-radius: var(--ds-radius-sm);
+  color: var(--ds-text);
+  text-decoration: none;
+}
+.app-search-results a:hover {
+  background: var(--ds-primary-soft);
+}
+.app-search-icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-surface-sunken);
+  color: var(--ds-text-2);
+}
+.app-search-icon svg {
+  width: 17px;
+  height: 17px;
+}
+.app-search-text {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+}
+.app-search-text strong {
+  overflow: hidden;
+  font-size: var(--ds-text-sm);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.app-search-text small {
+  overflow: hidden;
+  color: var(--ds-text-muted);
+  font-size: var(--ds-text-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.app-search-results a > svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  color: var(--ds-text-muted);
+}
+.app-topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-inline-start: auto;
+}
+.app-bell {
+  position: relative;
+}
+.app-bell-badge {
+  position: absolute;
+  top: -5px;
+  inset-inline-end: -5px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border: 2px solid var(--ds-surface);
+  border-radius: var(--ds-radius-pill);
+  background: var(--ds-danger-solid);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 14px;
+  text-align: center;
+}
+.app-topbar-user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-inline-start: 12px;
+  border-inline-start: 1px solid var(--ds-border);
+  max-width: 240px;
+}
+.app-topbar-user .user-avatar,
+.app-user .user-avatar {
+  width: 36px;
+  height: 36px;
+  font-size: var(--ds-text-sm);
+}
+
+/* ---- content -------------------------------------------------------------------------------------- */
+.app-content {
+  flex: 1;
+  width: 100%;
+  max-width: 1480px;
+  margin-inline: auto;
+  padding: clamp(18px, 2.6vw, 32px) clamp(16px, 2.6vw, 36px) 48px;
+}
+/* legacy page scopes keep their descendant rules but lose their old frame */
+.app-content > :is(.portal-shell, .ops-shell) {
+  min-height: 0;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+}
+
+/* ---- toasts ---------------------------------------------------------------------------------------- */
+.app-toast {
+  position: fixed;
+  bottom: 24px;
+  inset-inline-start: 24px;
+  z-index: 120;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  width: min(380px, calc(100vw - 32px));
+  padding: 14px 16px;
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-md);
+  background: var(--ds-surface);
+  box-shadow: var(--ds-shadow-lg);
+  color: var(--ds-text);
+  text-decoration: none;
+  animation: app-toast-in 320ms var(--ds-ease);
+}
+@keyframes app-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+.app-toast-icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--ds-primary-soft);
+  color: var(--ds-primary-text);
+}
+.app-toast-icon svg {
+  width: 18px;
+  height: 18px;
+}
+.app-toast-text {
+  display: grid;
+  flex: 1;
+  gap: 2px;
+  min-width: 0;
+}
+.app-toast-text small {
+  color: var(--ds-primary-text);
+  font-size: var(--ds-text-xs);
+  font-weight: 700;
+}
+.app-toast-text strong {
+  font-size: var(--ds-text-sm);
+  font-weight: 700;
+}
+.app-toast-text em {
+  overflow: hidden;
+  color: var(--ds-text-muted);
+  font-size: var(--ds-text-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.app-toast-close {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: var(--ds-radius-xs);
+  background: transparent;
+  color: var(--ds-text-muted);
+  cursor: pointer;
+}
+.app-toast-close:hover {
+  background: var(--ds-surface-sunken);
+}
+.app-toast-close svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* ---- phone bottom bar --------------------------------------------------------------------------------- */
+.app-bottom-nav,
+.app-backdrop {
+  display: none;
+}
+
+@media (max-width: 1024px) {
+  .app-frame {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .app-sidebar {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    inset-inline-start: 0;
+    z-index: 95;
+    width: min(300px, 86vw);
+    height: auto;
+    box-shadow: var(--ds-shadow-lg);
+    transform: translateX(105%);
+    visibility: hidden;
+    transition:
+      transform var(--ds-base) var(--ds-ease),
+      visibility var(--ds-base);
+  }
+  .app-sidebar.is-open {
+    transform: none;
+    visibility: visible;
+  }
+  .app-sidebar-close {
+    display: inline-grid;
+  }
+  .app-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 90;
+    display: block;
+    padding: 0;
+    border: 0;
+    background: rgba(8, 24, 17, 0.45);
+    cursor: pointer;
+  }
+  .app-menu {
+    display: inline-grid;
+  }
+  .app-topbar-user > span:last-child {
+    display: none;
+  }
+  .app-topbar-user {
+    padding-inline-start: 0;
+    border: 0;
+  }
+}
+@media (max-width: 720px) {
+  .app-topbar {
+    gap: 10px;
+  }
+  .app-content {
+    padding-bottom: 96px;
+  }
+  .app-bottom-nav {
+    position: fixed;
+    inset-inline: 0;
+    bottom: 0;
+    z-index: 80;
+    display: grid;
+    grid-auto-columns: minmax(0, 1fr);
+    grid-auto-flow: column;
+    padding: 6px 6px calc(6px + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--ds-border);
+    background: color-mix(in srgb, var(--ds-surface) 96%, transparent);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+  .app-bottom-nav :is(a, button) {
+    display: grid;
+    justify-items: center;
+    gap: 3px;
+    min-width: 0;
+    padding: 6px 2px;
+    border: 0;
+    border-radius: var(--ds-radius-sm);
+    background: transparent;
+    color: var(--ds-text-muted);
+    font-family: var(--ds-font-ui);
+    font-size: 11px;
+    font-weight: 500;
+    text-decoration: none;
+    cursor: pointer;
+  }
+  .app-bottom-nav :is(a, button) span {
+    overflow: hidden;
+    max-width: 100%;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .app-bottom-nav svg {
+    width: 21px;
+    height: 21px;
+  }
+  .app-bottom-nav a.is-active {
+    color: var(--ds-primary-text);
+    font-weight: 700;
+  }
+  .app-toast {
+    bottom: 84px;
+    inset-inline: 16px;
+    width: auto;
+  }
+}
+
+/* old shell chrome is no longer rendered — make sure nothing reserves space for it */
+.app-shell .portal-sidebar,
+.app-shell .ops-sidebar,
+.app-shell .mobile-bottom-nav,
+.app-shell .portal-topbar {
+  display: none;
+}

@@ -158,7 +158,7 @@ export function CitizenDashboard() {
   const [serviceSearch, setServiceSearch] = useState('')
   // phones get a short deck (the page is one column there); "عرض المزيد" loads the rest
   const [serviceLimit, setServiceLimit] = useState(() =>
-    typeof window !== 'undefined' && window.innerWidth < 720 ? 8 : 24
+    typeof window !== 'undefined' && window.innerWidth < 720 ? 6 : 9
   )
   const serviceCategories = ['الكل', ...Array.from(new Set(availableServices.map(service => service.category)))]
   const filteredAvailableServices = availableServices.filter(
@@ -172,247 +172,111 @@ export function CitizenDashboard() {
   return (
     <PortalLayout>
       <div className="citizen-v2">
-        <section className="citizen-v2-hero">
-          <div className="citizen-v2-intro">
-            <span className="citizen-v2-kicker">
-              <BadgeCheck /> حساب مواطن محمي
-            </span>
-            <h1>
-              أهلاً {firstName}،<br />
-              <em>ما الخدمة التي تحتاجها اليوم؟</em>
-            </h1>
-            <p>خدماتك وطلباتك وإشعاراتك في مكان واحد، بخطوات واضحة من البداية حتى النتيجة.</p>
-            <div className="citizen-v2-hero-actions">
-              <Link href="#services" className="button primary">
-                <BriefcaseBusiness /> تصفح الخدمات
-              </Link>
-              <Link href="/service/online-appointment" className="button citizen-quiet-button">
-                <CalendarDays /> احجز موعد
-              </Link>
-            </div>
+        <header className="app-page-head">
+          <div>
+            <span className="section-kicker">بوابة المواطن</span>
+            <h1>أهلاً {firstName === 'بك' ? 'بك' : firstName}</h1>
+            <p>خدماتك وطلباتك ووثائقك وإشعاراتك في مكان واحد.</p>
           </div>
-          <aside className="citizen-v2-identity-card">
-            <div className="identity-card-top">
-              <span className="identity-avatar">{firstName.slice(0, 1)}</span>
-              <div>
-                <small>ملف المواطن</small>
-                <strong>{citizen?.fullName || 'جاري تحميل الحساب'}</strong>
-              </div>
-              <BadgeCheck />
-            </div>
-            <div className="identity-card-meta">
-              <span>
-                <small>حالة الهوية</small>
-                <b>
-                  {citizen?.verificationStatus === 'VERIFIED' || citizen?.verificationStatus === 'VERIFIED_MANUAL'
-                    ? 'تمت المراجعة'
-                    : 'قيد المراجعة'}
-                </b>
-              </span>
-              <span>
-                <small>حماية الحساب</small>
-                <b>OTP + جلسة آمنة</b>
-              </span>
-            </div>
-            <Link href="/onboarding" className="identity-card-link">
-              إدارة ملف الهوية <ArrowLeft />
+          <div className="app-page-actions">
+            <Link href="/service/online-appointment" className="button outline">
+              <CalendarDays /> حجز موعد
             </Link>
-          </aside>
-        </section>
-        <nav className="citizen-v2-quick-actions" aria-label="اختصارات المواطن">
-          <Link href="#services">
-            <span>
-              <Plus />
-            </span>
-            <div>
-              <strong>اختر خدمة</strong>
-              <small>كل الخدمات المتاحة</small>
-            </div>
-            <ArrowLeft />
-          </Link>
-          <Link href="/service/online-appointment">
-            <span>
-              <CalendarDays />
-            </span>
-            <div>
-              <strong>حجز موعد</strong>
-              <small>اختر وقتك</small>
-            </div>
-            <ArrowLeft />
-          </Link>
-          <Link href="/citizen/notifications">
-            <span className={unreadNotifications ? 'notification-dot' : ''}>
-              <Bell />
-            </span>
-            <div>
-              <strong>الإشعارات</strong>
-              <small>{unreadNotifications ? `${unreadNotifications.toLocaleString('en-US')} جديد` : 'أنت مطّلع'}</small>
-            </div>
-            <ArrowLeft />
-          </Link>
-          <Link href="/citizen/feedback">
-            <span>
-              <MessageSquareWarning />
-            </span>
-            <div>
-              <strong>شكوى أو مقترح</strong>
-              <small>سجّل طلبك وتابعه</small>
-            </div>
-            <ArrowLeft />
-          </Link>
-        </nav>
-        <section className="citizen-v2-priority-grid">
-          <article className={citizenActionRequired ? 'citizen-priority-card urgent' : 'citizen-priority-card'}>
-            <span className="priority-icon">{citizenActionRequired ? <AlertTriangle /> : <CheckCircle2 />}</span>
+            <Link href="#services" className="button primary">
+              <Plus /> ابدأ خدمة جديدة
+            </Link>
+          </div>
+        </header>
+
+        <section className="cz-overview" aria-label="ملخص الحساب">
+          <article className={citizenActionRequired ? 'cz-attention is-urgent' : 'cz-attention'}>
+            <span className="cz-attention-icon">{citizenActionRequired ? <AlertTriangle /> : <CheckCircle2 />}</span>
             <div>
               <small>{citizenActionRequired ? 'إجراء مطلوب منك' : 'حالة حسابك اليوم'}</small>
               <h2>{citizenActionRequired ? citizenActionRequired.currentAction : 'لا يوجد إجراء مطلوب منك حالياً'}</h2>
               <p>
                 {citizenActionRequired
                   ? `${actionRequired?.serviceName || serviceActionRequired?.serviceName || 'طلب خدمة'} • ${citizenActionRequired.reference}`
-                  : 'توصلك الإشعارات مباشرة عند وصول تحديث جديد من الدائرة.'}
+                  : 'يصلك إشعار فوراً عند وصول أي تحديث من الدائرة.'}
               </p>
             </div>
-            {citizenActionRequired ? (
+            {citizenActionRequired && (
               <Link
                 className="button primary"
                 href={actionRequired ? `/citizen/application/${actionRequired.reference}` : '#general-requests'}
               >
                 إكمال الإجراء <ArrowLeft />
               </Link>
-            ) : (
-              <Link className="button outline" href="#services">
-                ابدأ خدمة <Plus />
-              </Link>
             )}
           </article>
-          <article className="citizen-progress-card">
+          <article className="cz-identity">
+            <span className="cz-identity-avatar">{(citizen?.fullName || 'م').slice(0, 1)}</span>
             <div>
-              <span className="section-kicker">ملخص النشاط</span>
-              <h2>صورة سريعة لحسابك</h2>
-            </div>
-            <div className="progress-stat-row">
-              <span>
-                <b>{activeApplications.length.toLocaleString('en-US')}</b>
-                <small>طلبات جارية</small>
-              </span>
-              <span>
-                <b>{issuedDocuments.length.toLocaleString('en-US')}</b>
-                <small>PDF مؤرشف</small>
-              </span>
-              <span>
-                <b>{serviceRequests.length.toLocaleString('en-US')}</b>
-                <small>طلبات عامة</small>
-              </span>
-            </div>
-          </article>
-        </section>
-        <section className="citizen-v2-services service-catalog-direct" id="services">
-          <header className="citizen-section-heading">
-            <div>
-              <span className="section-kicker">دليل الخدمات الرقمية</span>
-              <h2>اختر خدمتك من القائمة الكاملة</h2>
-              <p>
-                {availableServices.length.toLocaleString('en-US')} خدمة من دوائر المحافظة. كل بطاقة تعرض المستمسكات
-                المطلوبة وتفتح الاستمارة الخاصة بها، والخدمات الوطنية تفتح بوابتها الرسمية فقط.
-              </p>
-            </div>
-            <Link href="/directory">
-              البحث حسب الحاجة <ArrowLeft />
-            </Link>
-          </header>
-          <div className="service-catalog-direct-note">
-            <BriefcaseBusiness />
-            <span>ترفع المستمسكات داخل الاستمارة مباشرةً، ويدقّقها موظف الدائرة المختصة مستمسكاً مستمسكاً.</span>
-          </div>
-          <div className="citizen-service-controls">
-            <label>
-              <Search />
-              <input
-                value={serviceSearch}
-                onChange={event => setServiceSearch(event.target.value)}
-                placeholder="ابحث باسم الخدمة أو الدائرة"
-                aria-label="البحث في خدمات المواطن"
-              />
-            </label>
-            <nav aria-label="تصفية الخدمات حسب القطاع">
-              {serviceCategories.map(category => (
-                <button
-                  type="button"
-                  className={serviceCategory === category ? 'active' : ''}
-                  onClick={() => setServiceCategory(category)}
-                  key={category}
-                >
-                  {category}
-                </button>
-              ))}
-            </nav>
-            <small>{filteredAvailableServices.length.toLocaleString('en-US')} خدمة مطابقة</small>
-          </div>
-          {filteredAvailableServices.length ? (
-            <div className="citizen-service-deck">
-              {shownServices.map(service => {
-                const mode = service.mode
-                return (
-                  <Link
-                    href={`/service/${service.key}`}
-                    className={`citizen-service-card ${mode === 'SPECIALIZED' ? 'featured' : ''}`}
-                    key={service.key}
-                  >
-                    <div>
-                      <span className="service-card-icon">
-                        <BriefcaseBusiness />
-                      </span>
-                      <small>{service.department}</small>
-                    </div>
-                    <span className="service-card-category">{service.category}</span>
-                    <h3>{service.title}</h3>
-                    <p>{service.description}</p>
-                    <footer>
-                      <span>
-                        {mode === 'EXTERNAL' || service.channel === 'INFORMATION_ONLY'
-                          ? 'التفاصيل والرابط الرسمي'
-                          : mode === 'APPOINTMENT'
-                            ? 'طلب موعد'
-                            : service.channel === 'APPOINTMENT_REQUIRED'
-                              ? 'تقديم إلكتروني ثم حضور'
-                              : 'فتح الاستمارة'}
-                      </span>
-                      <ArrowLeft />
-                    </footer>
-                  </Link>
-                )
-              })}
-              {filteredAvailableServices.length > serviceLimit && (
-                <button
-                  className="button outline citizen-service-more"
-                  type="button"
-                  onClick={() => setServiceLimit(value => value + 24)}
-                >
-                  عرض المزيد ({(filteredAvailableServices.length - serviceLimit).toLocaleString('en-US')})
-                </button>
+              <small>ملف المواطن</small>
+              <strong>{citizen?.fullName || 'جاري تحميل الحساب…'}</strong>
+              {citizen?.verificationStatus === 'VERIFIED' || citizen?.verificationStatus === 'VERIFIED_MANUAL' ? (
+                <span className="tq-badge is-success">
+                  <BadgeCheck /> هوية موثّقة
+                </span>
+              ) : (
+                <span className="tq-badge is-warning">التوثيق قيد المراجعة</span>
               )}
             </div>
-          ) : (
-            <div className="citizen-empty service-filter-empty">
-              <Search />
-              <div>
-                <strong>لا توجد خدمة مطابقة</strong>
-                <span>جرّب اسماً آخر أو اختر قطاعاً مختلفاً.</span>
-              </div>
-              <button
-                className="button outline"
-                type="button"
-                onClick={() => {
-                  setServiceSearch('')
-                  setServiceCategory('الكل')
-                }}
-              >
-                إعادة تعيين
-              </button>
+            <Link href="/onboarding" className="gov-link">
+              ملف الهوية <ArrowLeft size={14} />
+            </Link>
+          </article>
+          <dl className="cz-stats">
+            <div>
+              <dt>طلبات جارية</dt>
+              <dd>
+                {(
+                  activeApplications.length +
+                  serviceRequests.filter(item => !['APPROVED', 'REJECTED'].includes(item.status)).length
+                ).toLocaleString('en-US')}
+              </dd>
             </div>
-          )}
+            <div>
+              <dt>وثائق مؤرشفة</dt>
+              <dd>{issuedDocuments.length.toLocaleString('en-US')}</dd>
+            </div>
+            <div>
+              <dt>إشعارات جديدة</dt>
+              <dd>{unreadNotifications.toLocaleString('en-US')}</dd>
+            </div>
+          </dl>
         </section>
+
+        <nav className="cz-shortcuts" aria-label="اختصارات المواطن">
+          <Link href="#services">
+            <span>
+              <BriefcaseBusiness />
+            </span>
+            <strong>الخدمات</strong>
+            <small>كل الخدمات المتاحة</small>
+          </Link>
+          <Link href="#my-requests">
+            <span>
+              <FileText />
+            </span>
+            <strong>معاملاتي</strong>
+            <small>تابع حالة طلباتك</small>
+          </Link>
+          <Link href="#issued-documents">
+            <span>
+              <FileArchive />
+            </span>
+            <strong>وثائقي</strong>
+            <small>ملفات PDF المعتمدة</small>
+          </Link>
+          <Link href="/citizen/feedback">
+            <span>
+              <MessageSquareWarning />
+            </span>
+            <strong>شكوى أو مقترح</strong>
+            <small>سجّل طلبك وتابعه</small>
+          </Link>
+        </nav>
         <section className="citizen-v2-workspace" id="my-requests">
           <article className="citizen-workspace-card">
             <header className="citizen-section-heading compact">
@@ -547,6 +411,112 @@ export function CitizenDashboard() {
               </div>
             )}
           </aside>
+        </section>
+        <section className="citizen-v2-services service-catalog-direct" id="services">
+          <header className="citizen-section-heading">
+            <div>
+              <span className="section-kicker">دليل الخدمات الرقمية</span>
+              <h2>اختر خدمتك من القائمة الكاملة</h2>
+              <p>
+                {availableServices.length.toLocaleString('en-US')} خدمة من دوائر المحافظة. كل بطاقة تعرض المستمسكات
+                المطلوبة وتفتح الاستمارة الخاصة بها، والخدمات الوطنية تفتح بوابتها الرسمية فقط.
+              </p>
+            </div>
+            <Link href="/directory">
+              البحث حسب الحاجة <ArrowLeft />
+            </Link>
+          </header>
+          <div className="service-catalog-direct-note">
+            <BriefcaseBusiness />
+            <span>ترفع المستمسكات داخل الاستمارة مباشرةً، ويدقّقها موظف الدائرة المختصة مستمسكاً مستمسكاً.</span>
+          </div>
+          <div className="citizen-service-controls">
+            <label>
+              <Search />
+              <input
+                value={serviceSearch}
+                onChange={event => setServiceSearch(event.target.value)}
+                placeholder="ابحث باسم الخدمة أو الدائرة"
+                aria-label="البحث في خدمات المواطن"
+              />
+            </label>
+            <nav aria-label="تصفية الخدمات حسب القطاع">
+              {serviceCategories.map(category => (
+                <button
+                  type="button"
+                  className={serviceCategory === category ? 'active' : ''}
+                  onClick={() => setServiceCategory(category)}
+                  key={category}
+                >
+                  {category}
+                </button>
+              ))}
+            </nav>
+            <small>{filteredAvailableServices.length.toLocaleString('en-US')} خدمة مطابقة</small>
+          </div>
+          {filteredAvailableServices.length ? (
+            <div className="citizen-service-deck">
+              {shownServices.map(service => {
+                const mode = service.mode
+                return (
+                  <Link
+                    href={`/service/${service.key}`}
+                    className={`citizen-service-card ${mode === 'SPECIALIZED' ? 'featured' : ''}`}
+                    key={service.key}
+                  >
+                    <div>
+                      <span className="service-card-icon">
+                        <BriefcaseBusiness />
+                      </span>
+                      <small>{service.department}</small>
+                    </div>
+                    <span className="service-card-category">{service.category}</span>
+                    <h3>{service.title}</h3>
+                    <p>{service.description}</p>
+                    <footer>
+                      <span>
+                        {mode === 'EXTERNAL' || service.channel === 'INFORMATION_ONLY'
+                          ? 'التفاصيل والرابط الرسمي'
+                          : mode === 'APPOINTMENT'
+                            ? 'طلب موعد'
+                            : service.channel === 'APPOINTMENT_REQUIRED'
+                              ? 'تقديم إلكتروني ثم حضور'
+                              : 'فتح الاستمارة'}
+                      </span>
+                      <ArrowLeft />
+                    </footer>
+                  </Link>
+                )
+              })}
+              {filteredAvailableServices.length > serviceLimit && (
+                <button
+                  className="button outline citizen-service-more"
+                  type="button"
+                  onClick={() => setServiceLimit(value => value + 12)}
+                >
+                  عرض المزيد ({(filteredAvailableServices.length - serviceLimit).toLocaleString('en-US')})
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="citizen-empty service-filter-empty">
+              <Search />
+              <div>
+                <strong>لا توجد خدمة مطابقة</strong>
+                <span>جرّب اسماً آخر أو اختر قطاعاً مختلفاً.</span>
+              </div>
+              <button
+                className="button outline"
+                type="button"
+                onClick={() => {
+                  setServiceSearch('')
+                  setServiceCategory('الكل')
+                }}
+              >
+                إعادة تعيين
+              </button>
+            </div>
+          )}
         </section>
         <section className="citizen-issued-documents" id="issued-documents">
           <header className="citizen-section-heading compact">
