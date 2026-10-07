@@ -98,7 +98,8 @@ export function getRegistryDepartments() {
       rejected: 0,
     }
     current.total += count
-    if (status === 'UNDER_REVIEW') current.underReview += count
+    // anything waiting on the department (new, under review, appointment request) is open work for it
+    if (status === 'UNDER_REVIEW' || status === 'SUBMITTED' || status === 'APPOINTMENT_REQUESTED') current.underReview += count
     if (status === 'ACTION_REQUIRED') current.actionRequired += count
     if (status === 'APPROVED') current.completed += count
     if (status === 'REJECTED') current.rejected += count
@@ -110,10 +111,10 @@ export function getRegistryDepartments() {
     .all() as Array<{ department_id: string; status: string; total: number }>
   serviceRows.forEach(row => register(String(row.department_id), String(row.status), Number(row.total)))
   const applicationRows = db
-    .prepare('SELECT department, status, COUNT(*) AS total FROM applications GROUP BY department, status')
-    .all() as Array<{ department: string; status: string; total: number }>
+    .prepare('SELECT department_id, department, status, COUNT(*) AS total FROM applications GROUP BY department_id, department, status')
+    .all() as Array<{ department_id: string | null; department: string; status: string; total: number }>
   applicationRows.forEach(row => {
-    const departmentId = registryByName.get(String(row.department))
+    const departmentId = row.department_id || registryByName.get(String(row.department))
     if (departmentId) register(departmentId, String(row.status), Number(row.total))
   })
   const feedbackRows = db

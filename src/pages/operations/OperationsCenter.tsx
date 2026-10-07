@@ -124,7 +124,7 @@ export function OperationsCenter() {
           </span>
           <small>متوسط الإنجاز</small>
           <strong>{stats.avgProcessingHours ? `${stats.avgProcessingHours} س` : '—'}</strong>
-          <em>يتطلب SLA</em>
+          <em>للطلبات المنجزة</em>
         </div>
         <div>
           <span>
@@ -270,13 +270,35 @@ export function OperationsCenter() {
             </div>
             <Bell />
           </div>
-          <div className="alert-item medium">
-            <Activity />
-            <span>
-              <strong>تهيئة مراقبة الأداء مطلوبة</strong>
-              <small>لا تُعرض تنبيهات SLA أو أزمنة استجابة قبل ربط مصدر قياس معتمد.</small>
-            </span>
-          </div>
+          {(stats.unstaffedDepartments || []).map(department => (
+            <div className="alert-item high" key={department.id}>
+              <UsersRound />
+              <span>
+                <strong>دائرة بلا موظف مفعّل: {department.name}</strong>
+                <small>
+                  {department.open.toLocaleString('en-GB')} طلب مفتوح بانتظار المعالجة — أنشئ حساب موظف لهذه الدائرة من لوحة
+                  المشرف العام.
+                </small>
+              </span>
+            </div>
+          ))}
+          {stats.overdue > 0 ? (
+            <div className="alert-item high">
+              <Clock3 />
+              <span>
+                <strong>{stats.overdue.toLocaleString('en-GB')} طلب متأخر</strong>
+                <small>طلبات مفتوحة منذ أكثر من 7 أيام دون قرار من الدائرة المختصة.</small>
+              </span>
+            </div>
+          ) : (
+            <div className="alert-item low">
+              <Activity />
+              <span>
+                <strong>لا توجد طلبات متأخرة</strong>
+                <small>كل الطلبات المفتوحة عمرها أقل من 7 أيام.</small>
+              </span>
+            </div>
+          )}
           {paymentMode !== 'LIVE' && (
             <div className="alert-item low">
               <CircleDollarSign />

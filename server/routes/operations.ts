@@ -156,16 +156,48 @@ export function registerOperationsRoutes(app: express.Express) {
       }
     })
     const complaints = departments.reduce((total, department) => total + department.openFeedback, 0)
+    // open work that has waited more than a week without a department decision
+    const overdueSince = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+    const overdue = db
+      .prepare(
+        `SELECT COUNT(*) AS total FROM (
+      SELECT created_at FROM applications WHERE status IN ('SUBMITTED', 'UNDER_REVIEW')
+      UNION ALL
+      SELECT created_at FROM service_requests WHERE status IN ('SUBMITTED', 'UNDER_REVIEW', 'APPOINTMENT_REQUESTED')
+    ) WHERE created_at < ?`
+      )
+      .get(overdueSince) as { total: number }
+    const avgHours = db
+      .prepare(
+        `SELECT AVG((julianday(updated_at) - julianday(created_at)) * 24) AS hours FROM (
+      SELECT created_at, updated_at FROM applications WHERE status = 'APPROVED'
+      UNION ALL
+      SELECT created_at, updated_at FROM service_requests WHERE status = 'APPROVED'
+    )`
+      )
+      .get() as { hours: number | null }
+    // departments receiving citizen work but with no active employee account to handle it
+    const staffed = new Set(
+      (
+        db
+          .prepare(`SELECT DISTINCT department_id FROM staff_accounts WHERE role = 'EMPLOYEE' AND status = 'ACTIVE'`)
+          .all() as Array<{ department_id: string | null }>
+      ).map(row => String(row.department_id))
+    )
+    const unstaffed = departments
+      .filter(department => department.underReview + department.actionRequired > 0 && !staffed.has(department.id))
+      .map(department => ({ id: department.id, name: department.name, open: department.underReview + department.actionRequired }))
     res.json({
       todayApplications: byDay.get(new Date().toISOString().slice(0, 10))?.applications || 0,
       completed: dynamic.completed,
-      overdue: 0,
+      overdue: overdue.total,
       activeCitizens: activeCitizens.total,
       activeEmployees: activeEmployees.total,
       departmentsOnline: registrySummary.verified,
       financialCollection: payments.collected,
       complaints,
-      avgProcessingHours: 0,
+      avgProcessingHours: avgHours.hours ? Math.round(avgHours.hours * 10) / 10 : 0,
+      unstaffedDepartments: unstaffed,
       automationRate: 0,
       series,
       departments,

@@ -292,6 +292,8 @@ export interface DashboardStats {
   complaints: number
   avgProcessingHours: number
   automationRate: number
+  /** departments with open citizen work but no active employee account */
+  unstaffedDepartments?: Array<{ id: string; name: string; open: number }>
   series: Array<{ day: string; applications: number; completed: number }>
   departments: Array<{
     id: string | number

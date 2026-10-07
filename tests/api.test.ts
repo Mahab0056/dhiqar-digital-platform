@@ -421,6 +421,18 @@ describe('catalog-driven online services', () => {
     expect(item.checklist.find((doc: { key: string }) => doc.key === 'transaction-ref').status).toBe('MISSING')
   })
 
+  it('counts the new request as open work for the department and the operations room', async () => {
+    const stats = await request(app).get('/api/dashboard/stats').set('Cookie', admin)
+    expect(stats.status).toBe(200)
+    const municipality = stats.body.departments.find((item: { id: string }) => item.id === 'dhiqar-municipalities')
+    expect(municipality.underReview).toBeGreaterThan(0)
+    expect(typeof stats.body.overdue).toBe('number')
+    // the municipality has an active employee, so it must not be flagged as unstaffed
+    expect(
+      stats.body.unstaffedDepartments.some((item: { id: string }) => item.id === 'dhiqar-municipalities')
+    ).toBe(false)
+  })
+
   it('scopes the employee queue to the employee department', async () => {
     otherDepartmentEmployee = await createStaff('EMPLOYEE', 'emp.health', 'dhiqar-health')
     const own = await request(app).get('/api/employee/service-requests').set('Cookie', employee)
