@@ -38,3 +38,4 @@ qa-screens/
 
 # agent worktrees (local only)
 .claude/worktrees/
+.qa-tmp/

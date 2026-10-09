@@ -12,9 +12,11 @@ export const categoryIconLabel = (category: string) => category.split(' ')[0]
 
 export function DepartmentsDirectoryPage() {
   const [data, setData] = useState<DepartmentDirectoryResponse | null>(null)
-  const [query, setQuery] = useState('')
-  const [category, setCategory] = useState('')
-  const [district, setDistrict] = useState('')
+  // filters can arrive in the link (the home page opens a district with ?district=)
+  const [initial] = useState(() => new URLSearchParams(window.location.search))
+  const [query, setQuery] = useState(() => initial.get('q') || '')
+  const [category, setCategory] = useState(() => initial.get('category') || '')
+  const [district, setDistrict] = useState(() => initial.get('district') || '')
   const [error, setError] = useState('')
 
   useEffect(() => {

@@ -34,7 +34,11 @@ const plausibleName = (value: string) => {
 export function OnboardingPage() {
   const [, navigate] = useLocation()
   const requestedContinuePath = new URLSearchParams(window.location.search).get('continue') || ''
-  const continuePath = requestedContinuePath.startsWith('/service/') ? requestedContinuePath : '/citizen'
+  // after sign-in the citizen returns to the service they opened, or to the request they wanted to track
+  const continuePath =
+    requestedContinuePath.startsWith('/service/') || requestedContinuePath.startsWith('/citizen/request/')
+      ? requestedContinuePath
+      : '/citizen'
   const [step, setStep] = useState(1)
   const [phone, setPhone] = useState('')
   const [otp, setOtp] = useState('')
