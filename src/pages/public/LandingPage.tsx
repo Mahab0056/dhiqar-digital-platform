@@ -9,14 +9,24 @@ import {
   LandingJourney,
   LandingOperations,
 } from '../../components/home/Landing'
+import {
+  LandingAssistant,
+  LandingDepartment,
+  LandingServices,
+  LandingStart,
+} from '../../components/home/LandingStory'
 import { MotionPrefProvider, useMotionPrefState } from '../../components/home/motion-pref'
 
 // the story, in scroll order — also drives the side dots
 const SCENES = [
   { id: 'top', label: 'البداية' },
+  { id: 'services', label: 'كل خدماتك بمكان واحد' },
   { id: 'journey', label: 'من الطلب إلى الإنجاز' },
+  { id: 'department', label: 'كل دائرة تعرف المطلوب' },
   { id: 'operations', label: 'المحافظة أمامك' },
+  { id: 'assistant', label: 'مساعدة ذكية' },
   { id: 'how', label: 'شوف شلون تشتغل' },
+  { id: 'start', label: 'ابدأ الآن' },
 ]
 
 export function LandingPage() {
@@ -44,9 +54,13 @@ export function LandingPage() {
         <LandingHeader />
         <main id="main-content">
           <LandingHero />
+          <LandingServices />
           <LandingJourney />
+          <LandingDepartment />
           <LandingOperations />
+          <LandingAssistant />
           <LandingHow />
+          <LandingStart />
         </main>
         <LandingFooter />
 

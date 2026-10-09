@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 import { Link } from 'wouter'
-import { motion, useScroll, useTransform } from 'framer-motion'
+import { AnimatePresence, motion, useScroll, useTransform } from 'framer-motion'
 import {
   ArrowLeft,
   BarChart3,
@@ -47,11 +47,11 @@ export function LandingHeader() {
       </a>
       <div className="ld-wrap ld-header-row">
         <Link href="/" className="ld-brand" aria-label="ذي قار الرقمية — الصفحة الرئيسية">
-          <img src="/brand/home/tq-letters.png" alt="" width={40} height={28} />
+          <img src="/brand/dhiqar-unified-logo.png" alt="" width={36} height={36} />
           <span>ذي قار الرقمية</span>
         </Link>
         <nav className="ld-nav" aria-label="التنقل الرئيسي">
-          <a href="#journey">عن المنصة</a>
+          <a href="#services">عن المنصة</a>
           <Link href="/directory">الخدمات</Link>
           <a href="#how">كيف تعمل</a>
         </nav>
@@ -137,7 +137,7 @@ export function LandingHero() {
             <Link href="/onboarding" className="ld-btn is-light">
               ابدأ معاملتك <ArrowLeft aria-hidden="true" />
             </Link>
-            <a href="#journey" className="ld-btn is-text">
+            <a href="#services" className="ld-btn is-text">
               استكشف المنصة
             </a>
           </div>
@@ -189,7 +189,7 @@ export function LandingHero() {
         </motion.div>
       </div>
 
-      <a href="#journey" className="ld-cue">
+      <a href="#services" className="ld-cue">
         اكتشف أكثر <ChevronDown aria-hidden="true" />
       </a>
     </section>
@@ -197,18 +197,42 @@ export function LandingHero() {
 }
 
 /* ============================================================================================
-   From request to completion — a sticky scene: the form card changes state as the page scrolls
+   From request to completion — a pinned scene: the request card walks through the nine real
+   stages of an application while the page scrolls; three phases on the side, as in the mockup
    ============================================================================================ */
-const STEPS = [
-  { title: 'اختر خدمتك', text: 'حدد الخدمة من بين خدمات الدوائر.' },
-  { title: 'ارفع مستمسكاتك', text: 'أرفق المستندات المطلوبة بسهولة.' },
-  { title: 'تابع معاملتك', text: 'احصل على إشعارات بكل مرحلة.' },
+type JourneyStage = { title: string; note?: string }
+const STAGES: JourneyStage[] = [
+  { title: 'اختيار الخدمة' },
+  { title: 'تعبئة البيانات' },
+  { title: 'رفع المستمسكات' },
+  { title: 'إرسال الطلب' },
+  { title: 'تدقيق الموظف' },
+  { title: 'استكمال النواقص', note: 'عند الحاجة فقط' },
+  { title: 'الموافقة' },
+  { title: 'الدفع', note: 'حسب الخدمة وعند توفر الربط' },
+  { title: 'إصدار الوثيقة والتحقق عبر QR' },
 ]
+const PHASES = [
+  { title: 'اختر خدمتك', text: 'حدد الخدمة من بين خدمات الدوائر.', from: 0, to: 1 },
+  { title: 'ارفع مستمسكاتك', text: 'أرفق المستندات المطلوبة بسهولة.', from: 2, to: 3 },
+  { title: 'تابع معاملتك', text: 'احصل على إشعارات بكل مرحلة.', from: 4, to: 8 },
+]
+const phaseOf = (stage: number) => PHASES.findIndex(phase => stage >= phase.from && stage <= phase.to)
+// what the citizen's notification feed says once the request has left their hands
+const NOTICES: Array<{ icon: typeof Check; title: string; text: string; tone?: string }> = [
+  { icon: Check, title: 'تم استلام الطلب', text: 'سيتم إشعارك بمستجدات المعاملة عبر حسابك في المنصة.' },
+  { icon: UserRound, title: 'طلبك قيد التدقيق', text: 'الموظف المختص في بلدية الناصرية يدقق المستمسكات.' },
+  { icon: Bell, title: 'مطلوب استكمال', text: 'صورة بطاقة السكن غير واضحة. ارفعها من نفس الطلب.', tone: 'is-warn' },
+  { icon: Check, title: 'تمت الموافقة', text: 'اعتمد الموظف المخوّل الطلب وسُجّل القرار باسمه.' },
+  { icon: Check, title: 'تم الدفع', text: 'وصل رسمي إلكتروني برقم TQP-2026-1182.' },
+  { icon: Check, title: 'وثيقتك جاهزة', text: 'نزّلها PDF، وأي جهة تتحقق منها عبر رمز QR.' },
+]
+const noticeFor = (stage: number) => (stage < 3 ? null : NOTICES[Math.min(stage - 3, NOTICES.length - 1)])
 
 export function LandingJourney() {
   const ref = useRef<HTMLElement>(null)
   const { still } = useMotionPref()
-  const [stage, setStage] = useState(1)
+  const [stage, setStage] = useState(2)
   const [sticky, setSticky] = useState(false)
 
   // the scroll-linked version only on wide screens with motion on; phones get a plain section
@@ -220,7 +244,7 @@ export function LandingJourney() {
     return () => query.removeEventListener('change', update)
   }, [still])
 
-  // stage follows how far the visitor has scrolled through the pinned section
+  // pinned: the stage follows how far the visitor has scrolled through the section
   useEffect(() => {
     if (!sticky) return
     let frame = 0
@@ -232,7 +256,7 @@ export function LandingJourney() {
         const travel = section.offsetHeight - window.innerHeight
         const progress = Math.min(1, Math.max(0, travel > 0 ? -section.getBoundingClientRect().top / travel : 0))
         section.style.setProperty('--p', progress.toFixed(3))
-        setStage(progress < 0.3 ? 0 : progress < 0.66 ? 1 : 2)
+        setStage(Math.min(STAGES.length - 1, Math.floor(progress * STAGES.length)))
       })
     }
     update()
@@ -245,13 +269,36 @@ export function LandingJourney() {
     }
   }, [sticky])
 
+  // phones: the card plays through the stages on its own while it is on screen
+  useEffect(() => {
+    const section = ref.current
+    if (sticky || still || !section) return
+    let timer = 0
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        window.clearInterval(timer)
+        if (entry.isIntersecting)
+          timer = window.setInterval(() => setStage(current => (current + 1) % STAGES.length), 2600)
+      },
+      { threshold: 0.35 }
+    )
+    observer.observe(section)
+    return () => {
+      observer.disconnect()
+      window.clearInterval(timer)
+    }
+  }, [sticky, still])
+
   const choose = (index: number) => {
     setStage(index)
     const section = ref.current
     if (!sticky || !section) return
     const travel = section.offsetHeight - window.innerHeight
-    window.scrollTo({ top: section.offsetTop + travel * [0.15, 0.48, 0.85][index], behavior: 'smooth' })
+    window.scrollTo({ top: section.offsetTop + (travel * (index + 0.5)) / STAGES.length, behavior: 'smooth' })
   }
+
+  const phase = phaseOf(stage)
+  const notice = noticeFor(stage)
 
   return (
     <section
@@ -259,7 +306,7 @@ export function LandingJourney() {
       id="journey"
       ref={ref}
       aria-labelledby="ld-journey-title"
-      style={sticky ? undefined : css({ '--p': stage / 2 })}
+      style={sticky ? undefined : css({ '--p': stage / (STAGES.length - 1) })}
     >
       <div className="ld-journey-stage">
         <div className="ld-wrap ld-journey-grid">
@@ -274,19 +321,28 @@ export function LandingJourney() {
             </h2>
             <p>خطوات واضحة، ومتابعة بكل مرحلة.</p>
             <ol className="ld-steps">
-              {STEPS.map((step, index) => (
-                <li key={step.title} className={index === stage ? 'is-on' : index < stage ? 'is-done' : ''}>
+              {PHASES.map((item, index) => (
+                <li key={item.title} className={index === phase ? 'is-on' : index < phase ? 'is-done' : ''}>
                   <button
                     type="button"
-                    onClick={() => choose(index)}
-                    aria-current={index === stage ? 'step' : undefined}
+                    onClick={() => choose(item.from)}
+                    aria-current={index === phase ? 'step' : undefined}
                   >
                     <span className="ld-step-num">
-                      {index < stage ? <Check aria-hidden="true" /> : (index + 1).toLocaleString('ar-IQ')}
+                      {index < phase ? <Check aria-hidden="true" /> : (index + 1).toLocaleString('ar-IQ')}
                     </span>
                     <span className="ld-step-text">
-                      <b>{step.title}</b>
-                      <small>{step.text}</small>
+                      <b>{item.title}</b>
+                      <small>{item.text}</small>
+                      {index === phase && (
+                        <span className="ld-substage" aria-live="polite">
+                          <i>
+                            {(stage + 1).toLocaleString('ar-IQ')} / {STAGES.length.toLocaleString('ar-IQ')}
+                          </i>
+                          {STAGES[stage].title}
+                          {STAGES[stage].note && <em>{STAGES[stage].note}</em>}
+                        </span>
+                      )}
                     </span>
                   </button>
                 </li>
@@ -295,76 +351,233 @@ export function LandingJourney() {
           </div>
 
           <div className="ld-journey-visual" data-stage={stage} aria-hidden="true">
-            <div className="ld-receipt">
-              <span className="ld-receipt-check">
-                <Check />
-              </span>
-              <b>تم استلام الطلب</b>
-              <p>سيتم إشعارك بمستجدات المعاملة عبر حسابك في المنصة.</p>
+            <div className={`ld-receipt${notice ? ' is-live' : ''} ${notice?.tone ?? ''}`}>
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.div
+                  key={notice?.title ?? 'idle'}
+                  className="ld-receipt-body"
+                  initial={still ? false : { opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={still ? undefined : { opacity: 0, y: -8 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  <span className="ld-receipt-check">{notice ? <notice.icon /> : <Bell />}</span>
+                  <b>{notice ? notice.title : 'إشعارات طلبك'}</b>
+                  <p>{notice ? notice.text : 'كل مرحلة يوصلك عنها إشعار، بدون مراجعة أو اتصال.'}</p>
+                </motion.div>
+              </AnimatePresence>
               <span className="ld-receipt-ref">TQD-2026-0418</span>
               <span className="ld-fake-btn">متابعة الطلب</span>
               <ul>
-                <li />
-                <li />
-                <li />
+                {[0, 1, 2].map(index => (
+                  <li key={index} className={stage >= 4 + index * 2 ? 'is-done' : ''} />
+                ))}
               </ul>
             </div>
 
             <div className="ld-form">
               <div className="ld-form-head">
                 <b>طلب خدمة</b>
-                <i aria-hidden="true" />
+                <span className="ld-form-ref">{stage >= 3 ? 'TQD-2026-0418' : 'مسودة'}</span>
               </div>
               <ol className="ld-stepper">
-                {['اختيار الخدمة', 'رفع المستمسكات', 'إرسال الطلب'].map((label, index) => (
-                  <li key={label} className={index === stage ? 'is-on' : index < stage ? 'is-done' : ''}>
-                    <span>{index < stage ? <Check /> : (index + 1).toLocaleString('ar-IQ')}</span>
+                {['اختيار الخدمة', 'رفع المستمسكات', 'متابعة الطلب'].map((label, index) => (
+                  <li key={label} className={index === phase ? 'is-on' : index < phase ? 'is-done' : ''}>
+                    <span>{index < phase ? <Check /> : (index + 1).toLocaleString('ar-IQ')}</span>
                     {label}
                   </li>
                 ))}
               </ol>
-              <label className={`ld-field${stage === 0 ? ' is-focus' : ''}`}>
-                <small>نوع الخدمة</small>
-                <span>
-                  إصدار هوية سكنية <ChevronDown />
-                </span>
-              </label>
-              <label className="ld-field">
-                <small>الجهة المستفيدة</small>
-                <span>
-                  مديرية بلدية الناصرية <ChevronDown />
-                </span>
-              </label>
-              <div className="ld-field">
-                <small>المستمسكات المطلوبة</small>
-                <div className={`ld-doc${stage >= 1 ? ' is-up' : ''}`}>
-                  <span className="ld-pdf">PDF</span>
-                  <span className="ld-doc-text">
-                    <b>هوية الأحوال المدنية pdf</b>
-                    <small>{stage >= 1 ? 'تم الرفع بنجاح' : 'بانتظار الرفع'}</small>
-                  </span>
-                  <span className="ld-doc-check">
-                    <Check />
-                  </span>
-                  <i className="ld-doc-bar" />
-                </div>
+              <div className="ld-form-rail">
+                {STAGES.map((item, index) => (
+                  <i key={item.title} className={index < stage ? 'is-done' : index === stage ? 'is-on' : ''} />
+                ))}
               </div>
-              <span className={`ld-submit${stage === 2 ? ' is-sent' : ''}`}>
-                {stage === 2 ? (
-                  <>
-                    <Check /> تم إرسال الطلب
-                  </>
-                ) : (
-                  <>
-                    إرسال الطلب <ArrowLeft />
-                  </>
-                )}
-              </span>
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.div
+                  key={stage}
+                  className="ld-form-body"
+                  initial={still ? false : { opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={still ? undefined : { opacity: 0, y: -12 }}
+                  transition={{ duration: 0.32, ease: [0.2, 0.8, 0.2, 1] }}
+                >
+                  <StageScreen stage={stage} />
+                </motion.div>
+              </AnimatePresence>
             </div>
           </div>
         </div>
       </div>
     </section>
+  )
+}
+
+const Field = ({ label, value, focus, mark }: { label: string; value: string; focus?: boolean; mark?: string }) => (
+  <div className={`ld-field${focus ? ' is-focus' : ''}`}>
+    <small>{label}</small>
+    <span>
+      {value}
+      {mark ? <em className="ld-field-mark">{mark}</em> : <ChevronDown />}
+    </span>
+  </div>
+)
+const DocRow = ({ name, state }: { name: string; state: 'up' | 'ok' | 'bad' }) => (
+  <div className={`ld-doc is-${state}`}>
+    <span className="ld-pdf">PDF</span>
+    <span className="ld-doc-text">
+      <b>{name}</b>
+      <small>{state === 'ok' ? 'تم الرفع بنجاح' : state === 'up' ? 'جاري الرفع…' : 'الصورة غير واضحة'}</small>
+    </span>
+    <span className="ld-doc-check">{state === 'bad' ? <Info /> : <Check />}</span>
+    <i className="ld-doc-bar" />
+  </div>
+)
+
+function StageScreen({ stage }: { stage: number }) {
+  switch (stage) {
+    case 0:
+      return (
+        <>
+          <Field label="ابحث عن خدمة" value="هوية سكن" focus mark="بحث" />
+          <ul className="ld-results">
+            <li className="is-on">
+              <b>إصدار هوية سكنية</b>
+              <small>مديرية بلدية الناصرية · إلكترونية</small>
+            </li>
+            <li>
+              <b>نقل بطاقة السكن</b>
+              <small>الأحوال المدنية · إلكترونية + حضور</small>
+            </li>
+            <li>
+              <b>تحديث عنوان السكن</b>
+              <small>الأحوال المدنية · إلكترونية</small>
+            </li>
+          </ul>
+        </>
+      )
+    case 1:
+      return (
+        <>
+          <Field label="نوع الخدمة" value="إصدار هوية سكنية" />
+          <Field label="الجهة المستفيدة" value="مديرية بلدية الناصرية" />
+          <Field label="الاسم الكامل" value="من حسابك الموثّق" focus mark="✓ تلقائي" />
+        </>
+      )
+    case 2:
+      return (
+        <>
+          <Field label="نوع الخدمة" value="إصدار هوية سكنية" />
+          <small className="ld-label">المستمسكات المطلوبة</small>
+          <DocRow name="هوية الأحوال المدنية pdf" state="ok" />
+          <DocRow name="بطاقة السكن pdf" state="up" />
+        </>
+      )
+    case 3:
+      return (
+        <>
+          <Field label="نوع الخدمة" value="إصدار هوية سكنية" />
+          <DocRow name="هوية الأحوال المدنية pdf" state="ok" />
+          <span className="ld-submit is-sent">
+            <Check /> تم إرسال الطلب
+          </span>
+          <p className="ld-hint">وصل إلى مديرية بلدية الناصرية — قسم الإجازات.</p>
+        </>
+      )
+    case 4:
+      return (
+        <div className="ld-status">
+          <span className="ld-pill is-wait">قيد التدقيق</span>
+          <b>الموظف المختص يدقق طلبك</b>
+          <ul className="ld-checks">
+            <li className="is-done">
+              <Check /> البيانات مطابقة للهوية
+            </li>
+            <li className="is-done">
+              <Check /> هوية الأحوال المدنية واضحة
+            </li>
+            <li className="is-run">بطاقة السكن…</li>
+          </ul>
+        </div>
+      )
+    case 5:
+      return (
+        <div className="ld-status">
+          <span className="ld-pill is-warn">مطلوب استكمال</span>
+          <b>صورة بطاقة السكن غير واضحة</b>
+          <DocRow name="بطاقة السكن pdf" state="bad" />
+          <span className="ld-submit is-ghost">
+            إعادة الرفع من نفس الطلب <ArrowLeft />
+          </span>
+        </div>
+      )
+    case 6:
+      return (
+        <div className="ld-status is-center">
+          <span className="ld-big-check">
+            <Check />
+          </span>
+          <b>تمت الموافقة</b>
+          <small>القرار من الموظف المخوّل · مسجّل باسمه ووقته</small>
+        </div>
+      )
+    case 7:
+      return (
+        <div className="ld-status">
+          <span className="ld-pill is-info">رسم الخدمة</span>
+          <div className="ld-amount">
+            ٢٥٬٠٠٠ <small>د.ع</small>
+          </div>
+          <span className="ld-submit">
+            ادفع إلكترونياً <ArrowLeft />
+          </span>
+          <p className="ld-hint">يظهر فقط للخدمات اللي بيها رسوم وبعد تفعيل بوابة الدفع.</p>
+        </div>
+      )
+    default:
+      return (
+        <div className="ld-issued">
+          <div>
+            <span className="ld-pill is-ok">صادرة</span>
+            <b>هوية سكنية</b>
+            <small>وثيقة PDF رسمية</small>
+            <span className="ld-submit is-small">
+              تنزيل الوثيقة <ArrowLeft />
+            </span>
+          </div>
+          <QrMark />
+        </div>
+      )
+  }
+}
+
+// a decorative QR-style mark (not a scannable code): three finder squares and a fixed module pattern
+const QR_SIZE = 21
+const finder = (x: number, y: number) => (x < 7 && y < 7) || (x >= QR_SIZE - 7 && y < 7) || (x < 7 && y >= QR_SIZE - 7)
+const qrModules = Array.from({ length: QR_SIZE * QR_SIZE }, (_, index) => {
+  const x = index % QR_SIZE
+  const y = Math.floor(index / QR_SIZE)
+  if (finder(x, y) || (x < 8 && y < 8) || (x >= QR_SIZE - 8 && y < 8) || (x < 8 && y >= QR_SIZE - 8)) return false
+  return (x * 7 + y * 13 + x * y) % 5 < 2 !== ((x + y) % 3 === 0)
+})
+function QrMark() {
+  const eye = (x: number, y: number) => (
+    <g key={`e${x}-${y}`}>
+      <rect x={x} y={y} width="7" height="7" rx="1.2" />
+      <rect x={x + 1} y={y + 1} width="5" height="5" rx="0.8" fill="#fff" />
+      <rect x={x + 2} y={y + 2} width="3" height="3" rx="0.6" />
+    </g>
+  )
+  return (
+    <svg className="ld-qr" viewBox="-2 -2 25 25" aria-hidden="true">
+      <rect x="-2" y="-2" width="25" height="25" rx="2" fill="#fff" />
+      {eye(0, 0)}
+      {eye(QR_SIZE - 7, 0)}
+      {eye(0, QR_SIZE - 7)}
+      {qrModules.map((on, index) =>
+        on ? <rect key={index} x={index % QR_SIZE} y={Math.floor(index / QR_SIZE)} width="1" height="1" /> : null
+      )}
+    </svg>
   )
 }
 
@@ -538,7 +751,13 @@ export function LandingOperations() {
                 {/* fractal noise over the district fill reads as farmland and marsh from above */}
                 <filter id="ld-terrain" x="0" y="0" width="100%" height="100%">
                   <feTurbulence type="fractalNoise" baseFrequency="0.032" numOctaves="4" seed="7" result="noise" />
-                  <feColorMatrix in="noise" type="saturate" values="0" result="mono" />
+                  <feColorMatrix in="noise" type="saturate" values="0" result="grey" />
+                  {/* squeeze the noise toward mid-grey so overlay only adds a gentle field texture */}
+                  <feComponentTransfer in="grey" result="mono">
+                    <feFuncR type="linear" slope="0.38" intercept="0.31" />
+                    <feFuncG type="linear" slope="0.38" intercept="0.31" />
+                    <feFuncB type="linear" slope="0.38" intercept="0.31" />
+                  </feComponentTransfer>
                   <feBlend in="SourceGraphic" in2="mono" mode="overlay" result="mix" />
                   <feComposite in="mix" in2="SourceGraphic" operator="in" />
                 </filter>
@@ -732,7 +951,7 @@ export function LandingHow() {
               >
                 <source src="/media/explainer.webm" type="video/webm" />
                 <source src="/media/explainer.mp4" type="video/mp4" />
-                <track kind="captions" srcLang="ar" label="العربية" src="/media/explainer.ar.vtt" default />
+                <track kind="captions" srcLang="ar" label="العربية" src="/media/explainer.ar.vtt" default={started} />
               </video>
               {!started && (
                 <button type="button" className="ld-play" onClick={start}>
@@ -759,7 +978,7 @@ export function LandingFooter() {
     <footer className="ld-footer">
       <div className="ld-wrap ld-footer-row">
         <Link href="/" className="ld-footer-brand">
-          <img src="/brand/home/tq-letters.png" alt="" width={46} height={32} />
+          <img src="/brand/dhiqar-unified-logo.png" alt="" width={42} height={42} />
           <span>ذي قار الرقمية</span>
         </Link>
         <nav aria-label="روابط التذييل">
