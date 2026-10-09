@@ -1,0 +1,482 @@
+{
+  "base": "http://localhost:4100",
+  "ranAt": "2026-10-09T13:42:46.271Z",
+  "results": [
+    {
+      "id": "AUTH-01",
+      "area": "تسجيل الدخول",
+      "scenario": "دخول المدير العام بكلمة مرور مؤقتة يفرض تغييرها قبل أي إجراء",
+      "result": "PASS",
+      "evidence": "login 200, before change 403 PASSWORD_CHANGE_REQUIRED, change 200, after 200"
+    },
+    {
+      "id": "AUTH-02",
+      "area": "التسجيل وOTP",
+      "scenario": "رقم هاتف غير صالح يُرفض",
+      "result": "PASS",
+      "evidence": "\"12345\" → 400; landline \"06901234567\" → 400; empty → 400 (note: non-digits are stripped, so \"0790000000a1\" is read as 07900000001)"
+    },
+    {
+      "id": "AUTH-03",
+      "area": "التسجيل وOTP",
+      "scenario": "رمز خاطئ يُرفض ويُحتسب كمحاولة",
+      "result": "PASS",
+      "evidence": "request 201 (DEV_MODE), wrong → 400 \"رمز التحقق غير صحيح.\", attempts=1, cookie set=false"
+    },
+    {
+      "id": "AUTH-04",
+      "area": "التسجيل وOTP",
+      "scenario": "بعد 5 محاولات خاطئة يُقفل التحدي حتى مع الرمز الصحيح",
+      "result": "PASS",
+      "evidence": "correct code after 5 failures → 400 \"تم تجاوز عدد المحاولات المسموح. اطلب رمزاً جديداً.\""
+    },
+    {
+      "id": "AUTH-05",
+      "area": "التسجيل وOTP",
+      "scenario": "رمز منتهي الصلاحية يُرفض (expires_at في الماضي)",
+      "result": "PASS",
+      "evidence": "expired → 400 \"انتهت صلاحية رمز التحقق. اطلب رمزاً جديداً.\""
+    },
+    {
+      "id": "AUTH-06",
+      "area": "التسجيل وOTP",
+      "scenario": "إعادة إرسال رمز جديد ثم التحقق ينجح ويُنشئ جلسة",
+      "result": "PASS",
+      "evidence": "resend 201, verify 200, session 200 CITIZEN"
+    },
+    {
+      "id": "AUTH-07",
+      "area": "التسجيل وOTP",
+      "scenario": "لا يمكن إعادة استخدام رمز سبق التحقق منه",
+      "result": "PASS",
+      "evidence": "replay → 400 \"تم استخدام رمز التحقق مسبقاً.\""
+    },
+    {
+      "id": "AUTH-08",
+      "area": "التسجيل وOTP",
+      "scenario": "حد طلبات OTP لكل رقم (5 خلال 10 دقائق)",
+      "result": "PASS",
+      "evidence": "requests #4..#6 for same phone → 201,201,400"
+    },
+    {
+      "id": "AUTH-09",
+      "area": "التسجيل وOTP",
+      "scenario": "الدخول مرة ثانية بنفس الرقم لا يُنشئ حساباً مكرراً",
+      "result": "PASS",
+      "evidence": "citizens rows for phone …0009 after two logins = 1"
+    },
+    {
+      "id": "AUTH-10",
+      "area": "الجلسات",
+      "scenario": "خصائص كوكي الجلسة HttpOnly وSameSite (Secure يُضاف في الاستضافة فقط)",
+      "result": "PASS",
+      "evidence": "dhiqar_session=<redacted>; Path=/; HttpOnly; SameSite=Lax; Max-Age=604800"
+    },
+    {
+      "id": "AUTH-11",
+      "area": "الجلسات",
+      "scenario": "تسجيل الخروج يُلغي الجلسة في الخادم (الكوكي القديم لا يعمل)",
+      "result": "PASS",
+      "evidence": "logout 200, replay old cookie → 401"
+    },
+    {
+      "id": "AUTH-12",
+      "area": "الجلسات",
+      "scenario": "كوكي معدّل التوقيع يُرفض",
+      "result": "PASS",
+      "evidence": "tampered → 401"
+    },
+    {
+      "id": "AUTH-13",
+      "area": "الجلسات",
+      "scenario": "انتهاء جلسة المواطن (expires_at) وخمول جلسة الموظف ساعة",
+      "result": "PASS",
+      "evidence": "expired citizen → 401; idle staff (61 min) → 401"
+    },
+    {
+      "id": "AUTH-14",
+      "area": "الجلسات",
+      "scenario": "قفل حساب الموظف بعد 5 محاولات خاطئة",
+      "result": "PASS",
+      "evidence": "5 wrong → 401,401,401,401,401; then correct → 401 \"تم قفل الحساب مؤقتاً بعد محاولات فاشلة متكررة. حاول بعد 15 دقيقة.\""
+    },
+    {
+      "id": "AUTH-15",
+      "area": "الجلسات",
+      "scenario": "حد معدل دخول الموظفين لكل عنوان IP (25 / 10 دقائق)",
+      "result": "PASS",
+      "evidence": "26th attempt → 429"
+    },
+    {
+      "id": "ID-01",
+      "area": "التوثيق والهوية",
+      "scenario": "مواطن غير موثق لا يستطيع تقديم طلب خدمة",
+      "result": "PASS",
+      "evidence": "unverified submit → 409 \"أكمل توثيق هويتك قبل إرسال طلب جديد.\""
+    },
+    {
+      "id": "ID-02",
+      "area": "التوثيق والهوية",
+      "scenario": "صور صغيرة/فيديو غير مكتمل يُطلب إعادة التصوير",
+      "result": "PASS",
+      "evidence": "low quality → 422 score=43"
+    },
+    {
+      "id": "ID-03",
+      "area": "التوثيق والهوية",
+      "scenario": "إرسال الهوية والفيديو يدخل قائمة المراجعة؛ لا يمكن إعادة الإرسال أثناء المراجعة",
+      "result": "PASS",
+      "evidence": "submit 201 PENDING_REVIEW (face=MANUAL_REVIEW_REQUIRED), resubmit 409, citizenB 201"
+    },
+    {
+      "id": "ID-04",
+      "area": "التوثيق والهوية",
+      "scenario": "موظف دائرة لا يرى طابور الهوية ولا يقرر فيه",
+      "result": "PASS",
+      "evidence": "list 403, decision 403, identity media 404"
+    },
+    {
+      "id": "ID-05",
+      "area": "التوثيق والهوية",
+      "scenario": "مراجع الهوية يعتمد الطلب والقرار بشري ومسجل",
+      "result": "PASS",
+      "evidence": "queue 200 (2), approve 200/200, second decision 409, citizen=VERIFIED_MANUAL, audit rows=2"
+    },
+    {
+      "id": "SVC-01",
+      "area": "رحلة المواطن",
+      "scenario": "عرض الخدمة يعيد المتطلبات والحقول والرسوم من الكتالوج",
+      "result": "PASS",
+      "evidence": "docs=4 (required 3), fields=7, fee=NOT_REQUIRED"
+    },
+    {
+      "id": "SVC-02",
+      "area": "رحلة المواطن",
+      "scenario": "نقص مستمسك إلزامي يمنع الإرسال",
+      "result": "PASS",
+      "evidence": "400 \"المستمسك «بطاقة السكن» مطلوب لإكمال الطلب.\""
+    },
+    {
+      "id": "SVC-03",
+      "area": "رحلة المواطن",
+      "scenario": "ملف بامتداد PDF ومحتوى HTML يُرفض",
+      "result": "PASS",
+      "evidence": "400 \"ملف «بطاقة السكن» يجب أن يكون صورة واضحة أو PDF.\""
+    },
+    {
+      "id": "SVC-04",
+      "area": "رحلة المواطن",
+      "scenario": "قيمة غير مسموحة في حقل اختيار / هاتف خاطئ يُرفض",
+      "result": "PASS",
+      "evidence": "bad option → 400; bad phone → 400"
+    },
+    {
+      "id": "SVC-05",
+      "area": "رحلة المواطن",
+      "scenario": "إرسال طلب كامل يصل للدائرة الصحيحة بحالة «مقدم»",
+      "result": "PASS",
+      "evidence": "201 TQS-2026-00001 → dhiqar-governorate SUBMITTED"
+    },
+    {
+      "id": "SVC-06",
+      "area": "رحلة المواطن",
+      "scenario": "نقر مزدوج / إعادة الطلب نفسه لا يُنشئ معاملة مكررة (idempotency)",
+      "result": "PASS",
+      "evidence": "parallel 200/201, retry 200; rows created=1; refs TQS-2026-00002/TQS-2026-00002/TQS-2026-00002"
+    },
+    {
+      "id": "SVC-07",
+      "area": "رحلة المواطن",
+      "scenario": "المواطن يرى طلبه وحالته وقائمة المستمسكات",
+      "result": "PASS",
+      "evidence": "SUBMITTED, uploaded=4"
+    },
+    {
+      "id": "DEP-01",
+      "area": "معالجة الدائرة",
+      "scenario": "الطلب يظهر في طابور موظف الدائرة الصحيحة فقط",
+      "result": "PASS",
+      "evidence": "gov queue has it=true, water queue has it=false, water direct GET → 403"
+    },
+    {
+      "id": "DEP-02",
+      "area": "معالجة الدائرة",
+      "scenario": "موظف دائرة أخرى لا يقرر ولا يدقق ولا يفتح المرفقات",
+      "result": "PASS",
+      "evidence": "decision 403, verify 403, media 403/404; own dept media 200 (application/pdf)"
+    },
+    {
+      "id": "DEP-03",
+      "area": "معالجة الدائرة",
+      "scenario": "غرفة العمليات ومراجع الهوية لا يتخذون قرار معاملة",
+      "result": "PASS",
+      "evidence": "ops decision 401, reviewer decision 401, ops read-only view 200"
+    },
+    {
+      "id": "DEP-04",
+      "area": "معالجة الدائرة",
+      "scenario": "رفض مستمسك يتطلب سبباً؛ الموافقة قبل تدقيق كل المستمسكات مرفوضة",
+      "result": "PASS",
+      "evidence": "reject w/o note 400, with note 200, verify 200, early approve 409"
+    },
+    {
+      "id": "DEP-05",
+      "area": "معالجة الدائرة",
+      "scenario": "طلب استكمال يصل للمواطن مع السبب والإشعار",
+      "result": "PASS",
+      "evidence": "200; citizen sees ACTION_REQUIRED, required=\"بطاقة السكن (الصورة غير واضحة)\", notifications=2"
+    },
+    {
+      "id": "SVC-08",
+      "area": "رحلة المواطن",
+      "scenario": "المواطن يستبدل المستمسك المرفوض فيعود الطلب للتدقيق",
+      "result": "PASS",
+      "evidence": "200 status=UNDER_REVIEW, residence-card=UPLOADED"
+    },
+    {
+      "id": "DEP-06",
+      "area": "معالجة الدائرة",
+      "scenario": "موافقتان متزامنتان (نقر مزدوج) تُصدران وثيقة واحدة فقط",
+      "result": "PASS",
+      "evidence": "responses 200/409 (expected one 200 + one 409, never 500); issued_documents rows=1"
+    },
+    {
+      "id": "DOC-01",
+      "area": "الوثائق والتحقق",
+      "scenario": "المواطن يستلم النتيجة ووثيقة PDF؛ صفحة التحقق العامة تعرض الحد الأدنى",
+      "result": "PASS",
+      "evidence": "pdf 200 %PDF- (122007 bytes), verify 200 APPROVED, original 200, PII keys in verify=none"
+    },
+    {
+      "id": "DOC-02",
+      "area": "الوثائق والتحقق",
+      "scenario": "معرّف تحقق غير موجود يعيد 404",
+      "result": "PASS",
+      "evidence": "404"
+    },
+    {
+      "id": "DEP-07",
+      "area": "معالجة الدائرة",
+      "scenario": "الطلب المغلق لا يقبل رفعاً من المواطن ولا قراراً جديداً",
+      "result": "PASS",
+      "evidence": "upload 409, decision 409"
+    },
+    {
+      "id": "DEP-08",
+      "area": "معالجة الدائرة",
+      "scenario": "الرفض يتطلب سبباً ويُحفظ السبب ويصل للمواطن",
+      "result": "PASS",
+      "evidence": "no reason 400; reject 200; DB=REJECTED by \"موظف ديوان المحافظة QA (qa.gov)\" note=\"المتقدم غير مشمول بالفئات المحددة\"; citizen sees REJECTED"
+    },
+    {
+      "id": "DEP-09",
+      "area": "معالجة الدائرة",
+      "scenario": "الحالة متطابقة بين المواطن والموظف والمدير وقاعدة البيانات",
+      "result": "PASS",
+      "evidence": "TQS-2026-00001, TQS-2026-00003 consistent across citizen/employee/admin/DB"
+    },
+    {
+      "id": "DEP-10",
+      "area": "معالجة الدائرة",
+      "scenario": "إحالة الطلب إلى دائرة/موظف آخر",
+      "result": "NOT_IMPLEMENTED",
+      "evidence": "no referral/assignment endpoint exists (PATCH with status REFERRED → 409); requests are routed only by the catalog department"
+    },
+    {
+      "id": "PAY-01",
+      "area": "الدفع",
+      "scenario": "خدمة برسم رسمي تُحجز «بانتظار الدفع» ولا تصل للدائرة قبل السداد",
+      "result": "PASS",
+      "evidence": "201 TQS-2026-00004 PAYMENT_PENDING, payment PAY-2026-00001 5000 IQD (SANDBOX)"
+    },
+    {
+      "id": "PAY-02",
+      "area": "الدفع",
+      "scenario": "مواطن آخر لا يرى ولا يسدد ولا يلغي دفعة غيره",
+      "result": "PASS",
+      "evidence": "get 404, confirm 404"
+    },
+    {
+      "id": "PAY-03",
+      "area": "الدفع",
+      "scenario": "إلغاء ثم فشل الدفع لا يغير حالة الطلب",
+      "result": "PASS",
+      "evidence": "cancel → CANCELLED, fail → FAILED; request PAYMENT_PENDING/PENDING"
+    },
+    {
+      "id": "PAY-04",
+      "area": "الدفع",
+      "scenario": "لا يمكن للموظف اعتماد طلب لم يُسدد رسمه (حتى بعد فشل/إلغاء الدفع)",
+      "result": "PASS",
+      "evidence": "approve unpaid (intent FAILED) → 409 \"لا يمكن الموافقة قبل سداد الرسم المطلوب (PAY-2026-00001).\"; documents issued=0"
+    },
+    {
+      "id": "PAY-05",
+      "area": "الدفع",
+      "scenario": "نجاح الدفع يُصدر إيصالاً ويحيل الطلب؛ التأكيد المكرر لا يخصم مرتين",
+      "result": "PASS",
+      "evidence": "parallel confirms PAID/PAID, later FAILED → PAID; receipt RCPT-2026-00001; request UNDER_REVIEW/PAID; PAYMENT_CONFIRMED audits=1"
+    },
+    {
+      "id": "PAY-06",
+      "area": "الدفع",
+      "scenario": "رابط العودة المفتوح لا يسوّي دفعة sandbox",
+      "result": "PASS",
+      "evidence": "302 → /citizen?payment=invalid"
+    },
+    {
+      "id": "PAY-07",
+      "area": "الدفع",
+      "scenario": "رسم إضافي من الموظف؛ لا يُطلب رسم ثانٍ أثناء وجود رسم معلق",
+      "result": "PASS",
+      "evidence": "extra fee 200 (PAY-2026-00002), second 409, pay PAID, approve 200"
+    },
+    {
+      "id": "PAY-08",
+      "area": "الدفع",
+      "scenario": "بوابة دفع حقيقية (ZainCash) مربوطة",
+      "result": "NOT_TESTED",
+      "evidence": "config: provider=sandbox mode=SANDBOX; ZainCash adapter exists in code but needs merchant credentials — not testable locally"
+    },
+    {
+      "id": "APT-01",
+      "area": "المواعيد",
+      "scenario": "حجز موعد بتاريخ ماضٍ يُرفض؛ تاريخ صالح يُسجل ويؤكده موظف الدائرة",
+      "result": "PASS",
+      "evidence": "past 400; book 201 APPOINTMENT_REQUESTED; confirm 200 → appointment CONFIRMED"
+    },
+    {
+      "id": "SEC-01",
+      "area": "الأمان والصلاحيات",
+      "scenario": "مواطن لا يرى طلبات/وثائق/إشعارات غيره",
+      "result": "PASS",
+      "evidence": "B list has A's request=false; A's PDF → 404; mark A's notification → 404"
+    },
+    {
+      "id": "SEC-02",
+      "area": "الأمان والصلاحيات",
+      "scenario": "مواطن لا يرفع مستنداً على طلب غيره",
+      "result": "PASS",
+      "evidence": "404"
+    },
+    {
+      "id": "SEC-03",
+      "area": "الأمان والصلاحيات",
+      "scenario": "المواطن لا يصل لمسارات الموظفين والإدارة والعمليات",
+      "result": "PASS",
+      "evidence": "employee/service-requests=401 employee/service-requests=401 applications=401 admin/feedback=401 super-admin/staff=401 super-admin/audit-logs=401 dashboard/stats=401 operations/health=401 departments/dhiqar-governorate=401 employee/issued-documents=401 admin/identity-reviews=401"
+    },
+    {
+      "id": "SEC-04",
+      "area": "الأمان والصلاحيات",
+      "scenario": "بدون جلسة: كل المسارات المحمية 401",
+      "result": "PASS",
+      "evidence": "401,401,401,401,401,401,401,401"
+    },
+    {
+      "id": "SEC-05",
+      "area": "الأمان والصلاحيات",
+      "scenario": "الموظف لا يصل لمسارات المدير العام",
+      "result": "PASS",
+      "evidence": "401,401,401,401"
+    },
+    {
+      "id": "SEC-06",
+      "area": "الأمان والصلاحيات",
+      "scenario": "موظف دائرة لا يفتح لوحة دائرة أخرى ولا وثائقها المؤرشفة",
+      "result": "PASS",
+      "evidence": "other dashboard 403, other archive 404, own archive 200"
+    },
+    {
+      "id": "SEC-07",
+      "area": "الأمان والصلاحيات",
+      "scenario": "موظف دائرة لا يرى تنبيهات الطلبات الواردة لكل الدوائر",
+      "result": "PASS",
+      "evidence": "water employee → 401, alerts from other departments=0"
+    },
+    {
+      "id": "SEC-08",
+      "area": "الأمان والصلاحيات",
+      "scenario": "الشكاوى: موظف دائرة أخرى لا يعدّلها ولا يفتح مرفقاتها",
+      "result": "PASS",
+      "evidence": "create 201, other dept 403, own dept 200, citizen B view 404, media 404"
+    },
+    {
+      "id": "SEC-09",
+      "area": "الأمان والصلاحيات",
+      "scenario": "مرفق شكوى غير صالح لا يترك شكوى ناقصة في القاعدة",
+      "result": "PASS",
+      "evidence": "400; feedback rows added=0"
+    },
+    {
+      "id": "SEC-10",
+      "area": "الأمان والصلاحيات",
+      "scenario": "رفع الملفات: نوع غير مسموح، توقيع مزور، حجم زائد، اسم مسار",
+      "result": "PASS",
+      "evidence": "html 400, spoofed jpeg 400, 21MB 413, traversal name 200 stored as media_9bab88534bb04b4b93a55575b4b15a0d.bin"
+    },
+    {
+      "id": "SEC-11",
+      "area": "الأمان والصلاحيات",
+      "scenario": "إشعارات الدفع (Web Push) لا تقبل عناوين داخلية (SSRF)",
+      "result": "PASS",
+      "evidence": "internal http endpoint → 400"
+    },
+    {
+      "id": "SEC-12",
+      "area": "الأمان والصلاحيات",
+      "scenario": "ترويسات الأمان (CSP، frame-ancestors، nosniff، HSTS، بلا x-powered-by)",
+      "result": "PASS",
+      "evidence": "csp=true, nosniff=nosniff, hsts=max-age=31536000; includeSubDomains, x-powered-by=null"
+    },
+    {
+      "id": "SEC-13",
+      "area": "الأمان والصلاحيات",
+      "scenario": "طلب من أصل غير مصرح (CORS/CSRF) يُرفض",
+      "result": "PASS",
+      "evidence": "403 acao=null"
+    },
+    {
+      "id": "SEC-14",
+      "area": "الأمان والصلاحيات",
+      "scenario": "JSON تالف ومدخلات طويلة تعيد 400 لا 500",
+      "result": "PASS",
+      "evidence": "bad json 400, long phone 400, sql-ish search 200"
+    },
+    {
+      "id": "SEC-15",
+      "area": "الأمان والصلاحيات",
+      "scenario": "سجل التدقيق يسجل الإجراءات باسم الفاعل الحقيقي",
+      "result": "PASS",
+      "evidence": "9 rows for TQS-2026-00001; missing=none; rows naming qa.gov=7"
+    },
+    {
+      "id": "SEC-16",
+      "area": "الأمان والصلاحيات",
+      "scenario": "لا توجد أسرار حقيقية في المستودع (فحص نمطي)",
+      "result": "PASS",
+      "evidence": "no key-shaped secrets matched"
+    },
+    {
+      "id": "DASH-01",
+      "area": "اللوحات",
+      "scenario": "مؤشرات غرفة العمليات تطابق قاعدة البيانات",
+      "result": "PASS",
+      "evidence": "completed=3, today=6, collected=6000 IQD, open complaints=1, automationRate=0 (hard-coded 0), departmentsOnline=60"
+    },
+    {
+      "id": "DASH-02",
+      "area": "اللوحات",
+      "scenario": "لوحة دائرة الديوان تطابق قاعدة البيانات",
+      "result": "PASS",
+      "evidence": "api transactions=5 sql=5; api completed=2 sql approved=2; rejected sql=1"
+    },
+    {
+      "id": "DASH-03",
+      "area": "اللوحات",
+      "scenario": "لا توجد بيانات تجريبية مزروعة مختلطة مع البيانات الحقيقية",
+      "result": "PASS",
+      "evidence": "no account-less seeded citizens"
+    }
+  ]
+}
