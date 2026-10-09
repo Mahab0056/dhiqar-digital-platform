@@ -473,7 +473,7 @@ describe('catalog-driven online services', () => {
     expect(all.body.scope).toBe('ALL')
   })
 
-  it('blocks approval until every required document is verified, then issues a document', async () => {
+  it('blocks approval until every required document is verified; a complaint closes without a PDF', async () => {
     const early = await request(app)
       .patch(`/api/employee/service-requests/${reference}`)
       .set('Cookie', employee)
@@ -525,10 +525,12 @@ describe('catalog-driven online services', () => {
     expect(approved.status).toBe(200)
     expect(approved.body.status).toBe('APPROVED')
     expect(approved.body.decidedBy).toContain('emp.one')
+    // a complaint is answered with a decision, not an official document (serviceIssuesDocument)
+    expect(approved.body.issuesDocument).toBe(false)
     const documents = await request(app).get('/api/citizen/issued-documents').set('Cookie', citizen)
     expect(
       documents.body.some((doc: { serviceRequestReference: string }) => doc.serviceRequestReference === reference)
-    ).toBe(true)
+    ).toBe(false)
     const closed = await request(app)
       .post(`/api/citizen/service-requests/${reference}/upload-document`)
       .set('Cookie', citizen)

@@ -16,9 +16,21 @@ import {
   db,
 } from '../db.js'
 import { readDecryptedMedia, storeEncryptedMedia } from '../media.js'
-import { departmentRegistry } from '../department-registry.js'
+import { departmentById, departmentRegistry } from '../department-registry.js'
+
+/**
+ * A complaint filed with «لا أعرف الدائرة» used to be stored without a department and was then invisible to every
+ * department queue. It now lands at the governorate office (ديوان المحافظة) for triage, and staff re-route it.
+ */
+export const FEEDBACK_TRIAGE_DEPARTMENT_ID = 'dhiqar-governorate'
 
 export function registerFeedbackRoutes(app: express.Express) {
+  // older rows filed without a department go to the triage queue too (idempotent; departments are seeded first)
+  if (departmentById.has(FEEDBACK_TRIAGE_DEPARTMENT_ID))
+    db.prepare('UPDATE citizen_feedback SET department_id = ? WHERE department_id IS NULL').run(
+      FEEDBACK_TRIAGE_DEPARTMENT_ID
+    )
+
   app.get('/api/citizen/feedback', requireSession('CITIZEN'), (_req, res) => {
     const citizen = currentCitizen(res)
     if (!citizen) return
@@ -65,7 +77,11 @@ export function registerFeedbackRoutes(app: express.Express) {
       const files = (req.files || []) as Express.Multer.File[]
       // validate every attachment before writing anything, so a bad file never leaves a half-saved complaint
       const mimeTypes = files.map(file => validateUploadedFile(file, ['image', 'pdf']))
-      const feedback = createFeedback({ citizenId: citizen.id, ...parsed })
+      const feedback = createFeedback({
+        citizenId: citizen.id,
+        ...parsed,
+        departmentId: parsed.departmentId || FEEDBACK_TRIAGE_DEPARTMENT_ID,
+      })
       for (const [index, file] of files.entries()) {
         const mimeType = mimeTypes[index]
         const media = storeEncryptedMedia({
@@ -92,8 +108,8 @@ export function registerFeedbackRoutes(app: express.Express) {
         action: parsed.kind === 'COMPLAINT' ? 'COMPLAINT_CREATED' : 'SUGGESTION_CREATED',
         entityType: 'CitizenFeedback',
         entityId: result.reference,
-        newValue: { category: parsed.category, departmentId: parsed.departmentId, attachmentCount: files.length },
-        metadata: { hasLocation: parsed.lat !== undefined },
+        newValue: { category: parsed.category, departmentId: result.departmentId, attachmentCount: files.length },
+        metadata: { hasLocation: parsed.lat !== undefined, triage: !parsed.departmentId },
       })
       employeeWorkQueueRealtime.publish({
         entity: 'FEEDBACK',
@@ -179,5 +195,77 @@ export function registerFeedbackRoutes(app: express.Express) {
       departmentId: feedback.departmentId || null,
     })
     res.json(updated)
+  })
+  /** Re-route a complaint to another department (triage from the governorate office, or a wrong pick by the citizen). */
+  app.patch('/api/admin/feedback/:reference/department', requireSession('EMPLOYEE', 'SUPER_ADMIN'), (req, res) => {
+    const feedback = getFeedbackByReference(param(req, 'reference'))
+    if (!feedback) return res.status(404).json({ message: 'الطلب غير موجود.' })
+    const session = res.locals.session as SessionData
+    const scope = feedbackScope(session)
+    if (scope === null || (scope && feedback.departmentId !== scope.departmentId))
+      return res.status(403).json({ message: 'هذه الشكوى تخص دائرة أخرى.' })
+    const parsed = z
+      .object({
+        departmentId: z.string().trim().min(2).max(100),
+        reason: z.string().trim().min(6).max(500),
+      })
+      .safeParse(req.body)
+    if (!parsed.success) return res.status(400).json({ message: 'اختر الدائرة واكتب سبب الإحالة قبل الحفظ.' })
+    const target = departmentById.get(parsed.data.departmentId)
+    if (!target) return res.status(400).json({ message: 'الدائرة المحددة غير موجودة في سجل المنصة.' })
+    if (target.id === feedback.departmentId)
+      return res.status(409).json({ message: 'الشكوى موجودة أصلاً لدى هذه الدائرة.' })
+    if (['RESOLVED', 'CLOSED'].includes(feedback.status))
+      return res.status(409).json({ message: 'لا يمكن إحالة طلب مغلق.' })
+    const timestamp = new Date().toISOString()
+    const currentAction = `أُحيل الطلب إلى ${target.name} للمتابعة.`
+    db.exec('BEGIN')
+    try {
+      db.prepare('UPDATE citizen_feedback SET department_id = ?, current_action = ?, updated_at = ? WHERE id = ?').run(
+        target.id,
+        currentAction,
+        timestamp,
+        feedback.id
+      )
+      db.prepare(
+        'INSERT INTO feedback_events (feedback_id, status, title, description, actor, created_at) VALUES (?, ?, ?, ?, ?, ?)'
+      ).run(
+        feedback.id,
+        feedback.status,
+        `إحالة إلى ${target.name}`,
+        `${currentAction} السبب: ${parsed.data.reason}`,
+        session.actor,
+        timestamp
+      )
+      db.exec('COMMIT')
+    } catch (error) {
+      db.exec('ROLLBACK')
+      throw error
+    }
+    addAudit({
+      actor: session.actor,
+      role: session.role,
+      action: 'FEEDBACK_REROUTED',
+      entityType: 'CitizenFeedback',
+      entityId: feedback.reference,
+      previousValue: { departmentId: feedback.departmentId },
+      newValue: { departmentId: target.id },
+      metadata: { reason: parsed.data.reason },
+    })
+    notifyCitizen({
+      citizenId: feedback.citizenId,
+      type: 'FEEDBACK_UPDATED',
+      title: feedback.kind === 'COMPLAINT' ? 'إحالة الشكوى' : 'إحالة المقترح',
+      message: `${feedback.reference} — ${currentAction}`,
+      link: `/citizen/feedback/${feedback.reference}`,
+    })
+    for (const departmentId of [feedback.departmentId, target.id])
+      employeeWorkQueueRealtime.publish({
+        entity: 'FEEDBACK',
+        action: 'TRANSFERRED',
+        reference: feedback.reference,
+        departmentId: departmentId || null,
+      })
+    res.json(getFeedbackByReference(feedback.reference))
   })
 }

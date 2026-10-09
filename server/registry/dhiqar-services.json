@@ -16797,7 +16797,7 @@
     "description": "الاستعلام عن جدول الرحلات المدنية من وإلى مطار الناصرية الدولي وموعد بدء التشغيل التجاري.",
     "category": "الشكاوى والمراجعات",
     "applicantType": "CITIZEN",
-    "channel": "INFORMATION_ONLY",
+    "channel": "ONLINE_SUBMISSION",
     "requiredDocuments": [],
     "fields": [
       {
@@ -16834,7 +16834,7 @@
     "estimatedDuration": null,
     "sourceUrl": "https://thiqar.gov.iq/",
     "sourceQuality": "RELIABLE",
-    "notes": "المطار في مرحلة الافتتاح والتشغيل التجريبي (2026) ولم تبدأ الرحلات المدنية المنتظمة بعد؛ الخدمة استعلامية فقط."
+    "notes": "المطار في مرحلة الافتتاح والتشغيل التجريبي (2026)؛ يرد المطار على الاستفسار في حسابك."
   },
   {
     "key": "airport-cargo-inquiry",
@@ -16843,7 +16843,7 @@
     "description": "استعلام الشركات والتجار عن إجراءات ومتطلبات الشحن الجوي عبر مطار الناصرية الدولي.",
     "category": "الشكاوى والمراجعات",
     "applicantType": "BUSINESS",
-    "channel": "INFORMATION_ONLY",
+    "channel": "ONLINE_SUBMISSION",
     "requiredDocuments": [
       {
         "key": "company-registration",
@@ -16902,7 +16902,7 @@
     "estimatedDuration": null,
     "sourceUrl": "https://thiqar.gov.iq/",
     "sourceQuality": "RELIABLE",
-    "notes": "ديوان محافظة ذي قار يصف المطار كنافذة للشحن الجوي؛ لا توجد إجراءات منشورة بعد."
+    "notes": "يرد المطار على الاستفسار في حسابك؛ لا توجد إجراءات شحن منشورة بعد."
   },
   {
     "key": "supply-ration-card-add-member",
@@ -18058,7 +18058,7 @@
     "description": "الاستعلام عن حملات الحج المعتمدة في ذي قار وشركات العمرة المجازة من الهيئة العليا للحج والعمرة.",
     "category": "الشكاوى والمراجعات",
     "applicantType": "CITIZEN",
-    "channel": "INFORMATION_ONLY",
+    "channel": "ONLINE_SUBMISSION",
     "requiredDocuments": [],
     "fields": [
       {
@@ -18103,7 +18103,7 @@
     "estimatedDuration": null,
     "sourceUrl": "https://hajj.gov.iq/contents/view/details?id=602",
     "sourceQuality": "OFFICIAL",
-    "notes": "الهيئة تنشر قوائم شركات العمرة المعتمدة على موقعها الرسمي؛ الخط الساخن 5650."
+    "notes": "يرد مكتب الهيئة في المحافظة على الاستفسار في حسابك؛ الخط الساخن للهيئة 5650."
   },
   {
     "key": "hajj-umrah-complaint",
@@ -19557,7 +19557,7 @@
     "description": "الاستعلام عن حالة بلاغ سابق ومراحل معالجته.",
     "category": "الماء والمجاري",
     "applicantType": "BOTH",
-    "channel": "INFORMATION_ONLY",
+    "channel": "ONLINE_SUBMISSION",
     "requiredDocuments": [],
     "fields": [
       {
@@ -19573,6 +19573,13 @@
         "type": "tel",
         "required": true,
         "maxLength": 15
+      },
+      {
+        "key": "details",
+        "label": "ملاحظات إضافية",
+        "type": "textarea",
+        "required": false,
+        "maxLength": 600
       }
     ],
     "feeIqd": null,
@@ -19580,7 +19587,7 @@
     "estimatedDuration": null,
     "sourceUrl": "https://ur.gov.iq/index/show-eservice/51675/11018/org",
     "sourceQuality": "RELIABLE",
-    "notes": "خدمة استعلام فقط."
+    "notes": "يرد موظف مديرية المجاري بحالة البلاغ السابق ومرحلة معالجته في حسابك."
   },
   {
     "key": "sewer-house-connection",
@@ -20356,7 +20363,7 @@
     "description": "معرفة مبلغ القائمة المستحقة أو تقديم اعتراض على قراءة/تسعيرة قائمة.",
     "category": "الكهرباء",
     "applicantType": "BOTH",
-    "channel": "INFORMATION_ONLY",
+    "channel": "ONLINE_SUBMISSION",
     "requiredDocuments": [
       {
         "key": "elec-bill",
@@ -20419,10 +20426,18 @@
         "maxLength": 30
       },
       {
+        "key": "requestType",
+        "label": "نوع الطلب",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": ["استعلام عن مبلغ القائمة", "اعتراض على القراءة", "اعتراض على التسعيرة أو صنف الاشتراك"]
+      },
+      {
         "key": "objectionReason",
-        "label": "سبب الاعتراض",
+        "label": "سبب الاعتراض أو الاستفسار",
         "type": "textarea",
-        "required": false,
+        "required": true,
         "maxLength": 800
       }
     ],
@@ -20431,7 +20446,7 @@
     "estimatedDuration": null,
     "sourceUrl": "https://www.moelc.gov.iq/billing?lang=ar",
     "sourceQuality": "OFFICIAL",
-    "notes": "وزارة الكهرباء توفر استعلاماً إلكترونياً عن القوائم على moelc.gov.iq/billing؛ التسديد عبر منافذ الدفع الإلكتروني. الاعتراض ينظمه المادة 25 من تعليمات 1/1999."
+    "notes": "يدقق قسم الحسابات والجباية القائمة أو القراءة ويرد في حسابك؛ قد يُطلب كشف ميداني على المقياس. الاعتراض ينظمه المادة 25 من تعليمات 1/1999. التسديد يتم في منافذ الجباية أو الدفع الإلكتروني الرسمية وليس عبر المنصة."
   },
   {
     "key": "elec-general-complaint",
@@ -22306,7 +22321,7 @@
     "description": "متابعة الموافقات القطاعية (بيئة، بلدية، كهرباء، ماء...) الخاصة بمشروع مجاز عبر النافذة الواحدة.",
     "category": "الاستثمار",
     "applicantType": "BUSINESS",
-    "channel": "INFORMATION_ONLY",
+    "channel": "ONLINE_SUBMISSION",
     "requiredDocuments": [
       {
         "key": "investment-license",
@@ -22366,7 +22381,7 @@
     "estimatedDuration": null,
     "sourceUrl": "https://thiqarinvest.gov.iq/",
     "sourceQuality": "UNVERIFIED",
-    "notes": "خدمة متابعة."
+    "notes": "ترد النافذة الواحدة بموقف الموافقة المطلوبة في حسابك."
   },
   {
     "key": "invest-map-and-guide",
@@ -24656,7 +24671,7 @@
     "description": "معرفة صنف قطعة أرض ضمن التصميم الأساس (سكني، تجاري، خضراء...) قبل الشراء أو البناء.",
     "category": "السكن والأراضي",
     "applicantType": "BOTH",
-    "channel": "INFORMATION_ONLY",
+    "channel": "ONLINE_SUBMISSION",
     "requiredDocuments": [
       {
         "key": "property-deed",
@@ -24724,7 +24739,7 @@
     "estimatedDuration": null,
     "sourceUrl": "https://thiqar.gov.iq/النائب-الثاني/نائب-محافظ-ذي-قار-يزور-دائرة-التخطيط-العمراني-ويتابع-الخرائط-التي-اعدتها-البلديات",
     "sourceQuality": "UNVERIFIED",
-    "notes": "خدمة استعلام."
+    "notes": "ترد مديرية التخطيط العمراني بصنف القطعة ضمن التصميم الأساس في حسابك."
   },
   {
     "key": "urban-informal-housing-survey",
@@ -24733,7 +24748,7 @@
     "description": "معرفة ما إذا كانت الدار مشمولة بمسوحات ومعالجات العشوائيات المعدة من البلديات والتخطيط العمراني.",
     "category": "السكن والأراضي",
     "applicantType": "CITIZEN",
-    "channel": "INFORMATION_ONLY",
+    "channel": "ONLINE_SUBMISSION",
     "requiredDocuments": [
       {
         "key": "national-id",
@@ -24815,7 +24830,7 @@
     "estimatedDuration": null,
     "sourceUrl": "https://thiqar.gov.iq/النائب-الثاني/نائب-محافظ-ذي-قار-يزور-دائرة-التخطيط-العمراني-ويتابع-الخرائط-التي-اعدتها-البلديات",
     "sourceQuality": "UNVERIFIED",
-    "notes": "المستمسكات المدرجة هي المجموعة العراقية القياسية (البطاقة الوطنية/الأحوال المدنية والجنسية، بطاقة السكن، البطاقة التموينية) بانتظار تأكيد الدائرة للقائمة الرسمية."
+    "notes": "المستمسكات المدرجة هي المجموعة العراقية القياسية (البطاقة الوطنية/الأحوال المدنية والجنسية، بطاقة السكن، البطاقة التموينية) بانتظار تأكيد الدائرة للقائمة الرسمية. ترد المديرية بنتيجة الاستعلام في حسابك."
   },
   {
     "key": "hf-construction-loan",
@@ -25087,11 +25102,11 @@
   {
     "key": "hf-installment-followup",
     "departmentId": "housing-fund-dhi-qar-branch",
-    "title": "متابعة الأقساط وتسديدها",
+    "title": "متابعة الأقساط وطلب كشف بالمبالغ المستحقة",
     "description": "الاستعلام عن الأقساط المستحقة والمسددة والتسديد الإلكتروني.",
     "category": "السكن والأراضي",
     "applicantType": "CITIZEN",
-    "channel": "INFORMATION_ONLY",
+    "channel": "ONLINE_SUBMISSION",
     "requiredDocuments": [
       {
         "key": "national-id",
@@ -25129,7 +25144,7 @@
     "estimatedDuration": null,
     "sourceUrl": "https://sandoq.moch.gov.iq/",
     "sourceQuality": "OFFICIAL",
-    "notes": "يتوفر تطبيق صندوق الإسكان (متابعة القروض والدفع الإلكتروني) حسب موقع الصندوق."
+    "notes": "يرسل الصندوق كشف الأقساط المستحقة والمسددة في حسابك؛ التسديد عبر تطبيق صندوق الإسكان أو المصرف المعتمد وليس عبر المنصة."
   },
   {
     "key": "hf-clearance",
@@ -25894,13 +25909,28 @@
   {
     "key": "itpc-bill-payment",
     "departmentId": "itpc-dhi-qar-internet-department",
-    "title": "تسديد أجور الإنترنت/الهاتف الأرضي",
-    "description": "الاستعلام عن الأجور المستحقة وتسديدها.",
+    "title": "الاستعلام عن أجور الإنترنت / الهاتف الأرضي وطلب تسديدها",
+    "description": "طلب كشف بالأجور المستحقة على اشتراك الهاتف الأرضي أو الإنترنت، أو الاعتراض على قائمة، أو إعادة الربط بعد التسديد.",
     "category": "النقل والاتصالات",
     "applicantType": "BOTH",
-    "channel": "INFORMATION_ONLY",
-    "requiredDocuments": [],
+    "channel": "ONLINE_SUBMISSION",
+    "requiredDocuments": [
+      {
+        "key": "last-bill",
+        "label": "آخر قائمة أو وصل تسديد",
+        "description": "",
+        "required": false,
+        "accepts": ["image", "pdf"]
+      }
+    ],
     "fields": [
+      {
+        "key": "fullName",
+        "label": "الاسم الكامل (الرباعي واللقب)",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
       {
         "key": "phone",
         "label": "رقم الهاتف للتواصل",
@@ -25910,10 +25940,25 @@
       },
       {
         "key": "subscriberNumber",
-        "label": "رقم الاشتراك",
+        "label": "رقم الاشتراك / رقم الهاتف الأرضي",
         "type": "text",
         "required": true,
-        "maxLength": 30
+        "maxLength": 40
+      },
+      {
+        "key": "requestType",
+        "label": "نوع الطلب",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": ["كشف بالأجور المستحقة", "اعتراض على قائمة", "إعادة الربط بعد التسديد"]
+      },
+      {
+        "key": "details",
+        "label": "تفاصيل إضافية",
+        "type": "textarea",
+        "required": false,
+        "maxLength": 600
       }
     ],
     "feeIqd": null,
@@ -25921,7 +25966,7 @@
     "estimatedDuration": null,
     "sourceUrl": "https://moc.gov.iq/",
     "sourceQuality": "UNVERIFIED",
-    "notes": "التسديد يتم في البدالات أو عبر الدفع الإلكتروني."
+    "notes": "لا يتم الدفع عبر المنصة؛ يُسدَّد المبلغ في البدالة أو عبر منافذ الدفع الإلكتروني الرسمية للشركة."
   },
   {
     "key": "mowr-pump-license",
@@ -26338,7 +26383,7 @@
     "description": "معرفة جدول الإطلاقات والمناوبة المائية للجداول والأنهر في المحافظة.",
     "category": "الزراعة",
     "applicantType": "CITIZEN",
-    "channel": "INFORMATION_ONLY",
+    "channel": "ONLINE_SUBMISSION",
     "requiredDocuments": [],
     "fields": [
       {
@@ -26384,7 +26429,7 @@
     "estimatedDuration": null,
     "sourceUrl": "https://mowr.gov.iq/",
     "sourceQuality": "UNVERIFIED",
-    "notes": "خدمة معلوماتية."
+    "notes": "ترد مديرية الموارد المائية بجدول المناوبة والإطلاقات للجدول المحدد في حسابك."
   },
   {
     "key": "mod-drain-blockage-report",
@@ -30919,7 +30964,7 @@
     "description": "طلب تنظيم محاضرة توعوية أو تدريب عملي على استخدام المطافئ للمدارس والدوائر والشركات.",
     "category": "الأمن والمرور",
     "applicantType": "BOTH",
-    "channel": "INFORMATION_ONLY",
+    "channel": "ONLINE_SUBMISSION",
     "requiredDocuments": [
       {
         "key": "official-request",
@@ -30994,7 +31039,7 @@
     "estimatedDuration": null,
     "sourceUrl": "https://mapcarta.com/N4622127984",
     "sourceQuality": "UNVERIFIED",
-    "notes": ""
+    "notes": "تنسّق مديرية الدفاع المدني موعد المحاضرة أو التدريب مع الجهة الطالبة وتؤكده في الحساب."
   },
   {
     "key": "shat-cd-shop-safety-cert",
@@ -31838,22 +31883,52 @@
     "description": "الاستعلام إلكترونياً عن الغرامات المترتبة على المركبة أو إجازة السياقة.",
     "category": "الأمن والمرور",
     "applicantType": "BOTH",
-    "channel": "INFORMATION_ONLY",
-    "requiredDocuments": [],
+    "channel": "ONLINE_SUBMISSION",
+    "requiredDocuments": [
+      {
+        "key": "vehicle-registration",
+        "label": "هوية تسجيل المركبة (السنوية)",
+        "description": "",
+        "required": false,
+        "accepts": ["image", "pdf"]
+      }
+    ],
     "fields": [
+      {
+        "key": "fullName",
+        "label": "الاسم الكامل (الرباعي واللقب)",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
       {
         "key": "plateNumber",
         "label": "رقم اللوحة",
         "type": "text",
         "required": true,
-        "maxLength": 20
+        "maxLength": 40
       },
       {
         "key": "chassisNumber",
         "label": "رقم الشاصي",
         "type": "text",
         "required": false,
-        "maxLength": 30
+        "maxLength": 40
+      },
+      {
+        "key": "requestType",
+        "label": "نوع الطلب",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": ["استعلام عن الغرامات المترتبة", "اعتراض على غرامة مرورية", "كشف بالمبلغ لتسديده في المديرية"]
+      },
+      {
+        "key": "details",
+        "label": "تفاصيل إضافية (رقم المخالفة، سبب الاعتراض)",
+        "type": "textarea",
+        "required": false,
+        "maxLength": 600
       },
       {
         "key": "phone",
@@ -31868,7 +31943,7 @@
     "estimatedDuration": null,
     "sourceUrl": "https://ur.gov.iq/index/show-eservice/50541/18/org",
     "sourceQuality": "OFFICIAL",
-    "notes": ""
+    "notes": "لا يتم الدفع عبر المنصة؛ تُرسل المديرية كشف الغرامات أو قرار الاعتراض، ويُسدَّد المبلغ في مديرية المرور."
   },
   {
     "key": "forensic-non-conviction-internal",
@@ -34396,7 +34471,7 @@
     "description": "الاستعلام إلكترونياً عن الموقف الضريبي للمكلف المسجل لدى الهيئة العامة للضرائب.",
     "category": "الضرائب والمالية",
     "applicantType": "BOTH",
-    "channel": "INFORMATION_ONLY",
+    "channel": "ONLINE_SUBMISSION",
     "requiredDocuments": [],
     "fields": [
       {
@@ -34419,6 +34494,13 @@
         "type": "tel",
         "required": true,
         "maxLength": 15
+      },
+      {
+        "key": "details",
+        "label": "تفاصيل الاستفسار",
+        "type": "textarea",
+        "required": false,
+        "maxLength": 600
       }
     ],
     "feeIqd": null,
@@ -34426,7 +34508,7 @@
     "estimatedDuration": null,
     "sourceUrl": "https://ur.gov.iq/index/show-eservice/51517/10044/org",
     "sourceQuality": "OFFICIAL",
-    "notes": ""
+    "notes": "يرد فرع الهيئة العامة للضرائب بالموقف الضريبي في حسابك."
   },
   {
     "key": "tax-shatrah-clearance",
@@ -37001,7 +37083,7 @@
     "description": "الاستعلام إلكترونياً عن تفاصيل الراتب التقاعدي وحالة المعاملة.",
     "category": "الرعاية والعمل",
     "applicantType": "CITIZEN",
-    "channel": "INFORMATION_ONLY",
+    "channel": "ONLINE_SUBMISSION",
     "requiredDocuments": [],
     "fields": [
       {
@@ -37024,6 +37106,13 @@
         "type": "tel",
         "required": true,
         "maxLength": 15
+      },
+      {
+        "key": "details",
+        "label": "تفاصيل الاستفسار (توقف، استقطاع، تأخر)",
+        "type": "textarea",
+        "required": false,
+        "maxLength": 600
       }
     ],
     "feeIqd": null,
@@ -37031,7 +37120,7 @@
     "estimatedDuration": null,
     "sourceUrl": "https://ur.gov.iq/index/show-eservice/50692/10044/org",
     "sourceQuality": "OFFICIAL",
-    "notes": ""
+    "notes": "ترد مديرية تقاعد ذي قار على الاستفسار في حسابك."
   },
   {
     "key": "pension-smart-card-update",
@@ -38293,7 +38382,7 @@
     "description": "تقديم شكوى بخصوص تعكر أو تلوث أو رائحة أو طعم غير طبيعي في مياه الشرب الواصلة لمنطقة سكنية.",
     "category": "الماء والمجاري",
     "applicantType": "CITIZEN",
-    "channel": "INFORMATION_ONLY",
+    "channel": "ONLINE_SUBMISSION",
     "requiredDocuments": [
       {
         "key": "water-sample-photo",
@@ -38350,10 +38439,10 @@
       },
       {
         "key": "complaintDetails",
-        "label": "تفاصيل الشكوى",
-        "type": "text",
+        "label": "تفاصيل الشكوى (اللون، الرائحة، منذ متى)",
+        "type": "textarea",
         "required": true,
-        "maxLength": 400
+        "maxLength": 800
       }
     ],
     "feeIqd": null,
@@ -38361,7 +38450,7 @@
     "estimatedDuration": null,
     "sourceUrl": "https://nasiriyah.org/ar/post/79644/",
     "sourceQuality": "RELIABLE",
-    "notes": "يحال البلاغ إلى شعبة السيطرة النوعية بمديرية ماء ذي قار."
+    "notes": "تُحال الشكوى إلى شعبة السيطرة النوعية بمديرية ماء ذي قار لأخذ عينة وفحصها، ويصلك الإجراء في حسابك."
   },
   {
     "key": "water-illegal-connection-report",
@@ -38370,7 +38459,7 @@
     "description": "الإبلاغ عن حالة تجاوز أو ربط عشوائي غير مرخّص على خطوط أنابيب الماء الرئيسية أو الفرعية.",
     "category": "الماء والمجاري",
     "applicantType": "CITIZEN",
-    "channel": "INFORMATION_ONLY",
+    "channel": "ONLINE_SUBMISSION",
     "requiredDocuments": [
       {
         "key": "violation-photo",
@@ -38427,10 +38516,10 @@
       },
       {
         "key": "locationDescription",
-        "label": "وصف دقيق لموقع التجاوز",
-        "type": "text",
+        "label": "وصف دقيق لموقع التجاوز وأقرب نقطة دالة",
+        "type": "textarea",
         "required": true,
-        "maxLength": 250
+        "maxLength": 800
       }
     ],
     "feeIqd": null,
@@ -38438,7 +38527,7 @@
     "estimatedDuration": null,
     "sourceUrl": "https://nasiriyah.org/ar/post/79644/",
     "sourceQuality": "UNVERIFIED",
-    "notes": "يُحال إلى فرق التفتيش الميداني لمديرية الماء لإزالة التجاوز."
+    "notes": "يُحال البلاغ إلى فرق التفتيش الميداني لمديرية الماء لإزالة التجاوز. لا تُكشف هوية المبلّغ للمتجاوز."
   },
   {
     "key": "water-agricultural-subscription",
@@ -38601,7 +38690,7 @@
     "description": "الإبلاغ عن غطاء مجرور مكسور أو مفقود يشكل خطراً على المارة أو المركبات لغرض إصلاحه أو استبداله.",
     "category": "الماء والمجاري",
     "applicantType": "CITIZEN",
-    "channel": "INFORMATION_ONLY",
+    "channel": "ONLINE_SUBMISSION",
     "requiredDocuments": [
       {
         "key": "manhole-photo",
@@ -38662,6 +38751,13 @@
         "type": "text",
         "required": true,
         "maxLength": 150
+      },
+      {
+        "key": "details",
+        "label": "وصف الحالة (مكسور، مفقود، طفح)",
+        "type": "textarea",
+        "required": false,
+        "maxLength": 600
       }
     ],
     "feeIqd": null,
@@ -38669,7 +38765,7 @@
     "estimatedDuration": null,
     "sourceUrl": "https://ur.gov.iq/index/show-eservice/51675/11018/org",
     "sourceQuality": "UNVERIFIED",
-    "notes": "بلاغ يحال إلى الطوارئ الميدانية لمديرية المجاري."
+    "notes": "بلاغ يُحال إلى الطوارئ الميدانية لمديرية المجاري، ويصلك موعد المعالجة في حسابك."
   },
   {
     "key": "edu-kindergarten-license",
@@ -42138,7 +42234,7 @@
     "description": "تقديم بلاغ رسمي عن فقدان أو سرقة مركبة لدى أقرب مركز شرطة، وهو مستند لازم لأي إجراءات تأمينية أو مرورية لاحقة.",
     "category": "الأمن والمرور",
     "applicantType": "CITIZEN",
-    "channel": "INFORMATION_ONLY",
+    "channel": "ONLINE_SUBMISSION",
     "requiredDocuments": [
       {
         "key": "national-id",
@@ -42202,10 +42298,24 @@
       },
       {
         "key": "theftLocation",
-        "label": "مكان وزمان السرقة/الفقدان",
+        "label": "مكان وزمان السرقة / الفقدان",
+        "type": "textarea",
+        "required": true,
+        "maxLength": 600
+      },
+      {
+        "key": "vehicleDetails",
+        "label": "نوع المركبة ولونها وموديلها",
         "type": "text",
         "required": true,
-        "maxLength": 250
+        "maxLength": 160
+      },
+      {
+        "key": "chassisNumber",
+        "label": "رقم الشاصي",
+        "type": "text",
+        "required": false,
+        "maxLength": 40
       }
     ],
     "feeIqd": null,
@@ -42213,7 +42323,7 @@
     "estimatedDuration": null,
     "sourceUrl": "https://www.facebook.com/DhiQarPolice/",
     "sourceQuality": "RELIABLE",
-    "notes": "يُحرَّر محضر رسمي في مركز الشرطة المختص بمكان الحادثة."
+    "notes": "يُسجَّل البلاغ إلكترونياً ويُعمَّم على مراكز الشرطة، ثم تُبلَّغ بموعد حضورك إلى مركز الشرطة المختص بمكان الحادثة لتحرير المحضر الرسمي."
   },
   {
     "key": "nas-muni-signboard-permit",
@@ -42550,5 +42660,1752 @@
     "sourceUrl": "https://mapcarta.com/N5625692421",
     "sourceQuality": "UNVERIFIED",
     "notes": "مطلوب عادة كمرفق لمعاملات التسجيل العقاري."
+  },
+  {
+    "key": "martyrs-family-registration",
+    "departmentId": "martyrs-foundation-dhi-qar",
+    "title": "طلب شمول ذوي الشهيد بقانون مؤسسة الشهداء",
+    "description": "تسجيل ذوي الشهيد لدى مديرية شهداء ذي قار للشمول بالحقوق والامتيازات المقررة بقانون مؤسسة الشهداء رقم 2 لسنة 2016.",
+    "category": "الرعاية والعمل",
+    "applicantType": "CITIZEN",
+    "channel": "ONLINE_SUBMISSION",
+    "requiredDocuments": [
+      {
+        "key": "national-id",
+        "label": "البطاقة الوطنية الموحدة",
+        "description": "وجه وظهر البطاقة، أو هوية الأحوال المدنية + شهادة الجنسية العراقية",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "death-certificate",
+        "label": "شهادة وفاة الشهيد",
+        "description": "",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "martyrdom-proof",
+        "label": "ما يثبت الاستشهاد",
+        "description": "قرار لجنة، كتاب الجهة الرسمية، أو محضر الحادث",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "inheritance-deed",
+        "label": "القسام الشرعي",
+        "description": "",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "heirs-ids",
+        "label": "البطاقات الوطنية للورثة",
+        "description": "",
+        "required": false,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "residence-card",
+        "label": "بطاقة السكن",
+        "description": "وجه وظهر",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      }
+    ],
+    "fields": [
+      {
+        "key": "fullName",
+        "label": "الاسم الكامل (الرباعي واللقب)",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "phone",
+        "label": "رقم الهاتف للتواصل",
+        "type": "tel",
+        "required": true,
+        "maxLength": 15
+      },
+      {
+        "key": "district",
+        "label": "القضاء / الناحية",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": [
+          "الناصرية",
+          "الشطرة",
+          "سوق الشيوخ",
+          "الرفاعي",
+          "الجبايش",
+          "قلعة سكر",
+          "الفهود",
+          "النصر",
+          "الغراف",
+          "الإصلاح",
+          "الدواية",
+          "سيد دخيل",
+          "البطحاء",
+          "الفجر"
+        ]
+      },
+      {
+        "key": "relationship",
+        "label": "صلة القرابة بالشهيد",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": ["الأب", "الأم", "الزوج / الزوجة", "الابن / البنت", "الأخ / الأخت"]
+      },
+      {
+        "key": "martyrName",
+        "label": "اسم الشهيد الرباعي واللقب",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "martyrdomDate",
+        "label": "تاريخ الاستشهاد",
+        "type": "date",
+        "required": true
+      },
+      {
+        "key": "martyrCategory",
+        "label": "فئة الشهيد",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": ["شهداء النظام البائد", "شهداء العمليات الإرهابية", "شهداء الحشد الشعبي", "أخرى"]
+      },
+      {
+        "key": "details",
+        "label": "معلومات إضافية",
+        "type": "textarea",
+        "required": false,
+        "maxLength": 800
+      }
+    ],
+    "feeIqd": null,
+    "feeSource": null,
+    "estimatedDuration": null,
+    "sourceUrl": "https://ur.gov.iq/",
+    "sourceQuality": "UNVERIFIED",
+    "notes": "المستمسكات المدرجة هي المتطلبات المعتادة لهذه المعاملة؛ قد تطلب الدائرة مستمسكاً إضافياً عند التدقيق."
+  },
+  {
+    "key": "martyrs-family-data-update",
+    "departmentId": "martyrs-foundation-dhi-qar",
+    "title": "تحديث بيانات ذوي الشهيد",
+    "description": "تحديث بيانات الورثة أو السكن أو الحالة الاجتماعية في ملف الشهيد لدى مديرية شهداء ذي قار.",
+    "category": "الرعاية والعمل",
+    "applicantType": "CITIZEN",
+    "channel": "ONLINE_SUBMISSION",
+    "requiredDocuments": [
+      {
+        "key": "national-id",
+        "label": "البطاقة الوطنية الموحدة",
+        "description": "وجه وظهر البطاقة، أو هوية الأحوال المدنية + شهادة الجنسية العراقية",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "supporting-document",
+        "label": "المستند المؤيد للتغيير",
+        "description": "عقد زواج، حجة طلاق، شهادة وفاة، قرار حكم، أو بطاقة سكن جديدة",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "foundation-id",
+        "label": "هوية مؤسسة الشهداء",
+        "description": "",
+        "required": false,
+        "accepts": ["image", "pdf"]
+      }
+    ],
+    "fields": [
+      {
+        "key": "fullName",
+        "label": "الاسم الكامل (الرباعي واللقب)",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "phone",
+        "label": "رقم الهاتف للتواصل",
+        "type": "tel",
+        "required": true,
+        "maxLength": 15
+      },
+      {
+        "key": "district",
+        "label": "القضاء / الناحية",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": [
+          "الناصرية",
+          "الشطرة",
+          "سوق الشيوخ",
+          "الرفاعي",
+          "الجبايش",
+          "قلعة سكر",
+          "الفهود",
+          "النصر",
+          "الغراف",
+          "الإصلاح",
+          "الدواية",
+          "سيد دخيل",
+          "البطحاء",
+          "الفجر"
+        ]
+      },
+      {
+        "key": "fileNumber",
+        "label": "رقم ملف الشهيد (الإضبارة)",
+        "type": "text",
+        "required": true,
+        "maxLength": 40
+      },
+      {
+        "key": "updateType",
+        "label": "نوع التحديث",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": [
+          "تغيير عنوان السكن",
+          "زواج أو طلاق أحد الورثة",
+          "وفاة أحد الورثة",
+          "إضافة وارث (مولود / حكم قضائي)",
+          "تحديث المعلومات المصرفية",
+          "أخرى"
+        ]
+      },
+      {
+        "key": "details",
+        "label": "تفاصيل التحديث",
+        "type": "textarea",
+        "required": true,
+        "maxLength": 800
+      }
+    ],
+    "feeIqd": null,
+    "feeSource": null,
+    "estimatedDuration": null,
+    "sourceUrl": "https://ur.gov.iq/",
+    "sourceQuality": "UNVERIFIED",
+    "notes": "المستمسكات المدرجة هي المتطلبات المعتادة لهذه المعاملة؛ قد تطلب الدائرة مستمسكاً إضافياً عند التدقيق."
+  },
+  {
+    "key": "martyrs-grant-salary-request",
+    "departmentId": "martyrs-foundation-dhi-qar",
+    "title": "طلب صرف الراتب أو المنحة لذوي الشهيد",
+    "description": "طلب صرف الراتب أو المنحة المقررة لذوي الشهيد، أو متابعة راتب متوقف أو متأخر.",
+    "category": "الرعاية والعمل",
+    "applicantType": "CITIZEN",
+    "channel": "ONLINE_SUBMISSION",
+    "requiredDocuments": [
+      {
+        "key": "national-id",
+        "label": "البطاقة الوطنية الموحدة",
+        "description": "وجه وظهر البطاقة، أو هوية الأحوال المدنية + شهادة الجنسية العراقية",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "foundation-id",
+        "label": "هوية مؤسسة الشهداء",
+        "description": "",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "inheritance-deed",
+        "label": "القسام الشرعي",
+        "description": "",
+        "required": false,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "bank-card",
+        "label": "البطاقة المصرفية (الماستر / الكي كارد)",
+        "description": "",
+        "required": false,
+        "accepts": ["image", "pdf"]
+      }
+    ],
+    "fields": [
+      {
+        "key": "fullName",
+        "label": "الاسم الكامل (الرباعي واللقب)",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "phone",
+        "label": "رقم الهاتف للتواصل",
+        "type": "tel",
+        "required": true,
+        "maxLength": 15
+      },
+      {
+        "key": "district",
+        "label": "القضاء / الناحية",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": [
+          "الناصرية",
+          "الشطرة",
+          "سوق الشيوخ",
+          "الرفاعي",
+          "الجبايش",
+          "قلعة سكر",
+          "الفهود",
+          "النصر",
+          "الغراف",
+          "الإصلاح",
+          "الدواية",
+          "سيد دخيل",
+          "البطحاء",
+          "الفجر"
+        ]
+      },
+      {
+        "key": "fileNumber",
+        "label": "رقم ملف الشهيد (الإضبارة)",
+        "type": "text",
+        "required": true,
+        "maxLength": 40
+      },
+      {
+        "key": "requestType",
+        "label": "نوع الطلب",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": ["صرف الراتب", "صرف المنحة", "متابعة راتب متوقف أو متأخر", "نقل الراتب إلى بطاقة مصرفية أخرى"]
+      },
+      {
+        "key": "details",
+        "label": "تفاصيل إضافية",
+        "type": "textarea",
+        "required": false,
+        "maxLength": 800
+      }
+    ],
+    "feeIqd": null,
+    "feeSource": null,
+    "estimatedDuration": null,
+    "sourceUrl": "https://ur.gov.iq/",
+    "sourceQuality": "UNVERIFIED",
+    "notes": "المستمسكات المدرجة هي المتطلبات المعتادة لهذه المعاملة؛ قد تطلب الدائرة مستمسكاً إضافياً عند التدقيق."
+  },
+  {
+    "key": "momd-displaced-returnee-registration",
+    "departmentId": "migration-displacement-dhi-qar",
+    "title": "تسجيل نازح أو عائد وتحديث بياناته",
+    "description": "تسجيل الأسرة النازحة أو العائدة لدى فرع وزارة الهجرة والمهجرين في ذي قار أو تحديث بياناتها.",
+    "category": "الرعاية والعمل",
+    "applicantType": "CITIZEN",
+    "channel": "ONLINE_SUBMISSION",
+    "requiredDocuments": [
+      {
+        "key": "national-id",
+        "label": "البطاقة الوطنية الموحدة",
+        "description": "وجه وظهر البطاقة، أو هوية الأحوال المدنية + شهادة الجنسية العراقية",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "family-ids",
+        "label": "البطاقات الوطنية لأفراد الأسرة",
+        "description": "",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "ration-card",
+        "label": "البطاقة التموينية",
+        "description": "",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "residence-confirmation",
+        "label": "تأييد سكن من المختار أو المجلس المحلي",
+        "description": "",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      }
+    ],
+    "fields": [
+      {
+        "key": "fullName",
+        "label": "اسم رب الأسرة الرباعي واللقب",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "phone",
+        "label": "رقم الهاتف للتواصل",
+        "type": "tel",
+        "required": true,
+        "maxLength": 15
+      },
+      {
+        "key": "status",
+        "label": "الحالة",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": ["نازح مقيم في ذي قار", "عائد إلى ذي قار", "تحديث بيانات أسرة مسجلة"]
+      },
+      {
+        "key": "originGovernorate",
+        "label": "المحافظة / المنطقة الأصلية",
+        "type": "text",
+        "required": true,
+        "maxLength": 80
+      },
+      {
+        "key": "district",
+        "label": "القضاء / الناحية",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": [
+          "الناصرية",
+          "الشطرة",
+          "سوق الشيوخ",
+          "الرفاعي",
+          "الجبايش",
+          "قلعة سكر",
+          "الفهود",
+          "النصر",
+          "الغراف",
+          "الإصلاح",
+          "الدواية",
+          "سيد دخيل",
+          "البطحاء",
+          "الفجر"
+        ]
+      },
+      {
+        "key": "currentAddress",
+        "label": "عنوان السكن الحالي",
+        "type": "textarea",
+        "required": true,
+        "maxLength": 300
+      },
+      {
+        "key": "familyMembers",
+        "label": "عدد أفراد الأسرة",
+        "type": "number",
+        "required": true,
+        "maxLength": 3
+      },
+      {
+        "key": "eventDate",
+        "label": "تاريخ النزوح أو العودة",
+        "type": "date",
+        "required": true
+      }
+    ],
+    "feeIqd": null,
+    "feeSource": null,
+    "estimatedDuration": null,
+    "sourceUrl": "https://ur.gov.iq/",
+    "sourceQuality": "UNVERIFIED",
+    "notes": "المستمسكات المدرجة هي المتطلبات المعتادة لهذه المعاملة؛ قد تطلب الدائرة مستمسكاً إضافياً عند التدقيق."
+  },
+  {
+    "key": "momd-return-grant",
+    "departmentId": "migration-displacement-dhi-qar",
+    "title": "طلب منحة العودة للأسر العائدة",
+    "description": "تقديم طلب صرف منحة العودة للأسرة النازحة بعد عودتها إلى منطقة سكنها الأصلية وتسجيل العودة.",
+    "category": "الرعاية والعمل",
+    "applicantType": "CITIZEN",
+    "channel": "ONLINE_SUBMISSION",
+    "requiredDocuments": [
+      {
+        "key": "national-id",
+        "label": "البطاقة الوطنية الموحدة",
+        "description": "وجه وظهر البطاقة، أو هوية الأحوال المدنية + شهادة الجنسية العراقية",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "ration-card",
+        "label": "البطاقة التموينية",
+        "description": "",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "return-confirmation",
+        "label": "تأييد العودة من المختار أو المجلس المحلي",
+        "description": "",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "displacement-proof",
+        "label": "ما يثبت النزوح (هوية أو استمارة تسجيل النازح)",
+        "description": "",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      }
+    ],
+    "fields": [
+      {
+        "key": "fullName",
+        "label": "اسم رب الأسرة الرباعي واللقب",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "phone",
+        "label": "رقم الهاتف للتواصل",
+        "type": "tel",
+        "required": true,
+        "maxLength": 15
+      },
+      {
+        "key": "district",
+        "label": "القضاء / الناحية",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": [
+          "الناصرية",
+          "الشطرة",
+          "سوق الشيوخ",
+          "الرفاعي",
+          "الجبايش",
+          "قلعة سكر",
+          "الفهود",
+          "النصر",
+          "الغراف",
+          "الإصلاح",
+          "الدواية",
+          "سيد دخيل",
+          "البطحاء",
+          "الفجر"
+        ]
+      },
+      {
+        "key": "displacementFile",
+        "label": "رقم ملف النزوح (إن وجد)",
+        "type": "text",
+        "required": false,
+        "maxLength": 40
+      },
+      {
+        "key": "returnDate",
+        "label": "تاريخ العودة",
+        "type": "date",
+        "required": true
+      },
+      {
+        "key": "familyMembers",
+        "label": "عدد أفراد الأسرة",
+        "type": "number",
+        "required": true,
+        "maxLength": 3
+      },
+      {
+        "key": "details",
+        "label": "معلومات إضافية",
+        "type": "textarea",
+        "required": false,
+        "maxLength": 600
+      }
+    ],
+    "feeIqd": null,
+    "feeSource": null,
+    "estimatedDuration": null,
+    "sourceUrl": "https://ur.gov.iq/",
+    "sourceQuality": "UNVERIFIED",
+    "notes": "المستمسكات المدرجة هي المتطلبات المعتادة لهذه المعاملة؛ قد تطلب الدائرة مستمسكاً إضافياً عند التدقيق."
+  },
+  {
+    "key": "disability-id-card",
+    "departmentId": "disability-care-commission-dhi-qar",
+    "title": "إصدار هوية ذوي الإعاقة والاحتياجات الخاصة",
+    "description": "طلب إصدار أو تجديد هوية ذوي الإعاقة والاحتياجات الخاصة للشمول بالحقوق المقررة بقانون رعاية ذوي الإعاقة رقم 38 لسنة 2013.",
+    "category": "الرعاية والعمل",
+    "applicantType": "CITIZEN",
+    "channel": "ONLINE_SUBMISSION",
+    "requiredDocuments": [
+      {
+        "key": "national-id",
+        "label": "البطاقة الوطنية الموحدة",
+        "description": "وجه وظهر البطاقة، أو هوية الأحوال المدنية + شهادة الجنسية العراقية",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "medical-committee-report",
+        "label": "تقرير اللجنة الطبية بنوع الإعاقة ونسبتها",
+        "description": "",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "personal-photo",
+        "label": "صورة شخصية حديثة",
+        "description": "",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "residence-card",
+        "label": "بطاقة السكن",
+        "description": "وجه وظهر",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "guardian-id",
+        "label": "البطاقة الوطنية لولي الأمر أو القيّم",
+        "description": "عند التقديم نيابةً عن الشخص",
+        "required": false,
+        "accepts": ["image", "pdf"]
+      }
+    ],
+    "fields": [
+      {
+        "key": "fullName",
+        "label": "اسم الشخص ذي الإعاقة الرباعي واللقب",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "applicant",
+        "label": "مقدم الطلب",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": ["الشخص نفسه", "ولي الأمر أو القيّم"]
+      },
+      {
+        "key": "phone",
+        "label": "رقم الهاتف للتواصل",
+        "type": "tel",
+        "required": true,
+        "maxLength": 15
+      },
+      {
+        "key": "district",
+        "label": "القضاء / الناحية",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": [
+          "الناصرية",
+          "الشطرة",
+          "سوق الشيوخ",
+          "الرفاعي",
+          "الجبايش",
+          "قلعة سكر",
+          "الفهود",
+          "النصر",
+          "الغراف",
+          "الإصلاح",
+          "الدواية",
+          "سيد دخيل",
+          "البطحاء",
+          "الفجر"
+        ]
+      },
+      {
+        "key": "disabilityType",
+        "label": "نوع الإعاقة",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": ["حركية", "بصرية", "سمعية", "ذهنية", "متعددة", "أخرى"]
+      },
+      {
+        "key": "requestType",
+        "label": "نوع الطلب",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": ["إصدار أول مرة", "تجديد", "بدل ضائع"]
+      }
+    ],
+    "feeIqd": null,
+    "feeSource": null,
+    "estimatedDuration": null,
+    "sourceUrl": "https://molsa.gov.iq/",
+    "sourceQuality": "UNVERIFIED",
+    "notes": "المستمسكات المدرجة هي المتطلبات المعتادة لهذه المعاملة؛ قد تطلب الدائرة مستمسكاً إضافياً عند التدقيق."
+  },
+  {
+    "key": "disability-full-time-carer-grant",
+    "departmentId": "disability-care-commission-dhi-qar",
+    "title": "طلب منحة المعين المتفرغ",
+    "description": "طلب شمول معين متفرغ لرعاية شخص ذي إعاقة شديدة يحتاج إلى رعاية دائمة، وفق قانون رعاية ذوي الإعاقة والاحتياجات الخاصة رقم 38 لسنة 2013.",
+    "category": "الرعاية والعمل",
+    "applicantType": "CITIZEN",
+    "channel": "ONLINE_SUBMISSION",
+    "requiredDocuments": [
+      {
+        "key": "disabled-national-id",
+        "label": "البطاقة الوطنية للشخص ذي الإعاقة",
+        "description": "",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "carer-national-id",
+        "label": "البطاقة الوطنية للمعين المتفرغ",
+        "description": "",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "medical-report",
+        "label": "تقرير طبي يثبت الحاجة إلى معين متفرغ",
+        "description": "",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "disability-id",
+        "label": "هوية ذوي الإعاقة",
+        "description": "",
+        "required": false,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "residence-card",
+        "label": "بطاقة السكن",
+        "description": "وجه وظهر",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      }
+    ],
+    "fields": [
+      {
+        "key": "disabledName",
+        "label": "اسم الشخص ذي الإعاقة الرباعي واللقب",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "fullName",
+        "label": "اسم المعين المتفرغ الرباعي واللقب",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "carerRelation",
+        "label": "صلة المعين بالشخص",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": ["الأب", "الأم", "الزوج / الزوجة", "الابن / البنت", "الأخ / الأخت", "أخرى"]
+      },
+      {
+        "key": "phone",
+        "label": "رقم الهاتف للتواصل",
+        "type": "tel",
+        "required": true,
+        "maxLength": 15
+      },
+      {
+        "key": "district",
+        "label": "القضاء / الناحية",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": [
+          "الناصرية",
+          "الشطرة",
+          "سوق الشيوخ",
+          "الرفاعي",
+          "الجبايش",
+          "قلعة سكر",
+          "الفهود",
+          "النصر",
+          "الغراف",
+          "الإصلاح",
+          "الدواية",
+          "سيد دخيل",
+          "البطحاء",
+          "الفجر"
+        ]
+      }
+    ],
+    "feeIqd": null,
+    "feeSource": null,
+    "estimatedDuration": null,
+    "sourceUrl": "https://molsa.gov.iq/",
+    "sourceQuality": "UNVERIFIED",
+    "notes": "المستمسكات المدرجة هي المتطلبات المعتادة لهذه المعاملة؛ قد تطلب الدائرة مستمسكاً إضافياً عند التدقيق."
+  },
+  {
+    "key": "uot-student-grant",
+    "departmentId": "university-of-thi-qar",
+    "title": "طلب المنحة الطلابية — جامعة ذي قار",
+    "description": "تقديم طلب الشمول بالمنحة الطلابية لطلبة جامعة ذي قار عبر شعبة شؤون الطلبة.",
+    "category": "التعليم العالي",
+    "applicantType": "CITIZEN",
+    "channel": "ONLINE_SUBMISSION",
+    "requiredDocuments": [
+      {
+        "key": "national-id",
+        "label": "البطاقة الوطنية الموحدة",
+        "description": "وجه وظهر البطاقة، أو هوية الأحوال المدنية + شهادة الجنسية العراقية",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "enrollment-proof",
+        "label": "تأييد استمرار بالدراسة من الكلية",
+        "description": "",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "bank-card",
+        "label": "البطاقة المصرفية لاستلام المنحة",
+        "description": "",
+        "required": false,
+        "accepts": ["image", "pdf"]
+      }
+    ],
+    "fields": [
+      {
+        "key": "fullName",
+        "label": "الاسم الكامل (الرباعي واللقب)",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "phone",
+        "label": "رقم الهاتف للتواصل",
+        "type": "tel",
+        "required": true,
+        "maxLength": 15
+      },
+      {
+        "key": "college",
+        "label": "الكلية / القسم",
+        "type": "text",
+        "required": true,
+        "maxLength": 160
+      },
+      {
+        "key": "stage",
+        "label": "المرحلة الدراسية",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": ["الأولى", "الثانية", "الثالثة", "الرابعة", "الخامسة", "السادسة"]
+      },
+      {
+        "key": "studyType",
+        "label": "نوع الدراسة",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": ["صباحية", "مسائية"]
+      },
+      {
+        "key": "studentId",
+        "label": "الرقم الجامعي (إن وجد)",
+        "type": "text",
+        "required": false,
+        "maxLength": 40
+      }
+    ],
+    "feeIqd": null,
+    "feeSource": null,
+    "estimatedDuration": null,
+    "sourceUrl": "https://en.wikipedia.org/wiki/University_of_Dhi_Qar",
+    "sourceQuality": "UNVERIFIED",
+    "notes": "المستمسكات المدرجة هي المتطلبات المعتادة لهذه المعاملة؛ قد تطلب الدائرة مستمسكاً إضافياً عند التدقيق. الطلبة المشمولون بالرعاية الاجتماعية أو الموظفون قد تُستثنى أحقيتهم وفق تعليمات الوزارة."
+  },
+  {
+    "key": "sumer-student-grant",
+    "departmentId": "university-of-sumer",
+    "title": "طلب المنحة الطلابية — جامعة سومر",
+    "description": "تقديم طلب الشمول بالمنحة الطلابية لطلبة جامعة سومر عبر شعبة شؤون الطلبة.",
+    "category": "التعليم العالي",
+    "applicantType": "CITIZEN",
+    "channel": "ONLINE_SUBMISSION",
+    "requiredDocuments": [
+      {
+        "key": "national-id",
+        "label": "البطاقة الوطنية الموحدة",
+        "description": "وجه وظهر البطاقة، أو هوية الأحوال المدنية + شهادة الجنسية العراقية",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "enrollment-proof",
+        "label": "تأييد استمرار بالدراسة من الكلية",
+        "description": "",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "bank-card",
+        "label": "البطاقة المصرفية لاستلام المنحة",
+        "description": "",
+        "required": false,
+        "accepts": ["image", "pdf"]
+      }
+    ],
+    "fields": [
+      {
+        "key": "fullName",
+        "label": "الاسم الكامل (الرباعي واللقب)",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "phone",
+        "label": "رقم الهاتف للتواصل",
+        "type": "tel",
+        "required": true,
+        "maxLength": 15
+      },
+      {
+        "key": "college",
+        "label": "الكلية / القسم",
+        "type": "text",
+        "required": true,
+        "maxLength": 160
+      },
+      {
+        "key": "stage",
+        "label": "المرحلة الدراسية",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": ["الأولى", "الثانية", "الثالثة", "الرابعة", "الخامسة", "السادسة"]
+      },
+      {
+        "key": "studyType",
+        "label": "نوع الدراسة",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": ["صباحية", "مسائية"]
+      },
+      {
+        "key": "studentId",
+        "label": "الرقم الجامعي (إن وجد)",
+        "type": "text",
+        "required": false,
+        "maxLength": 40
+      }
+    ],
+    "feeIqd": null,
+    "feeSource": null,
+    "estimatedDuration": null,
+    "sourceUrl": "https://sci.uos.edu.iq/",
+    "sourceQuality": "UNVERIFIED",
+    "notes": "المستمسكات المدرجة هي المتطلبات المعتادة لهذه المعاملة؛ قد تطلب الدائرة مستمسكاً إضافياً عند التدقيق. الطلبة المشمولون بالرعاية الاجتماعية أو الموظفون قد تُستثنى أحقيتهم وفق تعليمات الوزارة."
+  },
+  {
+    "key": "shatrah-uni-student-grant",
+    "departmentId": "shatrah-university",
+    "title": "طلب المنحة الطلابية — جامعة الشطرة",
+    "description": "تقديم طلب الشمول بالمنحة الطلابية لطلبة جامعة الشطرة عبر شعبة شؤون الطلبة.",
+    "category": "التعليم العالي",
+    "applicantType": "CITIZEN",
+    "channel": "ONLINE_SUBMISSION",
+    "requiredDocuments": [
+      {
+        "key": "national-id",
+        "label": "البطاقة الوطنية الموحدة",
+        "description": "وجه وظهر البطاقة، أو هوية الأحوال المدنية + شهادة الجنسية العراقية",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "enrollment-proof",
+        "label": "تأييد استمرار بالدراسة من الكلية",
+        "description": "",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "bank-card",
+        "label": "البطاقة المصرفية لاستلام المنحة",
+        "description": "",
+        "required": false,
+        "accepts": ["image", "pdf"]
+      }
+    ],
+    "fields": [
+      {
+        "key": "fullName",
+        "label": "الاسم الكامل (الرباعي واللقب)",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "phone",
+        "label": "رقم الهاتف للتواصل",
+        "type": "tel",
+        "required": true,
+        "maxLength": 15
+      },
+      {
+        "key": "college",
+        "label": "الكلية / القسم",
+        "type": "text",
+        "required": true,
+        "maxLength": 160
+      },
+      {
+        "key": "stage",
+        "label": "المرحلة الدراسية",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": ["الأولى", "الثانية", "الثالثة", "الرابعة", "الخامسة", "السادسة"]
+      },
+      {
+        "key": "studyType",
+        "label": "نوع الدراسة",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": ["صباحية", "مسائية"]
+      },
+      {
+        "key": "studentId",
+        "label": "الرقم الجامعي (إن وجد)",
+        "type": "text",
+        "required": false,
+        "maxLength": 40
+      }
+    ],
+    "feeIqd": null,
+    "feeSource": null,
+    "estimatedDuration": null,
+    "sourceUrl": "https://shu.edu.iq/news/details/209",
+    "sourceQuality": "UNVERIFIED",
+    "notes": "المستمسكات المدرجة هي المتطلبات المعتادة لهذه المعاملة؛ قد تطلب الدائرة مستمسكاً إضافياً عند التدقيق. الطلبة المشمولون بالرعاية الاجتماعية أو الموظفون قد تُستثنى أحقيتهم وفق تعليمات الوزارة."
+  },
+  {
+    "key": "nasiriyah-tech-student-grant",
+    "departmentId": "nasiriyah-technical-institute",
+    "title": "طلب المنحة الطلابية — المعهد التقني / الناصرية",
+    "description": "تقديم طلب الشمول بالمنحة الطلابية لطلبة المعهد التقني / الناصرية عبر شعبة شؤون الطلبة.",
+    "category": "التعليم العالي",
+    "applicantType": "CITIZEN",
+    "channel": "ONLINE_SUBMISSION",
+    "requiredDocuments": [
+      {
+        "key": "national-id",
+        "label": "البطاقة الوطنية الموحدة",
+        "description": "وجه وظهر البطاقة، أو هوية الأحوال المدنية + شهادة الجنسية العراقية",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "enrollment-proof",
+        "label": "تأييد استمرار بالدراسة من الكلية",
+        "description": "",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "bank-card",
+        "label": "البطاقة المصرفية لاستلام المنحة",
+        "description": "",
+        "required": false,
+        "accepts": ["image", "pdf"]
+      }
+    ],
+    "fields": [
+      {
+        "key": "fullName",
+        "label": "الاسم الكامل (الرباعي واللقب)",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "phone",
+        "label": "رقم الهاتف للتواصل",
+        "type": "tel",
+        "required": true,
+        "maxLength": 15
+      },
+      {
+        "key": "college",
+        "label": "الكلية / القسم",
+        "type": "text",
+        "required": true,
+        "maxLength": 160
+      },
+      {
+        "key": "stage",
+        "label": "المرحلة الدراسية",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": ["الأولى", "الثانية", "الثالثة", "الرابعة", "الخامسة", "السادسة"]
+      },
+      {
+        "key": "studyType",
+        "label": "نوع الدراسة",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": ["صباحية", "مسائية"]
+      },
+      {
+        "key": "studentId",
+        "label": "الرقم الجامعي (إن وجد)",
+        "type": "text",
+        "required": false,
+        "maxLength": 40
+      }
+    ],
+    "feeIqd": null,
+    "feeSource": null,
+    "estimatedDuration": null,
+    "sourceUrl": "https://www.stu.edu.iq/المعهد-التقني-الناصرية/",
+    "sourceQuality": "UNVERIFIED",
+    "notes": "المستمسكات المدرجة هي المتطلبات المعتادة لهذه المعاملة؛ قد تطلب الدائرة مستمسكاً إضافياً عند التدقيق. الطلبة المشمولون بالرعاية الاجتماعية أو الموظفون قد تُستثنى أحقيتهم وفق تعليمات الوزارة."
+  },
+  {
+    "key": "shatrah-tech-student-grant",
+    "departmentId": "shatrah-technical-institute",
+    "title": "طلب المنحة الطلابية — المعهد التقني / الشطرة",
+    "description": "تقديم طلب الشمول بالمنحة الطلابية لطلبة المعهد التقني / الشطرة عبر شعبة شؤون الطلبة.",
+    "category": "التعليم العالي",
+    "applicantType": "CITIZEN",
+    "channel": "ONLINE_SUBMISSION",
+    "requiredDocuments": [
+      {
+        "key": "national-id",
+        "label": "البطاقة الوطنية الموحدة",
+        "description": "وجه وظهر البطاقة، أو هوية الأحوال المدنية + شهادة الجنسية العراقية",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "enrollment-proof",
+        "label": "تأييد استمرار بالدراسة من الكلية",
+        "description": "",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "bank-card",
+        "label": "البطاقة المصرفية لاستلام المنحة",
+        "description": "",
+        "required": false,
+        "accepts": ["image", "pdf"]
+      }
+    ],
+    "fields": [
+      {
+        "key": "fullName",
+        "label": "الاسم الكامل (الرباعي واللقب)",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "phone",
+        "label": "رقم الهاتف للتواصل",
+        "type": "tel",
+        "required": true,
+        "maxLength": 15
+      },
+      {
+        "key": "college",
+        "label": "الكلية / القسم",
+        "type": "text",
+        "required": true,
+        "maxLength": 160
+      },
+      {
+        "key": "stage",
+        "label": "المرحلة الدراسية",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": ["الأولى", "الثانية", "الثالثة", "الرابعة", "الخامسة", "السادسة"]
+      },
+      {
+        "key": "studyType",
+        "label": "نوع الدراسة",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": ["صباحية", "مسائية"]
+      },
+      {
+        "key": "studentId",
+        "label": "الرقم الجامعي (إن وجد)",
+        "type": "text",
+        "required": false,
+        "maxLength": 40
+      }
+    ],
+    "feeIqd": null,
+    "feeSource": null,
+    "estimatedDuration": null,
+    "sourceUrl": "https://www.stu.edu.iq/المعهد-التقني-الشطرة/",
+    "sourceQuality": "UNVERIFIED",
+    "notes": "المستمسكات المدرجة هي المتطلبات المعتادة لهذه المعاملة؛ قد تطلب الدائرة مستمسكاً إضافياً عند التدقيق. الطلبة المشمولون بالرعاية الاجتماعية أو الموظفون قد تُستثنى أحقيتهم وفق تعليمات الوزارة."
+  },
+  {
+    "key": "opdc-household-kerosene-share",
+    "departmentId": "oil-products-distribution-dhi-qar",
+    "title": "طلب حصة النفط الأبيض المنزلية (تسجيل أو تحديث أو نقل وكيل)",
+    "description": "تسجيل الأسرة لاستلام حصة النفط الأبيض المنزلية لدى وكيل المنطقة، أو تحديث عدد أفرادها، أو نقلها إلى وكيل آخر، أو الإبلاغ عن عدم استلامها.",
+    "category": "النفط والطاقة",
+    "applicantType": "CITIZEN",
+    "channel": "ONLINE_SUBMISSION",
+    "requiredDocuments": [
+      {
+        "key": "national-id",
+        "label": "البطاقة الوطنية الموحدة",
+        "description": "وجه وظهر البطاقة، أو هوية الأحوال المدنية + شهادة الجنسية العراقية",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "ration-card",
+        "label": "البطاقة التموينية",
+        "description": "",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "residence-card",
+        "label": "بطاقة السكن",
+        "description": "وجه وظهر",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      }
+    ],
+    "fields": [
+      {
+        "key": "fullName",
+        "label": "اسم رب الأسرة الرباعي واللقب",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "phone",
+        "label": "رقم الهاتف للتواصل",
+        "type": "tel",
+        "required": true,
+        "maxLength": 15
+      },
+      {
+        "key": "district",
+        "label": "القضاء / الناحية",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": [
+          "الناصرية",
+          "الشطرة",
+          "سوق الشيوخ",
+          "الرفاعي",
+          "الجبايش",
+          "قلعة سكر",
+          "الفهود",
+          "النصر",
+          "الغراف",
+          "الإصلاح",
+          "الدواية",
+          "سيد دخيل",
+          "البطحاء",
+          "الفجر"
+        ]
+      },
+      {
+        "key": "neighborhood",
+        "label": "الحي / المنطقة",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "rationCardNumber",
+        "label": "رقم البطاقة التموينية",
+        "type": "text",
+        "required": true,
+        "maxLength": 40
+      },
+      {
+        "key": "familyMembers",
+        "label": "عدد أفراد الأسرة",
+        "type": "number",
+        "required": true,
+        "maxLength": 3
+      },
+      {
+        "key": "requestType",
+        "label": "نوع الطلب",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": ["تسجيل جديد", "تحديث عدد أفراد الأسرة", "نقل الحصة إلى وكيل آخر", "عدم استلام الحصة"]
+      },
+      {
+        "key": "agentName",
+        "label": "اسم الوكيل الحالي (إن وجد)",
+        "type": "text",
+        "required": false,
+        "maxLength": 120
+      }
+    ],
+    "feeIqd": null,
+    "feeSource": null,
+    "estimatedDuration": null,
+    "sourceUrl": "https://opdc.oil.gov.iq/",
+    "sourceQuality": "UNVERIFIED",
+    "notes": "المستمسكات المدرجة هي المتطلبات المعتادة لهذه المعاملة؛ قد تطلب الدائرة مستمسكاً إضافياً عند التدقيق."
+  },
+  {
+    "key": "opdc-household-lpg-share",
+    "departmentId": "oil-products-distribution-dhi-qar",
+    "title": "طلب تجهيز الغاز السائل المنزلي (تسجيل أو نقل وكيل)",
+    "description": "تسجيل الأسرة لدى وكيل غاز في منطقتها لاستلام قناني الغاز السائل المنزلي، أو نقلها إلى وكيل آخر.",
+    "category": "النفط والطاقة",
+    "applicantType": "CITIZEN",
+    "channel": "ONLINE_SUBMISSION",
+    "requiredDocuments": [
+      {
+        "key": "national-id",
+        "label": "البطاقة الوطنية الموحدة",
+        "description": "وجه وظهر البطاقة، أو هوية الأحوال المدنية + شهادة الجنسية العراقية",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "ration-card",
+        "label": "البطاقة التموينية",
+        "description": "",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "residence-card",
+        "label": "بطاقة السكن",
+        "description": "وجه وظهر",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      }
+    ],
+    "fields": [
+      {
+        "key": "fullName",
+        "label": "اسم رب الأسرة الرباعي واللقب",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "phone",
+        "label": "رقم الهاتف للتواصل",
+        "type": "tel",
+        "required": true,
+        "maxLength": 15
+      },
+      {
+        "key": "district",
+        "label": "القضاء / الناحية",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": [
+          "الناصرية",
+          "الشطرة",
+          "سوق الشيوخ",
+          "الرفاعي",
+          "الجبايش",
+          "قلعة سكر",
+          "الفهود",
+          "النصر",
+          "الغراف",
+          "الإصلاح",
+          "الدواية",
+          "سيد دخيل",
+          "البطحاء",
+          "الفجر"
+        ]
+      },
+      {
+        "key": "neighborhood",
+        "label": "الحي / المنطقة",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "rationCardNumber",
+        "label": "رقم البطاقة التموينية",
+        "type": "text",
+        "required": true,
+        "maxLength": 40
+      },
+      {
+        "key": "requestType",
+        "label": "نوع الطلب",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": ["تسجيل جديد لدى وكيل", "نقل إلى وكيل آخر", "عدم تجهيز من الوكيل"]
+      },
+      {
+        "key": "agentName",
+        "label": "اسم الوكيل الحالي (إن وجد)",
+        "type": "text",
+        "required": false,
+        "maxLength": 120
+      }
+    ],
+    "feeIqd": null,
+    "feeSource": null,
+    "estimatedDuration": null,
+    "sourceUrl": "https://opdc.oil.gov.iq/",
+    "sourceQuality": "UNVERIFIED",
+    "notes": "المستمسكات المدرجة هي المتطلبات المعتادة لهذه المعاملة؛ قد تطلب الدائرة مستمسكاً إضافياً عند التدقيق."
+  },
+  {
+    "key": "private-generator-complaint",
+    "departmentId": "dhiqar-municipalities",
+    "title": "شكوى على مولدة أهلية (التسعيرة، ساعات التجهيز، السلامة)",
+    "description": "تقديم شكوى على صاحب مولدة أهلية بسبب تجاوز التسعيرة المقررة للأمبير، أو نقص ساعات التجهيز، أو ضعف الفولتية، أو خطورة الأسلاك والتمديدات.",
+    "category": "الشكاوى والمراجعات",
+    "applicantType": "CITIZEN",
+    "channel": "ONLINE_SUBMISSION",
+    "requiredDocuments": [
+      {
+        "key": "subscription-receipt",
+        "label": "وصل اشتراك المولدة",
+        "description": "",
+        "required": false,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "evidence-photo",
+        "label": "صورة داعمة (الأسلاك، المولدة، إعلان التسعيرة)",
+        "description": "",
+        "required": false,
+        "accepts": ["image", "pdf"]
+      }
+    ],
+    "fields": [
+      {
+        "key": "fullName",
+        "label": "الاسم الكامل (الرباعي واللقب)",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "phone",
+        "label": "رقم الهاتف للتواصل",
+        "type": "tel",
+        "required": true,
+        "maxLength": 15
+      },
+      {
+        "key": "district",
+        "label": "القضاء / الناحية",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": [
+          "الناصرية",
+          "الشطرة",
+          "سوق الشيوخ",
+          "الرفاعي",
+          "الجبايش",
+          "قلعة سكر",
+          "الفهود",
+          "النصر",
+          "الغراف",
+          "الإصلاح",
+          "الدواية",
+          "سيد دخيل",
+          "البطحاء",
+          "الفجر"
+        ]
+      },
+      {
+        "key": "neighborhood",
+        "label": "الحي / المنطقة",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "generatorOwner",
+        "label": "اسم صاحب المولدة أو رقمها / موقعها",
+        "type": "text",
+        "required": true,
+        "maxLength": 160
+      },
+      {
+        "key": "subscribedAmps",
+        "label": "عدد الأمبيرات المشترك بها",
+        "type": "number",
+        "required": false,
+        "maxLength": 4
+      },
+      {
+        "key": "complaintType",
+        "label": "نوع الشكوى",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": [
+          "تجاوز التسعيرة المقررة للأمبير",
+          "نقص ساعات التجهيز",
+          "ضعف الفولتية أو انقطاعات متكررة",
+          "خطورة الأسلاك والتمديدات",
+          "الضوضاء أو الدخان",
+          "أخرى"
+        ]
+      },
+      {
+        "key": "details",
+        "label": "تفاصيل الشكوى",
+        "type": "textarea",
+        "required": true,
+        "maxLength": 800
+      }
+    ],
+    "feeIqd": null,
+    "feeSource": null,
+    "estimatedDuration": null,
+    "sourceUrl": "https://thiqar.gov.iq/",
+    "sourceQuality": "UNVERIFIED",
+    "notes": "تُحال الشكوى إلى البلدية المختصة ولجنة متابعة المولدات في القضاء أو الناحية للتحقق ومحاسبة صاحب المولدة. لا تُكشف هوية المشتكي لصاحب المولدة."
+  },
+  {
+    "key": "water-bill-payment-request",
+    "departmentId": "dhiqar-water",
+    "title": "طلب كشف أو تقسيط أو براءة ذمة لأجور الماء",
+    "description": "طلب كشف بالمبالغ المستحقة على اشتراك الماء لتسديدها، أو تقسيط المبالغ المتراكمة، أو براءة ذمة من أجور الماء.",
+    "category": "الماء والمجاري",
+    "applicantType": "CITIZEN",
+    "channel": "ONLINE_SUBMISSION",
+    "requiredDocuments": [
+      {
+        "key": "national-id",
+        "label": "البطاقة الوطنية الموحدة",
+        "description": "وجه وظهر البطاقة، أو هوية الأحوال المدنية + شهادة الجنسية العراقية",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "last-bill",
+        "label": "آخر قائمة أجور ماء",
+        "description": "",
+        "required": false,
+        "accepts": ["image", "pdf"]
+      }
+    ],
+    "fields": [
+      {
+        "key": "fullName",
+        "label": "الاسم الكامل (الرباعي واللقب)",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "phone",
+        "label": "رقم الهاتف للتواصل",
+        "type": "tel",
+        "required": true,
+        "maxLength": 15
+      },
+      {
+        "key": "district",
+        "label": "القضاء / الناحية",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": [
+          "الناصرية",
+          "الشطرة",
+          "سوق الشيوخ",
+          "الرفاعي",
+          "الجبايش",
+          "قلعة سكر",
+          "الفهود",
+          "النصر",
+          "الغراف",
+          "الإصلاح",
+          "الدواية",
+          "سيد دخيل",
+          "البطحاء",
+          "الفجر"
+        ]
+      },
+      {
+        "key": "neighborhood",
+        "label": "الحي / المنطقة",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "subscriptionNumber",
+        "label": "رقم الاشتراك / الحساب",
+        "type": "text",
+        "required": true,
+        "maxLength": 40
+      },
+      {
+        "key": "requestType",
+        "label": "نوع الطلب",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": ["كشف بالمبلغ المستحق للتسديد", "تقسيط المبالغ المتراكمة", "براءة ذمة من أجور الماء"]
+      },
+      {
+        "key": "details",
+        "label": "ملاحظات",
+        "type": "textarea",
+        "required": false,
+        "maxLength": 600
+      }
+    ],
+    "feeIqd": null,
+    "feeSource": null,
+    "estimatedDuration": null,
+    "sourceUrl": "https://thiqar.gov.iq/",
+    "sourceQuality": "UNVERIFIED",
+    "notes": "لا يتم الدفع عبر المنصة؛ ترسل شعبة الجباية الكشف أو قرار التقسيط في حسابك ويُسدَّد المبلغ في الدائرة مقابل وصل رسمي. للاعتراض على قائمة استخدم خدمة «اعتراض على قائمة أجور الماء»."
+  },
+  {
+    "key": "elec-bill-payment-request",
+    "departmentId": "dhiqar-electricity",
+    "title": "طلب كشف أو تقسيط أو براءة ذمة لقائمة الكهرباء",
+    "description": "طلب كشف بالمبالغ المستحقة على اشتراك الكهرباء لتسديدها، أو تقسيط الديون المتراكمة، أو براءة ذمة.",
+    "category": "الكهرباء",
+    "applicantType": "CITIZEN",
+    "channel": "ONLINE_SUBMISSION",
+    "requiredDocuments": [
+      {
+        "key": "national-id",
+        "label": "البطاقة الوطنية الموحدة",
+        "description": "وجه وظهر البطاقة، أو هوية الأحوال المدنية + شهادة الجنسية العراقية",
+        "required": true,
+        "accepts": ["image", "pdf"]
+      },
+      {
+        "key": "elec-bill",
+        "label": "آخر قائمة كهرباء",
+        "description": "",
+        "required": false,
+        "accepts": ["image", "pdf"]
+      }
+    ],
+    "fields": [
+      {
+        "key": "fullName",
+        "label": "الاسم الكامل (الرباعي واللقب)",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "phone",
+        "label": "رقم الهاتف للتواصل",
+        "type": "tel",
+        "required": true,
+        "maxLength": 15
+      },
+      {
+        "key": "district",
+        "label": "القضاء / الناحية",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": [
+          "الناصرية",
+          "الشطرة",
+          "سوق الشيوخ",
+          "الرفاعي",
+          "الجبايش",
+          "قلعة سكر",
+          "الفهود",
+          "النصر",
+          "الغراف",
+          "الإصلاح",
+          "الدواية",
+          "سيد دخيل",
+          "البطحاء",
+          "الفجر"
+        ]
+      },
+      {
+        "key": "neighborhood",
+        "label": "الحي / المنطقة",
+        "type": "text",
+        "required": true,
+        "maxLength": 120
+      },
+      {
+        "key": "accountNumber",
+        "label": "رقم الحساب",
+        "type": "text",
+        "required": true,
+        "maxLength": 40
+      },
+      {
+        "key": "requestType",
+        "label": "نوع الطلب",
+        "type": "select",
+        "required": true,
+        "maxLength": 160,
+        "options": ["كشف بالمبلغ المستحق للتسديد", "تقسيط الديون المتراكمة", "براءة ذمة من قوائم الكهرباء"]
+      },
+      {
+        "key": "details",
+        "label": "ملاحظات",
+        "type": "textarea",
+        "required": false,
+        "maxLength": 600
+      }
+    ],
+    "feeIqd": null,
+    "feeSource": null,
+    "estimatedDuration": null,
+    "sourceUrl": "https://moelc.gov.iq/",
+    "sourceQuality": "UNVERIFIED",
+    "notes": "لا يتم الدفع عبر المنصة؛ يرسل قسم الحسابات والجباية الكشف أو قرار التقسيط في حسابك، والتسديد في منافذ الجباية أو الدفع الإلكتروني الرسمية. للاعتراض على قائمة استخدم خدمة «الاستعلام عن القوائم والاعتراض على قائمة الكهرباء»."
   }
 ]

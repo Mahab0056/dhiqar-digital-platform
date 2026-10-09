@@ -9,6 +9,7 @@ import { pushEnabled } from '../push.js'
 import { otpDevMode } from '../otp.js'
 import { faceMatchAvailable } from '../face-match.js'
 import { paymentProvider } from '../payments/providers.js'
+import { ESCALATION_DEPARTMENT_ID } from '../services/sla.js'
 
 export type HealthComponent = {
   key: string
@@ -103,6 +104,53 @@ function systemHealth(): { generatedAt: string; components: HealthComponent[] } 
 export function registerOperationsRoutes(app: express.Express) {
   app.get('/api/operations/health', requireSession('OPERATIONS', 'SUPER_ADMIN'), (_req, res) => {
     res.json(systemHealth())
+  })
+
+  /**
+   * Staffing coverage: departments without a single active employee account, and how many open service requests
+   * each holds. Those requests are escalated to the governorate office's queue (server/services/sla.ts).
+   */
+  app.get('/api/operations/department-coverage', requireSession('OPERATIONS', 'SUPER_ADMIN'), (_req, res) => {
+    const now = new Date().toISOString()
+    const rows = db
+      .prepare(
+        `SELECT d.id, d.name, d.district,
+           (SELECT COUNT(*) FROM staff_accounts s WHERE s.department_id = d.id AND s.role = 'EMPLOYEE' AND s.status = 'ACTIVE') AS active_employees,
+           (SELECT COUNT(*) FROM staff_accounts s WHERE s.department_id = d.id AND s.role = 'EMPLOYEE' AND s.status = 'DISABLED') AS disabled_employees,
+           (SELECT COUNT(*) FROM service_requests sr WHERE sr.department_id = d.id AND sr.status NOT IN ('APPROVED', 'REJECTED')) AS open_requests,
+           (SELECT COUNT(*) FROM service_requests sr WHERE sr.department_id = d.id AND sr.status NOT IN ('APPROVED', 'REJECTED', 'ACTION_REQUIRED', 'PAYMENT_PENDING') AND sr.due_at IS NOT NULL AND sr.due_at < ?) AS overdue_requests,
+           (SELECT MIN(sr.created_at) FROM service_requests sr WHERE sr.department_id = d.id AND sr.status NOT IN ('APPROVED', 'REJECTED')) AS oldest_open_at
+         FROM departments d WHERE d.active = 1`
+      )
+      .all(now) as Array<Record<string, unknown>>
+    const all = rows.map(row => ({
+      id: String(row.id),
+      name: String(row.name),
+      district: row.district ? String(row.district) : null,
+      activeEmployees: Number(row.active_employees || 0),
+      disabledEmployees: Number(row.disabled_employees || 0),
+      openRequests: Number(row.open_requests || 0),
+      overdueRequests: Number(row.overdue_requests || 0),
+      oldestOpenAt: row.oldest_open_at ? String(row.oldest_open_at) : null,
+    }))
+    const uncovered = all
+      .filter(item => item.activeEmployees === 0)
+      .sort((a, b) => b.openRequests - a.openRequests || a.name.localeCompare(b.name, 'ar'))
+    const escalation = all.find(item => item.id === ESCALATION_DEPARTMENT_ID)
+    res.json({
+      generatedAt: now,
+      escalationDepartment: {
+        id: ESCALATION_DEPARTMENT_ID,
+        name: escalation?.name || ESCALATION_DEPARTMENT_ID,
+        activeEmployees: escalation?.activeEmployees || 0,
+      },
+      summary: {
+        departments: all.length,
+        departmentsWithoutStaff: uncovered.length,
+        openRequestsWithoutStaff: uncovered.reduce((sum, item) => sum + item.openRequests, 0),
+      },
+      items: uncovered,
+    })
   })
 
   app.post(

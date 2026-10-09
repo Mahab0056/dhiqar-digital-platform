@@ -55,18 +55,9 @@ export function AppShell({
       </>
     )
     const className = item.active ? 'is-active' : ''
-    // hash links scroll inside the current page; real routes go through the router
-    return item.href.includes('#') ? (
-      <a
-        href={item.href}
-        className={className}
-        aria-current={item.active ? 'page' : undefined}
-        key={item.label}
-        onClick={() => setOpen(false)}
-      >
-        {content}
-      </a>
-    ) : (
+    // every item goes through the router (no full reload from another page); useHashScroll (App.tsx) scrolls to the
+    // "#section" of a hash link and back to the top for a link to the page already open
+    return (
       <Link
         href={item.href}
         className={className}

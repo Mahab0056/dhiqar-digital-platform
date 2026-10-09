@@ -40,3 +40,36 @@ self.addEventListener('notificationclick', event => {
     })
   )
 })
+
+/*
+ * While a new release is starting (a few seconds on each deploy) the server cannot answer. Instead of the browser's
+ * error page, show a short Arabic notice that retries by itself. Only page navigations are handled; nothing is cached.
+ */
+const RESTARTING_PAGE = `<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>ذي قار الرقمية</title>
+<style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#f6f6f4;color:#14281f;
+font-family:system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif;text-align:center;padding:24px}
+@media (prefers-color-scheme:dark){body{background:#0e1712;color:#e8efe9}}
+.s{width:42px;height:42px;margin:0 auto 18px;border-radius:50%;border:4px solid #0f7a4f33;border-top-color:#0f7a4f;
+animation:r 1s linear infinite}@keyframes r{to{transform:rotate(360deg)}}p{opacity:.75;line-height:1.7}</style></head>
+<body><main><div class="s"></div><h1 id="t" style="font-size:20px">نحدّث المنصة الآن</h1>
+<p id="d">ثوانٍ قليلة وتعود الصفحة تلقائياً.</p></main>
+<script>if(!navigator.onLine){t.textContent='لا يوجد اتصال بالإنترنت';d.textContent='تعود الصفحة تلقائياً عند عودة الاتصال.';addEventListener('online',function(){location.reload()})}else setTimeout(function(){location.reload()},4000)</script></body></html>`
+
+self.addEventListener('fetch', event => {
+  if (event.request.mode !== 'navigate') return
+  event.respondWith(
+    fetch(event.request)
+      .then(response => {
+        if (response.status === 502 || response.status === 503 || response.status === 504) throw new Error('restarting')
+        return response
+      })
+      .catch(
+        () =>
+          new Response(RESTARTING_PAGE, {
+            status: 503,
+            headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' },
+          })
+      )
+  )
+})

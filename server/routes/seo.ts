@@ -13,13 +13,23 @@ const clientRoutes: RegExp[] = [
   /^\/(staff\/login|staff\/security|operations\/login|super-admin\/login)\/?$/,
   /^\/(departments|department|government-services|service|verify)\/[^/]+\/?$/,
   /^\/citizen\/(notifications|feedback)\/?$/,
-  /^\/citizen\/(feedback|application|pay)\/[^/]+\/?$/,
+  /^\/citizen\/(feedback|application|request|pay)\/[^/]+\/?$/,
   /^\/citizen\/pay\/[^/]+\/sandbox\/?$/,
 ]
 
 export const isClientRoute = (path: string) => clientRoutes.some(pattern => pattern.test(path))
 
-const publicPages = ['/', '/directory', '/departments', '/verify', '/login', '/onboarding', '/privacy', '/terms', '/accessibility']
+const publicPages = [
+  '/',
+  '/directory',
+  '/departments',
+  '/verify',
+  '/login',
+  '/onboarding',
+  '/privacy',
+  '/terms',
+  '/accessibility',
+]
 
 const xmlEscape = (value: string) =>
   value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
@@ -59,6 +69,8 @@ export function registerSeoRoutes(app: express.Express) {
       urls.add(`/government-services/${encodeURIComponent(entry.canonicalServiceId || entry.id)}`)
     const body = [...urls].map(path => `  <url><loc>${xmlEscape(origin + path)}</loc></url>`).join('\n')
     res.type('application/xml').setHeader('Cache-Control', 'public, max-age=3600')
-    res.send(`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${body}\n</urlset>\n`)
+    res.send(
+      `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${body}\n</urlset>\n`
+    )
   })
 }

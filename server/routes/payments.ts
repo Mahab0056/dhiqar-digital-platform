@@ -6,7 +6,7 @@ import { requireSession, currentCitizen } from '../auth/session.js'
 import { addAudit, db } from '../db.js'
 import { productionOrigin as publicBaseUrl } from '../config.js'
 import { paymentProvider, sandboxAllowed } from '../payments/providers.js'
-import { getPaymentIntent, getPaymentIntentById, settlePayment } from '../payments/intents.js'
+import { getPaymentIntent, getPaymentIntentById, settlePayment, supersededByOffice } from '../payments/intents.js'
 
 /** A rejected or approved request owes nothing more: its fee can no longer be paid. */
 const requestClosed = (reference: string | null) =>
@@ -44,6 +44,8 @@ export function registerPaymentRoutes(app: express.Express) {
     const intent = getPaymentIntent(param(req, 'reference'), citizen.id)
     if (!intent) return res.status(404).json({ message: 'عملية الدفع غير موجودة ضمن حسابك.' })
     if (intent.status === 'PAID') return res.status(409).json({ message: 'هذا الرسم مسدد مسبقاً.', intent })
+    if (supersededByOffice(intent))
+      return res.status(409).json({ message: 'سُدد هذا الرسم في الدائرة ولا يلزمك دفعه إلكترونياً.', intent })
     if (requestClosed(intent.serviceRequestReference))
       return res.status(409).json({ message: 'أُغلقت هذه المعاملة، فلا يلزمك دفع هذا الرسم.', intent })
     const provider = paymentProvider()
@@ -84,6 +86,8 @@ export function registerPaymentRoutes(app: express.Express) {
       return res.status(403).json({ message: 'وضع الدفع التجريبي غير مفعّل.' })
     const intent = getPaymentIntent(param(req, 'reference'), citizen.id)
     if (!intent) return res.status(404).json({ message: 'عملية الدفع غير موجودة ضمن حسابك.' })
+    if (supersededByOffice(intent))
+      return res.status(409).json({ message: 'سُدد هذا الرسم في الدائرة ولا يلزمك دفعه إلكترونياً.', intent })
     const payload = z.object({ outcome: z.enum(['PAID', 'FAILED', 'CANCELLED']).default('PAID') }).parse(req.body || {})
     if (payload.outcome === 'PAID' && requestClosed(intent.serviceRequestReference))
       return res.status(409).json({ message: 'أُغلقت هذه المعاملة، فلا يلزمك دفع هذا الرسم.', intent })

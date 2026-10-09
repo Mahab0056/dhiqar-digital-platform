@@ -7,6 +7,7 @@ import {
   Bell,
   BriefcaseBusiness,
   Building2,
+  CalendarClock,
   CheckCircle2,
   Eye,
   FileArchive,
@@ -26,6 +27,7 @@ import { WorkspaceTabs, type WorkspaceTab } from '../../components/shared/Worksp
 import { FeedbackAdminPanel } from './FeedbackAdminPanel'
 import { IdentityReviewPanel } from './IdentityReviewPanel'
 import { ServiceRequestAdminPanel } from './ServiceRequestAdminPanel'
+import { AppointmentsDayPanel } from './AppointmentsDayPanel'
 import { ReportExport } from '../../components/shared/ReportExport'
 
 export function EmployeeDashboard() {
@@ -256,6 +258,12 @@ export function EmployeeDashboard() {
                   icon: BriefcaseBusiness,
                   badge: workQueue.serviceRequests,
                   content: <ServiceRequestAdminPanel />,
+                },
+                {
+                  id: 'employee-appointments',
+                  label: 'المواعيد',
+                  icon: CalendarClock,
+                  content: <AppointmentsDayPanel />,
                 },
                 {
                   id: 'employee-applications',

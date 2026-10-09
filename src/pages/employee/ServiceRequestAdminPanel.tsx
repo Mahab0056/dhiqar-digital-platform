@@ -14,11 +14,12 @@ import {
   ReceiptText,
   RefreshCw,
   Search,
+  ShieldAlert,
   Undo2,
   UserRound,
   XCircle,
 } from 'lucide-react'
-import { api } from '../../api'
+import { api, type EmployeeServiceRequest } from '../../api'
 import { useSession } from '../../lib/session'
 import type { ChecklistItem, CitizenServiceRequest } from '../../types'
 
@@ -130,7 +131,18 @@ export function ServiceRequestAdminPanel({
   const [appointmentDate, setAppointmentDate] = useState('')
   const [appointmentNote, setAppointmentNote] = useState('')
   const [amountIqd, setAmountIqd] = useState('')
+  const [appointmentTime, setAppointmentTime] = useState('')
   const [docNotes, setDocNotes] = useState<Record<string, string>>({})
+  // fee paid at the department counter
+  const [receiptNumber, setReceiptNumber] = useState('')
+  const [receiptAmount, setReceiptAmount] = useState('')
+  const [receiptNote, setReceiptNote] = useState('')
+  // confirm / move the attendance appointment
+  const [slotDate, setSlotDate] = useState('')
+  const [slotTime, setSlotTime] = useState('')
+  const [slotNote, setSlotNote] = useState('')
+  /** null until /api/payments/config answers; false = no online gateway (fees are collected at the office) */
+  const [onlinePayments, setOnlinePayments] = useState<boolean | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
@@ -153,9 +165,16 @@ export function ServiceRequestAdminPanel({
       setDecisionNote(item.decisionNote || '')
       setRequiredDocument('')
       setAppointmentDate('')
+      setAppointmentTime('')
       setAppointmentNote('')
       setAmountIqd('')
       setDocNotes({})
+      setReceiptNumber('')
+      setReceiptAmount('')
+      setReceiptNote('')
+      setSlotDate(item.appointment?.preferredDate || '')
+      setSlotTime(item.appointment?.preferredTime || '')
+      setSlotNote('')
     }
   }, [])
 
@@ -194,6 +213,20 @@ export function ServiceRequestAdminPanel({
   useEffect(() => {
     void load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+  useEffect(() => {
+    let cancelled = false
+    api
+      .getPaymentConfig()
+      .then(config => {
+        if (!cancelled) setOnlinePayments(config.available)
+      })
+      .catch(() => {
+        if (!cancelled) setOnlinePayments(null)
+      })
+    return () => {
+      cancelled = true
+    }
   }, [])
   useEffect(() => {
     if (!focusReference) return
@@ -325,6 +358,11 @@ export function ServiceRequestAdminPanel({
       return setError('نص الإجراء الظاهر للمواطن قصير جداً — اكتب 6 أحرف على الأقل أو اتركه فارغاً.')
     if (status === 'APPROVED' && pendingRequired.length)
       return setError(`دقّق كل المستمسكات المطلوبة قبل الموافقة: ${pendingRequired.map(doc => doc.label).join('، ')}.`)
+    if (status === 'APPROVED' && feeOwed)
+      return setError('لا يمكن الموافقة قبل استيفاء رسم الخدمة: سجّل وصل الدفع في الدائرة أولاً.')
+    if (status === 'APPROVED' && needsSlot && (!appointmentDate || !appointmentTime))
+      return setError('هذه الخدمة تتطلب حضور المواطن: حدد تاريخ ووقت موعد الحضور قبل الموافقة.')
+    if (status === 'APPROVED' && appointmentDate && !appointmentTime) return setError('حدد وقت موعد الحضور مع التاريخ.')
     setBusy(true)
     setError('')
     try {
@@ -334,6 +372,7 @@ export function ServiceRequestAdminPanel({
         decisionNote: decisionNote.trim() || undefined,
         requiredDocument: status === 'ACTION_REQUIRED' && requiredDocument.trim() ? requiredDocument.trim() : undefined,
         appointmentDate: status === 'APPROVED' && appointmentDate ? appointmentDate : undefined,
+        appointmentTime: status === 'APPROVED' && appointmentDate && appointmentTime ? appointmentTime : undefined,
         appointmentNote: status === 'APPROVED' && appointmentNote.trim() ? appointmentNote.trim() : undefined,
         amountIqd: status === 'PAYMENT_REQUIRED' ? Math.round(Number(amountIqd)) : undefined,
       })
@@ -351,6 +390,69 @@ export function ServiceRequestAdminPanel({
   const closed = selected ? ['APPROVED', 'REJECTED'].includes(selected.status) : false
   const pendingPayment = selected?.payments?.find(payment => owed(payment.status))
   const paidPayments = selected?.payments?.filter(payment => payment.status === 'PAID') || []
+  const detail = selected as EmployeeServiceRequest | null
+  /** a fee is still owed: an online intent not paid yet, or an official fee to be collected at the counter */
+  const feeOwed = Boolean(pendingPayment) || selected?.paymentStatus === 'PAY_AT_OFFICE'
+  const officeDue = pendingPayment
+    ? (selected?.payments || []).filter(payment => owed(payment.status)).reduce((sum, item) => sum + item.amountIqd, 0)
+    : detail?.feeIqd || 0
+  /** an attendance service is approved with a booked slot (unless the request already has one) */
+  const needsSlot = detail?.serviceChannel === 'APPOINTMENT_REQUIRED' && !selected?.appointment
+
+  const recordOfficePayment = async () => {
+    if (!selected) return
+    const amount = Math.round(Number(receiptAmount || officeDue))
+    if (receiptNumber.trim().length < 3) return setError('اكتب رقم وصل القبض الصادر من الدائرة (3 أحرف على الأقل).')
+    if (!(amount >= 1)) return setError('أدخل المبلغ المستوفى بالدينار.')
+    if (officeDue && amount < officeDue)
+      return setError(`المبلغ أقل من الرسم المستحق (${officeDue.toLocaleString('en-US')} د.ع).`)
+    if (
+      !window.confirm(
+        `تسجيل وصل ${receiptNumber.trim()} بمبلغ ${amount.toLocaleString('en-US')} د.ع على ${selected.reference}؟`
+      )
+    )
+      return
+    setBusy(true)
+    setError('')
+    setNotice('')
+    try {
+      const updated = await api.recordServiceRequestOfficePayment(selected.reference, {
+        receiptNumber: receiptNumber.trim(),
+        amountIqd: amount,
+        note: receiptNote.trim() || undefined,
+      })
+      setNotice(`سُجّل وصل ${receiptNumber.trim()} على ${updated.reference} وأُبلغ المواطن.`)
+      await load(updated.reference)
+    } catch (receiptError) {
+      setError((receiptError as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const scheduleAppointment = async (action: 'CONFIRM' | 'RESCHEDULE') => {
+    if (!selected) return
+    if (!slotDate || !slotTime) return setError('حدد تاريخ ووقت الموعد.')
+    setBusy(true)
+    setError('')
+    setNotice('')
+    try {
+      const updated = await api.scheduleServiceRequestAppointment(selected.reference, {
+        action,
+        date: slotDate,
+        time: slotTime,
+        note: slotNote.trim() || undefined,
+      })
+      setNotice(
+        `${action === 'RESCHEDULE' ? 'تغيّر' : 'تأكد'} موعد ${updated.reference}: ${slotDate} الساعة ${slotTime} — أُبلغ المواطن.`
+      )
+      await load(updated.reference)
+    } catch (slotError) {
+      setError((slotError as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
   const services = useMemo(
     () => [...new Map(items.map(item => [item.serviceKey, item.serviceName || item.serviceKey])).entries()],
     [items]
@@ -552,6 +654,9 @@ export function ServiceRequestAdminPanel({
                       {item.originDepartmentId && item.originDepartmentId !== item.departmentId && (
                         <b className="row-referred">محال</b>
                       )}
+                      {(item as EmployeeServiceRequest).escalation && (
+                        <b className="row-overdue">{(item as EmployeeServiceRequest).escalation!.label}</b>
+                      )}
                     </span>
                     <span className="row-action">
                       {pending ? `${pending.toLocaleString('en-US')} مستمسك بانتظار التدقيق` : item.currentAction}
@@ -600,6 +705,17 @@ export function ServiceRequestAdminPanel({
                 <Info />
                 <span>{selected.currentAction}</span>
               </div>
+              {detail?.escalation && (
+                <div className="service-request-current-action">
+                  <ShieldAlert />
+                  <span>
+                    <b>{detail.escalation.label}</b> —{' '}
+                    {detail.escalation.reason === 'NO_STAFF'
+                      ? `لا يوجد موظف فعّال في ${selected.department || 'الدائرة المختصة'}، فظهر الطلب في قائمة ديوان المحافظة حتى لا يضيع. يمكنك استلامه ومعالجته أو إحالته للدائرة المختصة.`
+                      : 'تجاوز الطلب مهلته دون أن يستلمه أحد في دائرته، فظهر في قائمة ديوان المحافظة. استلمه أو تابع مع الدائرة المختصة.'}
+                  </span>
+                </div>
+              )}
 
               <div className="service-request-assignment">
                 <UserRound aria-hidden="true" />
@@ -691,20 +807,144 @@ export function ServiceRequestAdminPanel({
                 <div className="service-request-current-action">
                   <CalendarClock />
                   <span>
-                    موعد مطلوب: {selected.appointment.preferredDate} الساعة {selected.appointment.preferredTime} —{' '}
-                    {selected.appointment.status === 'CONFIRMED' ? 'مؤكد' : 'بانتظار التأكيد'}
+                    {selected.appointment.status === 'CONFIRMED' ? 'موعد الحضور المؤكد' : 'موعد طلبه المواطن'}:{' '}
+                    {selected.appointment.preferredDate} الساعة {selected.appointment.preferredTime} —{' '}
+                    {selected.appointment.status === 'CONFIRMED'
+                      ? 'مؤكد'
+                      : selected.appointment.status === 'CANCELLED'
+                        ? 'ملغى'
+                        : 'بانتظار التأكيد'}
+                    {selected.appointment.note ? ` — ${selected.appointment.note}` : ''}
                   </span>
                 </div>
               )}
+              {selected.appointment &&
+                selected.status !== 'REJECTED' &&
+                !readOnly &&
+                !assignedToOther &&
+                selected.appointment.status !== 'CANCELLED' && (
+                  <section className="service-request-update">
+                    <h4>
+                      <CalendarClock /> {selected.appointment.status === 'CONFIRMED' ? 'تغيير الموعد' : 'تأكيد الموعد'}
+                    </h4>
+                    <div className="form-grid">
+                      <label>
+                        التاريخ
+                        <input
+                          type="date"
+                          value={slotDate}
+                          min={new Date().toISOString().slice(0, 10)}
+                          onChange={event => setSlotDate(event.target.value)}
+                        />
+                      </label>
+                      <label>
+                        الوقت
+                        <input type="time" value={slotTime} onChange={event => setSlotTime(event.target.value)} />
+                      </label>
+                    </div>
+                    <label>
+                      تعليمات الحضور <small>اختيارية — تصل المواطن مع الموعد</small>
+                      <input
+                        value={slotNote}
+                        onChange={event => setSlotNote(event.target.value.slice(0, 300))}
+                        placeholder="مثال: الطابق الثاني، شعبة الإصدار، إحضار الأصول"
+                      />
+                    </label>
+                    <div className="transfer-actions">
+                      {selected.appointment.status !== 'CONFIRMED' && (
+                        <button
+                          type="button"
+                          className="button primary"
+                          disabled={busy}
+                          onClick={() => void scheduleAppointment('CONFIRM')}
+                        >
+                          <CheckCircle2 /> تأكيد الموعد وإشعار المواطن
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        className={selected.appointment.status === 'CONFIRMED' ? 'button primary' : 'button outline'}
+                        disabled={
+                          busy ||
+                          (slotDate === selected.appointment.preferredDate &&
+                            slotTime === selected.appointment.preferredTime)
+                        }
+                        onClick={() => void scheduleAppointment('RESCHEDULE')}
+                      >
+                        <CalendarClock /> تغيير الموعد
+                      </button>
+                    </div>
+                  </section>
+                )}
 
-              {selected.paymentStatus === 'PAY_AT_OFFICE' && !pendingPayment && paidPayments.length === 0 && (
+              {selected.paymentStatus === 'PAY_AT_OFFICE' && !pendingPayment && (
                 <div className="service-request-current-action">
                   <ReceiptText />
                   <span>
-                    رسم رسمي يُستوفى في الدائرة عند إكمال الإجراء (الدفع الإلكتروني غير مفعّل). تأكد من الاستيفاء قبل
-                    الموافقة.
+                    رسم رسمي{detail?.feeIqd ? ` (${detail.feeIqd.toLocaleString('en-US')} د.ع)` : ''} يُستوفى في الدائرة
+                    (الدفع الإلكتروني غير مفعّل). لا يمكن الموافقة قبل تسجيل وصل القبض أدناه.
                   </span>
                 </div>
+              )}
+              {detail?.officeReceipt && (
+                <div className="service-request-current-action closed">
+                  <ReceiptText />
+                  <span>
+                    سُدد الرسم في الدائرة: وصل {detail.officeReceipt.receiptNumber} —{' '}
+                    {detail.officeReceipt.amountIqd.toLocaleString('en-US')} د.ع
+                    {detail.officeReceipt.recordedAt
+                      ? ` — ${new Date(detail.officeReceipt.recordedAt).toLocaleString('en-GB')}`
+                      : ''}
+                    {detail.officeReceipt.note ? ` — ${detail.officeReceipt.note}` : ''}
+                  </span>
+                </div>
+              )}
+              {feeOwed && !closed && !readOnly && !assignedToOther && (
+                <section className="service-request-update">
+                  <h4>
+                    <ReceiptText /> تسجيل وصل دفع في الدائرة
+                  </h4>
+                  <p className="gov-muted">
+                    إن سدّد المواطن الرسم{officeDue ? ` (${officeDue.toLocaleString('en-US')} د.ع)` : ''} في صندوق
+                    الدائرة، سجّل رقم وصل القبض هنا: يُغلق أي رابط دفع إلكتروني مفتوح ويعود الطلب للتدقيق ويُبلَّغ
+                    المواطن.
+                  </p>
+                  <div className="form-grid">
+                    <label>
+                      رقم وصل القبض
+                      <input
+                        value={receiptNumber}
+                        onChange={event => setReceiptNumber(event.target.value.slice(0, 40))}
+                        placeholder="مثال: 004512"
+                      />
+                    </label>
+                    <label>
+                      المبلغ المستوفى (د.ع)
+                      <input
+                        inputMode="numeric"
+                        value={receiptAmount}
+                        onChange={event => setReceiptAmount(event.target.value.replace(/[^\d]/g, ''))}
+                        placeholder={officeDue ? String(officeDue) : 'مثال: 5000'}
+                      />
+                    </label>
+                  </div>
+                  <label>
+                    ملاحظة <small>اختيارية</small>
+                    <input
+                      value={receiptNote}
+                      onChange={event => setReceiptNote(event.target.value.slice(0, 300))}
+                      placeholder="مثال: دفع نقدي في شباك الحسابات"
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    className="button primary"
+                    disabled={busy}
+                    onClick={() => void recordOfficePayment()}
+                  >
+                    <ReceiptText /> تسجيل وصل دفع في الدائرة
+                  </button>
+                </section>
               )}
               {(pendingPayment || paidPayments.length > 0) && (
                 <div className={`service-request-current-action ${pendingPayment ? '' : 'closed'}`}>
@@ -835,19 +1075,42 @@ export function ServiceRequestAdminPanel({
                       <option value="ACTION_REQUIRED">إعادة للمواطن — نواقص</option>
                       <option
                         value="APPROVED"
-                        disabled={pendingRequired.length > 0 || selected.status === 'PAYMENT_PENDING'}
+                        disabled={pendingRequired.length > 0 || selected.status === 'PAYMENT_PENDING' || feeOwed}
                       >
-                        موافقة {pendingRequired.length ? `(بقي ${pendingRequired.length} مستمسك)` : ''}
+                        موافقة{' '}
+                        {pendingRequired.length
+                          ? `(بقي ${pendingRequired.length} مستمسك)`
+                          : feeOwed
+                            ? '(بانتظار استيفاء الرسم)'
+                            : ''}
                       </option>
-                      <option
-                        value="PAYMENT_REQUIRED"
-                        disabled={pendingPayment !== undefined || selected.status === 'PAYMENT_PENDING'}
-                      >
-                        طلب سداد رسم {pendingPayment ? '(يوجد رسم بانتظار السداد)' : ''}
-                      </option>
+                      {onlinePayments !== false && (
+                        <option
+                          value="PAYMENT_REQUIRED"
+                          disabled={
+                            pendingPayment !== undefined ||
+                            selected.status === 'PAYMENT_PENDING' ||
+                            onlinePayments === null
+                          }
+                        >
+                          طلب سداد رسم إلكترونياً {pendingPayment ? '(يوجد رسم بانتظار السداد)' : ''}
+                        </option>
+                      )}
                       <option value="REJECTED">رفض الطلب</option>
                     </select>
                   </label>
+                  {onlinePayments === false && (
+                    <p className="gov-muted">
+                      <Info aria-hidden="true" /> الدفع الإلكتروني غير مفعّل حالياً، لذلك لا يظهر خيار «طلب سداد رسم».
+                      إن ترتب رسم على المعاملة فاطلب من المواطن سداده في صندوق الدائرة ثم سجّل وصل القبض على الطلب.
+                    </p>
+                  )}
+                  {status === 'APPROVED' && detail?.issuesDocument === false && (
+                    <p className="gov-muted">
+                      <Info aria-hidden="true" /> لا تصدر وثيقة PDF لهذه الخدمة (شكوى أو بلاغ أو موعد) — يُبلَّغ المواطن
+                      بالقرار وملاحظتك فقط.
+                    </p>
+                  )}
                   {status === 'PAYMENT_REQUIRED' && (
                     <label>
                       مبلغ الرسم (د.ع)
@@ -880,12 +1143,21 @@ export function ServiceRequestAdminPanel({
                   {status === 'APPROVED' && (
                     <div className="form-grid">
                       <label>
-                        موعد حضور المواطن <small>إن كان الإجراء يتطلب الحضور</small>
+                        موعد حضور المواطن{' '}
+                        <small>{needsSlot ? 'إلزامي — هذه الخدمة تتطلب الحضور' : 'إن كان الإجراء يتطلب الحضور'}</small>
                         <input
                           type="date"
                           value={appointmentDate}
                           min={new Date().toISOString().slice(0, 10)}
                           onChange={event => setAppointmentDate(event.target.value)}
+                        />
+                      </label>
+                      <label>
+                        وقت الحضور
+                        <input
+                          type="time"
+                          value={appointmentTime}
+                          onChange={event => setAppointmentTime(event.target.value)}
                         />
                       </label>
                       <label>

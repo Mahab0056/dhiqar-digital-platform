@@ -15,6 +15,7 @@ import {
   RefreshCw,
   UsersRound,
   Database,
+  ShieldAlert,
   ShieldCheck,
 } from 'lucide-react'
 import { api } from '../../api'
@@ -23,6 +24,7 @@ import { OperationsShell } from '../../components/operations/OperationsShell'
 import { NewRequestAlertsPanel } from '../../components/shared/NewRequestAlertsPanel'
 import { WorkspaceTabs } from '../../components/shared/WorkspaceTabs'
 import { AdminCitizensPanel } from './AdminCitizensPanel'
+import { DepartmentCoveragePanel } from './DepartmentCoveragePanel'
 import { DepartmentManagementPanel } from './DepartmentManagementPanel'
 import { GovernmentServiceAdminPanel } from './GovernmentServiceAdminPanel'
 import { StaffAccountsPanel } from './StaffAccountsPanel'
@@ -247,6 +249,7 @@ export function SuperAdminDashboard() {
           { id: 'staff', label: 'الموظفون والصلاحيات', icon: UsersRound, content: <StaffAccountsPanel /> },
           { id: 'citizens', label: 'سجل المواطنين', icon: Fingerprint, content: <AdminCitizensPanel /> },
           { id: 'departments', label: 'الدوائر والخدمات', icon: Building2, content: <DepartmentManagementPanel /> },
+          { id: 'coverage', label: 'تغطية الدوائر', icon: ShieldAlert, content: <DepartmentCoveragePanel /> },
           { id: 'national', label: 'الخدمات الوطنية', icon: Landmark, content: <GovernmentServiceAdminPanel /> },
           { id: 'system', label: 'النظام والنسخ الاحتياطي', icon: Database, content: <SystemHealthPanel /> },
         ]}

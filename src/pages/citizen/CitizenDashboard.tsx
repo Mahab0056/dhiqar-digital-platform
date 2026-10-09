@@ -7,11 +7,8 @@ import {
   Bell,
   BriefcaseBusiness,
   CalendarDays,
-  Camera,
   CheckCircle2,
   ChevronLeft,
-  CreditCard,
-  ReceiptText,
   FileArchive,
   FileCheck2,
   FileText,
@@ -21,7 +18,7 @@ import {
 } from 'lucide-react'
 import { api } from '../../api'
 import { PushNotificationsCard } from '../../components/citizen/PushNotificationsCard'
-import { services, statusLabels } from '../../data'
+import { services } from '../../data'
 import { getServiceDefinition } from '../../service-forms'
 import type {
   Citizen,
@@ -33,21 +30,8 @@ import type {
 } from '../../types'
 import { CitizenPdfActions } from '../../components/citizen/CitizenPdfActions'
 import { PortalLayout } from '../../components/citizen/PortalLayout'
-
-const serviceRequestStatusLabel = (status: string) =>
-  status === 'ACTION_REQUIRED'
-    ? 'مطلوب استكمال'
-    : status === 'APPROVED'
-      ? 'تمت المعاملة'
-      : status === 'REJECTED'
-        ? 'مرفوض'
-        : status === 'UNDER_REVIEW'
-          ? 'قيد التدقيق'
-          : status === 'APPOINTMENT_REQUESTED'
-            ? 'طلب موعد'
-            : status === 'PAYMENT_PENDING'
-              ? 'بانتظار الدفع'
-              : 'تم التقديم'
+import { describeAppointment, isOpenRequest, mergeCitizenRequests, summarizeCitizenRequests } from './my-requests'
+import '../../styles/ds/citizen-requests.css'
 
 export function CitizenDashboard() {
   const [citizen, setCitizen] = useState<Citizen | null>(null)
@@ -70,43 +54,55 @@ export function CitizenDashboard() {
     ])
   }, [])
   useEffect(() => {
-    const receive = (event: Event) =>
+    // a notification means a department touched one of the citizen's requests: refresh the list with it
+    const receive = (event: Event) => {
       applyNotifications((event as CustomEvent<{ unread: number; items: CitizenNotification[] }>).detail)
+      void api
+        .listCitizenServiceRequests()
+        .then(setServiceRequests)
+        .catch(() => {})
+      void api
+        .listCitizenApplications()
+        .then(setApplications)
+        .catch(() => {})
+    }
     window.addEventListener('citizen-notifications-updated', receive)
     return () => window.removeEventListener('citizen-notifications-updated', receive)
   }, [])
   const readNotification = async (id: string) => applyNotifications(await api.markNotificationRead(id))
   const readAllNotifications = async () => applyNotifications(await api.markAllNotificationsRead())
-  const [uploadingServiceReference, setUploadingServiceReference] = useState<string | null>(null)
-  const [serviceUploadError, setServiceUploadError] = useState('')
-  const uploadServiceDocument = async (
-    item: CitizenServiceRequest,
-    target: { documentKey?: string; documentName?: string },
-    file: File | null
-  ) => {
-    if (!file) return
-    setUploadingServiceReference(`${item.reference}:${target.documentKey || 'extra'}`)
-    setServiceUploadError('')
-    try {
-      const updated = await api.uploadServiceRequestDocument(item.reference, target, file)
-      setServiceRequests(current =>
-        current.map(request => (request.reference === updated.reference ? updated : request))
-      )
-      applyNotifications(await api.getNotifications())
-    } catch (uploadError) {
-      setServiceUploadError((uploadError as Error).message)
-    } finally {
-      setUploadingServiceReference(null)
-    }
-  }
   const firstName = citizen?.fullName?.trim().split(/\s+/)[0] || 'بك'
-  const actionRequired = applications.find(app => app.status === 'ACTION_REQUIRED')
-  const activeApplications = applications.filter(app => !['APPROVED', 'REJECTED'].includes(app.status))
-  const nextRequest = serviceRequests[0]
-  const serviceActionRequired = serviceRequests.find(
-    request => request.status === 'ACTION_REQUIRED' || request.status === 'PAYMENT_PENDING'
+  // one list for applications + service requests: the stats, the attention card and "معاملاتي" all read from it
+  const myRequests = useMemo(() => mergeCitizenRequests(applications, serviceRequests), [applications, serviceRequests])
+  const requestSummary = summarizeCitizenRequests(myRequests)
+  const citizenActionRequired = myRequests.find(item => item.needsAction)
+  const [requestFilter, setRequestFilter] = useState<'all' | 'action' | 'open' | 'closed'>('all')
+  const [showAllRequests, setShowAllRequests] = useState(false)
+  const filteredRequests = myRequests.filter(item =>
+    requestFilter === 'action'
+      ? item.needsAction
+      : requestFilter === 'open'
+        ? isOpenRequest(item)
+        : requestFilter === 'closed'
+          ? !isOpenRequest(item)
+          : true
   )
-  const citizenActionRequired = actionRequired || serviceActionRequired
+  const shownRequests = showAllRequests ? filteredRequests : filteredRequests.slice(0, 5)
+  const appointmentsByReference = new Map(
+    serviceRequests.flatMap(item => (item.appointment ? [[item.reference, item.appointment] as const] : []))
+  )
+  // the appointment the citizen should know about first: confirmed ones, then the earliest still waiting
+  const upcomingAppointment = serviceRequests
+    .flatMap(item =>
+      item.appointment && !['APPROVED', 'REJECTED'].includes(item.status)
+        ? [{ request: item, appointment: item.appointment }]
+        : []
+    )
+    .sort(
+      (a, b) =>
+        Number(b.appointment.status === 'CONFIRMED') - Number(a.appointment.status === 'CONFIRMED') ||
+        a.appointment.preferredDate.localeCompare(b.appointment.preferredDate)
+    )[0]
   const [catalog, setCatalog] = useState<CatalogService[] | null>(null)
   useEffect(() => {
     let active = true
@@ -196,15 +192,14 @@ export function CitizenDashboard() {
               <h2>{citizenActionRequired ? citizenActionRequired.currentAction : 'لا يوجد إجراء مطلوب منك حالياً'}</h2>
               <p>
                 {citizenActionRequired
-                  ? `${actionRequired?.serviceName || serviceActionRequired?.serviceName || 'طلب خدمة'} • ${citizenActionRequired.reference}`
+                  ? `${citizenActionRequired.title} • ${citizenActionRequired.reference}${
+                      requestSummary.needsAction > 1 ? ` • و${requestSummary.needsAction - 1} طلب آخر بانتظارك` : ''
+                    }`
                   : 'يصلك إشعار فوراً عند وصول أي تحديث من الدائرة.'}
               </p>
             </div>
             {citizenActionRequired && (
-              <Link
-                className="button primary"
-                href={actionRequired ? `/citizen/application/${actionRequired.reference}` : '#general-requests'}
-              >
+              <Link className="button primary" href={citizenActionRequired.href}>
                 إكمال الإجراء <ArrowLeft />
               </Link>
             )}
@@ -229,12 +224,7 @@ export function CitizenDashboard() {
           <dl className="cz-stats">
             <div>
               <dt>طلبات جارية</dt>
-              <dd>
-                {(
-                  activeApplications.length +
-                  serviceRequests.filter(item => !['APPROVED', 'REJECTED'].includes(item.status)).length
-                ).toLocaleString('en-US')}
-              </dd>
+              <dd>{requestSummary.open.toLocaleString('en-US')}</dd>
             </div>
             <div>
               <dt>وثائق مؤرشفة</dt>
@@ -288,7 +278,7 @@ export function CitizenDashboard() {
                 اختر خدمة <Plus />
               </Link>
             </header>
-            {applications.length === 0 && serviceRequests.length === 0 ? (
+            {myRequests.length === 0 ? (
               <div className="citizen-empty">
                 <FileText />
                 <div>
@@ -299,54 +289,95 @@ export function CitizenDashboard() {
                   اختر خدمة
                 </Link>
               </div>
-            ) : applications.length === 0 ? (
-              <div className="citizen-application-list">
-                {serviceRequests.slice(0, 4).map(item => (
-                  <a href="#general-requests" className="citizen-application-row" key={item.reference}>
-                    <span className={`citizen-application-icon ${item.status.toLowerCase()}`}>
-                      <BriefcaseBusiness />
-                    </span>
-                    <div>
-                      <div>
-                        <strong>{item.serviceName || item.serviceKey}</strong>
-                        <em className={`status ${item.status.toLowerCase()}`}>
-                          {serviceRequestStatusLabel(item.status)}
-                        </em>
-                      </div>
-                      <small>
-                        {item.reference} • {item.departmentName || item.department}
-                      </small>
-                      <p>{item.currentAction}</p>
-                    </div>
-                    <ChevronLeft />
-                  </a>
-                ))}
-              </div>
             ) : (
-              <div className="citizen-application-list">
-                {applications.slice(0, 4).map(app => (
-                  <Link
-                    href={`/citizen/application/${app.reference}`}
-                    className="citizen-application-row"
-                    key={app.reference}
-                  >
-                    <span className={`citizen-application-icon ${app.status.toLowerCase()}`}>
-                      <BriefcaseBusiness />
-                    </span>
+              <>
+                <nav className="cz-requests-filter" aria-label="تصفية المعاملات">
+                  {(
+                    [
+                      ['all', `الكل (${requestSummary.total.toLocaleString('en-US')})`],
+                      ['action', `يتطلب إجراء منك (${requestSummary.needsAction.toLocaleString('en-US')})`],
+                      ['open', `جارية (${requestSummary.open.toLocaleString('en-US')})`],
+                      ['closed', 'منتهية'],
+                    ] as const
+                  ).map(([key, label]) => (
+                    <button
+                      type="button"
+                      key={key}
+                      className={requestFilter === key ? 'active' : ''}
+                      aria-pressed={requestFilter === key}
+                      onClick={() => {
+                        setRequestFilter(key)
+                        setShowAllRequests(false)
+                      }}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </nav>
+                {filteredRequests.length === 0 ? (
+                  <div className="citizen-empty compact">
+                    <CheckCircle2 />
                     <div>
-                      <div>
-                        <strong>{app.serviceName}</strong>
-                        <em className={`status ${app.status.toLowerCase()}`}>{statusLabels[app.status]}</em>
-                      </div>
-                      <small>
-                        {app.reference} • {app.department}
-                      </small>
-                      <p>{app.currentAction}</p>
+                      <strong>لا توجد معاملات ضمن هذا التصنيف</strong>
+                      <span>اختر «الكل» لعرض جميع معاملاتك.</span>
                     </div>
-                    <ChevronLeft />
-                  </Link>
-                ))}
-              </div>
+                  </div>
+                ) : (
+                  <div className="citizen-application-list">
+                    {shownRequests.map(item => {
+                      const appointment = appointmentsByReference.get(item.reference)
+                      const slot = appointment ? describeAppointment(appointment) : null
+                      return (
+                        <Link
+                          href={item.href}
+                          className={
+                            item.needsAction ? 'citizen-application-row needs-action' : 'citizen-application-row'
+                          }
+                          key={`${item.kind}:${item.reference}`}
+                        >
+                          <span className={`citizen-application-icon ${item.status.toLowerCase()}`}>
+                            {item.needsAction ? <AlertTriangle /> : <BriefcaseBusiness />}
+                          </span>
+                          <div>
+                            <div>
+                              <strong>{item.title}</strong>
+                              <em className={`status ${item.status.toLowerCase()}`}>{item.statusLabel}</em>
+                              {item.needsAction && (
+                                <span className="cz-needs-action">
+                                  <AlertTriangle /> يتطلب إجراء منك
+                                </span>
+                              )}
+                            </div>
+                            <small>
+                              {item.reference} • {item.department} • آخر تحديث{' '}
+                              {new Date(item.updatedAt).toLocaleDateString('en-GB')}
+                            </small>
+                            <p>{item.currentAction}</p>
+                            {slot && (
+                              <span
+                                className={slot.confirmed ? 'cz-row-appointment is-confirmed' : 'cz-row-appointment'}
+                              >
+                                <CalendarDays /> {slot.title}: {slot.when}
+                              </span>
+                            )}
+                          </div>
+                          <ChevronLeft />
+                        </Link>
+                      )
+                    })}
+                    {filteredRequests.length > 5 && (
+                      <button
+                        type="button"
+                        className="button outline cz-requests-more"
+                        onClick={() => setShowAllRequests(value => !value)}
+                        aria-expanded={showAllRequests}
+                      >
+                        {showAllRequests ? 'عرض أقل' : `عرض الكل (${filteredRequests.length.toLocaleString('en-US')})`}
+                      </button>
+                    )}
+                  </div>
+                )}
+              </>
             )}
           </article>
           <aside className="citizen-workspace-card citizen-notification-card" id="notifications">
@@ -557,204 +588,24 @@ export function CitizenDashboard() {
             </div>
           )}
         </section>
-        {serviceRequests.length > 0 && (
-          <section className="citizen-service-requests" id="general-requests">
-            <header className="citizen-section-heading compact">
-              <div>
-                <span className="section-kicker">متابعة الخدمات</span>
-                <h2>طلبات الخدمات الإلكترونية</h2>
-                <p>تابع القرار، سبب الرفض، أو ارفع النواقص مباشرة من هنا.</p>
-              </div>
-            </header>
-            {serviceUploadError && (
-              <div className="form-error">
-                <AlertTriangle /> {serviceUploadError}
-              </div>
-            )}
-            <div className="citizen-service-request-list">
-              {serviceRequests.map(item => {
-                const checklist = item.checklist || []
-                const closed = ['APPROVED', 'REJECTED'].includes(item.status)
-                const needsUpload = checklist.filter(doc => doc.status === 'MISSING' || doc.status === 'REJECTED')
-                const extraRequested = item.status === 'ACTION_REQUIRED' && item.requiredDocument && !needsUpload.length
-                return (
-                  <article key={item.reference} className={`citizen-service-request ${item.status.toLowerCase()}`}>
-                    <div className="citizen-service-request-top">
-                      <span className="citizen-application-icon">
-                        <BriefcaseBusiness />
-                      </span>
-                      <div>
-                        <small>
-                          {item.reference} • {item.departmentName || item.department}
-                        </small>
-                        <h3>{item.serviceName || item.serviceKey}</h3>
-                        <p>{item.currentAction}</p>
-                      </div>
-                      <em className={`status ${item.status.toLowerCase()}`}>
-                        {serviceRequestStatusLabel(item.status)}
-                      </em>
-                    </div>
-                    {item.appointment && (
-                      <div className="service-decision-note">
-                        <CalendarDays />
-                        <span>
-                          <small>
-                            {item.appointment.status === 'CONFIRMED' ? 'موعد مؤكد' : 'موعد بانتظار التأكيد'}
-                          </small>
-                          <strong>
-                            {item.appointment.preferredDate} — {item.appointment.preferredTime}
-                            {item.appointment.note ? ` — ${item.appointment.note}` : ''}
-                          </strong>
-                        </span>
-                      </div>
-                    )}
-                    {item.status === 'PAYMENT_PENDING' &&
-                      item.payments?.find(payment => payment.status === 'PENDING') && (
-                        <div className="service-required-upload payment-due">
-                          <div>
-                            <CreditCard />
-                            <span>
-                              <small>رسم الخدمة</small>
-                              <strong>
-                                {item.payments
-                                  .find(payment => payment.status === 'PENDING')!
-                                  .amountIqd.toLocaleString('en-US')}{' '}
-                                د.ع
-                              </strong>
-                            </span>
-                          </div>
-                          <Link
-                            className="button primary"
-                            href={`/citizen/pay/${item.payments.find(payment => payment.status === 'PENDING')!.reference}`}
-                          >
-                            <CreditCard /> سدّد الرسم الآن
-                          </Link>
-                        </div>
-                      )}
-                    {item.paymentStatus === 'PAY_AT_OFFICE' && !item.payments?.length && (
-                      <div className="service-request-attachment-summary">
-                        <CreditCard /> رسم الخدمة يُسدد في الدائرة عند إكمال الإجراء؛ الدفع الإلكتروني غير مفعّل بعد.
-                      </div>
-                    )}
-                    {item.payments?.some(payment => payment.status === 'PAID') && (
-                      <div className="service-request-attachment-summary">
-                        <ReceiptText /> إيصال الدفع:{' '}
-                        {item.payments
-                          .filter(payment => payment.status === 'PAID')
-                          .map(payment => `${payment.receiptNumber} (${payment.amountIqd.toLocaleString('en-US')} د.ع)`)
-                          .join('، ')}
-                      </div>
-                    )}
-                    {item.decisionNote && (
-                      <div className="service-decision-note">
-                        <AlertTriangle />
-                        <span>
-                          <small>{item.status === 'REJECTED' ? 'سبب الرفض' : 'ملاحظة الدائرة'}</small>
-                          <strong>{item.decisionNote}</strong>
-                        </span>
-                      </div>
-                    )}
-                    {checklist.length > 0 && (
-                      <ul className="citizen-checklist">
-                        {checklist.map(doc => {
-                          const uploading = uploadingServiceReference === `${item.reference}:${doc.key}`
-                          const canUpload = !closed && (doc.status === 'MISSING' || doc.status === 'REJECTED')
-                          return (
-                            <li key={doc.key} className={`checklist-${doc.status.toLowerCase()}`}>
-                              <span className={`checklist-badge ${doc.status.toLowerCase()}`}>
-                                {doc.status === 'VERIFIED'
-                                  ? 'مدقق'
-                                  : doc.status === 'UPLOADED'
-                                    ? 'بانتظار التدقيق'
-                                    : doc.status === 'REJECTED'
-                                      ? 'أعد الرفع'
-                                      : doc.required
-                                        ? 'مطلوب'
-                                        : 'اختياري'}
-                              </span>
-                              <div>
-                                <strong>{doc.label}</strong>
-                                {doc.status === 'REJECTED' && doc.note && <small>سبب الرفض: {doc.note}</small>}
-                              </div>
-                              {canUpload && (
-                                <label className="button outline small">
-                                  <Camera />{' '}
-                                  {uploading ? 'جاري الرفع...' : doc.status === 'REJECTED' ? 'إعادة الرفع' : 'رفع'}
-                                  <input
-                                    hidden
-                                    type="file"
-                                    accept={doc.accepts.includes('pdf') ? 'image/*,application/pdf' : 'image/*'}
-                                    capture="environment"
-                                    disabled={uploading}
-                                    onChange={event =>
-                                      void uploadServiceDocument(
-                                        item,
-                                        { documentKey: doc.key },
-                                        event.target.files?.[0] || null
-                                      )
-                                    }
-                                  />
-                                </label>
-                              )}
-                            </li>
-                          )
-                        })}
-                      </ul>
-                    )}
-                    {extraRequested && (
-                      <div className="service-required-upload">
-                        <div>
-                          <FileText />
-                          <span>
-                            <small>المطلوب منك</small>
-                            <strong>{item.requiredDocument}</strong>
-                          </span>
-                        </div>
-                        <label className="button primary">
-                          <Camera />{' '}
-                          {uploadingServiceReference === `${item.reference}:extra`
-                            ? 'جاري الرفع...'
-                            : 'تصوير / رفع المستند'}
-                          <input
-                            hidden
-                            type="file"
-                            accept="image/*,application/pdf"
-                            capture="environment"
-                            disabled={uploadingServiceReference === `${item.reference}:extra`}
-                            onChange={event =>
-                              void uploadServiceDocument(
-                                item,
-                                { documentName: item.requiredDocument || 'المستند المطلوب' },
-                                event.target.files?.[0] || null
-                              )
-                            }
-                          />
-                        </label>
-                      </div>
-                    )}
-                    {item.attachments && item.attachments.length > 0 && (
-                      <div className="service-request-attachment-summary">
-                        <FileArchive /> {item.attachments.length.toLocaleString('en-US')} مرفق محفوظ مشفراً ضمن الطلب
-                      </div>
-                    )}
-                  </article>
-                )
-              })}
-            </div>
-          </section>
-        )}
-        {nextRequest && (
-          <section className="citizen-v2-reminder">
+        {upcomingAppointment && (
+          <section className="citizen-v2-reminder" id="appointments">
             <span>
               <CalendarDays />
             </span>
             <div>
-              <small>آخر طلب مسجل</small>
-              <strong>{nextRequest.serviceName || nextRequest.serviceKey}</strong>
-              <p>{nextRequest.currentAction}</p>
+              <small>{describeAppointment(upcomingAppointment.appointment).title}</small>
+              <strong>{upcomingAppointment.request.serviceName || upcomingAppointment.request.serviceKey}</strong>
+              <p>
+                {describeAppointment(upcomingAppointment.appointment).when} •{' '}
+                {upcomingAppointment.request.departmentName || upcomingAppointment.request.department}
+              </p>
             </div>
-            <Link className="button outline" href="/service/online-appointment">
-              حجز موعد آخر <ArrowLeft />
+            <Link
+              className="button outline"
+              href={`/citizen/request/${encodeURIComponent(upcomingAppointment.request.reference)}`}
+            >
+              تفاصيل الموعد <ArrowLeft />
             </Link>
           </section>
         )}

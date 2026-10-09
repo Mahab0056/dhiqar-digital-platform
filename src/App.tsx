@@ -48,6 +48,9 @@ const ServiceFormPage = lazy(() =>
 const ApplicationPage = lazy(() =>
   import('./pages/citizen/ApplicationPage').then(m => ({ default: m.ApplicationPage }))
 )
+const ServiceRequestPage = lazy(() =>
+  import('./pages/citizen/ServiceRequestPage').then(m => ({ default: m.ServiceRequestPage }))
+)
 const EmployeeDashboard = lazy(() =>
   import('./pages/employee/EmployeeDashboard').then(m => ({ default: m.EmployeeDashboard }))
 )
@@ -144,6 +147,13 @@ function App() {
           {params => (
             <SessionGate role="CITIZEN">
               <ApplicationPage reference={params.reference} />
+            </SessionGate>
+          )}
+        </Route>
+        <Route path="/citizen/request/:reference">
+          {params => (
+            <SessionGate role="CITIZEN">
+              <ServiceRequestPage reference={params.reference} />
             </SessionGate>
           )}
         </Route>

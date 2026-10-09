@@ -64,6 +64,64 @@ const request = async <T>(path: string, options?: RequestInit): Promise<T> => {
   return response.json() as Promise<T>
 }
 
+// ---- employee workflow (office receipts, escalation, appointments, coverage) ----
+export type ServiceRequestEscalation = {
+  reason: 'NO_STAFF' | 'SLA_UNCLAIMED'
+  label: string
+  toDepartmentId: string
+}
+export type OfficeReceipt = {
+  paymentReference: string
+  receiptNumber: string | null
+  amountIqd: number
+  note: string | null
+  recordedAt: string | null
+}
+/** Employee view of a service request (GET/PATCH /api/employee/service-requests…). */
+export type EmployeeServiceRequest = CitizenServiceRequest & {
+  serviceChannel?: string
+  /** official fee of the service (null = none / not verified) */
+  feeIqd?: number | null
+  /** false for complaints, reports and appointments: approval closes the request without a PDF */
+  issuesDocument?: boolean
+  officeReceipt?: OfficeReceipt | null
+  escalation?: ServiceRequestEscalation | null
+}
+export type EmployeeAppointment = {
+  id: string
+  appointmentReference: string
+  requestReference: string
+  requestStatus: string
+  serviceName: string
+  departmentId: string
+  departmentName: string
+  citizenName: string
+  citizenPhone: string | null
+  date: string
+  time: string
+  status: 'REQUESTED' | 'CONFIRMED'
+  confirmed: boolean
+  note: string | null
+  purpose: string
+  assignedStaffId: string | null
+  updatedAt: string
+}
+export type DepartmentCoverage = {
+  generatedAt: string
+  escalationDepartment: { id: string; name: string; activeEmployees: number }
+  summary: { departments: number; departmentsWithoutStaff: number; openRequestsWithoutStaff: number }
+  items: Array<{
+    id: string
+    name: string
+    district: string | null
+    activeEmployees: number
+    disabledEmployees: number
+    openRequests: number
+    overdueRequests: number
+    oldestOpenAt: string | null
+  }>
+}
+
 export const api = {
   getSession: () => request<StaffSession>('/api/auth/session'),
   staffLogin: (username: string, password: string) =>
@@ -271,6 +329,8 @@ export const api = {
       decisionNote?: string
       requiredDocument?: string
       appointmentDate?: string
+      /** HH:MM — attendance time booked with appointmentDate */
+      appointmentTime?: string
       appointmentNote?: string
       amountIqd?: number
     }
@@ -306,6 +366,27 @@ export const api = {
       direction: string
       items: Array<ServiceRequestTransfer & { serviceName: string; requestStatus: string }>
     }>(`/api/employee/transfers?direction=${direction}`),
+  recordServiceRequestOfficePayment: (
+    reference: string,
+    payload: { receiptNumber: string; amountIqd: number; note?: string }
+  ) =>
+    request<EmployeeServiceRequest>(
+      `/api/employee/service-requests/${encodeURIComponent(reference)}/record-office-payment`,
+      { method: 'POST', body: JSON.stringify(payload) }
+    ),
+  scheduleServiceRequestAppointment: (
+    reference: string,
+    payload: { action: 'CONFIRM' | 'RESCHEDULE'; date?: string; time?: string; note?: string }
+  ) =>
+    request<EmployeeServiceRequest>(`/api/employee/service-requests/${encodeURIComponent(reference)}/appointment`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  listEmployeeAppointments: (date?: string) =>
+    request<{ date: string; scope: string; items: EmployeeAppointment[]; message?: string }>(
+      `/api/employee/appointments${date ? `?date=${encodeURIComponent(date)}` : ''}`
+    ),
+  getDepartmentCoverage: () => request<DepartmentCoverage>('/api/operations/department-coverage'),
   getPushConfig: () => request<{ enabled: boolean; publicKey: string | null }>('/api/push/config'),
   subscribePush: (subscription: { endpoint: string; keys: { p256dh: string; auth: string } }) =>
     request<{ ok: boolean; devices: number }>('/api/citizen/push/subscribe', {
@@ -459,6 +540,25 @@ export const api = {
   markAllNotificationsRead: () =>
     request<{ unread: number; items: CitizenNotification[] }>('/api/citizen/notifications/read-all', {
       method: 'POST',
+    }),
+  /** One service request of the signed-in citizen; falls back to the list when the per-request endpoint is absent. */
+  getCitizenServiceRequest: async (reference: string) => {
+    try {
+      return await request<CitizenServiceRequestDetail>(
+        `/api/citizen/service-requests/${encodeURIComponent(reference)}`
+      )
+    } catch (error) {
+      const items = await request<CitizenServiceRequestDetail[]>('/api/citizen/service-requests')
+      const found = items.find(item => item.reference === reference)
+      if (!found) throw error
+      return found
+    }
+  },
+  /** Staff: move a complaint/suggestion to the department that should handle it (triage). */
+  rerouteFeedback: (reference: string, payload: { departmentId: string; reason: string }) =>
+    request<CitizenFeedback>(`/api/admin/feedback/${encodeURIComponent(reference)}/department`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
     }),
   requestOtp: (phone: string) =>
     request<{ challengeId: string; phoneMasked: string; expiresInSeconds: number; deliveryStatus: string }>(
@@ -800,4 +900,71 @@ export const api = {
     request<GovernmentApplication>(`/api/applications/${reference}/approve`, { method: 'POST' }),
   getStats: () => request<DashboardStats>('/api/dashboard/stats'),
   verifyDocument: (verificationId: string) => request<GovernmentApplication>(`/api/verify/${verificationId}`),
+}
+
+/** Office receipt recorded by the department when the fee is paid at the counter. */
+export type CitizenOfficeReceipt = {
+  paymentReference: string
+  receiptNumber: string | null
+  amountIqd: number
+  note: string | null
+  recordedAt: string | null
+}
+
+/**
+ * Citizen view of one service request — GET /api/citizen/service-requests/:reference
+ * (docs/audit/citizen-request-endpoint.md). Detail-only fields are optional so the list item works as a fallback.
+ */
+export type CitizenServiceRequestDetail = Omit<CitizenServiceRequest, 'appointment'> & {
+  appointment?: {
+    id?: string
+    reference?: string
+    department?: string
+    /** the confirmed date once `confirmed` is true */
+    preferredDate: string
+    preferredTime: string
+    status: string
+    confirmed?: boolean
+    /** attendance instructions from the department */
+    note?: string | null
+    updatedAt?: string
+  } | null
+  officeReceipt?: CitizenOfficeReceipt | null
+  serviceChannel?: 'ONLINE_SUBMISSION' | 'APPOINTMENT_REQUIRED' | 'INFORMATION_ONLY'
+  issuesDocument?: boolean
+  documents?: Array<{
+    key: string
+    label: string
+    required: boolean
+    status: 'MISSING' | 'UPLOADED' | 'VERIFIED' | 'REJECTED'
+    rejectionReason: string | null
+    uploaded: boolean
+    updatedAt: string | null
+  }>
+  fee?: {
+    amountIqd: number | null
+    paymentStatus: string
+    owed: Array<{ reference: string; amountIqd: number; status: string }>
+    payAtOffice: boolean
+    officeReceipt: CitizenOfficeReceipt | null
+  }
+  transfers?: Array<{ fromDepartmentName: string; toDepartmentName: string; createdAt: string }>
+  issuedDocuments?: Array<{
+    id: string
+    title: string
+    documentNumber: string
+    verificationId: string
+    status: string
+    issuedAt: string
+    revokedAt: string | null
+    revokedReason: string | null
+    pdfUrl: string
+  }>
+  timeline?: Array<{
+    type: string
+    title: string
+    description: string | null
+    actor: 'CITIZEN' | 'DEPARTMENT' | 'SYSTEM'
+    createdAt: string
+  }>
 }

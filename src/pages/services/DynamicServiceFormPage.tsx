@@ -26,6 +26,7 @@ import type { CatalogService } from '../../types'
 import { SecureCameraCapture } from '../../components/camera/SecureCameraCapture'
 import { LoadingBlock, PageHeader } from '../../components/public/PageHeader'
 import { NotFound } from '../NotFound'
+import { DepartmentSelect } from './DepartmentSelect'
 import {
   onboardingPathForService,
   useCitizenSubmissionAccess,
@@ -205,7 +206,13 @@ export function DynamicServiceFormPage({ serviceKey }: { serviceKey: string }) {
     reference: string
     currentAction: string
     department: string
-    appointment: { preferredDate: string; preferredTime: string; status: string } | null
+    appointment?: {
+      preferredDate: string
+      preferredTime: string
+      status: string
+      confirmed?: boolean
+      note?: string | null
+    } | null
     payment?: { reference: string; amountIqd: number; mode: string } | null
   } | null>(null)
 
@@ -460,18 +467,29 @@ export function DynamicServiceFormPage({ serviceKey }: { serviceKey: string }) {
                   <dt>الدائرة</dt>
                   <dd>{result.department}</dd>
                 </div>
-                {result.appointment && (
-                  <>
-                    <div>
-                      <dt>التاريخ المفضل</dt>
-                      <dd>{new Date(`${result.appointment.preferredDate}T00:00:00`).toLocaleDateString('en-GB')}</dd>
-                    </div>
-                    <div>
-                      <dt>الوقت المفضل</dt>
-                      <dd>{result.appointment.preferredTime}</dd>
-                    </div>
-                  </>
-                )}
+                {result.appointment &&
+                  (() => {
+                    const confirmed = result.appointment.confirmed === true || result.appointment.status === 'CONFIRMED'
+                    // once confirmed, preferredDate/preferredTime carry the department's slot
+                    const date = result.appointment.preferredDate
+                    const time = result.appointment.preferredTime
+                    return (
+                      <>
+                        <div>
+                          <dt>{confirmed ? 'تاريخ الموعد المؤكد' : 'التاريخ المفضل'}</dt>
+                          <dd>{new Date(`${date}T00:00:00`).toLocaleDateString('en-GB')}</dd>
+                        </div>
+                        <div>
+                          <dt>{confirmed ? 'وقت الموعد' : 'الوقت المفضل'}</dt>
+                          <dd>{time}</dd>
+                        </div>
+                        <div>
+                          <dt>حالة الموعد</dt>
+                          <dd>{confirmed ? 'مؤكد من الدائرة' : 'بانتظار تأكيد الدائرة'}</dd>
+                        </div>
+                      </>
+                    )
+                  })()}
               </dl>
               {result.payment ? (
                 <>
@@ -482,7 +500,7 @@ export function DynamicServiceFormPage({ serviceKey }: { serviceKey: string }) {
                     <Link className="button primary" href={`/citizen/pay/${result.payment.reference}`}>
                       <CreditCard /> سدّد الرسم الآن ({result.payment.amountIqd.toLocaleString('en-US')} د.ع)
                     </Link>
-                    <Link className="button outline" href="/citizen#my-requests">
+                    <Link className="button outline" href={`/citizen/request/${encodeURIComponent(result.reference)}`}>
                       الدفع لاحقاً من حسابي
                     </Link>
                   </div>
@@ -494,7 +512,7 @@ export function DynamicServiceFormPage({ serviceKey }: { serviceKey: string }) {
                     حسابك.
                   </p>
                   <div className="tq-page-actions">
-                    <Link className="button primary" href="/citizen#my-requests">
+                    <Link className="button primary" href={`/citizen/request/${encodeURIComponent(result.reference)}`}>
                       متابعة الطلب في حسابي <ArrowLeft />
                     </Link>
                   </div>
@@ -582,7 +600,14 @@ export function DynamicServiceFormPage({ serviceKey }: { serviceKey: string }) {
                           </b>
                         )}
                       </span>
-                      {field.type === 'select' ? (
+                      {field.type === 'select' && isAppointmentFlow && field.key === 'department' ? (
+                        <DepartmentSelect
+                          name={field.key}
+                          required={field.required}
+                          allowed={field.options || []}
+                          defaultValue={draft[field.key]}
+                        />
+                      ) : field.type === 'select' ? (
                         <select name={field.key} required={field.required} defaultValue={draft[field.key] || ''}>
                           <option value="" disabled>
                             اختر

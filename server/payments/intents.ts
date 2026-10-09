@@ -66,6 +66,80 @@ export function listPaymentsForRequest(serviceRequestId: number) {
   ).map(view)
 }
 
+/** Marker on an online intent closed because the fee was collected at the department counter instead. */
+export const OFFICE_SUPERSEDED_PREFIX = 'OFFICE:'
+
+/** An online intent the citizen no longer owes: the same fee was paid at the department counter. */
+export const supersededByOffice = (intent: Pick<PaymentIntentView, 'status' | 'providerReference'>) =>
+  intent.status === 'CANCELLED' && Boolean(intent.providerReference?.startsWith(OFFICE_SUPERSEDED_PREFIX))
+
+/**
+ * Fees still owed on a request. A FAILED or citizen-CANCELLED attempt stays owed (the citizen can retry it); only a
+ * PAID intent or one superseded by an office receipt is settled.
+ */
+export const owedPayments = (payments: PaymentIntentView[]) =>
+  payments.filter(item => item.status !== 'PAID' && !supersededByOffice(item))
+
+/** The receipt recorded by a clerk for a fee paid at the department counter (latest one). */
+export const officeReceiptOf = (payments: PaymentIntentView[]) => {
+  const office = payments.find(item => item.provider === 'office' && item.status === 'PAID')
+  return office
+    ? {
+        paymentReference: office.reference,
+        receiptNumber: office.receiptNumber,
+        amountIqd: office.amountIqd,
+        note: office.description || null,
+        recordedAt: office.paidAt,
+      }
+    : null
+}
+
+/**
+ * Records a fee paid at the department counter: a PAID intent (provider `office`) carries the receipt, and every
+ * online intent still open on the request is closed as superseded so the citizen can never pay twice.
+ * Must run inside the caller's transaction.
+ */
+export function insertOfficePayment(input: {
+  serviceRequestId: number
+  citizenId: number
+  serviceId: string
+  departmentId: string
+  amountIqd: number
+  receiptNumber: string
+  note: string | null
+  recordedBy: string
+  timestamp: string
+}) {
+  const serial = String(nextReference('payment_intents', 'SELECT COUNT(*) AS value FROM payment_intents')).padStart(
+    5,
+    '0'
+  )
+  const id = `pay_${randomUUID().replaceAll('-', '')}`
+  db.prepare(
+    `INSERT INTO payment_intents (id, reference, citizen_id, service_id, department_id, service_request_id, amount_iqd, status, mode, provider, receipt_number, paid_at, description, requested_by, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, 'PAID', 'OFFICE', 'office', ?, ?, ?, ?, ?, ?)`
+  ).run(
+    id,
+    `PAY-${new Date().getFullYear()}-${serial}`,
+    input.citizenId,
+    input.serviceId,
+    input.departmentId,
+    input.serviceRequestId,
+    input.amountIqd,
+    input.receiptNumber,
+    input.timestamp,
+    input.note || 'استيفاء الرسم في الدائرة',
+    input.recordedBy,
+    input.timestamp,
+    input.timestamp
+  )
+  db.prepare(
+    `UPDATE payment_intents SET status = 'CANCELLED', provider_reference = ?, updated_at = ?
+     WHERE service_request_id = ? AND id != ? AND status != 'PAID'`
+  ).run(`${OFFICE_SUPERSEDED_PREFIX}${input.receiptNumber}`, input.timestamp, input.serviceRequestId, id)
+  return getPaymentIntentById(id)!
+}
+
 /** Creates a pending payment for a service request and moves the request to PAYMENT_PENDING. */
 export function createPaymentForRequest(input: {
   serviceRequestId: number
@@ -116,6 +190,9 @@ export function settlePayment(input: {
     Record<string, unknown> | undefined
   if (!row) return null
   if (row.status === 'PAID') return getPaymentIntentById(input.intentId)
+  // the fee was already collected at the department counter: a late gateway callback must not charge it again
+  if (String(row.provider_reference || '').startsWith(OFFICE_SUPERSEDED_PREFIX))
+    return getPaymentIntentById(input.intentId)
   const timestamp = new Date().toISOString()
   if (input.status !== 'PAID') {
     db.prepare(`UPDATE payment_intents SET status = ?, provider_reference = ?, updated_at = ? WHERE id = ?`).run(
@@ -171,7 +248,9 @@ export function settlePayment(input: {
     type: 'PAYMENT_CONFIRMED',
     title: 'تم تأكيد الدفع',
     message: `${intent.reference} — ${intent.amountIqd.toLocaleString('en-US')} د.ع، إيصال ${receipt}. ${intent.serviceRequestReference ? `أُحيل الطلب ${intent.serviceRequestReference} إلى ${intent.departmentName}.` : ''}`,
-    link: '/citizen#my-requests',
+    link: intent.serviceRequestReference
+      ? `/citizen/request/${encodeURIComponent(intent.serviceRequestReference)}`
+      : '/citizen#my-requests',
   })
   if (intent.serviceRequestReference)
     employeeWorkQueueRealtime.publish({

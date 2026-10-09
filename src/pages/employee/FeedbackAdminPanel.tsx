@@ -7,10 +7,11 @@ import {
   MapPin,
   MessageSquareWarning,
   RefreshCw,
+  Send,
   Sparkles,
 } from 'lucide-react'
 import { api } from '../../api'
-import type { CitizenFeedback } from '../../types'
+import type { CitizenFeedback, DepartmentSummary } from '../../types'
 import { feedbackStatusLabels } from '../citizen/feedback-labels'
 
 export function FeedbackAdminPanel() {
@@ -21,6 +22,9 @@ export function FeedbackAdminPanel() {
   const [adminNote, setAdminNote] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [departments, setDepartments] = useState<DepartmentSummary[]>([])
+  const [rerouteTo, setRerouteTo] = useState('')
+  const [rerouteReason, setRerouteReason] = useState('')
   const [openedMedia, setOpenedMedia] = useState<Record<string, { url: string; mimeType: string }>>({})
   const selectFeedback = (item: CitizenFeedback | null) => {
     setSelected(item)
@@ -87,6 +91,28 @@ export function FeedbackAdminPanel() {
       await load(result.reference)
     } catch (saveError) {
       setError((saveError as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+  useEffect(() => {
+    api
+      .listDepartments()
+      .then(result => setDepartments(result.items))
+      .catch(() => {})
+  }, [])
+  const reroute = async () => {
+    if (!selected || !rerouteTo) return setError('اختر الدائرة المختصة.')
+    if (rerouteReason.trim().length < 4) return setError('اكتب سبب الإحالة باختصار.')
+    setBusy(true)
+    setError('')
+    try {
+      const result = await api.rerouteFeedback(selected.reference, { departmentId: rerouteTo, reason: rerouteReason })
+      setRerouteTo('')
+      setRerouteReason('')
+      await load(result.reference)
+    } catch (rerouteError) {
+      setError((rerouteError as Error).message)
     } finally {
       setBusy(false)
     }
@@ -242,6 +268,27 @@ export function FeedbackAdminPanel() {
                 </label>
                 <button className="button primary" onClick={() => void save()} disabled={busy}>
                   <CheckCircle2 /> حفظ وإشعار المواطن
+                </button>
+              </section>
+              <section className="feedback-admin-update">
+                <h4>إحالة إلى دائرة أخرى</h4>
+                <label>
+                  الدائرة المختصة
+                  <select value={rerouteTo} onChange={event => setRerouteTo(event.target.value)}>
+                    <option value="">اختر الدائرة</option>
+                    {departments.map(department => (
+                      <option key={department.id} value={department.id}>
+                        {department.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  سبب الإحالة
+                  <input value={rerouteReason} onChange={event => setRerouteReason(event.target.value.slice(0, 300))} />
+                </label>
+                <button className="button outline" onClick={() => void reroute()} disabled={busy || !rerouteTo}>
+                  <Send /> إحالة وإشعار المواطن
                 </button>
               </section>
             </>

@@ -209,7 +209,7 @@ export function CitizenFeedbackPage() {
               <label>
                 الدائرة المعنية <small>اختياري</small>
                 <select value={departmentId} onChange={event => setDepartmentId(event.target.value)}>
-                  <option value="">لا أعرف الدائرة</option>
+                  <option value="">لا أعرف الدائرة — يفرزها ديوان المحافظة</option>
                   {departments.map(item => (
                     <option value={item.id} key={item.id}>
                       {item.name}

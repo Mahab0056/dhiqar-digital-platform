@@ -1,0 +1,254 @@
+/* =============================================================================================
+   Citizen "معاملاتي": merged request list + the service-request detail page
+   ============================================================================================= */
+
+/* rows waiting on the citizen stand out from rows waiting on the department */
+.citizen-v2 .citizen-application-row.needs-action {
+  border-color: var(--ds-warning);
+  background: var(--ds-warning-soft);
+}
+.citizen-v2 .citizen-application-row.needs-action .citizen-application-icon {
+  background: var(--ds-surface);
+  color: var(--ds-warning);
+}
+.citizen-v2 .cz-needs-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--ds-warning);
+  font-size: var(--ds-text-xs);
+  font-weight: 700;
+}
+.citizen-v2 .cz-needs-action svg {
+  width: 14px;
+  height: 14px;
+}
+.citizen-v2 .cz-row-appointment {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--ds-text-2);
+  font-size: var(--ds-text-xs);
+}
+.citizen-v2 .cz-row-appointment svg {
+  width: 14px;
+  height: 14px;
+}
+.citizen-v2 .cz-row-appointment.is-confirmed {
+  color: var(--ds-success);
+  font-weight: 700;
+}
+.citizen-v2 .cz-requests-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.citizen-v2 .cz-requests-filter button {
+  padding: 4px 12px;
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-pill);
+  background: var(--ds-surface);
+  color: var(--ds-text-2);
+  font-family: var(--ds-font-ui);
+  font-size: var(--ds-text-xs);
+  font-weight: 600;
+  cursor: pointer;
+}
+.citizen-v2 .cz-requests-filter button.active {
+  border-color: var(--ds-primary);
+  background: var(--ds-primary-soft);
+  color: var(--ds-primary-text);
+}
+.citizen-v2 .cz-requests-more {
+  justify-self: start;
+  margin-top: 4px;
+}
+
+/* ---- detail page ---------------------------------------------------------------------------- */
+.svc-stepper li.is-done {
+  border-color: var(--ds-success);
+  color: var(--ds-success);
+}
+.svc-stepper li.is-done b {
+  background: var(--ds-success);
+  color: var(--ds-primary-fg);
+}
+.svc-stepper li.is-failed {
+  border-color: var(--ds-danger);
+  color: var(--ds-danger);
+}
+.svc-stepper li.is-failed b {
+  background: var(--ds-danger);
+  color: var(--ds-primary-fg);
+}
+.cz-request-detail .cz-request-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+@media (max-width: 960px) {
+  .cz-request-detail .cz-request-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.cz-request-detail .cz-request-column {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+.cz-request-detail .cz-request-card h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 12px;
+  font-size: var(--ds-text-lg);
+}
+.cz-request-detail .cz-request-card h2 svg {
+  width: 18px;
+  height: 18px;
+  color: var(--ds-primary-text);
+}
+.cz-request-detail .cz-request-card > p {
+  margin: 0 0 12px;
+  color: var(--ds-text-2);
+  font-size: var(--ds-text-sm);
+}
+.cz-request-detail .cz-kv {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+}
+.cz-request-detail .cz-kv div {
+  display: grid;
+  gap: 2px;
+}
+.cz-request-detail .cz-kv dt {
+  color: var(--ds-text-muted);
+  font-size: var(--ds-text-xs);
+}
+.cz-request-detail .cz-kv dd {
+  margin: 0;
+  color: var(--ds-text);
+  font-size: var(--ds-text-sm);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.cz-request-detail .cz-timeline {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.cz-request-detail .cz-timeline li {
+  position: relative;
+  display: grid;
+  gap: 2px;
+  padding: 0 22px 16px 0;
+  border-inline-start: 2px solid var(--ds-border);
+  margin-inline-start: 6px;
+}
+.cz-request-detail .cz-timeline li:last-child {
+  padding-bottom: 0;
+  border-color: transparent;
+}
+.cz-request-detail .cz-timeline li::before {
+  position: absolute;
+  inset-inline-start: -7px;
+  top: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--ds-primary);
+  content: '';
+}
+.cz-request-detail .cz-timeline strong {
+  font-size: var(--ds-text-sm);
+}
+.cz-request-detail .cz-timeline p {
+  margin: 0;
+  color: var(--ds-text-2);
+  font-size: var(--ds-text-sm);
+}
+.cz-request-detail .cz-timeline small,
+.cz-request-detail .cz-timeline time {
+  color: var(--ds-text-muted);
+  font-size: var(--ds-text-xs);
+}
+.cz-request-detail .cz-callout {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-surface-muted);
+}
+.cz-request-detail .cz-callout.is-warning {
+  border-color: var(--ds-warning);
+  background: var(--ds-warning-soft);
+}
+.cz-request-detail .cz-callout.is-success {
+  border-color: var(--ds-success);
+  background: var(--ds-success-soft);
+}
+.cz-request-detail .cz-callout > div {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.cz-request-detail .cz-callout > div > span {
+  display: grid;
+  gap: 2px;
+}
+.cz-request-detail .cz-callout small {
+  color: var(--ds-text-muted);
+  font-size: var(--ds-text-xs);
+}
+.cz-request-detail .cz-callout strong {
+  font-size: var(--ds-text-base);
+}
+.cz-request-detail .cz-callout svg {
+  flex: none;
+  width: 20px;
+  height: 20px;
+}
+.cz-request-detail .cz-callout + .cz-callout {
+  margin-top: 8px;
+}
+/* in-page targets clear the sticky top bar */
+.citizen-v2 :is(#my-requests, #services, #issued-documents, #appointments, #notifications) {
+  scroll-margin-top: 80px;
+}
+
+/* ---- appointment form: searchable, grouped department picker ------------------------------ */
+.svc-department-select {
+  display: grid;
+  gap: 6px;
+}
+.svc-department-search {
+  position: relative;
+  display: block;
+}
+.svc-department-search svg {
+  position: absolute;
+  inset-inline-start: 10px;
+  top: 50%;
+  width: 16px;
+  height: 16px;
+  color: var(--ds-text-muted);
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+.svc-department-search input {
+  width: 100%;
+  padding-inline-start: 34px;
+}
+.cz-request-detail .citizen-checklist small.cz-doc-time {
+  color: var(--ds-text-muted);
+}

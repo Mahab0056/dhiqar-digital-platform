@@ -87,6 +87,75 @@ export function isOverdue(row: { status: string; due_at?: unknown }, now = Date.
   return Date.parse(String(row.due_at)) < now
 }
 
+// ---- escalation safety net ---------------------------------------------------------------------------------
+/**
+ * A request must never sit where nobody can see it. The governorate office is the safety net: its employees also
+ * see (and may work) open requests of other departments when
+ * - NO_STAFF: the owning department has no active employee account at all, or
+ * - SLA_UNCLAIMED: nobody claimed the request and its SLA deadline has passed (paused requests excluded).
+ * Once a governorate employee claims such a request it stays theirs until it is closed or released.
+ * Every other request stays strictly scoped to its own department.
+ */
+export const ESCALATION_DEPARTMENT_ID = 'dhiqar-governorate'
+export type EscalationReason = 'NO_STAFF' | 'SLA_UNCLAIMED'
+export const escalationLabels: Record<EscalationReason, string> = {
+  NO_STAFF: 'محال من دائرة بلا موظفين',
+  SLA_UNCLAIMED: 'تجاوز المهلة دون استلام',
+}
+
+const activeEmployeeExistsSql = `EXISTS (SELECT 1 FROM staff_accounts st WHERE st.department_id = sr.department_id AND st.role = 'EMPLOYEE' AND st.status = 'ACTIVE')`
+
+/** SQL condition (on alias `sr`) matching requests escalated to the governorate office. */
+export function escalatedRequestSql(nowIso = new Date().toISOString()) {
+  return {
+    sql: `(sr.department_id != ? AND (
+      sr.assigned_staff_id IN (SELECT id FROM staff_accounts WHERE department_id = ?)
+      OR (sr.status NOT IN ('APPROVED', 'REJECTED') AND (
+        NOT ${activeEmployeeExistsSql}
+        OR (sr.assigned_staff_id IS NULL AND sr.due_at IS NOT NULL AND sr.due_at < ? AND sr.status NOT IN ('ACTION_REQUIRED', 'PAYMENT_PENDING'))
+      ))
+    ))`,
+    values: [ESCALATION_DEPARTMENT_ID, ESCALATION_DEPARTMENT_ID, nowIso],
+  }
+}
+
+export type EscalationContext = { staffed: Set<string>; escalationStaff: Set<string>; now: number }
+
+/** Departments with at least one active employee + the governorate's staff ids (two small queries per list). */
+export function escalationContext(now = Date.now()): EscalationContext {
+  const staffed = db
+    .prepare(
+      `SELECT DISTINCT department_id FROM staff_accounts WHERE role = 'EMPLOYEE' AND status = 'ACTIVE' AND department_id IS NOT NULL`
+    )
+    .all() as Array<{ department_id: string }>
+  const escalationStaff = db
+    .prepare('SELECT id FROM staff_accounts WHERE department_id = ?')
+    .all(ESCALATION_DEPARTMENT_ID) as Array<{ id: string }>
+  return {
+    staffed: new Set(staffed.map(row => String(row.department_id))),
+    escalationStaff: new Set(escalationStaff.map(row => String(row.id))),
+    now,
+  }
+}
+
+/** Same rule as escalatedRequestSql, for one loaded row (labels and access checks). */
+export function escalationReason(
+  row: { department_id?: unknown; status?: unknown; assigned_staff_id?: unknown; due_at?: unknown },
+  context: EscalationContext = escalationContext()
+): EscalationReason | null {
+  const departmentId = String(row.department_id || '')
+  if (!departmentId || departmentId === ESCALATION_DEPARTMENT_ID) return null
+  const status = String(row.status || '')
+  const assignee = row.assigned_staff_id ? String(row.assigned_staff_id) : null
+  const noStaff = !context.staffed.has(departmentId)
+  if (assignee && context.escalationStaff.has(assignee)) return noStaff ? 'NO_STAFF' : 'SLA_UNCLAIMED'
+  if (closed.has(status)) return null
+  if (noStaff) return 'NO_STAFF'
+  if (!assignee && row.due_at && !waiting.has(status) && Date.parse(String(row.due_at)) < context.now)
+    return 'SLA_UNCLAIMED'
+  return null
+}
+
 /**
  * Requests filed before SLAs existed have no due_at: give the open ones a deadline from their creation date so
  * the overdue flags and the manager view cover them too. Idempotent (only touches due_at IS NULL).

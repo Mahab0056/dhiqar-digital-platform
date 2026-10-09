@@ -228,15 +228,8 @@ export const serviceDefinitions: DigitalServiceDefinition[] = [
         label: 'الدائرة المطلوبة',
         type: 'select',
         required: true,
-        options: [
-          'ديوان محافظة ذي قار',
-          'مديرية بلديات ذي قار',
-          'مديرية ماء ذي قار',
-          'مديرية مجاري ذي قار',
-          'دائرة صحة ذي قار',
-          'مديرية زراعة ذي قار',
-          'هيئة استثمار ذي قار',
-        ],
+        // filled with every department of the registry when the catalog is seeded (server/services/catalog.ts)
+        options: [],
       },
       { key: 'purpose', label: 'غرض الموعد', type: 'textarea', required: true, maxLength: 400 },
       { key: 'preferredDate', label: 'التاريخ المفضل', type: 'date', required: true },

@@ -5,15 +5,69 @@ import { randomUUID } from 'node:crypto'
 import { z } from 'zod'
 import { upload, uploadBudget, validateUploadedFile } from '../http/upload.js'
 import { requireSession, currentCitizen, currentSession, isDeptManager, type SessionData } from '../auth/session.js'
-import { computeDueAt, isOverdue, nextSlaClock, WAITING_ON_CITIZEN_STATUSES } from '../services/sla.js'
+import {
+  computeDueAt,
+  ESCALATION_DEPARTMENT_ID,
+  escalatedRequestSql,
+  escalationContext,
+  escalationLabels,
+  escalationReason,
+  isOverdue,
+  nextSlaClock,
+  WAITING_ON_CITIZEN_STATUSES,
+  type EscalationContext,
+} from '../services/sla.js'
 import { notifyCitizen, employeeWorkQueueRealtime } from '../realtime.js'
 import { addAudit, db, nextReference } from '../db.js'
 import { readDecryptedMedia, storeEncryptedMedia } from '../media.js'
 import { createIssuedDocument } from '../issued-documents.js'
 import { departmentById } from '../department-registry.js'
-import { getCatalogService, type CatalogDocument } from '../services/catalog.js'
-import { createPaymentForRequest, listPaymentsForRequest } from '../payments/intents.js'
+import { getCatalogService, type CatalogDocument, type CatalogService } from '../services/catalog.js'
+import {
+  createPaymentForRequest,
+  insertOfficePayment,
+  listPaymentsForRequest,
+  officeReceiptOf,
+  owedPayments,
+} from '../payments/intents.js'
 import { paymentProvider } from '../payments/providers.js'
+
+/** Citizen-facing page of one service request (the notification links open it). */
+export const citizenRequestLink = (reference: string) => `/citizen/request/${encodeURIComponent(reference)}`
+
+/**
+ * Whether approving a request of this service issues a completion PDF. Complaints, reports (بلاغات) and
+ * appointment bookings are closed with a decision only: there is no official document to hand the citizen.
+ */
+export function serviceIssuesDocument(
+  service: (Pick<CatalogService, 'key' | 'category'> & { mode?: string | null }) | null | undefined
+) {
+  if (!service) return true
+  if (service.mode === 'APPOINTMENT') return false
+  if (/complaint|report|appointment/i.test(service.key)) return false
+  return service.category !== 'الشكاوى والمراجعات'
+}
+
+const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/
+const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/
+/** Today's date in Baghdad (YYYY-MM-DD): appointment days are local days. */
+const baghdadToday = () =>
+  new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Baghdad',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date())
+/** An attendance date the department may set: a real date from today (Baghdad) up to 180 days ahead. */
+const appointmentDateProblem = (date: string) => {
+  if (!DATE_PATTERN.test(date) || Number.isNaN(Date.parse(`${date}T00:00:00Z`))) return 'صيغة تاريخ الموعد غير صحيحة.'
+  const today = baghdadToday()
+  if (date < today) return 'لا يمكن تحديد موعد في تاريخ سابق.'
+  const max = new Date(`${today}T00:00:00Z`)
+  max.setUTCDate(max.getUTCDate() + 180)
+  if (date > max.toISOString().slice(0, 10)) return 'حدد موعداً خلال 180 يوماً من اليوم.'
+  return null
+}
 
 /** Per-request document checklist persisted on service_requests.document_checklist */
 export type ChecklistItem = {
@@ -143,31 +197,96 @@ function transfersByRequest(ids: number[]) {
 const loadRequest = (reference: string) =>
   db.prepare(`${fullRowSql} WHERE sr.reference = ?`).get(reference) as Record<string, unknown> | undefined
 
-const latestAppointment = (serviceRequestId: number) => {
-  const appointment = db
+const appointmentRow = (serviceRequestId: number) =>
+  db
     .prepare(
-      `SELECT id, preferred_date, preferred_time, status, confirmation_note FROM appointments WHERE service_request_id = ? ORDER BY created_at DESC LIMIT 1`
+      `SELECT id, reference, department, preferred_date, preferred_time, status, confirmation_note, updated_at FROM appointments WHERE service_request_id = ? ORDER BY created_at DESC LIMIT 1`
     )
     .get(serviceRequestId) as Record<string, unknown> | undefined
+
+/**
+ * The request's appointment. While REQUESTED, date/time are what the citizen asked for; once CONFIRMED they are the
+ * slot the department set (`confirmed: true`).
+ */
+const latestAppointment = (serviceRequestId: number) => {
+  const appointment = appointmentRow(serviceRequestId)
   return appointment
     ? {
         id: String(appointment.id),
+        reference: String(appointment.reference),
+        department: String(appointment.department),
         preferredDate: String(appointment.preferred_date),
         preferredTime: String(appointment.preferred_time),
         status: String(appointment.status),
+        confirmed: String(appointment.status) === 'CONFIRMED',
         note: appointment.confirmation_note ? String(appointment.confirmation_note) : null,
+        updatedAt: String(appointment.updated_at),
       }
     : null
 }
 
+/**
+ * Creates the request's appointment or moves the existing one to the slot the department set (CONFIRMED).
+ * Returns whether an earlier confirmed slot was changed (a reschedule). Must run inside the caller's transaction.
+ */
+function upsertConfirmedAppointment(
+  row: Record<string, unknown>,
+  slot: { date: string; time: string; note: string | null },
+  timestamp: string
+) {
+  const existing = appointmentRow(Number(row.id))
+  if (existing) {
+    db.prepare(
+      `UPDATE appointments SET preferred_date = ?, preferred_time = ?, status = 'CONFIRMED', confirmation_note = ?, department = ?, updated_at = ? WHERE id = ?`
+    ).run(slot.date, slot.time, slot.note, String(row.department_name), timestamp, String(existing.id))
+    return {
+      rescheduled:
+        String(existing.status) === 'CONFIRMED' &&
+        (String(existing.preferred_date) !== slot.date || String(existing.preferred_time) !== slot.time),
+      previous: { date: String(existing.preferred_date), time: String(existing.preferred_time) },
+    }
+  }
+  db.prepare(
+    `INSERT INTO appointments (id, reference, citizen_id, service_request_id, department, purpose, preferred_date, preferred_time, status, confirmation_note, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'CONFIRMED', ?, ?, ?)`
+  ).run(
+    `apt_${randomUUID().replaceAll('-', '')}`,
+    `APT-${String(row.reference).replace(/^[A-Z]+-/, '')}`,
+    Number(row.citizen_id),
+    Number(row.id),
+    String(row.department_name),
+    `حضور لإكمال ${String(row.service_name)}`.slice(0, 300),
+    slot.date,
+    slot.time,
+    slot.note,
+    timestamp,
+    timestamp
+  )
+  return { rescheduled: false, previous: null }
+}
+
+const escalationView = (row: Record<string, unknown>, context?: EscalationContext) => {
+  const reason = escalationReason(row, context)
+  return reason ? { reason, label: escalationLabels[reason], toDepartmentId: ESCALATION_DEPARTMENT_ID } : null
+}
+
 const serializeServiceRequestForEmployee = (
   row: Record<string, unknown>,
-  transfers: ServiceRequestTransferView[] = transfersByRequest([Number(row.id)]).get(Number(row.id)) || []
+  transfers: ServiceRequestTransferView[] = transfersByRequest([Number(row.id)]).get(Number(row.id)) || [],
+  context?: EscalationContext
 ) => {
   const service = getCatalogService(String(row.service_id))
   const fieldLabels = new Map((service?.fields || []).map(field => [field.key, field.label]))
   const formData = JSON.parse(String(row.form_data || '{}')) as Record<string, string>
+  const payments = listPaymentsForRequest(Number(row.id))
   return {
+    serviceChannel: String(row.service_channel || service?.channel || 'ONLINE_SUBMISSION'),
+    feeIqd: service?.feeStatus === 'OFFICIAL' ? service.feeIqd || null : null,
+    // approval of complaints / reports / appointments closes the request without a PDF
+    issuesDocument: serviceIssuesDocument(service),
+    officeReceipt: officeReceiptOf(payments),
+    // visible to the governorate office because nobody in the owning department can take it (see sla.ts)
+    escalation: escalationView(row, context),
     id: Number(row.id),
     reference: String(row.reference),
     serviceKey: String(row.service_id),
@@ -186,7 +305,7 @@ const serializeServiceRequestForEmployee = (
     decidedAt: row.decided_at ? String(row.decided_at) : null,
     checklist: parseChecklist(row.document_checklist),
     attachments: serviceRequestAttachments(Number(row.id)),
-    payments: listPaymentsForRequest(Number(row.id)),
+    payments,
     paymentStatus: String(row.payment_status || 'NOT_REQUIRED'),
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at),
@@ -206,6 +325,7 @@ const serializeServiceRequestForEmployee = (
 }
 
 const serializeServiceRequestForCitizen = (row: Record<string, unknown>) => {
+  const payments = listPaymentsForRequest(Number(row.id))
   return {
     id: Number(row.id),
     reference: String(row.reference),
@@ -222,18 +342,162 @@ const serializeServiceRequestForCitizen = (row: Record<string, unknown>) => {
     decidedAt: row.decided_at ? String(row.decided_at) : null,
     checklist: parseChecklist(row.document_checklist),
     attachments: serviceRequestAttachments(Number(row.id)),
-    payments: listPaymentsForRequest(Number(row.id)),
+    payments,
     paymentStatus: String(row.payment_status || 'NOT_REQUIRED'),
+    officeReceipt: officeReceiptOf(payments),
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at),
     appointment: latestAppointment(Number(row.id)),
   }
 }
 
-/** Department staff only see their own department's queue; operations/super admin see everything. */
+/** Audit actions shown to the citizen as their request's timeline (staff names are never exposed). */
+const timelineTitles: Record<string, string> = {
+  SERVICE_REQUEST_CREATED: 'تم تقديم الطلب',
+  APPOINTMENT_REQUESTED: 'تم إرسال طلب الموعد',
+  SERVICE_REQUEST_DOCUMENT_UPLOADED: 'رفعتَ مستمسكاً',
+  SERVICE_DOCUMENT_VERIFIED: 'دُقق مستمسك وقُبل',
+  SERVICE_DOCUMENT_REJECTED: 'رُفض مستمسك ويلزم إعادة رفعه',
+  SERVICE_REQUEST_CLAIMED: 'استلم موظف الدائرة طلبك',
+  SERVICE_REQUEST_ASSIGNED: 'أُسند طلبك إلى موظف في الدائرة',
+  SERVICE_REQUEST_TRANSFERRED: 'أُحيل الطلب إلى الدائرة المختصة',
+  SERVICE_REQUEST_UNDER_REVIEW: 'الطلب قيد التدقيق',
+  SERVICE_REQUEST_ACTION_REQUIRED: 'مطلوب منك استكمال نواقص',
+  PAYMENT_REQUIRED: 'حددت الدائرة رسماً للخدمة',
+  PAYMENT_CONFIRMED: 'تم تأكيد الدفع الإلكتروني',
+  SERVICE_REQUEST_OFFICE_PAYMENT_RECORDED: 'سُجل وصل دفع الرسم في الدائرة',
+  SERVICE_REQUEST_APPOINTMENT_CONFIRMED: 'تم تأكيد موعد الحضور',
+  SERVICE_REQUEST_APPOINTMENT_RESCHEDULED: 'تم تغيير موعد الحضور',
+  SERVICE_REQUEST_APPROVED: 'تمت الموافقة على الطلب',
+  SERVICE_REQUEST_APPROVED_DOCUMENT_ISSUED: 'تمت الموافقة وصدرت الوثيقة الرقمية',
+  SERVICE_REQUEST_REJECTED: 'رُفض الطلب',
+}
+
+const parseJsonObject = (value: unknown): Record<string, unknown> => {
+  try {
+    const parsed = value ? JSON.parse(String(value)) : {}
+    return parsed && typeof parsed === 'object' ? (parsed as Record<string, unknown>) : {}
+  } catch {
+    return {}
+  }
+}
+
+function citizenTimeline(row: Record<string, unknown>, paymentReferences: string[]) {
+  const checklist = parseChecklist(row.document_checklist)
+  const labelOf = (key: unknown) => checklist.find(item => item.key === String(key))?.label || String(key || '')
+  const rows = db
+    .prepare(
+      `SELECT action, role, new_value, created_at FROM audit_logs
+       WHERE (entity_type = 'ServiceRequest' AND entity_id = ?)
+          ${paymentReferences.length ? `OR (entity_type = 'PaymentIntent' AND entity_id IN (${paymentReferences.map(() => '?').join(', ')}))` : ''}
+       ORDER BY created_at ASC, id ASC`
+    )
+    .all(String(row.reference), ...paymentReferences) as Array<Record<string, unknown>>
+  return rows
+    .filter(entry => timelineTitles[String(entry.action)])
+    .map(entry => {
+      const action = String(entry.action)
+      const value = parseJsonObject(entry.new_value)
+      let description: string | null = null
+      if (action === 'SERVICE_DOCUMENT_VERIFIED' || action === 'SERVICE_REQUEST_DOCUMENT_UPLOADED')
+        description = labelOf(value.documentKey)
+      else if (action === 'SERVICE_DOCUMENT_REJECTED')
+        description = `${labelOf(value.documentKey)}${value.note ? ` — ${String(value.note)}` : ''}`
+      else if (action === 'SERVICE_REQUEST_TRANSFERRED')
+        // the referral reason is internal to the departments; the citizen sees where the file went
+        description = `إلى ${departmentById.get(String(value.departmentId))?.name || 'الدائرة المختصة'}`
+      else if (action === 'PAYMENT_REQUIRED' && value.amountIqd)
+        description = `${Number(value.amountIqd).toLocaleString('en-US')} د.ع`
+      else if (action === 'PAYMENT_CONFIRMED' && value.amountIqd)
+        description = `${Number(value.amountIqd).toLocaleString('en-US')} د.ع${value.receipt ? ` — إيصال ${String(value.receipt)}` : ''}`
+      else if (action === 'SERVICE_REQUEST_OFFICE_PAYMENT_RECORDED')
+        description = `وصل ${String(value.receiptNumber || '')} — ${Number(value.amountIqd || 0).toLocaleString('en-US')} د.ع`
+      else if (action.startsWith('SERVICE_REQUEST_APPOINTMENT_'))
+        description = `${String(value.date || '')} الساعة ${String(value.time || '')}${value.note ? ` — ${String(value.note)}` : ''}`
+      else if (value.currentAction) description = String(value.currentAction)
+      else if (value.requiredDocument) description = String(value.requiredDocument)
+      return {
+        type: action,
+        title: timelineTitles[action],
+        description,
+        actor: String(entry.role) === 'CITIZEN' ? 'CITIZEN' : String(entry.role) === 'SYSTEM' ? 'SYSTEM' : 'DEPARTMENT',
+        createdAt: String(entry.created_at),
+      }
+    })
+}
+
+/** Full view of one request for its owner (GET /api/citizen/service-requests/:reference). */
+function serializeServiceRequestDetailForCitizen(row: Record<string, unknown>) {
+  const base = serializeServiceRequestForCitizen(row)
+  const service = getCatalogService(String(row.service_id))
+  const owed = owedPayments(base.payments)
+  const issuedDocuments = (
+    db
+      .prepare(
+        `SELECT id, document_title, document_number, verification_id, status, issued_at, revoked_at, revoked_reason
+         FROM issued_documents WHERE service_request_reference = ? AND citizen_id = ? ORDER BY issued_at DESC`
+      )
+      .all(String(row.reference), Number(row.citizen_id)) as Array<Record<string, unknown>>
+  ).map(item => ({
+    id: String(item.id),
+    title: String(item.document_title),
+    documentNumber: String(item.document_number),
+    verificationId: String(item.verification_id),
+    status: String(item.status),
+    issuedAt: String(item.issued_at),
+    revokedAt: item.revoked_at ? String(item.revoked_at) : null,
+    revokedReason: item.revoked_reason ? String(item.revoked_reason) : null,
+    pdfUrl: `/api/citizen/issued-documents/${encodeURIComponent(String(item.id))}/pdf`,
+  }))
+  return {
+    ...base,
+    serviceChannel: String(row.service_channel || service?.channel || 'ONLINE_SUBMISSION'),
+    issuesDocument: serviceIssuesDocument(service),
+    // documents with their review result; `note` is the rejection reason when status = REJECTED
+    documents: base.checklist.map(item => ({
+      key: item.key,
+      label: item.label,
+      required: item.required,
+      status: item.status,
+      rejectionReason: item.status === 'REJECTED' ? item.note : null,
+      uploaded: Boolean(item.mediaId),
+      updatedAt: item.updatedAt,
+    })),
+    fee: {
+      amountIqd: service?.feeStatus === 'OFFICIAL' ? service.feeIqd || null : null,
+      paymentStatus: base.paymentStatus,
+      // what the citizen has to do about money right now
+      owed: owed.map(item => ({ reference: item.reference, amountIqd: item.amountIqd, status: item.status })),
+      payAtOffice: base.paymentStatus === 'PAY_AT_OFFICE',
+      officeReceipt: base.officeReceipt,
+    },
+    transfers: (transfersByRequest([Number(row.id)]).get(Number(row.id)) || []).map(item => ({
+      fromDepartmentName: item.fromDepartmentName,
+      toDepartmentName: item.toDepartmentName,
+      createdAt: item.createdAt,
+    })),
+    issuedDocuments,
+    timeline: citizenTimeline(
+      row,
+      base.payments.map(item => item.reference)
+    ),
+  }
+}
+
+/**
+ * Department staff only see their own department's queue; operations/super admin see everything. Employees of the
+ * governorate office (the escalation safety net) also see requests nobody else can take — see escalatedRequestSql.
+ */
 function departmentScope(session: SessionData): { sql: string; values: string[] } | null {
   if (session.role === 'SUPER_ADMIN' || session.role === 'OPERATIONS') return { sql: '', values: [] }
   if (!session.departmentId) return null
+  if (session.role === 'EMPLOYEE' && session.departmentId === ESCALATION_DEPARTMENT_ID) {
+    const escalated = escalatedRequestSql()
+    return {
+      sql: `AND (sr.department_id = ? OR ${escalated.sql})`,
+      values: [session.departmentId, ...escalated.values],
+    }
+  }
   return { sql: 'AND sr.department_id = ?', values: [session.departmentId] }
 }
 
@@ -242,7 +506,12 @@ const approvalsInFlight = new Set<string>()
 
 function canActOn(session: SessionData, row: Record<string, unknown>) {
   if (session.role === 'SUPER_ADMIN') return true
-  return Boolean(session.departmentId) && session.departmentId === String(row.department_id)
+  if (!session.departmentId) return false
+  if (session.departmentId === String(row.department_id)) return true
+  // the governorate office may work a request escalated to it (department without staff / unclaimed past SLA)
+  return (
+    session.role === 'EMPLOYEE' && session.departmentId === ESCALATION_DEPARTMENT_ID && Boolean(escalationReason(row))
+  )
 }
 
 const isClosed = (row: Record<string, unknown>) => ['APPROVED', 'REJECTED'].includes(String(row.status))
@@ -265,13 +534,16 @@ const publishRequest = (
   departmentId = String(row.department_id)
 ) => {
   const fresh = loadRequest(String(row.reference))
-  employeeWorkQueueRealtime.publish({
-    entity: 'SERVICE_REQUEST',
+  const event = {
+    entity: 'SERVICE_REQUEST' as const,
     action,
     reference: String(row.reference),
-    departmentId,
     assignedStaffId: fresh?.assigned_staff_id ? String(fresh.assigned_staff_id) : null,
-  })
+  }
+  employeeWorkQueueRealtime.publish({ ...event, departmentId })
+  // an escalated request also lives in the governorate office's queue
+  if (departmentId !== ESCALATION_DEPARTMENT_ID && (escalationReason(fresh || row) || escalationReason(row)))
+    employeeWorkQueueRealtime.publish({ ...event, departmentId: ESCALATION_DEPARTMENT_ID })
 }
 
 export function registerServiceRequestsRoutes(app: express.Express) {
@@ -283,6 +555,18 @@ export function registerServiceRequestsRoutes(app: express.Express) {
       .prepare(`${fullRowSql} WHERE sr.citizen_id = ? ORDER BY sr.created_at DESC`)
       .all(citizen.id) as Array<Record<string, unknown>>
     res.json(rows.map(serializeServiceRequestForCitizen))
+  })
+
+  // ---- citizen: one request in full (the notification links open /citizen/request/:reference) ------------
+  app.get('/api/citizen/service-requests/:reference', requireSession('CITIZEN'), (req, res) => {
+    const citizen = currentCitizen(res)
+    if (!citizen) return
+    const row = db
+      .prepare(`${fullRowSql} WHERE sr.reference = ? AND sr.citizen_id = ?`)
+      .get(param(req, 'reference'), citizen.id) as Record<string, unknown> | undefined
+    // another citizen's reference answers exactly like a missing one
+    if (!row) return res.status(404).json({ message: 'طلب الخدمة غير موجود ضمن حسابك.' })
+    res.json(serializeServiceRequestDetailForCitizen(row))
   })
 
   // ---- citizen: submit ------------------------------------------------------------------
@@ -574,15 +858,25 @@ export function registerServiceRequestsRoutes(app: express.Express) {
           ? 'تم إرسال طلب الموعد'
           : 'تم تسجيل طلبك',
       message: `${service.title} — ${reference}. ${currentAction}`,
-      link: payment ? `/citizen/pay/${payment.reference}` : '/citizen#my-requests',
+      link: payment ? `/citizen/pay/${payment.reference}` : citizenRequestLink(reference),
     })
-    if (!feeDue)
+    if (!feeDue) {
       employeeWorkQueueRealtime.publish({
         entity: 'SERVICE_REQUEST',
         action: 'CREATED',
         reference,
         departmentId: department.id,
       })
+      // filed with a department that has nobody to work it: it lands in the governorate office's queue at once
+      const filed = loadRequest(reference)
+      if (filed && escalationReason(filed))
+        employeeWorkQueueRealtime.publish({
+          entity: 'SERVICE_REQUEST',
+          action: 'CREATED',
+          reference,
+          departmentId: ESCALATION_DEPARTMENT_ID,
+        })
+    }
     addAudit({
       actor: citizen.fullName,
       role: 'CITIZEN',
@@ -612,6 +906,10 @@ export function registerServiceRequestsRoutes(app: express.Express) {
       currentAction,
       checklist,
       payment: payment ? { reference: payment.reference, amountIqd: payment.amountIqd, mode: payment.mode } : null,
+      // official fee without an online gateway: to be paid at the department counter
+      payAtOffice,
+      feeIqd: officialFee ? service.feeIqd : null,
+      appointment: latestAppointment(serviceRequestId),
       createdAt: timestamp,
     })
   })
@@ -704,7 +1002,7 @@ export function registerServiceRequestsRoutes(app: express.Express) {
           type: 'SERVICE_DOCUMENT_UPLOADED',
           title: 'تم رفع المستمسك',
           message: `${String(row.reference)} — ${currentAction}`,
-          link: '/citizen#my-requests',
+          link: citizenRequestLink(String(row.reference)),
         })
         publishRequest(row, 'UPDATED')
         addAudit({
@@ -745,9 +1043,14 @@ export function registerServiceRequestsRoutes(app: express.Express) {
         )
         .all(...scope.values, ...(statusSql ? [status] : [])) as Array<Record<string, unknown>>
       const transfers = transfersByRequest(rows.map(row => Number(row.id)))
+      const context = escalationContext()
+      const items = rows.map(row =>
+        serializeServiceRequestForEmployee(row, transfers.get(Number(row.id)) || [], context)
+      )
       res.json({
-        items: rows.map(row => serializeServiceRequestForEmployee(row, transfers.get(Number(row.id)) || [])),
+        items,
         scope: scope.sql ? session.departmentId : 'ALL',
+        escalatedCount: items.filter(item => item.escalation && item.departmentId !== session.departmentId).length,
       })
     }
   )
@@ -866,11 +1169,24 @@ export function registerServiceRequestsRoutes(app: express.Express) {
           decisionNote: z.string().trim().max(1500).optional(),
           requiredDocument: z.string().trim().max(160).optional(),
           appointmentDate: z.string().trim().optional(),
+          appointmentTime: z.string().trim().optional(),
           appointmentNote: z.string().trim().max(300).optional(),
           amountIqd: z.number().int().min(250).max(50_000_000).optional(),
         })
         .safeParse(req.body)
       if (!parsed.success) return res.status(400).json({ message: 'تحقق من الحالة ووصف الإجراء قبل الحفظ.' })
+      // older clients send the slot as one "YYYY-MM-DD HH:MM" value
+      const combined = parsed.data.appointmentDate?.match(/^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2})$/)
+      if (combined) {
+        parsed.data.appointmentDate = combined[1]
+        parsed.data.appointmentTime ||= combined[2]
+      }
+      if (parsed.data.appointmentDate) {
+        const problem = appointmentDateProblem(parsed.data.appointmentDate)
+        if (problem) return res.status(400).json({ message: problem })
+      }
+      if (parsed.data.appointmentTime && !TIME_PATTERN.test(parsed.data.appointmentTime))
+        return res.status(400).json({ message: 'صيغة وقت الموعد غير صحيحة (HH:MM).' })
       // while a fee is being paid the request is the citizen's move: the department may only send it back or reject it
       if (String(row.status) === 'PAYMENT_PENDING' && !['ACTION_REQUIRED', 'REJECTED'].includes(parsed.data.status))
         return res.status(409).json({
@@ -886,15 +1202,19 @@ export function registerServiceRequestsRoutes(app: express.Express) {
         return res
           .status(409)
           .json({ message: 'الطلب قيد التدقيق مسبقاً. اكتب ملاحظة أو إجراءً جديداً، أو اختر قراراً آخر.' })
-      // a fee stays owed until it is PAID: a FAILED or CANCELLED attempt can be retried by the citizen, but it never
-      // lets the request be approved (or a second fee be stacked on top of it)
-      const pendingPayments = listPaymentsForRequest(Number(row.id)).filter(item => item.status !== 'PAID')
+      // a fee stays owed until it is PAID (online or by an office receipt): a FAILED or CANCELLED attempt can be
+      // retried by the citizen, but it never lets the request be approved (or a second fee be stacked on top of it)
+      const pendingPayments = owedPayments(listPaymentsForRequest(Number(row.id)))
 
       // ---- fee determined by the department → citizen pays, then the request comes back ------
       if (parsed.data.status === 'PAYMENT_REQUIRED') {
         if (!parsed.data.amountIqd) return res.status(400).json({ message: 'حدد مبلغ الرسم بالدينار العراقي.' })
         if (!paymentProvider())
-          return res.status(503).json({ message: 'بوابة الدفع غير مفعّلة؛ لا يمكن طلب الدفع إلكترونياً الآن.' })
+          return res.status(503).json({
+            message:
+              'بوابة الدفع غير مفعّلة؛ لا يمكن طلب الدفع إلكترونياً الآن. استوفِ الرسم في الدائرة وسجّل وصل القبض على الطلب.',
+            code: 'ONLINE_PAYMENTS_DISABLED',
+          })
         if (pendingPayments.length)
           return res.status(409).json({ message: `يوجد رسم بانتظار السداد مسبقاً (${pendingPayments[0].reference}).` })
         const timestamp = new Date().toISOString()
@@ -941,7 +1261,16 @@ export function registerServiceRequestsRoutes(app: express.Express) {
       if (parsed.data.status === 'APPROVED' && pendingPayments.length)
         return res.status(409).json({
           message: `لا يمكن الموافقة قبل سداد الرسم المطلوب (${pendingPayments[0].reference}).`,
+          code: 'FEE_UNPAID',
         })
+      // official fee to be paid at the counter: approval waits for the clerk to record the receipt
+      if (parsed.data.status === 'APPROVED' && String(row.payment_status) === 'PAY_AT_OFFICE') {
+        const fee = getCatalogService(String(row.service_id))?.feeIqd
+        return res.status(409).json({
+          message: `لا يمكن الموافقة قبل استيفاء رسم الخدمة${fee ? ` (${fee.toLocaleString('en-US')} د.ع)` : ''}: سجّل وصل الدفع في الدائرة أولاً.`,
+          code: 'FEE_UNPAID',
+        })
+      }
       const checklist = parseChecklist(row.document_checklist)
       const rejectedDocs = checklist.filter(item => item.status === 'REJECTED')
       const missingDocs = checklist.filter(item => item.required && (item.status === 'MISSING' || !item.mediaId))
@@ -961,9 +1290,39 @@ export function registerServiceRequestsRoutes(app: express.Express) {
       )
         return res.status(400).json({ message: 'حدد المستمسك المرفوض أو الناقص، أو اكتب المطلوب من المواطن.' })
 
-      const timestamp = new Date().toISOString()
-      let issuedDocument: Awaited<ReturnType<typeof createIssuedDocument>> | null = null
+      // ---- attendance slot: a service that needs the citizen in person is approved with a booked appointment ----
+      const existingAppointment = appointmentRow(Number(row.id))
+      const needsAttendance = String(row.service_channel) === 'APPOINTMENT_REQUIRED'
+      let slot: { date: string; time: string; note: string | null } | null = null
       if (decision.status === 'APPROVED') {
+        if (decision.appointmentDate)
+          slot = {
+            date: decision.appointmentDate,
+            time:
+              decision.appointmentTime ||
+              (existingAppointment ? String(existingAppointment.preferred_time) : '') ||
+              '09:00',
+            note: decision.appointmentNote || null,
+          }
+        else if (needsAttendance && existingAppointment && String(existingAppointment.status) === 'REQUESTED')
+          // approving without another date confirms the slot the citizen asked for
+          slot = {
+            date: String(existingAppointment.preferred_date),
+            time: String(existingAppointment.preferred_time),
+            note: decision.appointmentNote || null,
+          }
+        else if (needsAttendance && !existingAppointment)
+          return res.status(400).json({
+            message: 'هذه الخدمة تتطلب حضور المواطن: حدد تاريخ ووقت موعد الحضور قبل الموافقة.',
+            code: 'APPOINTMENT_REQUIRED',
+          })
+      }
+
+      const timestamp = new Date().toISOString()
+      const service = getCatalogService(String(row.service_id))
+      const issuesDocument = serviceIssuesDocument(service)
+      let issuedDocument: Awaited<ReturnType<typeof createIssuedDocument>> | null = null
+      if (decision.status === 'APPROVED' && issuesDocument) {
         // PDF rendering is the only await in this handler: while it runs, every other change to this request
         // (a second approval click, another decision, a citizen upload) is refused instead of racing it
         approvalsInFlight.add(String(row.reference))
@@ -989,11 +1348,16 @@ export function registerServiceRequestsRoutes(app: express.Express) {
       )
       if (decision.status === 'ACTION_REQUIRED' && decision.requiredDocument)
         requiredList.push(decision.requiredDocument)
+      const slotText = slot
+        ? ` موعد الحضور: ${slot.date} الساعة ${slot.time}${slot.note ? ` — ${slot.note}` : ''}.`
+        : ''
       const defaultAction =
         decision.status === 'APPROVED'
-          ? String(row.service_channel) === 'APPOINTMENT_REQUIRED'
-            ? `اكتمل تدقيق المستمسكات وتمت الموافقة.${decision.appointmentDate ? ` موعد الحضور لإكمال الإجراء: ${decision.appointmentDate}${decision.appointmentNote ? ` — ${decision.appointmentNote}` : ''}.` : ''}`
-            : 'اكتمل تدقيق المستمسكات وتمت الموافقة على الطلب.'
+          ? !issuesDocument
+            ? `أنهت الدائرة معالجة طلبك وتمت الموافقة.${slotText}`
+            : needsAttendance
+              ? `اكتمل تدقيق المستمسكات وتمت الموافقة.${slotText}`
+              : `اكتمل تدقيق المستمسكات وتمت الموافقة على الطلب.${slotText}`
           : decision.status === 'REJECTED'
             ? `رُفض الطلب: ${decision.decisionNote}`
             : decision.status === 'ACTION_REQUIRED'
@@ -1006,41 +1370,48 @@ export function registerServiceRequestsRoutes(app: express.Express) {
       const decided = decision.status === 'APPROVED' || decision.status === 'REJECTED'
       // sending it back to the citizen pauses the SLA; pulling it back into review resumes it (deadline pushed)
       const clock = nextSlaClock({ ...row, status: String(row.status) }, decision.status, timestamp)
-      db.prepare(
-        `UPDATE service_requests SET status = ?, current_action = ?, decision_note = ?, required_document = ?, document_checklist = ?, decided_by = ?, decided_at = ?, review_started_at = COALESCE(review_started_at, ?), due_at = ?, waiting_since = ?, updated_at = ? WHERE id = ?`
-      ).run(
-        decision.status,
-        finalAction,
-        decision.decisionNote || null,
-        decision.status === 'ACTION_REQUIRED' ? requiredList.join('، ').slice(0, 160) : null,
-        JSON.stringify(checklist),
-        decided ? session.actor : null,
-        decided ? timestamp : null,
-        timestamp,
-        clock.dueAt,
-        clock.waitingSince,
-        timestamp,
-        Number(row.id)
-      )
-      if (decision.status === 'REJECTED')
-        // a rejected request owes nothing: close any open fee so the citizen can't pay for a refused service
+      db.exec('BEGIN')
+      try {
         db.prepare(
-          `UPDATE payment_intents SET status = 'CANCELLED', updated_at = ? WHERE service_request_id = ? AND status IN ('CREATED', 'PENDING', 'FAILED')`
-        ).run(timestamp, Number(row.id))
-      if (decision.status === 'APPROVED' && decision.appointmentDate) {
-        db.prepare(
-          `UPDATE appointments SET status = 'CONFIRMED', confirmation_note = ?, updated_at = ? WHERE service_request_id = ?`
+          `UPDATE service_requests SET status = ?, current_action = ?, decision_note = ?, required_document = ?, document_checklist = ?, decided_by = ?, decided_at = ?, review_started_at = COALESCE(review_started_at, ?), due_at = ?, waiting_since = ?, updated_at = ? WHERE id = ?`
         ).run(
-          `${decision.appointmentDate}${decision.appointmentNote ? ` — ${decision.appointmentNote}` : ''}`,
+          decision.status,
+          finalAction,
+          decision.decisionNote || null,
+          decision.status === 'ACTION_REQUIRED' ? requiredList.join('، ').slice(0, 160) : null,
+          JSON.stringify(checklist),
+          decided ? session.actor : null,
+          decided ? timestamp : null,
+          timestamp,
+          clock.dueAt,
+          clock.waitingSince,
           timestamp,
           Number(row.id)
         )
+        if (decision.status === 'REJECTED') {
+          // a rejected request owes nothing: close any open fee so the citizen can't pay for a refused service
+          db.prepare(
+            `UPDATE payment_intents SET status = 'CANCELLED', updated_at = ? WHERE service_request_id = ? AND status IN ('CREATED', 'PENDING', 'FAILED')`
+          ).run(timestamp, Number(row.id))
+          // …and no longer has to come in
+          db.prepare(
+            `UPDATE appointments SET status = 'CANCELLED', updated_at = ? WHERE service_request_id = ? AND status IN ('REQUESTED', 'CONFIRMED')`
+          ).run(timestamp, Number(row.id))
+        }
+        // the attendance date becomes a real appointment row: it shows in the department's day view and to the citizen
+        if (slot) upsertConfirmedAppointment(row, slot, timestamp)
+        db.exec('COMMIT')
+      } catch (error) {
+        db.exec('ROLLBACK')
+        throw error
       }
       const title =
         decision.status === 'APPROVED'
           ? issuedDocument
             ? 'اكتملت معاملتك — وثيقة PDF جاهزة'
-            : 'تمت الموافقة على طلبك'
+            : slot
+              ? 'تمت الموافقة على طلبك — موعد الحضور محدد'
+              : 'تمت الموافقة على طلبك'
           : decision.status === 'REJECTED'
             ? 'تم رفض طلبك'
             : decision.status === 'ACTION_REQUIRED'
@@ -1051,7 +1422,7 @@ export function registerServiceRequestsRoutes(app: express.Express) {
         type: 'SERVICE_REQUEST_UPDATED',
         title,
         message: `${String(row.reference)} — ${finalAction}${decision.decisionNote && decision.status !== 'REJECTED' ? ` • ${decision.decisionNote}` : ''}${issuedDocument ? ' اضغط لتنزيل الوثيقة.' : ''}`,
-        link: decision.status === 'APPROVED' ? '/citizen#issued-documents' : '/citizen#my-requests',
+        link: citizenRequestLink(String(row.reference)),
         pushLink: issuedDocument ? `/api/citizen/issued-documents/${issuedDocument.id}/pdf` : undefined,
       })
       publishRequest(row, 'UPDATED')
@@ -1064,14 +1435,264 @@ export function registerServiceRequestsRoutes(app: express.Express) {
         previousValue: { status: row.status },
         newValue: {
           status: decision.status,
+          currentAction: finalAction,
           requiredDocument: requiredList.join('، ') || null,
           documentNumber: issuedDocument?.documentNumber || null,
           verificationId: issuedDocument?.verificationId || null,
+          documentIssued: Boolean(issuedDocument),
+          appointment: slot,
         },
       })
       res.json(serializeServiceRequestForEmployee(loadRequest(String(row.reference))!))
     }
   )
+
+  // ---- employee: fee paid at the department counter ---------------------------------------------------
+  /**
+   * The citizen paid the fee at the counter (online payments off, or the citizen preferred to pay in person): the
+   * clerk records the receipt. Mirrors /api/applications/:reference/record-office-payment for shop permits.
+   */
+  app.post(
+    '/api/employee/service-requests/:reference/record-office-payment',
+    requireSession('EMPLOYEE', 'SUPER_ADMIN'),
+    (req, res) => {
+      const session = currentSession(res)
+      const row = loadRequest(param(req, 'reference'))
+      if (!row) return res.status(404).json({ message: 'طلب الخدمة غير موجود.' })
+      if (!canActOn(session, row)) return res.status(403).json({ message: 'هذا الطلب يخص دائرة أخرى.' })
+      if (isClosed(row) || approvalsInFlight.has(String(row.reference)))
+        return res.status(409).json({ message: 'الطلب مغلق ولا يمكن تسجيل دفع عليه.' })
+      const conflict = assignmentConflict(session, row)
+      if (conflict) return res.status(409).json({ message: conflict, code: 'ASSIGNED_TO_OTHER' })
+      const parsed = z
+        .object({
+          receiptNumber: z.string().trim().min(3).max(40),
+          amountIqd: z.number().int().min(1).max(50_000_000),
+          note: z.string().trim().max(300).optional(),
+        })
+        .safeParse(req.body)
+      if (!parsed.success) return res.status(400).json({ message: 'اكتب رقم وصل القبض والمبلغ المستوفى بالدينار.' })
+      const receiptNumber = toLatinDigits(parsed.data.receiptNumber)
+      const owed = owedPayments(listPaymentsForRequest(Number(row.id)))
+      const service = getCatalogService(String(row.service_id))
+      const payAtOffice = String(row.payment_status) === 'PAY_AT_OFFICE'
+      if (!owed.length && !payAtOffice)
+        return res.status(409).json({ message: 'لا يوجد رسم بانتظار الاستيفاء لهذا الطلب.' })
+      const due = owed.length ? owed.reduce((sum, item) => sum + item.amountIqd, 0) : service?.feeIqd || 0
+      if (parsed.data.amountIqd < due)
+        return res.status(400).json({ message: `المبلغ أقل من الرسم المستحق (${due.toLocaleString('en-US')} د.ع).` })
+      const duplicate = db
+        .prepare(
+          `SELECT 1 FROM payment_intents WHERE provider = 'office' AND department_id = ? AND receipt_number = ? LIMIT 1`
+        )
+        .get(String(row.department_id), receiptNumber)
+      if (duplicate) return res.status(409).json({ message: `وصل القبض ${receiptNumber} مسجل مسبقاً على طلب آخر.` })
+
+      const timestamp = new Date().toISOString()
+      // a request held for its fee goes (back) to the department's queue; the SLA clock resumes
+      const waitingForFee = String(row.status) === 'PAYMENT_PENDING'
+      const nextStatus = waitingForFee ? (row.review_started_at ? 'UNDER_REVIEW' : 'SUBMITTED') : String(row.status)
+      const clock = waitingForFee
+        ? nextSlaClock({ ...row, status: String(row.status) }, nextStatus, timestamp)
+        : {
+            dueAt: row.due_at ? String(row.due_at) : null,
+            waitingSince: row.waiting_since ? String(row.waiting_since) : null,
+          }
+      const currentAction = `تم استيفاء الرسم في الدائرة (وصل ${receiptNumber} — ${parsed.data.amountIqd.toLocaleString('en-US')} د.ع). ${waitingForFee || String(row.status) === 'SUBMITTED' ? 'الطلب لدى الدائرة للتدقيق.' : 'يُستكمل الإجراء لدى الدائرة.'}`
+      let receipt: ReturnType<typeof insertOfficePayment>
+      db.exec('BEGIN')
+      try {
+        // conditional on the state we validated: a parallel online payment or second receipt makes this a 409
+        const changed = db
+          .prepare(
+            `UPDATE service_requests SET status = ?, payment_status = 'PAID', current_action = ?, due_at = ?, waiting_since = ?, updated_at = ?
+             WHERE id = ? AND status = ? AND payment_status = ?`
+          )
+          .run(
+            nextStatus,
+            currentAction,
+            clock.dueAt,
+            clock.waitingSince,
+            timestamp,
+            Number(row.id),
+            String(row.status),
+            String(row.payment_status)
+          )
+        if (!changed.changes) {
+          db.exec('ROLLBACK')
+          return res.status(409).json({ message: 'تغيرت حالة الطلب أو دفعه للتو. أعد تحميل الصفحة.' })
+        }
+        receipt = insertOfficePayment({
+          serviceRequestId: Number(row.id),
+          citizenId: Number(row.citizen_id),
+          serviceId: String(row.service_id),
+          departmentId: String(row.department_id),
+          amountIqd: parsed.data.amountIqd,
+          receiptNumber,
+          note: parsed.data.note || null,
+          recordedBy: session.actor,
+          timestamp,
+        })
+        db.exec('COMMIT')
+      } catch (error) {
+        db.exec('ROLLBACK')
+        throw error
+      }
+      addAudit({
+        actor: session.actor,
+        role: session.role,
+        action: 'SERVICE_REQUEST_OFFICE_PAYMENT_RECORDED',
+        entityType: 'ServiceRequest',
+        entityId: String(row.reference),
+        previousValue: { status: row.status, paymentStatus: row.payment_status },
+        newValue: {
+          status: nextStatus,
+          paymentStatus: 'PAID',
+          receiptNumber,
+          amountIqd: parsed.data.amountIqd,
+          note: parsed.data.note || null,
+          payment: receipt.reference,
+          superseded: owed.map(item => item.reference),
+        },
+      })
+      notifyCitizen({
+        citizenId: Number(row.citizen_id),
+        type: 'PAYMENT_CONFIRMED',
+        title: 'تم تسجيل دفع الرسم في الدائرة',
+        message: `سُجّل وصل القبض ${receiptNumber} (${parsed.data.amountIqd.toLocaleString('en-US')} د.ع) على الطلب ${String(row.reference)}.${owed.length ? ' لا يلزمك الدفع الإلكتروني لهذا الرسم.' : ''}`,
+        link: citizenRequestLink(String(row.reference)),
+      })
+      publishRequest(row, 'UPDATED')
+      res.json(serializeServiceRequestForEmployee(loadRequest(String(row.reference))!))
+    }
+  )
+
+  // ---- employee: confirm / reschedule the attendance appointment ------------------------------------------
+  app.post(
+    '/api/employee/service-requests/:reference/appointment',
+    requireSession('EMPLOYEE', 'SUPER_ADMIN'),
+    (req, res) => {
+      const session = currentSession(res)
+      const row = loadRequest(param(req, 'reference'))
+      if (!row) return res.status(404).json({ message: 'طلب الخدمة غير موجود.' })
+      if (!canActOn(session, row)) return res.status(403).json({ message: 'هذا الطلب يخص دائرة أخرى.' })
+      // an approved request may still need its attendance slot moved; a rejected one has nothing to attend
+      if (String(row.status) === 'REJECTED' || approvalsInFlight.has(String(row.reference)))
+        return res.status(409).json({ message: 'الطلب مرفوض أو قيد الحفظ؛ لا يمكن تحديد موعد له.' })
+      const conflict = assignmentConflict(session, row)
+      if (conflict) return res.status(409).json({ message: conflict, code: 'ASSIGNED_TO_OTHER' })
+      const parsed = z
+        .object({
+          action: z.enum(['CONFIRM', 'RESCHEDULE']),
+          date: z.string().trim().optional(),
+          time: z.string().trim().optional(),
+          note: z.string().trim().max(300).optional(),
+        })
+        .safeParse(req.body)
+      if (!parsed.success) return res.status(400).json({ message: 'اختر تأكيد الموعد أو تغييره.' })
+      const existing = appointmentRow(Number(row.id))
+      const date = parsed.data.date ? toLatinDigits(parsed.data.date) : existing ? String(existing.preferred_date) : ''
+      const time = parsed.data.time ? toLatinDigits(parsed.data.time) : existing ? String(existing.preferred_time) : ''
+      if (parsed.data.action === 'RESCHEDULE' && (!parsed.data.date || !parsed.data.time))
+        return res.status(400).json({ message: 'حدد التاريخ والوقت الجديدين للموعد.' })
+      if (!date || !time) return res.status(400).json({ message: 'حدد تاريخ ووقت موعد الحضور.' })
+      const problem = appointmentDateProblem(date)
+      if (problem) return res.status(400).json({ message: problem })
+      if (!TIME_PATTERN.test(time)) return res.status(400).json({ message: 'صيغة وقت الموعد غير صحيحة (HH:MM).' })
+      const note = parsed.data.note || null
+      const timestamp = new Date().toISOString()
+      // confirming a requested appointment starts the department's handling of it
+      const nextStatus = String(row.status) === 'APPOINTMENT_REQUESTED' ? 'UNDER_REVIEW' : String(row.status)
+      let outcome: ReturnType<typeof upsertConfirmedAppointment>
+      db.exec('BEGIN')
+      try {
+        outcome = upsertConfirmedAppointment(row, { date, time, note }, timestamp)
+        const rescheduled = parsed.data.action === 'RESCHEDULE' || outcome.rescheduled
+        db.prepare(
+          `UPDATE service_requests SET status = ?, current_action = ?, review_started_at = COALESCE(review_started_at, ?), updated_at = ? WHERE id = ?`
+        ).run(
+          nextStatus,
+          `${rescheduled ? 'غيّرت الدائرة موعد حضورك إلى' : 'أكدت الدائرة موعد حضورك'}: ${date} الساعة ${time}${note ? ` — ${note}` : ''}.`,
+          timestamp,
+          timestamp,
+          Number(row.id)
+        )
+        db.exec('COMMIT')
+      } catch (error) {
+        db.exec('ROLLBACK')
+        throw error
+      }
+      const rescheduled = parsed.data.action === 'RESCHEDULE' || outcome.rescheduled
+      addAudit({
+        actor: session.actor,
+        role: session.role,
+        action: rescheduled ? 'SERVICE_REQUEST_APPOINTMENT_RESCHEDULED' : 'SERVICE_REQUEST_APPOINTMENT_CONFIRMED',
+        entityType: 'ServiceRequest',
+        entityId: String(row.reference),
+        previousValue: existing
+          ? { date: existing.preferred_date, time: existing.preferred_time, status: existing.status }
+          : null,
+        newValue: { date, time, note, status: 'CONFIRMED' },
+      })
+      notifyCitizen({
+        citizenId: Number(row.citizen_id),
+        type: rescheduled ? 'APPOINTMENT_RESCHEDULED' : 'APPOINTMENT_CONFIRMED',
+        title: rescheduled ? 'تم تغيير موعد حضورك' : 'تم تأكيد موعد حضورك',
+        message: `${String(row.reference)} — ${String(row.department_name)}: ${date} الساعة ${time}${note ? ` — ${note}` : ''}.`,
+        link: citizenRequestLink(String(row.reference)),
+      })
+      publishRequest(row, 'UPDATED')
+      res.json(serializeServiceRequestForEmployee(loadRequest(String(row.reference))!))
+    }
+  )
+
+  /** The department's bookings for one day (default: today in Baghdad). Super admin / operations see every department. */
+  app.get('/api/employee/appointments', requireSession('EMPLOYEE', 'OPERATIONS', 'SUPER_ADMIN'), (req, res) => {
+    const session = currentSession(res)
+    const date = String(req.query.date || '').trim() || baghdadToday()
+    if (!DATE_PATTERN.test(date) || Number.isNaN(Date.parse(`${date}T00:00:00Z`)))
+      return res.status(400).json({ message: 'صيغة التاريخ غير صحيحة (YYYY-MM-DD).' })
+    const everything = session.role === 'SUPER_ADMIN' || session.role === 'OPERATIONS'
+    if (!everything && !session.departmentId)
+      return res.json({ date, items: [], scope: 'NONE', message: 'حسابك غير مرتبط بدائرة بعد.' })
+    const requested = String(req.query.departmentId || '').trim()
+    const departmentId = everything ? requested || null : session.departmentId
+    const rows = db
+      .prepare(
+        `SELECT a.id, a.reference AS appointment_reference, a.preferred_date, a.preferred_time, a.status, a.confirmation_note, a.purpose, a.updated_at,
+           sr.reference, sr.status AS request_status, sr.department_id, sr.assigned_staff_id, d.name AS department_name, sc.name AS service_name,
+           c.full_name AS citizen_name, c.phone_masked AS citizen_phone
+         FROM appointments a JOIN service_requests sr ON sr.id = a.service_request_id
+         JOIN departments d ON d.id = sr.department_id JOIN service_catalog sc ON sc.id = sr.service_id
+         JOIN citizens c ON c.id = sr.citizen_id
+         WHERE a.preferred_date = ? AND a.status IN ('REQUESTED', 'CONFIRMED') ${departmentId ? 'AND sr.department_id = ?' : ''}
+         ORDER BY a.preferred_time ASC, a.created_at ASC LIMIT 500`
+      )
+      .all(...(departmentId ? [date, departmentId] : [date])) as Array<Record<string, unknown>>
+    res.json({
+      date,
+      scope: departmentId || 'ALL',
+      items: rows.map(row => ({
+        id: String(row.id),
+        appointmentReference: String(row.appointment_reference),
+        requestReference: String(row.reference),
+        requestStatus: String(row.request_status),
+        serviceName: String(row.service_name),
+        departmentId: String(row.department_id),
+        departmentName: String(row.department_name),
+        citizenName: String(row.citizen_name),
+        citizenPhone: row.citizen_phone ? String(row.citizen_phone) : null,
+        date: String(row.preferred_date),
+        time: String(row.preferred_time),
+        status: String(row.status),
+        confirmed: String(row.status) === 'CONFIRMED',
+        note: row.confirmation_note ? String(row.confirmation_note) : null,
+        purpose: String(row.purpose),
+        assignedStaffId: row.assigned_staff_id ? String(row.assigned_staff_id) : null,
+        updatedAt: String(row.updated_at),
+      })),
+    })
+  })
 
   // ---- employee: claim / release / assign ---------------------------------------------------------
   // Claiming is a single conditional UPDATE (… WHERE assigned_staff_id IS NULL), so two clerks clicking «استلام»
@@ -1088,7 +1709,8 @@ export function registerServiceRequestsRoutes(app: express.Express) {
         `UPDATE service_requests SET assigned_staff_id = ?, assigned_at = ?
          WHERE id = ? AND department_id = ? AND assigned_staff_id IS NULL AND status NOT IN ('APPROVED', 'REJECTED')`
       )
-      .run(session.staffId, timestamp, Number(row.id), session.departmentId)
+      // the request's own department (an escalated request is claimed by a governorate employee in place)
+      .run(session.staffId, timestamp, Number(row.id), String(row.department_id))
     const fresh = loadRequest(String(row.reference))!
     if (!result.changes) {
       // a double click by the same clerk is not a conflict
@@ -1246,7 +1868,7 @@ export function registerServiceRequestsRoutes(app: express.Express) {
         return res.status(404).json({ message: 'الدائرة المختارة غير موجودة في سجل الدوائر.' })
       // a fee is recorded against the department that set it (revenue, receipt, refund): moving the request while
       // it is owed would collect money for one department on a file that now belongs to another
-      const openFee = listPaymentsForRequest(Number(row.id)).find(item => item.status !== 'PAID')
+      const openFee = owedPayments(listPaymentsForRequest(Number(row.id)))[0]
       if (String(row.status) === 'PAYMENT_PENDING' || openFee)
         return res.status(409).json({
           message: `لا يمكن إحالة طلب عليه رسم غير مسدد${openFee ? ` (${openFee.reference})` : ''}: الرسم مسجل باسم هذه الدائرة. انتظر السداد، أو ارفض الطلب مع توجيه المواطن للدائرة المختصة.`,
@@ -1301,7 +1923,7 @@ export function registerServiceRequestsRoutes(app: express.Express) {
         type: 'SERVICE_REQUEST_TRANSFERRED',
         title: 'أُحيل طلبك إلى الدائرة المختصة',
         message: `${String(row.reference)} — أُحيل طلبك إلى ${target.name} لاستكمال معالجته. يبقى رقم المعاملة نفسه وتصلك التحديثات كالمعتاد.`,
-        link: '/citizen#my-requests',
+        link: citizenRequestLink(String(row.reference)),
       })
       addAudit({
         actor: session.actor,

@@ -96,6 +96,17 @@ function legacyDepartmentId(key: string, name: string) {
   return departmentRegistry.find(item => item.name === name)?.id ?? null
 }
 
+/**
+ * The appointment form offers every department of the registry (civil status, passports, traffic, electricity,
+ * education…), not a hand-picked few. The server validates the choice against these options and routes the request
+ * to the department with that name.
+ */
+function legacyFields(definition: (typeof serviceDefinitions)[number]): ServiceFormField[] {
+  if (definition.key !== 'online-appointment') return definition.fields
+  const names = [...new Set(departmentRegistry.map(item => item.name))]
+  return definition.fields.map(field => (field.key === 'department' ? { ...field, options: names } : field))
+}
+
 /** Upserts platform-defined services (with custom flows) and the researched registry into service_catalog. */
 export function seedServiceCatalog() {
   invalidateSearchIndex()
@@ -127,7 +138,7 @@ export function seedServiceCatalog() {
         definition.fee > 0 ? 'UNVERIFIED' : 'NOT_REQUIRED',
         null,
         definition.estimatedTime,
-        JSON.stringify(definition.fields),
+        JSON.stringify(legacyFields(definition)),
         JSON.stringify(definition.requirements),
         JSON.stringify(docs),
         'BOTH',
