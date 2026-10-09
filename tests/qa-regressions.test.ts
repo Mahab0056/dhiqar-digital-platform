@@ -269,6 +269,25 @@ describe('shop permit fee paid at the department counter', () => {
   })
 })
 
+describe('management report export', () => {
+  it('is an Excel-ready CSV, scoped to the employee department, with no personal data', async () => {
+    const all = await request(app).get('/api/reports/transactions.csv').set('Cookie', admin)
+    expect(all.status).toBe(200)
+    expect(all.headers['content-type']).toMatch(/text\/csv/)
+    expect(all.text.charCodeAt(0)).toBe(0xfeff)
+    expect(all.text).toContain('رقم المعاملة')
+    // no citizen names or phone numbers in a management report
+    expect(all.text).not.toMatch(/0780123\d{4}|9647801/)
+    const rows = (body: string) => body.trim().split('\r\n').length - 1
+    const mine = await request(app).get('/api/reports/transactions.csv').set('Cookie', healthEmployee)
+    expect(mine.status).toBe(200)
+    expect(rows(mine.text)).toBeLessThanOrEqual(rows(all.text))
+    for (const line of mine.text.trim().split('\r\n').slice(1)) expect(line).toContain('صحة')
+    const denied = await request(app).get('/api/reports/transactions.csv').set('Cookie', citizen)
+    expect([401, 403]).toContain(denied.status)
+  })
+})
+
 describe('client errors are 4xx, not 500', () => {
   it('malformed JSON is a 400', async () => {
     const response = await request(app)

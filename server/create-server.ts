@@ -19,6 +19,7 @@ import { registerOnboardingRoutes } from './routes/onboarding.js'
 import { registerApplicationsRoutes } from './routes/applications.js'
 import { registerDocumentsRoutes } from './routes/documents.js'
 import { registerOperationsRoutes } from './routes/operations.js'
+import { registerReportRoutes } from './routes/reports.js'
 import { registerSuperAdminRoutes } from './routes/super-admin.js'
 import { registerSystemRoutes } from './routes/system.js'
 import { registerStaffAdminRoutes } from './routes/staff-admin.js'
@@ -65,6 +66,7 @@ export function createPlatformServer(options: { serveStatic?: boolean } = {}) {
   registerApplicationsRoutes(app)
   registerDocumentsRoutes(app)
   registerOperationsRoutes(app)
+  registerReportRoutes(app)
   registerSuperAdminRoutes(app)
   registerStaffAdminRoutes(app)
   registerDepartmentRoutes(app)

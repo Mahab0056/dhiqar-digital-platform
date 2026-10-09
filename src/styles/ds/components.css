@@ -271,3 +271,32 @@
 .user-avatar.gold {
   background: var(--brass-500);
 }
+
+/* report export: date range + download */
+.report-export {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 8px;
+  margin-top: 10px;
+}
+.report-export label {
+  display: grid;
+  gap: 4px;
+  color: var(--ds-text-muted);
+  font-size: var(--ds-text-xs);
+}
+.report-export input {
+  min-height: 38px;
+  padding: 0 8px;
+  border: 1px solid var(--ds-border-strong, var(--ds-border));
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-surface);
+  color: var(--ds-text);
+  font: inherit;
+  font-size: var(--ds-text-sm);
+}
+.report-export .button svg {
+  width: 16px;
+  height: 16px;
+}

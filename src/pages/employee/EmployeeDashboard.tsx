@@ -26,6 +26,7 @@ import { WorkspaceTabs, type WorkspaceTab } from '../../components/shared/Worksp
 import { FeedbackAdminPanel } from './FeedbackAdminPanel'
 import { IdentityReviewPanel } from './IdentityReviewPanel'
 import { ServiceRequestAdminPanel } from './ServiceRequestAdminPanel'
+import { ReportExport } from '../../components/shared/ReportExport'
 
 export function EmployeeDashboard() {
   const [, navigate] = useLocation()
@@ -185,6 +186,7 @@ export function EmployeeDashboard() {
           </p>
         </div>
         <div className="department-dashboard-actions">
+          {session?.role !== 'IDENTITY_REVIEWER' && <ReportExport label="تقرير دائرتي" />}
           {session?.departmentId && (
             <Link href={`/department/${session.departmentId}`} className="button ghost">
               <Building2 /> لوحة دائرتي

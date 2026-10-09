@@ -31,6 +31,7 @@ import { DhiQarMap } from '../../components/operations/DhiQarMap'
 import { OperationsRegistryPanel } from '../../components/operations/OperationsRegistryPanel'
 import { OperationsShell } from '../../components/operations/OperationsShell'
 import { NewRequestAlertsPanel } from '../../components/shared/NewRequestAlertsPanel'
+import { ReportExport } from '../../components/shared/ReportExport'
 
 export function OperationsCenter() {
   const { session } = useSession()
@@ -81,6 +82,7 @@ export function OperationsCenter() {
           </span>
           <h1>غرفة العمليات</h1>
           <p>محافظة ذي قار • آخر تحديث {now.toLocaleTimeString('en-GB')}</p>
+          <ReportExport />
         </div>
         <div className="ops-header-actions">
           <span className="clock">
@@ -262,8 +264,8 @@ export function OperationsCenter() {
               <span>
                 <strong>دائرة بلا موظف مفعّل: {department.name}</strong>
                 <small>
-                  {department.open.toLocaleString('en-GB')} طلب مفتوح بانتظار المعالجة — أنشئ حساب موظف لهذه الدائرة من لوحة
-                  المشرف العام.
+                  {department.open.toLocaleString('en-GB')} طلب مفتوح بانتظار المعالجة — أنشئ حساب موظف لهذه الدائرة من
+                  لوحة المشرف العام.
                 </small>
               </span>
             </div>
