@@ -103,7 +103,9 @@ export function seedServiceCatalog() {
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'DISABLED', 1, ?, ?, ?)
      ON CONFLICT(id) DO UPDATE SET department_id = excluded.department_id, name = excluded.name, category = excluded.category, description = excluded.description,
        fee_iqd = excluded.fee_iqd, fee_status = excluded.fee_status, fee_source = excluded.fee_source, estimated_duration = excluded.estimated_duration,
-       form_schema = excluded.form_schema, required_documents = excluded.required_documents, document_schema = excluded.document_schema,
+       form_schema = excluded.form_schema,
+       required_documents = CASE WHEN service_catalog.documents_overridden_at IS NULL THEN excluded.required_documents ELSE service_catalog.required_documents END,
+       document_schema = CASE WHEN service_catalog.documents_overridden_at IS NULL THEN excluded.document_schema ELSE service_catalog.document_schema END,
        applicant_type = excluded.applicant_type, channel = excluded.channel, mode = excluded.mode, source_quality = excluded.source_quality,
        notes = excluded.notes, source_url = excluded.source_url, updated_at = excluded.updated_at`
   )

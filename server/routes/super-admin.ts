@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { adminMutationLimiter } from '../http/rate-limit.js'
 import { requireSession, currentSession } from '../auth/session.js'
 import { ensureDepartmentRecord } from '../seed.js'
+import { invalidateSearchIndex } from '../services/search.js'
 import { addAudit, db, listCitizensForSuperAdmin } from '../db.js'
 import { departmentRegistry, registrySummary } from '../department-registry.js'
 import {
@@ -94,16 +95,48 @@ export function registerSuperAdminRoutes(app: express.Express) {
       if (!payload.success || (!payload.data.requiredDocuments && payload.data.active === undefined))
         return res.status(400).json({ message: 'أدخل متطلباً واحداً على الأقل أو حدّث حالة الخدمة.' })
       const current = db
-        .prepare('SELECT id, required_documents, active FROM service_catalog WHERE id = ?')
+        .prepare('SELECT id, required_documents, document_schema, active FROM service_catalog WHERE id = ?')
         .get(param(req, 'key')) as Record<string, unknown> | undefined
       if (!current) return res.status(404).json({ message: 'الخدمة غير موجودة في سجل المنصة.' })
       const timestamp = new Date().toISOString()
-      db.prepare('UPDATE service_catalog SET required_documents = ?, active = ?, updated_at = ? WHERE id = ?').run(
+      // the citizen form and the employee checklist read document_schema: rebuild it from the edited labels,
+      // keeping the key/accepted types of documents that already existed so open requests stay consistent
+      let documentSchema: string | null = null
+      if (payload.data.requiredDocuments) {
+        type Doc = { key: string; label: string; description: string; required: boolean; accepts: string[] }
+        const existing = (() => {
+          try {
+            return JSON.parse(String(current.document_schema || '[]')) as Doc[]
+          } catch {
+            return [] as Doc[]
+          }
+        })()
+        const used = new Set<string>()
+        documentSchema = JSON.stringify(
+          payload.data.requiredDocuments.map((label, index) => {
+            const match = existing.find(doc => doc.label === label && !used.has(doc.key))
+            let key = match?.key || `admin-doc-${index + 1}`
+            while (used.has(key)) key = `${key}-x`
+            used.add(key)
+            return match
+              ? { ...match, key }
+              : { key, label, description: '', required: true, accepts: ['image', 'pdf'] }
+          })
+        )
+      }
+      db.prepare(
+        `UPDATE service_catalog SET required_documents = ?, document_schema = COALESCE(?, document_schema),
+          documents_overridden_at = CASE WHEN ? IS NULL THEN documents_overridden_at ELSE ? END, active = ?, updated_at = ? WHERE id = ?`
+      ).run(
         JSON.stringify(payload.data.requiredDocuments || JSON.parse(String(current.required_documents || '[]'))),
+        documentSchema,
+        documentSchema,
+        timestamp,
         payload.data.active === undefined ? Number(current.active) : Number(payload.data.active),
         timestamp,
         param(req, 'key')
       )
+      invalidateSearchIndex()
       addAudit({
         actor: session.actor,
         role: 'SUPER_ADMIN',

@@ -250,3 +250,25 @@ describe('Arabic-Indic digits', () => {
     expect(a.body.id).toBe(b.body.id)
   })
 })
+
+describe('super admin edits of required documents', () => {
+  it('reach the citizen form checklist and survive the boot-time catalog seed', async () => {
+    const before = await request(app).get('/api/services/gov-complaint')
+    const keep = before.body.requiredDocuments[0]
+    const edited = await request(app)
+      .patch('/api/super-admin/platform-services/gov-complaint')
+      .set('Cookie', admin)
+      .send({ requiredDocuments: [keep.label, 'كتاب تأييد من المختار'] })
+    expect(edited.status).toBe(200)
+    const after = await request(app).get('/api/services/gov-complaint')
+    expect(after.body.requiredDocuments.map((doc: { label: string }) => doc.label)).toEqual([
+      keep.label,
+      'كتاب تأييد من المختار',
+    ])
+    expect(after.body.requiredDocuments[0].key).toBe(keep.key)
+    const { seedServiceCatalog } = await import('../server/services/catalog.ts')
+    seedServiceCatalog()
+    const reseeded = await request(app).get('/api/services/gov-complaint')
+    expect(reseeded.body.requiredDocuments.length).toBe(2)
+  })
+})

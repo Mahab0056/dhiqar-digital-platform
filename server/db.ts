@@ -626,6 +626,8 @@ ensureColumn('service_catalog', 'channel', "TEXT NOT NULL DEFAULT 'ONLINE_SUBMIS
 ensureColumn('service_catalog', 'mode', "TEXT NOT NULL DEFAULT 'CATALOG'")
 ensureColumn('service_catalog', 'source_quality', "TEXT NOT NULL DEFAULT 'UNVERIFIED'")
 ensureColumn('service_catalog', 'notes', 'TEXT')
+// set when the super admin edits a service's required documents: the boot-time registry seed then keeps that edit
+ensureColumn('service_catalog', 'documents_overridden_at', 'TEXT')
 ensureColumn('service_requests', 'document_checklist', 'TEXT')
 ensureColumn('service_requests', 'required_document', 'TEXT')
 ensureColumn('service_requests', 'decided_by', 'TEXT')
