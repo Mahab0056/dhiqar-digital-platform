@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ذي قار الرقمية — نموذج ب</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Readex+Pro:wght@300;400;500;600;700&family=Amiri:wght@700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#F5EFE4; --paper-2:#EDE4D3; --ink:#1F1A14; --muted:#6E6455; --line:#D9CDB8;
+  --green:#0F5132; --brick:#A4442A; --clay:#C9A27A;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"Readex Pro",sans-serif;color:var(--ink);background:var(--paper);line-height:1.65}
+a{color:inherit;text-decoration:none}
+.wrap{max-width:1180px;margin:0 auto;padding:0 28px}
+
+/* Sumerian brick band: alternating courses like the ziggurat facade */
+.brickband{height:14px;background:
+  linear-gradient(90deg,var(--brick) 0 46px,transparent 46px 50px) 0 0/50px 7px repeat-x,
+  linear-gradient(90deg,var(--brick) 0 21px,transparent 21px 25px,var(--brick) 25px 46px,transparent 46px 50px) 0 7px/50px 7px repeat-x;
+  opacity:.9}
+
+header .wrap{display:flex;align-items:center;justify-content:space-between;height:92px}
+.brand{display:flex;align-items:center;gap:14px}
+.brand .logo{width:58px;height:58px;background:#fff;border-radius:50%;display:grid;place-items:center;border:1px solid var(--line)}
+.brand img{width:42px}
+.brand strong{font-size:18px;font-weight:600;display:block;line-height:1.2}
+.brand span{font-size:12.5px;color:var(--muted)}
+nav{display:flex;gap:30px;font-size:15px}
+nav a{position:relative;padding:6px 0}
+nav a::after{content:"";position:absolute;inset-inline:0;bottom:0;height:1.5px;background:var(--brick);transform:scaleX(0);transform-origin:right;transition:transform .3s}
+nav a:hover::after{transform:scaleX(1)}
+.login{border:1.5px solid var(--ink);border-radius:999px;padding:9px 22px;font-size:14px;font-weight:500;transition:background .25s,color .25s}
+.login:hover{background:var(--ink);color:var(--paper)}
+
+.hero{padding:56px 0 72px}
+.hero .wrap{display:grid;grid-template-columns:1fr 380px;gap:72px;align-items:center}
+.eyebrow{font-size:14px;color:var(--brick);font-weight:500;letter-spacing:.2px}
+h1{font-family:"Amiri",serif;font-weight:700;font-size:58px;line-height:1.35;margin:10px 0 18px}
+.lead{font-size:18px;color:var(--muted);max-width:540px;font-weight:300}
+.search{margin-top:32px;background:#FFFCF6;border:1px solid var(--line);border-radius:14px;padding:8px;display:flex;gap:8px;max-width:600px;box-shadow:0 1px 0 var(--line)}
+.search input{flex:1;border:0;outline:0;background:transparent;font:16px "Readex Pro";padding:0 14px;height:52px}
+.search button{border:0;border-radius:10px;background:var(--green);color:#fff;font:500 15px "Readex Pro";padding:0 28px;cursor:pointer;transition:background .2s}
+.search button:hover{background:#0B3F27}
+
+/* cylinder-seal card: the signature element */
+.seal{background:var(--ink);color:var(--paper);border-radius:18px;padding:30px;position:relative;overflow:hidden}
+.seal .roll{position:absolute;inset:0 0 auto 0;height:10px;background:repeating-linear-gradient(90deg,var(--clay) 0 8px,transparent 8px 14px);opacity:.55;animation:roll 14s linear infinite}
+@keyframes roll{to{background-position:-280px 0}}
+.seal h3{font-size:15px;font-weight:400;color:var(--clay);margin-top:6px}
+.seal .num{font-size:15px;direction:ltr;text-align:right;margin:4px 0 22px;color:#fff;letter-spacing:1px}
+.tl{list-style:none;position:relative}
+.tl::before{content:"";position:absolute;right:6px;top:8px;bottom:8px;width:1px;background:#4A4136}
+.tl li{position:relative;padding-right:26px;margin-bottom:16px;font-size:14px}
+.tl li::before{content:"";position:absolute;right:0;top:6px;width:13px;height:13px;border-radius:50%;border:1.5px solid #6B5F50;background:var(--ink)}
+.tl li.done::before{background:var(--clay);border-color:var(--clay)}
+.tl li.now::before{border-color:var(--clay);animation:beat 1.8s ease-in-out infinite}
+@keyframes beat{50%{transform:scale(1.25)}}
+.tl small{display:block;color:#9C907F;font-size:12px}
+
+.ledger{border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:var(--paper-2)}
+.ledger .wrap{display:grid;grid-template-columns:repeat(4,1fr)}
+.ledger div{padding:26px 0;text-align:center;border-inline-start:1px solid var(--line)}
+.ledger div:first-child{border:0}
+.ledger b{font-family:"Amiri",serif;font-size:36px;display:block;line-height:1.2;color:var(--green)}
+.ledger span{font-size:13.5px;color:var(--muted)}
+
+section{padding:76px 0}
+.sh{display:flex;align-items:baseline;gap:18px;margin-bottom:34px}
+.sh h2{font-family:"Amiri",serif;font-size:36px}
+.sh p{color:var(--muted);font-size:15px}
+.list{display:grid;grid-template-columns:1fr 1fr;column-gap:56px}
+.row{display:grid;grid-template-columns:48px 1fr auto;align-items:center;gap:14px;padding:20px 0;border-bottom:1px solid var(--line);transition:padding .3s}
+.row:hover{padding-right:10px}
+.row .n{font-family:"Amiri",serif;font-size:24px;color:var(--brick)}
+.row h3{font-size:17px;font-weight:500}
+.row p{font-size:13.5px;color:var(--muted)}
+.row .go{font-size:20px;color:var(--muted);transition:transform .3s,color .3s}
+.row:hover .go{transform:translateX(-6px);color:var(--brick)}
+
+.quote{background:var(--green);color:#EAF1EC}
+.quote .wrap{display:grid;grid-template-columns:1fr 1fr;gap:56px;align-items:center}
+.quote h2{font-family:"Amiri",serif;font-size:40px;line-height:1.4;color:#fff}
+.quote p{font-size:16px;font-weight:300;opacity:.9}
+.quote a{display:inline-block;margin-top:20px;background:var(--paper);color:var(--green);padding:12px 26px;border-radius:999px;font-weight:500}
+
+footer{padding:36px 0;font-size:14px;color:var(--muted)}
+footer .wrap{display:flex;justify-content:space-between;flex-wrap:wrap;gap:16px}
+
+.fade{opacity:0;transform:translateY(14px);animation:in .8s cubic-bezier(.2,.7,.2,1) forwards}
+@keyframes in{to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.fade,.seal .roll,.tl li.now::before{animation:none;opacity:1;transform:none}}
+
+@media (max-width:900px){
+  .wrap{padding:0 16px}
+  nav{display:none}
+  .hero .wrap,.quote .wrap{grid-template-columns:1fr;gap:36px}
+  h1{font-size:40px}
+  .ledger .wrap{grid-template-columns:1fr 1fr}
+  .ledger div:nth-child(3){border:0}
+  .list{grid-template-columns:1fr}
+  .quote h2{font-size:30px}
+}
+</style>
+</head>
+<body>
+<div class="brickband"></div>
+<header><div class="wrap">
+  <a class="brand" href="#"><span class="logo"><img src="logo-mark.png" alt=""></span><div><strong>ذي قار الرقمية</strong><span>ديوان محافظة ذي قار</span></div></a>
+  <nav><a href="#">الخدمات</a><a href="#">تتبع معاملة</a><a href="#">الدوائر</a><a href="#">عن المحافظة</a></nav>
+  <a class="login" href="#">دخول المواطن</a>
+</div></header>
+
+<div class="hero"><div class="wrap">
+  <div>
+    <div class="eyebrow fade">من أور… أول مدينة كتبت معاملاتها</div>
+    <h1 class="fade" style="animation-delay:.1s">معاملتك اليوم<br>تخلص من بيتك.</h1>
+    <p class="lead fade" style="animation-delay:.2s">بوابة رسمية وحدة لكل دوائر محافظة ذي قار. قدّم، ادفع، وتابع معاملتك بدون طوابير ولا مراجعات.</p>
+    <form class="search fade" style="animation-delay:.3s" onsubmit="return false"><input placeholder="شنو المعاملة اللي تحتاجها؟"><button>ابحث</button></form>
+  </div>
+  <aside class="seal fade" style="animation-delay:.25s">
+    <div class="roll"></div>
+    <h3>معاملة قيد الإنجاز</h3>
+    <div class="num">TQ-2026-048213</div>
+    <ul class="tl">
+      <li class="done">استلام الطلب<small>بلدية الناصرية · الأحد ٩:١٤ ص</small></li>
+      <li class="done">تدقيق المستمسكات<small>تم خلال ٤ ساعات</small></li>
+      <li class="now">الكشف الموقعي<small>موعدك الثلاثاء ١٠:٠٠ ص</small></li>
+      <li>إصدار الإجازة<small>متوقع خلال يومين</small></li>
+    </ul>
+  </aside>
+</div></div>
+
+<div class="ledger"><div class="wrap">
+  <div><b>٥٤١</b><span>خدمة إلكترونية</span></div>
+  <div><b>٨٠</b><span>دائرة حكومية</span></div>
+  <div><b>١٢</b><span>قضاء</span></div>
+  <div><b>٤٫٢</b><span>يوم معدل الإنجاز</span></div>
+</div></div>
+
+<section><div class="wrap">
+  <div class="sh"><h2>الخدمات</h2><p>مرتّبة حسب الجهة</p></div>
+  <div class="list">
+    <a class="row" href="#"><span class="n">١</span><div><h3>الأحوال المدنية والجوازات</h3><p>البطاقة الوطنية، الجواز، بطاقة السكن</p></div><span class="go">←</span></a>
+    <a class="row" href="#"><span class="n">٥</span><div><h3>الصحة</h3><p>اللجان الطبية، الإجازات الصحية</p></div><span class="go">←</span></a>
+    <a class="row" href="#"><span class="n">٢</span><div><h3>البلدية والإجازات</h3><p>إجازات البناء والمحلات</p></div><span class="go">←</span></a>
+    <a class="row" href="#"><span class="n">٦</span><div><h3>الكهرباء والماء</h3><p>اشتراك جديد، الفواتير، الأعطال</p></div><span class="go">←</span></a>
+    <a class="row" href="#"><span class="n">٣</span><div><h3>الزراعة والموارد المائية</h3><p>الحصص المائية، العقود الزراعية</p></div><span class="go">←</span></a>
+    <a class="row" href="#"><span class="n">٧</span><div><h3>العقار والضرائب</h3><p>نقل الملكية، براءة الذمة</p></div><span class="go">←</span></a>
+    <a class="row" href="#"><span class="n">٤</span><div><h3>التربية والتعليم</h3><p>نقل الطلاب، الوثائق الدراسية</p></div><span class="go">←</span></a>
+    <a class="row" href="#"><span class="n">٨</span><div><h3>الشكاوى والمقترحات</h3><p>توصل للمحافظ مباشرة</p></div><span class="go">←</span></a>
+  </div>
+</div></section>
+
+<section class="quote"><div class="wrap">
+  <h2>حساب واحد،<br>لكل دوائر المحافظة.</h2>
+  <div><p>سجّل برقم هاتفك ووثّق حسابك بالبطاقة الوطنية مرة وحدة. بعدها كل معاملاتك، وصولاتك، ووثائقك الرسمية تكون بمكان واحد وتوصلك إشعارات بكل خطوة.</p><a href="#">أنشئ حسابك</a></div>
+</div></section>
+
+<footer><div class="wrap"><span>© ديوان محافظة ذي قار — الناصرية</span><span>الخصوصية · إمكانية الوصول · تواصل معنا</span></div></footer>
+<div class="brickband"></div>
+</body>
+</html>
