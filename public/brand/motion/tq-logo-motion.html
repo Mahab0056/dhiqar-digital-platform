@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TQ — حركة الشعار</title>
+<link rel="stylesheet" href="tq-logo-motion.css">
+<style>
+  html, body { margin: 0; height: 100%; }
+  body { display: grid; place-items: center; background: var(--bg, #ffffff); }
+  body.is-transparent { --bg: transparent; }
+  body.is-dark { --bg: #07120d; }
+  .stage { width: min(70vw, 70vh * 1.36); }
+  .replay { position: fixed; bottom: 16px; left: 16px; font: 14px system-ui; padding: 8px 14px; border-radius: 8px; border: 1px solid #ccc; background: #fff; cursor: pointer; }
+  body.is-capture .replay { display: none; }
+</style>
+</head>
+<body>
+<div class="stage">
+  <!-- reusable snippet: copy from here … -->
+  <div class="tqm" data-play role="img" aria-label="شعار ذي قار الرقمية">
+    <svg viewBox="0 0 820 603" aria-hidden="true">
+      <path class="tqm-line" pathLength="1" style="--d:0s" d="M-220 140H-70L-30 100H0"/>
+      <path class="tqm-line" pathLength="1" style="--d:.12s" d="M-220 430H-50L0 480H120"/>
+      <path class="tqm-line" pathLength="1" style="--d:.24s" d="M330 -190V-70L370 -30V0"/>
+      <path class="tqm-line is-alt" pathLength="1" style="--d:.06s" d="M1040 60H910L870 100H815"/>
+      <path class="tqm-line is-alt" pathLength="1" style="--d:.18s" d="M1040 320H930L890 280H745"/>
+      <path class="tqm-line is-alt" pathLength="1" style="--d:.3s" d="M1020 720H870L800 650V590"/>
+      <path class="tqm-line" pathLength="1" style="--d:.36s" d="M400 800V700L440 660V605"/>
+      <path class="tqm-line" pathLength="1" style="--d:.42s" d="M-140 780L-10 650H130"/>
+      <circle class="tqm-node" style="--d:0s" cx="0" cy="100" r="7"/>
+      <circle class="tqm-node" style="--d:.12s" cx="120" cy="480" r="7"/>
+      <circle class="tqm-node" style="--d:.24s" cx="370" cy="0" r="7"/>
+      <circle class="tqm-node is-alt" style="--d:.06s" cx="815" cy="100" r="7"/>
+      <circle class="tqm-node is-alt" style="--d:.18s" cx="745" cy="280" r="7"/>
+      <circle class="tqm-node is-alt" style="--d:.3s" cx="800" cy="590" r="7"/>
+      <circle class="tqm-node" style="--d:.36s" cx="440" cy="605" r="7"/>
+      <circle class="tqm-node" style="--d:.42s" cx="130" cy="650" r="7"/>
+    </svg>
+    <img class="tqm-site" src="tq-site.png" alt="">
+    <img class="tqm-t" src="tq-t.png" alt="">
+    <img class="tqm-q" src="tq-q.png" alt="">
+  </div>
+  <!-- … to here -->
+</div>
+<button class="replay" type="button" onclick="const m=document.querySelector('.tqm');m.removeAttribute('data-play');void m.offsetWidth;m.setAttribute('data-play','')">إعادة التشغيل</button>
+<script>
+  // ?bg=transparent | dark  — used for exporting the video versions
+  const bg = new URLSearchParams(location.search).get('bg')
+  if (bg) document.body.classList.add('is-' + bg)
+  if (new URLSearchParams(location.search).has('capture')) document.body.classList.add('is-capture')
+</script>
+</body>
+</html>

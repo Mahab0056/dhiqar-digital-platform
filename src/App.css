@@ -4212,7 +4212,8 @@ svg {
 html,
 body {
   max-width: 100%;
-  overflow-x: hidden;
+  /* clip, not hidden: hidden turns body into a scroll container and breaks position: sticky */
+  overflow-x: clip;
 }
 .public-shell,
 .login-page,

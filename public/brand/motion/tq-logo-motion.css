@@ -1,0 +1,147 @@
+/* =============================================================================================
+   TQ logo motion — the original logo, untouched, revealed in its own colour layers
+   (tq-site / tq-t / tq-q are exact pixel separations of dhiqar-unified-logo.png).
+   Digital lines converge on the mark, then the layers settle and the mark stays still.
+
+   Markup:  <div class="tqm" data-play> …see tq-logo-motion.html… </div>
+   Speed:   --tqm-s  (1 = full ~5s intro, 0.45 = compact in-page version)
+   Lines:   --tqm-line / --tqm-line-2 colours
+   ============================================================================================= */
+@property --tqm-a {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+
+.tqm {
+  --tqm-s: 1;
+  --tqm-line: #017b3d;
+  --tqm-line-2: #cc1f2f;
+  position: relative;
+  aspect-ratio: 820 / 603;
+  width: 100%;
+  isolation: isolate;
+}
+.tqm > img,
+.tqm > svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.tqm > svg {
+  overflow: visible;
+  pointer-events: none;
+}
+.tqm-line {
+  fill: none;
+  stroke: var(--tqm-line);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 0;
+  opacity: 0.22;
+  vector-effect: non-scaling-stroke;
+}
+.tqm-line.is-alt {
+  stroke: var(--tqm-line-2);
+}
+.tqm-node {
+  fill: var(--tqm-line);
+  opacity: 0.35;
+}
+.tqm-node.is-alt {
+  fill: var(--tqm-line-2);
+}
+
+/* ---- the timeline only runs while [data-play] is set ---------------------------------------- */
+.tqm[data-play] .tqm-line {
+  animation:
+    tqm-draw calc(var(--tqm-s) * 1.5s) cubic-bezier(0.6, 0, 0.2, 1) both,
+    tqm-settle calc(var(--tqm-s) * 0.9s) ease calc(var(--tqm-s) * 3.4s) both;
+  animation-delay: calc(var(--tqm-s) * var(--d, 0s)), calc(var(--tqm-s) * 3.4s);
+}
+.tqm[data-play] .tqm-node {
+  animation:
+    tqm-pop calc(var(--tqm-s) * 0.5s) cubic-bezier(0.3, 1.6, 0.5, 1) both,
+    tqm-settle calc(var(--tqm-s) * 0.9s) ease both;
+  animation-delay: calc(var(--tqm-s) * (var(--d, 0s) + 1.3s)), calc(var(--tqm-s) * 3.4s);
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.tqm[data-play] .tqm-site {
+  animation: tqm-rise calc(var(--tqm-s) * 0.9s) cubic-bezier(0.2, 0.8, 0.2, 1) calc(var(--tqm-s) * 1.2s) both;
+}
+.tqm[data-play] .tqm-t {
+  animation: tqm-drop calc(var(--tqm-s) * 0.8s) cubic-bezier(0.2, 0.8, 0.2, 1) calc(var(--tqm-s) * 1.8s) both;
+}
+.tqm[data-play] .tqm-q {
+  -webkit-mask-image: conic-gradient(from 200deg at 58.5% 48%, #000 var(--tqm-a), transparent var(--tqm-a));
+  mask-image: conic-gradient(from 200deg at 58.5% 48%, #000 var(--tqm-a), transparent var(--tqm-a));
+  animation: tqm-sweep calc(var(--tqm-s) * 1.2s) cubic-bezier(0.5, 0, 0.2, 1) calc(var(--tqm-s) * 2.2s) both;
+}
+
+@keyframes tqm-draw {
+  from {
+    stroke-dashoffset: 1;
+    opacity: 0.95;
+  }
+  to {
+    stroke-dashoffset: 0;
+    opacity: 0.95;
+  }
+}
+@keyframes tqm-settle {
+  to {
+    opacity: 0.22;
+  }
+}
+@keyframes tqm-pop {
+  from {
+    transform: scale(0);
+    opacity: 1;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+@keyframes tqm-rise {
+  from {
+    clip-path: inset(100% 0 0 0);
+    transform: translateY(4%);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+    transform: none;
+  }
+}
+@keyframes tqm-drop {
+  from {
+    clip-path: inset(0 0 100% 0);
+    transform: translateY(-6%);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+    transform: none;
+  }
+}
+@keyframes tqm-sweep {
+  from {
+    --tqm-a: 0deg;
+  }
+  to {
+    --tqm-a: 361deg;
+  }
+}
+
+/* still logo for anyone who asked for less motion */
+@media (prefers-reduced-motion: reduce) {
+  .tqm[data-play] :is(.tqm-line, .tqm-node, .tqm-site, .tqm-t, .tqm-q) {
+    animation: none !important;
+    -webkit-mask-image: none !important;
+    mask-image: none !important;
+  }
+}

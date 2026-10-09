@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>ذي قار الرقمية — فيديو تعريفي</title>
+<link rel="stylesheet" href="../../public/brand/motion/tq-logo-motion.css">
+<style>
+@font-face { font-family: Readex; font-weight: 400; src: url(../../node_modules/@fontsource/readex-pro/files/readex-pro-arabic-400-normal.woff2); }
+@font-face { font-family: Readex; font-weight: 600; src: url(../../node_modules/@fontsource/readex-pro/files/readex-pro-arabic-600-normal.woff2); }
+@font-face { font-family: Readex; font-weight: 700; src: url(../../node_modules/@fontsource/readex-pro/files/readex-pro-arabic-700-normal.woff2); }
+:root { --night:#06100b; --night2:#0e2219; --green:#017b3d; --lit:#3cc27a; --red:#cc1f2f; --paper:#f5f4ef; --ink:#0e1512; --muted:#66726b; --border:#e1e0d8; --ease:cubic-bezier(.2,.8,.2,1); }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 1280px; height: 720px; overflow: hidden; background: var(--night); font-family: Readex, sans-serif; }
+.scene { position: absolute; inset: 0; opacity: 0; animation: scene var(--len) linear var(--t) both; }
+@keyframes scene { 0% { opacity: 0 } 6% { opacity: 1 } 94% { opacity: 1 } 100% { opacity: 0 } }
+.scene.is-last { animation-name: scene-last; }
+@keyframes scene-last { 0% { opacity: 0 } 8% { opacity: 1 } 100% { opacity: 1 } }
+/* every element times itself from the scene start: delay = scene start + --at */
+.a { animation: up .7s var(--ease) calc(var(--t) + var(--at, 0s)) both; }
+@keyframes up { from { opacity: 0; transform: translateY(22px) } }
+.pop { animation: pop .55s cubic-bezier(.3,1.5,.5,1) calc(var(--t) + var(--at, 0s)) both; }
+@keyframes pop { from { opacity: 0; transform: scale(.6) } }
+.dark { background: radial-gradient(70% 90% at 30% 40%, #10291d 0%, var(--night) 70%); color: #fff; }
+.light { background: var(--paper); color: var(--ink); }
+.cap { position: absolute; top: 70px; right: 90px; width: 520px; }
+.cap small { display: inline-flex; align-items: center; gap: 10px; color: var(--green); font-size: 22px; font-weight: 600; }
+.cap small::before { content: ''; width: 30px; height: 3px; background: var(--red); }
+.dark .cap small { color: var(--lit); }
+.cap h2 { margin-top: 16px; font-size: 58px; line-height: 1.2; font-weight: 700; }
+.cap h2 em { color: var(--green); font-style: normal; display: block; }
+.dark .cap h2 em { color: var(--lit); }
+.cap p { margin-top: 18px; font-size: 24px; line-height: 1.7; color: var(--muted); }
+.dark .cap p { color: #a9bcb1; }
+.card { background: #fff; border: 1px solid var(--border); border-radius: 22px; box-shadow: 0 40px 80px -40px rgba(14,21,18,.45); }
+.stage { position: absolute; left: 80px; top: 90px; width: 520px; }
+.stage.card { padding: 26px; }
+.search { display: flex; align-items: center; gap: 12px; height: 64px; padding: 0 20px; border: 2px solid var(--ink); border-radius: 14px; font-size: 24px; }
+.type { white-space: nowrap; overflow: hidden; clip-path: inset(0 0 0 100%); animation: type 1.6s steps(14) calc(var(--t) + var(--at)) both; }
+@keyframes type { to { clip-path: inset(0 0 0 0) } }
+.row { margin-top: 14px; padding: 16px 18px; border: 1px solid var(--border); border-radius: 14px; font-size: 22px; }
+.row small { display: block; color: var(--muted); font-size: 17px; margin-top: 2px; }
+.row.on { border-color: var(--green); background: #f1f8f4; }
+.check { display: flex; align-items: center; gap: 12px; margin-top: 12px; font-size: 21px; }
+.check i { width: 26px; height: 26px; border-radius: 50%; background: var(--green); flex: none; position: relative; }
+.check i::after { content: ''; position: absolute; left: 8px; top: 5px; width: 7px; height: 12px; border: solid #fff; border-width: 0 3px 3px 0; transform: rotate(45deg); }
+.doc { display: flex; align-items: center; gap: 14px; margin-top: 14px; padding: 16px; border: 1px solid var(--border); border-radius: 14px; font-size: 21px; position: relative; overflow: hidden; }
+.doc b { width: 46px; height: 56px; border: 1px solid var(--border); border-radius: 8px; display: grid; place-items: center; color: var(--red); font-size: 14px; flex: none; }
+.doc small { display: block; color: var(--green); font-size: 16px; }
+.doc .bar { position: absolute; bottom: 0; right: 0; height: 4px; width: 100%; background: var(--green); transform-origin: right; animation: grow 1.2s var(--ease) calc(var(--t) + var(--at)) both; }
+@keyframes grow { from { transform: scaleX(0) } }
+.route { position: absolute; left: 80px; top: 120px; width: 560px; display: flex; align-items: center; gap: 0; }
+.node { width: 170px; padding: 22px 10px; border: 1px solid var(--border); border-radius: 18px; background: #fff; text-align: center; font-size: 22px; font-weight: 600; flex: none; }
+.node small { display: block; color: var(--muted); font-size: 16px; font-weight: 400; }
+.node.dep { border: 2px solid var(--green); }
+.wire { flex: 1; height: 3px; position: relative; background: repeating-linear-gradient(270deg, #cfcec6 0 10px, transparent 10px 18px); }
+.packet { position: absolute; top: -9px; right: 0; width: 20px; height: 20px; border-radius: 5px; background: var(--green); animation: travel 1.6s var(--ease) calc(var(--t) + var(--at)) both; }
+@keyframes travel { from { right: 0 } to { right: calc(100% - 20px) } }
+.queue { position: absolute; left: 80px; top: 300px; width: 560px; padding: 20px; }
+.q { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; padding: 14px 16px; border: 1px solid var(--border); border-radius: 12px; font-size: 19px; }
+.q:first-child { margin-top: 0; }
+.q em { font-style: normal; font-size: 15px; padding: 4px 12px; border-radius: 99px; background: #eeede7; }
+.q.new { border-color: var(--green); background: #f1f8f4; }
+.q.new em { background: var(--green); color: #fff; }
+.q.late em { background: #fde8ea; color: #a3192a; }
+.tl { position: absolute; left: 80px; top: 110px; width: 520px; padding: 30px; }
+.tl li { list-style: none; position: relative; padding-right: 40px; margin-bottom: 26px; font-size: 22px; color: var(--muted); }
+.tl li::before { content: ''; position: absolute; right: 0; top: 6px; width: 20px; height: 20px; border-radius: 50%; border: 3px solid #d3d2ca; background: #fff; }
+.tl li.done { color: var(--ink); } .tl li.done::before { background: var(--green); border-color: var(--green); }
+.tl li.on { color: var(--ink); font-weight: 600; } .tl li.on::before { border-color: #b7791f; }
+.toast { position: absolute; left: 120px; top: 470px; width: 440px; display: flex; gap: 14px; padding: 20px; border-radius: 18px; background: var(--ink); color: #fff; font-size: 20px; }
+.toast small { display: block; color: #b9c5be; font-size: 16px; }
+.toast i { width: 14px; height: 14px; border-radius: 50%; background: var(--lit); margin-top: 8px; flex: none; }
+.map { position: absolute; left: 60px; top: 40px; width: 560px; height: 640px; }
+.map svg { width: 100%; height: 100%; }
+.d { fill: #143524; stroke: rgba(150,220,180,.4); stroke-width: 1; animation: up .6s var(--ease) calc(var(--t) + var(--at)) both; }
+.g { fill: none; stroke: var(--lit); stroke-width: 2.4; stroke-dasharray: 3000; animation: draw 2.4s var(--ease) calc(var(--t) + .3s) both; }
+@keyframes draw { from { stroke-dashoffset: 3000 } to { stroke-dashoffset: 0 } }
+.pt { fill: #8ff0b9; stroke: var(--night); stroke-width: 1.5; transform-box: fill-box; transform-origin: center; animation: pop .4s cubic-bezier(.3,1.5,.5,1) calc(var(--t) + var(--at)) both; }
+.demo { display: inline-block; margin-top: 22px; padding: 8px 16px; border: 1px solid rgba(240,190,90,.5); border-radius: 99px; background: #2a2312; color: #f2cf7f; font-size: 17px; }
+.kpis { position: absolute; right: 90px; top: 430px; width: 520px; display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.kpi { padding: 18px 20px; border: 1px solid rgba(220,238,227,.14); border-radius: 16px; background: #11251b; }
+.kpi small { color: #a9bcb1; font-size: 16px; display: block; } .kpi b { font-size: 34px; }
+.kpi.late b { color: #ff7d88; }
+.paper { position: absolute; left: 150px; top: 90px; width: 380px; height: 520px; padding: 34px; background: #fffefb; border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 40px 80px -30px rgba(14,21,18,.45); }
+.paper small { color: var(--muted); font-size: 16px; } .paper h3 { font-size: 28px; margin: 12px 0 26px; }
+.paper i { display: block; height: 10px; border-radius: 5px; background: #ecebe4; margin-bottom: 14px; } .paper i.s { width: 60%; }
+.qr { position: absolute; left: 30px; bottom: 30px; width: 120px; height: 120px; fill: var(--ink); }
+.stamp { position: absolute; right: 30px; bottom: 50px; padding: 10px 18px; border-radius: 99px; background: #e3f3ea; color: var(--green); font-size: 18px; font-weight: 600; }
+.hero-logo { position: absolute; left: 50%; top: 150px; width: 300px; padding: 30px; background: #fff; border-radius: 30px; transform: translateX(-50%); }
+.hero-text { position: absolute; inset-inline: 0; top: 440px; text-align: center; }
+.hero-text h1 { font-size: 64px; font-weight: 700; }
+.hero-text h1 em { color: var(--lit); font-style: normal; }
+.hero-text p { margin-top: 10px; font-size: 26px; color: #a9bcb1; }
+.url { margin-top: 26px; display: inline-block; padding: 12px 26px; border-radius: 14px; background: #fff; color: var(--ink); font-size: 26px; font-weight: 600; direction: ltr; }
+.progress { position: absolute; left: 0; right: 0; bottom: 0; height: 5px; background: rgba(255,255,255,.08); }
+.progress i { display: block; height: 100%; background: var(--lit); transform-origin: right; animation: prog 40s linear both; }
+@keyframes prog { from { transform: scaleX(0) } to { transform: scaleX(1) } }
+</style>
+</head>
+<body>
+
+<!-- 0–6s: identity -->
+<section class="scene dark" style="--t:0s; --len:6s">
+  <div class="hero-logo pop" style="--at:.1s">
+    <div class="tqm" data-play style="--tqm-s:.75">
+      __TQM__
+    </div>
+  </div>
+  <div class="hero-text">
+    <h1 class="a" style="--at:2.6s">محافظة كاملة، <em>مترابطة رقمياً.</em></h1>
+    <p class="a" style="--at:3.1s">منصة ذي قار الرقمية — كل دوائر المحافظة بمكان واحد</p>
+  </div>
+</section>
+
+<!-- 6–12s: search -->
+<section class="scene light" style="--t:6s; --len:6s">
+  <div class="cap">
+    <small class="a" style="--at:.2s">١ · اختيار الخدمة</small>
+    <h2 class="a" style="--at:.35s">ابحث بكلامك، <em>والمنصة تفهمك.</em></h2>
+    <p class="a" style="--at:.5s">اكتب اللي تحتاجه بالعامية، وتطلعلك الخدمة والدائرة المسؤولة والمتطلبات.</p>
+  </div>
+  <div class="stage card a" style="--at:.3s">
+    <div class="search"><span class="type" style="--at:.9s">اريد افتح محل بالناصرية</span></div>
+    <div class="row on a" style="--at:2.6s">إجازة فتح محل تجاري<small>بلدية الناصرية · خدمة إلكترونية</small></div>
+    <div class="check a" style="--at:3.1s"><i></i>البطاقة الوطنية الموحدة</div>
+    <div class="check a" style="--at:3.4s"><i></i>بطاقة السكن</div>
+    <div class="check a" style="--at:3.7s"><i></i>عقد إيجار أو سند ملكية المحل</div>
+  </div>
+</section>
+
+<!-- 12–18s: apply + upload -->
+<section class="scene light" style="--t:12s; --len:6s">
+  <div class="cap">
+    <small class="a" style="--at:.2s">٢ · التقديم</small>
+    <h2 class="a" style="--at:.35s">قدّم وارفع <em>مستمسكاتك من موبايلك.</em></h2>
+    <p class="a" style="--at:.5s">بياناتك تنملي من حسابك الموثّق، والمسودة تنحفظ تلقائياً.</p>
+  </div>
+  <div class="stage card a" style="--at:.3s">
+    <div class="doc a" style="--at:.8s"><b>PDF</b><span>البطاقة الوطنية الموحدة<small>تم الرفع</small></span><i class="bar" style="--at:.9s"></i></div>
+    <div class="doc a" style="--at:1.6s"><b>PDF</b><span>بطاقة السكن<small>تم الرفع</small></span><i class="bar" style="--at:1.7s"></i></div>
+    <div class="doc a" style="--at:2.4s"><b>PDF</b><span>عقد إيجار المحل<small>تم الرفع</small></span><i class="bar" style="--at:2.5s"></i></div>
+    <div class="row on pop" style="--at:3.8s; text-align:center; font-weight:600">تم إرسال الطلب · TQ-2026-048213</div>
+  </div>
+</section>
+
+<!-- 18–24s: routing to the department -->
+<section class="scene light" style="--t:18s; --len:6s">
+  <div class="cap">
+    <small class="a" style="--at:.2s">٣ · الدائرة المختصة</small>
+    <h2 class="a" style="--at:.35s">الطلب يوصل <em>للدائرة الصحيحة.</em></h2>
+    <p class="a" style="--at:.5s">يدخل مباشرة قائمة عمل الموظف المخوّل، مرتّب حسب المدة المتبقية.</p>
+  </div>
+  <div class="route a" style="--at:.3s">
+    <div class="node">المواطن<small>أرسل الطلب</small></div>
+    <div class="wire"><i class="packet" style="--at:.9s"></i></div>
+    <div class="node dep">بلدية الناصرية<small>قسم الإجازات</small></div>
+  </div>
+  <div class="queue card a" style="--at:.5s">
+    <div class="q new pop" style="--at:2.6s"><span>إجازة فتح محل تجاري · علي حسين</span><em>جديد</em></div>
+    <div class="q"><span>إجازة بناء سكني · زينب كاظم</span><em>يومان متبقيان</em></div>
+    <div class="q late"><span>إجازة رصيف · حيدر سالم</span><em>متأخر يوم</em></div>
+  </div>
+</section>
+
+<!-- 24–30s: review and tracking -->
+<section class="scene light" style="--t:24s; --len:6s">
+  <div class="cap">
+    <small class="a" style="--at:.2s">٤ · التدقيق والمتابعة</small>
+    <h2 class="a" style="--at:.35s">الموظف يدقق، <em>وأنت تتابع.</em></h2>
+    <p class="a" style="--at:.5s">كل تغيير بالحالة يوصلك بإشعار. وإذا ناقص شي، تعرف السبب وتكمله من نفس الطلب.</p>
+  </div>
+  <ul class="tl card a" style="--at:.3s">
+    <li class="done a" style="--at:.7s">تم الاستلام · الأحد ٩:١٤ ص</li>
+    <li class="done a" style="--at:1.2s">تدقيق المستمسكات · مكتمل</li>
+    <li class="on a" style="--at:1.7s">الكشف الموقعي · الثلاثاء ١٠:٠٠ ص</li>
+    <li class="a" style="--at:2.2s">إصدار الإجازة</li>
+  </ul>
+  <div class="toast pop" style="--at:2.9s"><i></i><span>تحديث على معاملتك<small>موعد الكشف الموقعي: الثلاثاء ١٠:٠٠ ص</small></span></div>
+</section>
+
+<!-- 30–36s: operations room -->
+<section class="scene dark" style="--t:30s; --len:6s">
+  <div class="cap">
+    <small class="a" style="--at:.2s">٥ · غرفة العمليات</small>
+    <h2 class="a" style="--at:.35s">المحافظة <em>أمامك.</em></h2>
+    <p class="a" style="--at:.5s">__POINTS__ دائرة على الخريطة بمواقعها الموثّقة، ومؤشرات الإنجاز والتأخير لحظة بلحظة.</p>
+    <span class="demo a" style="--at:.8s">الأرقام بهذا المشهد تجريبية للعرض</span>
+  </div>
+  <div class="map">__MAP__</div>
+  <div class="kpis">
+    <div class="kpi a" style="--at:1.4s"><small>معاملات اليوم</small><b>١٬٣٠٨</b></div>
+    <div class="kpi a" style="--at:1.6s"><small>معدل الإنجاز</small><b>٤٫٢ يوم</b></div>
+    <div class="kpi late a" style="--at:1.8s"><small>معاملات متأخرة</small><b>٣٧</b></div>
+    <div class="kpi a" style="--at:2s"><small>إيرادات الشهر</small><b>١٨٦ مليون</b></div>
+  </div>
+</section>
+
+<!-- 36–40s: the document + close -->
+<section class="scene light is-last" style="--t:36s; --len:4s">
+  <div class="cap">
+    <small class="a" style="--at:.2s">٦ · الوثيقة</small>
+    <h2 class="a" style="--at:.35s">وثيقتك جاهزة، <em>وموثّقة برمز QR.</em></h2>
+    <p class="a" style="--at:.5s">ابدأ معاملتك اليوم:</p>
+    <span class="url a" style="--at:.8s">thi-qar.com</span>
+  </div>
+  <div class="paper pop" style="--at:.3s">
+    <small>جمهورية العراق · محافظة ذي قار</small>
+    <h3>إجازة فتح محل تجاري</h3>
+    <i></i><i></i><i class="s"></i><i></i><i class="s"></i>
+    __QR__
+    <span class="stamp">وثيقة موثّقة</span>
+  </div>
+</section>
+
+<div class="progress"><i></i></div>
+</body>
+</html>

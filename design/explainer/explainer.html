@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>ذي قار الرقمية — فيديو تعريفي</title>
+<link rel="stylesheet" href="../../public/brand/motion/tq-logo-motion.css">
+<style>
+@font-face { font-family: Readex; font-weight: 400; src: url(../../node_modules/@fontsource/readex-pro/files/readex-pro-arabic-400-normal.woff2); }
+@font-face { font-family: Readex; font-weight: 600; src: url(../../node_modules/@fontsource/readex-pro/files/readex-pro-arabic-600-normal.woff2); }
+@font-face { font-family: Readex; font-weight: 700; src: url(../../node_modules/@fontsource/readex-pro/files/readex-pro-arabic-700-normal.woff2); }
+:root { --night:#06100b; --night2:#0e2219; --green:#017b3d; --lit:#3cc27a; --red:#cc1f2f; --paper:#f5f4ef; --ink:#0e1512; --muted:#66726b; --border:#e1e0d8; --ease:cubic-bezier(.2,.8,.2,1); }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 1280px; height: 720px; overflow: hidden; background: var(--night); font-family: Readex, sans-serif; }
+.scene { position: absolute; inset: 0; opacity: 0; animation: scene var(--len) linear var(--t) both; }
+@keyframes scene { 0% { opacity: 0 } 6% { opacity: 1 } 94% { opacity: 1 } 100% { opacity: 0 } }
+.scene.is-last { animation-name: scene-last; }
+@keyframes scene-last { 0% { opacity: 0 } 8% { opacity: 1 } 100% { opacity: 1 } }
+/* every element times itself from the scene start: delay = scene start + --at */
+.a { animation: up .7s var(--ease) calc(var(--t) + var(--at, 0s)) both; }
+@keyframes up { from { opacity: 0; transform: translateY(22px) } }
+.pop { animation: pop .55s cubic-bezier(.3,1.5,.5,1) calc(var(--t) + var(--at, 0s)) both; }
+@keyframes pop { from { opacity: 0; transform: scale(.6) } }
+.dark { background: radial-gradient(70% 90% at 30% 40%, #10291d 0%, var(--night) 70%); color: #fff; }
+.light { background: var(--paper); color: var(--ink); }
+.cap { position: absolute; top: 70px; right: 90px; width: 520px; }
+.cap small { display: inline-flex; align-items: center; gap: 10px; color: var(--green); font-size: 22px; font-weight: 600; }
+.cap small::before { content: ''; width: 30px; height: 3px; background: var(--red); }
+.dark .cap small { color: var(--lit); }
+.cap h2 { margin-top: 16px; font-size: 58px; line-height: 1.2; font-weight: 700; }
+.cap h2 em { color: var(--green); font-style: normal; display: block; }
+.dark .cap h2 em { color: var(--lit); }
+.cap p { margin-top: 18px; font-size: 24px; line-height: 1.7; color: var(--muted); }
+.dark .cap p { color: #a9bcb1; }
+.card { background: #fff; border: 1px solid var(--border); border-radius: 22px; box-shadow: 0 40px 80px -40px rgba(14,21,18,.45); }
+.stage { position: absolute; left: 80px; top: 90px; width: 520px; }
+.stage.card { padding: 26px; }
+.search { display: flex; align-items: center; gap: 12px; height: 64px; padding: 0 20px; border: 2px solid var(--ink); border-radius: 14px; font-size: 24px; }
+.type { white-space: nowrap; overflow: hidden; clip-path: inset(0 0 0 100%); animation: type 1.6s steps(14) calc(var(--t) + var(--at)) both; }
+@keyframes type { to { clip-path: inset(0 0 0 0) } }
+.row { margin-top: 14px; padding: 16px 18px; border: 1px solid var(--border); border-radius: 14px; font-size: 22px; }
+.row small { display: block; color: var(--muted); font-size: 17px; margin-top: 2px; }
+.row.on { border-color: var(--green); background: #f1f8f4; }
+.check { display: flex; align-items: center; gap: 12px; margin-top: 12px; font-size: 21px; }
+.check i { width: 26px; height: 26px; border-radius: 50%; background: var(--green); flex: none; position: relative; }
+.check i::after { content: ''; position: absolute; left: 8px; top: 5px; width: 7px; height: 12px; border: solid #fff; border-width: 0 3px 3px 0; transform: rotate(45deg); }
+.doc { display: flex; align-items: center; gap: 14px; margin-top: 14px; padding: 16px; border: 1px solid var(--border); border-radius: 14px; font-size: 21px; position: relative; overflow: hidden; }
+.doc b { width: 46px; height: 56px; border: 1px solid var(--border); border-radius: 8px; display: grid; place-items: center; color: var(--red); font-size: 14px; flex: none; }
+.doc small { display: block; color: var(--green); font-size: 16px; }
+.doc .bar { position: absolute; bottom: 0; right: 0; height: 4px; width: 100%; background: var(--green); transform-origin: right; animation: grow 1.2s var(--ease) calc(var(--t) + var(--at)) both; }
+@keyframes grow { from { transform: scaleX(0) } }
+.route { position: absolute; left: 80px; top: 120px; width: 560px; display: flex; align-items: center; gap: 0; }
+.node { width: 170px; padding: 22px 10px; border: 1px solid var(--border); border-radius: 18px; background: #fff; text-align: center; font-size: 22px; font-weight: 600; flex: none; }
+.node small { display: block; color: var(--muted); font-size: 16px; font-weight: 400; }
+.node.dep { border: 2px solid var(--green); }
+.wire { flex: 1; height: 3px; position: relative; background: repeating-linear-gradient(270deg, #cfcec6 0 10px, transparent 10px 18px); }
+.packet { position: absolute; top: -9px; right: 0; width: 20px; height: 20px; border-radius: 5px; background: var(--green); animation: travel 1.6s var(--ease) calc(var(--t) + var(--at)) both; }
+@keyframes travel { from { right: 0 } to { right: calc(100% - 20px) } }
+.queue { position: absolute; left: 80px; top: 300px; width: 560px; padding: 20px; }
+.q { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; padding: 14px 16px; border: 1px solid var(--border); border-radius: 12px; font-size: 19px; }
+.q:first-child { margin-top: 0; }
+.q em { font-style: normal; font-size: 15px; padding: 4px 12px; border-radius: 99px; background: #eeede7; }
+.q.new { border-color: var(--green); background: #f1f8f4; }
+.q.new em { background: var(--green); color: #fff; }
+.q.late em { background: #fde8ea; color: #a3192a; }
+.tl { position: absolute; left: 80px; top: 110px; width: 520px; padding: 30px; }
+.tl li { list-style: none; position: relative; padding-right: 40px; margin-bottom: 26px; font-size: 22px; color: var(--muted); }
+.tl li::before { content: ''; position: absolute; right: 0; top: 6px; width: 20px; height: 20px; border-radius: 50%; border: 3px solid #d3d2ca; background: #fff; }
+.tl li.done { color: var(--ink); } .tl li.done::before { background: var(--green); border-color: var(--green); }
+.tl li.on { color: var(--ink); font-weight: 600; } .tl li.on::before { border-color: #b7791f; }
+.toast { position: absolute; left: 120px; top: 470px; width: 440px; display: flex; gap: 14px; padding: 20px; border-radius: 18px; background: var(--ink); color: #fff; font-size: 20px; }
+.toast small { display: block; color: #b9c5be; font-size: 16px; }
+.toast i { width: 14px; height: 14px; border-radius: 50%; background: var(--lit); margin-top: 8px; flex: none; }
+.map { position: absolute; left: 60px; top: 40px; width: 560px; height: 640px; }
+.map svg { width: 100%; height: 100%; }
+.d { fill: #143524; stroke: rgba(150,220,180,.4); stroke-width: 1; animation: up .6s var(--ease) calc(var(--t) + var(--at)) both; }
+.g { fill: none; stroke: var(--lit); stroke-width: 2.4; stroke-dasharray: 3000; animation: draw 2.4s var(--ease) calc(var(--t) + .3s) both; }
+@keyframes draw { from { stroke-dashoffset: 3000 } to { stroke-dashoffset: 0 } }
+.pt { fill: #8ff0b9; stroke: var(--night); stroke-width: 1.5; transform-box: fill-box; transform-origin: center; animation: pop .4s cubic-bezier(.3,1.5,.5,1) calc(var(--t) + var(--at)) both; }
+.demo { display: inline-block; margin-top: 22px; padding: 8px 16px; border: 1px solid rgba(240,190,90,.5); border-radius: 99px; background: #2a2312; color: #f2cf7f; font-size: 17px; }
+.kpis { position: absolute; right: 90px; top: 430px; width: 520px; display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.kpi { padding: 18px 20px; border: 1px solid rgba(220,238,227,.14); border-radius: 16px; background: #11251b; }
+.kpi small { color: #a9bcb1; font-size: 16px; display: block; } .kpi b { font-size: 34px; }
+.kpi.late b { color: #ff7d88; }
+.paper { position: absolute; left: 150px; top: 90px; width: 380px; height: 520px; padding: 34px; background: #fffefb; border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 40px 80px -30px rgba(14,21,18,.45); }
+.paper small { color: var(--muted); font-size: 16px; } .paper h3 { font-size: 28px; margin: 12px 0 26px; }
+.paper i { display: block; height: 10px; border-radius: 5px; background: #ecebe4; margin-bottom: 14px; } .paper i.s { width: 60%; }
+.qr { position: absolute; left: 30px; bottom: 30px; width: 120px; height: 120px; fill: var(--ink); }
+.stamp { position: absolute; right: 30px; bottom: 50px; padding: 10px 18px; border-radius: 99px; background: #e3f3ea; color: var(--green); font-size: 18px; font-weight: 600; }
+.hero-logo { position: absolute; left: 50%; top: 150px; width: 300px; padding: 30px; background: #fff; border-radius: 30px; transform: translateX(-50%); }
+.hero-text { position: absolute; inset-inline: 0; top: 440px; text-align: center; }
+.hero-text h1 { font-size: 64px; font-weight: 700; }
+.hero-text h1 em { color: var(--lit); font-style: normal; }
+.hero-text p { margin-top: 10px; font-size: 26px; color: #a9bcb1; }
+.url { margin-top: 26px; display: inline-block; padding: 12px 26px; border-radius: 14px; background: #fff; color: var(--ink); font-size: 26px; font-weight: 600; direction: ltr; }
+.progress { position: absolute; left: 0; right: 0; bottom: 0; height: 5px; background: rgba(255,255,255,.08); }
+.progress i { display: block; height: 100%; background: var(--lit); transform-origin: right; animation: prog 40s linear both; }
+@keyframes prog { from { transform: scaleX(0) } to { transform: scaleX(1) } }
+</style>
+</head>
+<body>
+
+<!-- 0–6s: identity -->
+<section class="scene dark" style="--t:0s; --len:6s">
+  <div class="hero-logo pop" style="--at:.1s">
+    <div class="tqm" data-play style="--tqm-s:.75">
+      <svg viewBox="0 0 820 603" aria-hidden="true">
+      <path class="tqm-line" pathLength="1" style="--d:0s" d="M-220 140H-70L-30 100H0"/>
+      <path class="tqm-line" pathLength="1" style="--d:.12s" d="M-220 430H-50L0 480H120"/>
+      <path class="tqm-line" pathLength="1" style="--d:.24s" d="M330 -190V-70L370 -30V0"/>
+      <path class="tqm-line is-alt" pathLength="1" style="--d:.06s" d="M1040 60H910L870 100H815"/>
+      <path class="tqm-line is-alt" pathLength="1" style="--d:.18s" d="M1040 320H930L890 280H745"/>
+      <path class="tqm-line is-alt" pathLength="1" style="--d:.3s" d="M1020 720H870L800 650V590"/>
+      <path class="tqm-line" pathLength="1" style="--d:.36s" d="M400 800V700L440 660V605"/>
+      <path class="tqm-line" pathLength="1" style="--d:.42s" d="M-140 780L-10 650H130"/>
+      <circle class="tqm-node" style="--d:0s" cx="0" cy="100" r="7"/>
+      <circle class="tqm-node" style="--d:.12s" cx="120" cy="480" r="7"/>
+      <circle class="tqm-node" style="--d:.24s" cx="370" cy="0" r="7"/>
+      <circle class="tqm-node is-alt" style="--d:.06s" cx="815" cy="100" r="7"/>
+      <circle class="tqm-node is-alt" style="--d:.18s" cx="745" cy="280" r="7"/>
+      <circle class="tqm-node is-alt" style="--d:.3s" cx="800" cy="590" r="7"/>
+      <circle class="tqm-node" style="--d:.36s" cx="440" cy="605" r="7"/>
+      <circle class="tqm-node" style="--d:.42s" cx="130" cy="650" r="7"/>
+    </svg>
+    <img class="tqm-site" src="../../public/brand/motion/tq-site.png" alt="">
+    <img class="tqm-t" src="../../public/brand/motion/tq-t.png" alt="">
+    <img class="tqm-q" src="../../public/brand/motion/tq-q.png" alt="">
+  
+    </div>
+  </div>
+  <div class="hero-text">
+    <h1 class="a" style="--at:2.6s">محافظة كاملة، <em>مترابطة رقمياً.</em></h1>
+    <p class="a" style="--at:3.1s">منصة ذي قار الرقمية — كل دوائر المحافظة بمكان واحد</p>
+  </div>
+</section>
+
+<!-- 6–12s: search -->
+<section class="scene light" style="--t:6s; --len:6s">
+  <div class="cap">
+    <small class="a" style="--at:.2s">١ · اختيار الخدمة</small>
+    <h2 class="a" style="--at:.35s">ابحث بكلامك، <em>والمنصة تفهمك.</em></h2>
+    <p class="a" style="--at:.5s">اكتب اللي تحتاجه بالعامية، وتطلعلك الخدمة والدائرة المسؤولة والمتطلبات.</p>
+  </div>
+  <div class="stage card a" style="--at:.3s">
+    <div class="search"><span class="type" style="--at:.9s">اريد افتح محل بالناصرية</span></div>
+    <div class="row on a" style="--at:2.6s">إجازة فتح محل تجاري<small>بلدية الناصرية · خدمة إلكترونية</small></div>
+    <div class="check a" style="--at:3.1s"><i></i>البطاقة الوطنية الموحدة</div>
+    <div class="check a" style="--at:3.4s"><i></i>بطاقة السكن</div>
+    <div class="check a" style="--at:3.7s"><i></i>عقد إيجار أو سند ملكية المحل</div>
+  </div>
+</section>
+
+<!-- 12–18s: apply + upload -->
+<section class="scene light" style="--t:12s; --len:6s">
+  <div class="cap">
+    <small class="a" style="--at:.2s">٢ · التقديم</small>
+    <h2 class="a" style="--at:.35s">قدّم وارفع <em>مستمسكاتك من موبايلك.</em></h2>
+    <p class="a" style="--at:.5s">بياناتك تنملي من حسابك الموثّق، والمسودة تنحفظ تلقائياً.</p>
+  </div>
+  <div class="stage card a" style="--at:.3s">
+    <div class="doc a" style="--at:.8s"><b>PDF</b><span>البطاقة الوطنية الموحدة<small>تم الرفع</small></span><i class="bar" style="--at:.9s"></i></div>
+    <div class="doc a" style="--at:1.6s"><b>PDF</b><span>بطاقة السكن<small>تم الرفع</small></span><i class="bar" style="--at:1.7s"></i></div>
+    <div class="doc a" style="--at:2.4s"><b>PDF</b><span>عقد إيجار المحل<small>تم الرفع</small></span><i class="bar" style="--at:2.5s"></i></div>
+    <div class="row on pop" style="--at:3.8s; text-align:center; font-weight:600">تم إرسال الطلب · TQ-2026-048213</div>
+  </div>
+</section>
+
+<!-- 18–24s: routing to the department -->
+<section class="scene light" style="--t:18s; --len:6s">
+  <div class="cap">
+    <small class="a" style="--at:.2s">٣ · الدائرة المختصة</small>
+    <h2 class="a" style="--at:.35s">الطلب يوصل <em>للدائرة الصحيحة.</em></h2>
+    <p class="a" style="--at:.5s">يدخل مباشرة قائمة عمل الموظف المخوّل، مرتّب حسب المدة المتبقية.</p>
+  </div>
+  <div class="route a" style="--at:.3s">
+    <div class="node">المواطن<small>أرسل الطلب</small></div>
+    <div class="wire"><i class="packet" style="--at:.9s"></i></div>
+    <div class="node dep">بلدية الناصرية<small>قسم الإجازات</small></div>
+  </div>
+  <div class="queue card a" style="--at:.5s">
+    <div class="q new pop" style="--at:2.6s"><span>إجازة فتح محل تجاري · علي حسين</span><em>جديد</em></div>
+    <div class="q"><span>إجازة بناء سكني · زينب كاظم</span><em>يومان متبقيان</em></div>
+    <div class="q late"><span>إجازة رصيف · حيدر سالم</span><em>متأخر يوم</em></div>
+  </div>
+</section>
+
+<!-- 24–30s: review and tracking -->
+<section class="scene light" style="--t:24s; --len:6s">
+  <div class="cap">
+    <small class="a" style="--at:.2s">٤ · التدقيق والمتابعة</small>
+    <h2 class="a" style="--at:.35s">الموظف يدقق، <em>وأنت تتابع.</em></h2>
+    <p class="a" style="--at:.5s">كل تغيير بالحالة يوصلك بإشعار. وإذا ناقص شي، تعرف السبب وتكمله من نفس الطلب.</p>
+  </div>
+  <ul class="tl card a" style="--at:.3s">
+    <li class="done a" style="--at:.7s">تم الاستلام · الأحد ٩:١٤ ص</li>
+    <li class="done a" style="--at:1.2s">تدقيق المستمسكات · مكتمل</li>
+    <li class="on a" style="--at:1.7s">الكشف الموقعي · الثلاثاء ١٠:٠٠ ص</li>
+    <li class="a" style="--at:2.2s">إصدار الإجازة</li>
+  </ul>
+  <div class="toast pop" style="--at:2.9s"><i></i><span>تحديث على معاملتك<small>موعد الكشف الموقعي: الثلاثاء ١٠:٠٠ ص</small></span></div>
+</section>
+
+<!-- 30–36s: operations room -->
+<section class="scene dark" style="--t:30s; --len:6s">
+  <div class="cap">
+    <small class="a" style="--at:.2s">٥ · غرفة العمليات</small>
+    <h2 class="a" style="--at:.35s">المحافظة <em>أمامك.</em></h2>
+    <p class="a" style="--at:.5s">٥٩ دائرة على الخريطة بمواقعها الموثّقة، ومؤشرات الإنجاز والتأخير لحظة بلحظة.</p>
+    <span class="demo a" style="--at:.8s">الأرقام بهذا المشهد تجريبية للعرض</span>
+  </div>
+  <div class="map"><svg viewBox="0 0 600 683"><path class="d" d="M411.6 580.6L413.0 585.2L425.5 599.9L428.3 611.1L438.2 625.3L449.4 633.8L479.1 652.3L526.6 637.1L544.1 638.2L586.2 656.8L587.2 643.3L580.1 622.6L581.1 592.6L590.3 563.6L594.4 523.3L599.6 399.6L563.5 398.0L519.3 406.3L485.0 406.6L486.5 411.1L485.6 415.4L470.6 444.2L463.2 452.0L453.4 456.0L447.6 456.7L454.3 476.6L448.5 503.3L440.7 524.3L428.6 550.5L411.6 580.6Z" style="--at:0.20s"/><path class="d" d="M344.0 370.7L346.1 372.4L345.4 377.6L348.5 382.8L349.2 387.6L347.7 392.5L350.9 397.5L364.2 433.6L368.8 436.5L372.2 435.6L374.3 439.2L395.1 451.5L403.2 454.0L411.8 453.1L429.3 454.3L438.2 456.8L447.6 456.7L453.4 456.0L463.2 452.0L470.6 444.2L486.6 412.6L485.0 406.6L479.7 400.6L472.0 380.5L453.5 372.3L449.9 354.3L453.5 329.6L450.4 314.7L440.1 307.0L422.6 299.8L400.5 287.0L391.7 277.7L388.6 269.0L389.2 254.6L391.7 239.7L396.4 227.9L391.7 210.5L385.1 202.8L367.6 194.1L375.1 213.1L376.8 229.7L374.0 238.7L373.5 253.9L369.4 265.7L369.0 284.5L365.8 297.8L365.7 308.9L361.3 328.2L346.7 360.8L344.0 370.7Z" style="--at:0.26s"/><path class="d" d="M353.5 682.4L381.5 683.7L479.1 652.3L449.4 633.8L438.2 625.3L428.3 611.1L425.5 599.9L411.6 583.4L411.6 579.7L428.6 550.5L437.4 531.7L448.5 503.3L454.3 476.6L447.6 456.7L438.2 456.8L429.3 454.3L411.8 453.1L414.0 469.2L423.9 497.6L412.8 529.9L406.0 538.5L391.7 564.5L383.8 575.6L379.9 591.2L365.3 633.8L353.5 682.4Z" style="--at:0.32s"/><path class="d" d="M237.7 520.9L214.3 557.9L234.7 555.0L295.0 592.3L322.4 665.3L331.5 681.5L353.5 682.4L365.3 633.8L379.9 591.2L383.8 575.6L391.7 564.5L406.0 538.5L412.8 529.9L423.9 497.6L414.0 469.2L411.8 453.1L403.2 454.0L397.0 451.2L390.8 454.3L378.2 454.2L352.8 451.1L348.4 449.9L340.8 440.5L336.1 438.9L329.0 441.0L321.8 446.6L314.5 448.0L292.8 441.5L293.0 453.6L288.6 464.5L278.5 462.6L271.7 465.0L270.6 466.7L270.7 474.4L267.7 477.1L271.2 482.8L266.0 492.3L251.1 509.0L237.7 520.9Z" style="--at:0.38s"/><path class="d" d="M273.9 409.2L274.1 412.9L279.1 423.0L287.2 424.1L291.9 430.0L292.8 441.5L314.5 448.0L321.8 446.6L329.0 441.0L336.1 438.9L340.8 440.5L348.4 449.9L352.8 451.1L378.2 454.2L390.8 454.3L395.1 451.5L374.3 439.2L372.2 435.6L368.8 436.5L364.2 433.6L350.9 397.5L347.7 392.5L349.2 387.6L348.2 381.8L345.4 377.6L346.1 372.4L344.1 370.9L344.8 366.7L361.3 328.2L363.4 317.5L342.2 314.9L333.9 307.0L328.2 304.4L318.1 302.4L315.4 298.1L316.0 295.3L314.9 293.0L309.0 290.1L302.2 284.4L298.3 301.1L290.1 315.7L285.3 320.2L284.6 322.7L280.1 349.4L281.2 353.7L280.3 376.0L276.8 385.3L277.4 397.8L273.9 409.2Z" style="--at:0.44s"/><path class="d" d="M232.6 218.4L236.4 219.8L240.0 224.8L240.5 232.5L238.7 240.2L235.7 243.8L233.3 250.7L240.0 251.4L241.7 249.0L246.1 247.3L252.9 251.5L257.5 252.5L259.0 254.5L265.5 256.2L271.2 247.3L278.7 246.8L287.4 258.3L304.1 274.8L302.2 284.4L309.0 290.1L314.9 293.0L316.0 295.3L315.4 298.1L318.1 302.4L328.2 304.4L333.9 307.0L342.2 314.9L363.4 317.5L366.3 305.2L365.8 297.8L369.0 284.5L369.4 265.7L373.5 253.9L374.0 238.7L376.8 229.7L375.1 213.1L367.6 194.1L359.9 180.8L355.7 169.5L347.5 161.8L337.2 156.2L330.7 148.2L325.3 154.9L318.7 172.9L310.3 202.9L293.6 198.5L286.6 198.6L282.2 208.1L273.9 204.9L268.8 204.9L264.3 207.0L261.3 211.8L256.3 207.9L253.5 208.2L252.0 210.5L247.2 212.3L245.6 216.4L232.6 218.4Z" style="--at:0.50s"/><path class="d" d="M-0.2 468.9L1.2 525.8L8.5 532.4L63.8 547.0L122.7 547.7L169.2 556.4L214.3 557.9L237.7 520.9L251.1 509.0L266.0 492.3L271.2 482.8L267.7 477.1L270.7 474.4L270.6 466.7L271.7 465.0L278.5 462.6L288.6 464.5L293.0 453.6L293.1 437.0L291.9 430.0L287.2 424.1L279.1 423.0L274.1 412.9L273.9 409.2L277.4 397.8L276.8 385.3L280.3 376.0L281.2 362.2L269.5 355.6L264.0 364.3L260.1 364.6L257.8 362.3L255.9 362.2L253.7 365.3L248.7 363.8L244.6 367.1L236.6 368.9L229.5 368.9L228.5 367.8L228.8 359.8L224.2 357.9L221.2 360.4L220.4 366.0L209.3 361.3L202.1 364.8L202.1 359.1L168.0 342.9L150.7 332.8L118.3 301.8L125.2 283.1L130.8 278.8L122.5 265.8L118.6 268.2L106.9 267.1L95.9 296.3L55.7 297.5L54.3 312.0L40.5 335.3L47.0 346.2L55.0 369.5L55.7 399.3L26.6 432.1L30.3 454.0L10.6 459.1L-0.2 468.9Z" style="--at:0.56s"/><path class="d" d="M118.3 301.8L150.7 332.8L168.0 342.9L202.1 359.1L202.1 364.8L209.3 361.3L220.4 366.0L221.2 360.4L224.2 357.9L228.8 359.8L228.5 367.8L229.5 368.9L236.6 368.9L244.6 367.1L248.7 363.8L253.7 365.3L255.9 362.2L257.8 362.3L260.1 364.6L264.0 364.3L269.5 355.6L281.2 362.2L281.2 351.7L280.1 349.4L285.3 320.2L290.1 315.7L298.3 301.1L303.3 279.5L292.8 272.7L288.6 278.2L276.3 275.1L274.5 276.1L267.3 288.2L262.5 292.3L249.5 283.8L242.9 287.7L237.8 294.2L234.4 285.9L231.2 286.0L219.3 290.1L220.1 296.7L211.9 306.4L209.0 307.2L199.5 306.1L195.5 302.6L186.5 299.2L148.4 302.9L118.3 301.8Z" style="--at:0.62s"/><path class="d" d="M171.1 285.1L171.2 289.2L174.9 300.5L189.4 299.6L199.5 306.1L209.0 307.2L211.9 306.4L220.1 296.7L219.3 290.1L234.4 285.9L237.8 294.2L242.9 287.7L249.5 283.8L262.5 292.3L267.3 288.2L274.5 276.1L276.3 275.1L288.6 278.2L292.8 272.7L303.3 279.5L304.1 274.8L287.4 258.3L278.7 246.8L271.2 247.3L265.5 256.2L259.0 254.5L257.5 252.5L252.9 251.5L246.1 247.3L241.7 249.0L240.0 251.4L233.3 250.7L239.8 237.1L240.0 224.8L236.4 219.8L232.6 218.4L221.0 218.4L219.5 219.1L221.0 231.9L217.9 233.7L211.7 228.2L210.1 234.5L203.6 236.9L202.3 236.4L200.9 232.9L196.7 232.5L193.2 234.0L192.1 229.8L189.0 228.2L185.1 229.7L183.2 233.7L183.6 236.1L188.1 241.0L184.3 242.9L182.1 246.0L179.9 250.4L179.2 255.6L183.0 260.0L182.2 268.7L173.1 278.9L171.1 285.1Z" style="--at:0.68s"/><path class="d" d="M39.0 299.7L55.7 297.5L95.9 296.3L106.9 267.1L118.6 268.2L122.5 265.8L130.8 278.8L125.2 283.1L118.3 301.8L148.4 302.9L174.9 300.5L171.2 289.2L171.1 285.1L173.1 278.9L182.2 268.7L183.0 260.0L179.2 255.6L179.9 250.4L182.1 246.0L184.3 242.9L188.1 241.0L183.6 236.1L183.2 233.7L185.1 229.7L189.0 228.2L192.1 229.8L193.2 234.0L196.7 232.5L200.9 232.9L202.3 236.4L203.6 236.9L210.1 234.5L211.7 228.2L217.9 233.7L220.1 233.0L221.0 231.9L219.5 219.1L221.0 218.4L232.6 218.4L245.6 216.4L247.2 212.3L252.0 210.5L253.5 208.2L256.3 207.9L261.3 211.8L264.3 207.0L268.8 204.9L273.9 204.9L282.2 208.1L286.6 198.6L293.6 198.5L310.3 202.9L318.7 172.9L325.3 154.9L330.7 148.2L328.0 144.9L322.8 86.1L312.0 69.8L301.2 49.8L293.0 42.2L272.1 63.0L260.3 56.6L249.8 55.1L239.0 56.2L231.3 59.7L227.2 59.0L225.7 57.2L221.5 57.3L219.7 61.5L216.8 64.1L204.6 69.3L200.1 73.3L198.4 82.1L194.2 87.7L182.2 85.1L179.8 86.2L178.9 90.5L164.5 107.5L144.3 110.0L133.7 122.5L67.4 168.7L68.7 191.9L58.6 201.7L63.0 238.0L53.5 269.9L41.2 283.0L39.0 299.7Z" style="--at:0.74s"/><path class="d" d="M59.4 100.4L59.6 145.4L66.8 159.6L67.4 168.7L133.7 122.5L144.3 110.0L164.5 107.5L178.9 90.5L179.8 86.2L182.2 85.1L194.2 87.7L198.4 82.1L200.1 73.3L204.6 69.3L216.8 64.1L219.7 61.5L221.5 57.3L225.7 57.2L227.2 59.0L231.3 59.7L239.0 56.2L249.8 55.1L260.3 56.6L272.1 63.0L293.0 42.2L277.1 32.5L275.0 25.3L294.6 17.2L292.5 1.2L175.8 3.2L174.4 22.8L177.2 35.0L177.9 45.8L174.4 48.2L162.4 47.9L158.1 50.2L153.1 54.5L150.0 62.7L141.0 74.1L131.7 82.6L128.0 81.4L122.8 76.0L119.8 77.8L122.9 91.3L122.5 96.5L110.4 104.1L99.6 104.3L95.4 97.7L89.4 101.1L59.4 100.4Z" style="--at:0.80s"/><path class="d" d="M30.0 35.0L38.8 49.3L50.6 73.9L59.4 100.4L89.4 101.1L95.4 97.7L99.6 104.3L110.4 104.1L122.5 96.5L122.9 91.3L119.8 77.8L122.8 76.0L128.0 81.4L131.7 82.6L141.0 74.1L150.0 62.7L153.1 54.5L158.1 50.2L162.4 47.9L174.4 48.2L177.9 45.8L177.2 35.0L174.4 22.8L175.8 3.2L147.9 -1.5L139.3 -1.7L136.7 -0.2L95.1 4.6L54.9 5.3L31.3 11.9L30.0 35.0Z" style="--at:0.86s"/><path class="g" d="M-0.2 468.9L1.2 525.8L8.5 532.4L63.8 547.0L122.7 547.7L169.2 556.4L214.3 557.9L234.7 555.0L295.0 592.3L322.4 665.3L331.5 681.5L381.5 683.7L526.6 637.1L544.1 638.2L586.2 656.8L587.2 643.3L580.1 622.6L581.1 592.6L590.3 563.6L594.4 523.3L599.6 399.6L563.5 398.0L519.3 406.3L485.0 406.6L479.7 400.6L472.0 380.5L453.5 372.3L449.9 354.3L453.5 329.6L450.4 314.7L440.1 307.0L422.6 299.8L400.5 287.0L391.7 277.7L388.6 269.0L389.2 254.6L391.7 239.7L396.4 227.9L391.7 210.5L385.1 202.8L367.6 194.1L359.9 180.8L355.7 169.5L347.5 161.8L337.2 156.2L328.0 144.9L322.8 86.1L312.0 69.8L301.2 49.8L293.0 42.2L277.1 32.5L275.0 25.3L294.6 17.2L292.5 1.2L175.8 3.2L147.9 -1.5L139.3 -1.7L136.7 -0.2L95.1 4.6L54.9 5.3L31.3 11.9L30.0 35.0L38.8 49.3L50.6 73.9L59.4 100.4L58.8 140.3L59.6 145.4L66.8 159.6L68.7 191.9L58.6 201.7L63.0 238.0L53.5 269.9L41.2 283.0L39.0 299.7L55.7 297.5L54.3 312.0L40.5 335.3L47.0 346.2L55.0 369.5L55.7 399.3L26.6 432.1L30.3 454.0L10.6 459.1L-0.2 468.9Z"/><circle class="pt" cx="242.2" cy="443.9" r="5" style="--at:1.60s"/><circle class="pt" cx="242.2" cy="440.2" r="5" style="--at:1.63s"/><circle class="pt" cx="245.4" cy="436.6" r="5" style="--at:1.66s"/><circle class="pt" cx="213.8" cy="272.1" r="5" style="--at:1.69s"/><circle class="pt" cx="191.9" cy="129" r="5" style="--at:1.72s"/><circle class="pt" cx="194" cy="216.3" r="5" style="--at:1.75s"/><circle class="pt" cx="383.9" cy="387.5" r="5" style="--at:1.78s"/><circle class="pt" cx="103.1" cy="410.2" r="5" style="--at:1.81s"/><circle class="pt" cx="246.1" cy="436.6" r="5" style="--at:1.84s"/><circle class="pt" cx="248.3" cy="442" r="5" style="--at:1.87s"/><circle class="pt" cx="210.9" cy="275.4" r="5" style="--at:1.90s"/><circle class="pt" cx="331.5" cy="515.1" r="5" style="--at:1.93s"/><circle class="pt" cx="188.6" cy="129.2" r="5" style="--at:1.96s"/><circle class="pt" cx="542" cy="482" r="5" style="--at:1.99s"/><circle class="pt" cx="194.7" cy="216.1" r="5" style="--at:2.02s"/><circle class="pt" cx="246.2" cy="442.4" r="5" style="--at:2.05s"/><circle class="pt" cx="246.3" cy="442.9" r="5" style="--at:2.08s"/><circle class="pt" cx="243.6" cy="441.2" r="5" style="--at:2.11s"/><circle class="pt" cx="247.8" cy="439.4" r="5" style="--at:2.14s"/><circle class="pt" cx="246" cy="437.6" r="5" style="--at:2.17s"/><circle class="pt" cx="245.9" cy="438" r="5" style="--at:2.20s"/><circle class="pt" cx="246.2" cy="438.1" r="5" style="--at:2.23s"/><circle class="pt" cx="214.6" cy="271" r="5" style="--at:2.26s"/><circle class="pt" cx="239.2" cy="448.9" r="5" style="--at:2.29s"/><circle class="pt" cx="245.5" cy="435.8" r="5" style="--at:2.32s"/><circle class="pt" cx="215.9" cy="272" r="5" style="--at:2.35s"/><circle class="pt" cx="246.1" cy="432.6" r="5" style="--at:2.38s"/><circle class="pt" cx="250.1" cy="431.2" r="5" style="--at:2.41s"/><circle class="pt" cx="330.9" cy="513.8" r="5" style="--at:2.44s"/><circle class="pt" cx="246" cy="430" r="5" style="--at:2.47s"/><circle class="pt" cx="214" cy="272.3" r="5" style="--at:2.50s"/><circle class="pt" cx="244.5" cy="444" r="5" style="--at:2.53s"/><circle class="pt" cx="251.1" cy="437.9" r="5" style="--at:2.56s"/><circle class="pt" cx="213.8" cy="273.1" r="5" style="--at:2.59s"/><circle class="pt" cx="246.4" cy="436.3" r="5" style="--at:2.62s"/><circle class="pt" cx="245.7" cy="454.1" r="5" style="--at:2.65s"/><circle class="pt" cx="250.7" cy="437.6" r="5" style="--at:2.68s"/><circle class="pt" cx="245.1" cy="443.1" r="5" style="--at:2.71s"/><circle class="pt" cx="265.6" cy="422.4" r="5" style="--at:2.74s"/><circle class="pt" cx="254.4" cy="460.1" r="5" style="--at:2.77s"/><circle class="pt" cx="241.4" cy="443" r="5" style="--at:2.80s"/><circle class="pt" cx="241.3" cy="442.9" r="5" style="--at:2.83s"/><circle class="pt" cx="245.5" cy="434" r="5" style="--at:2.86s"/><circle class="pt" cx="250.5" cy="438" r="5" style="--at:2.89s"/><circle class="pt" cx="246.2" cy="437.9" r="5" style="--at:2.92s"/><circle class="pt" cx="246.4" cy="444" r="5" style="--at:2.95s"/><circle class="pt" cx="245.5" cy="436.3" r="5" style="--at:2.98s"/><circle class="pt" cx="234.8" cy="441.3" r="5" style="--at:3.01s"/><circle class="pt" cx="188.4" cy="128.7" r="5" style="--at:3.04s"/><circle class="pt" cx="228" cy="312" r="5" style="--at:3.07s"/><circle class="pt" cx="237.2" cy="447.8" r="5" style="--at:3.10s"/><circle class="pt" cx="216.1" cy="267.1" r="5" style="--at:3.13s"/><circle class="pt" cx="241.2" cy="451.6" r="5" style="--at:3.16s"/><circle class="pt" cx="241.7" cy="451.1" r="5" style="--at:3.19s"/><circle class="pt" cx="183.8" cy="492.8" r="5" style="--at:3.22s"/><circle class="pt" cx="241.8" cy="451.5" r="5" style="--at:3.25s"/><circle class="pt" cx="242.7" cy="442.5" r="5" style="--at:3.28s"/><circle class="pt" cx="245.4" cy="433.7" r="5" style="--at:3.31s"/><circle class="pt" cx="242.5" cy="440.6" r="5" style="--at:3.34s"/></svg></div>
+  <div class="kpis">
+    <div class="kpi a" style="--at:1.4s"><small>معاملات اليوم</small><b>١٬٣٠٨</b></div>
+    <div class="kpi a" style="--at:1.6s"><small>معدل الإنجاز</small><b>٤٫٢ يوم</b></div>
+    <div class="kpi late a" style="--at:1.8s"><small>معاملات متأخرة</small><b>٣٧</b></div>
+    <div class="kpi a" style="--at:2s"><small>إيرادات الشهر</small><b>١٨٦ مليون</b></div>
+  </div>
+</section>
+
+<!-- 36–40s: the document + close -->
+<section class="scene light is-last" style="--t:36s; --len:4s">
+  <div class="cap">
+    <small class="a" style="--at:.2s">٦ · الوثيقة</small>
+    <h2 class="a" style="--at:.35s">وثيقتك جاهزة، <em>وموثّقة برمز QR.</em></h2>
+    <p class="a" style="--at:.5s">ابدأ معاملتك اليوم:</p>
+    <span class="url a" style="--at:.8s">thi-qar.com</span>
+  </div>
+  <div class="paper pop" style="--at:.3s">
+    <small>جمهورية العراق · محافظة ذي قار</small>
+    <h3>إجازة فتح محل تجاري</h3>
+    <i></i><i></i><i class="s"></i><i></i><i class="s"></i>
+    <svg class="qr" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 29 29" shape-rendering="crispEdges"><path fill="#ffffff" d="M0 0h29v29H0z"/><path stroke="#000000" d="M0 0.5h7m1 0h1m2 0h1m5 0h2m3 0h7M0 1.5h1m5 0h1m3 0h2m4 0h1m2 0h1m2 0h1m5 0h1M0 2.5h1m1 0h3m1 0h1m2 0h2m2 0h1m1 0h6m1 0h1m1 0h3m1 0h1M0 3.5h1m1 0h3m1 0h1m1 0h1m3 0h1m1 0h3m2 0h1m2 0h1m1 0h3m1 0h1M0 4.5h1m1 0h3m1 0h1m1 0h1m1 0h2m1 0h2m1 0h3m3 0h1m1 0h3m1 0h1M0 5.5h1m5 0h1m1 0h1m1 0h1m1 0h4m1 0h1m1 0h1m2 0h1m5 0h1M0 6.5h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7M8 7.5h4m2 0h1m2 0h3M0 8.5h1m3 0h1m1 0h3m1 0h1m2 0h5m1 0h7m2 0h1M0 9.5h3m1 0h1m6 0h2m8 0h8M3 10.5h2m1 0h1m2 0h1m1 0h1m1 0h3m2 0h1m3 0h3m3 0h1M1 11.5h3m1 0h1m3 0h1m1 0h3m1 0h3m1 0h4m1 0h2m1 0h2M0 12.5h1m1 0h1m1 0h1m1 0h1m1 0h2m2 0h2m3 0h1m2 0h2m5 0h1M0 13.5h1m2 0h3m2 0h1m1 0h1m2 0h2m1 0h1m1 0h1m1 0h1m1 0h1m1 0h5M1 14.5h1m1 0h1m2 0h1m2 0h2m1 0h1m3 0h3m2 0h1m2 0h3m1 0h1M0 15.5h1m1 0h2m3 0h1m1 0h1m1 0h2m1 0h1m2 0h3m1 0h2m4 0h2M0 16.5h2m3 0h4m1 0h1m2 0h5m1 0h1m1 0h1m1 0h1m3 0h1M0 17.5h1m1 0h2m1 0h1m1 0h3m2 0h1m9 0h4m1 0h2M3 18.5h2m1 0h1m2 0h3m1 0h3m4 0h2m2 0h1m1 0h1m1 0h1M3 19.5h1m4 0h1m1 0h1m1 0h2m1 0h3m4 0h1m4 0h2M0 20.5h3m3 0h1m3 0h4m3 0h1m1 0h7m2 0h1M8 21.5h1m3 0h3m1 0h5m3 0h1m3 0h1M0 22.5h7m1 0h1m1 0h2m4 0h2m1 0h2m1 0h1m1 0h3m1 0h1M0 23.5h1m5 0h1m2 0h3m2 0h1m2 0h4m3 0h1m2 0h1M0 24.5h1m1 0h3m1 0h1m1 0h2m3 0h3m1 0h1m1 0h7m1 0h2M0 25.5h1m1 0h3m1 0h1m2 0h1m2 0h2m4 0h1m1 0h1m2 0h1m3 0h1M0 26.5h1m1 0h3m1 0h1m2 0h3m1 0h1m1 0h1m2 0h1m2 0h1m3 0h4M0 27.5h1m5 0h1m2 0h1m3 0h5m1 0h2m3 0h2m1 0h2M0 28.5h7m1 0h2m2 0h1m2 0h3m2 0h2m1 0h2m2 0h1"/></svg>
+
+    <span class="stamp">وثيقة موثّقة</span>
+  </div>
+</section>
+
+<div class="progress"><i></i></div>
+</body>
+</html>
