@@ -536,7 +536,7 @@
   margin: 0 0 16px;
   color: var(--ld-ink);
   font-family: var(--ds-font-display);
-  font-size: clamp(2.4rem, 5vw, 4.25rem);
+  font-size: clamp(2.3rem, 4.6vw, 3.9rem);
   font-weight: 800;
   line-height: 1.12;
   letter-spacing: -0.015em;
@@ -1300,7 +1300,7 @@
   margin: 10px 0 12px;
   color: #fff;
   font-family: var(--ds-font-display);
-  font-size: clamp(2.4rem, 5vw, 4.25rem);
+  font-size: clamp(2.3rem, 4.6vw, 3.9rem);
   font-weight: 800;
   line-height: 1.12;
 }
@@ -1640,20 +1640,32 @@
    How it works — video
    ============================================================================================= */
 .ld-how {
-  padding-block: clamp(72px, 9vw, 120px);
-  background: var(--ld-paper);
+  padding-block: clamp(80px, 10vw, 140px);
+  background: var(--ld-card);
 }
 .ld-how-grid {
   display: grid;
   grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+  grid-template-areas:
+    'copy player'
+    'actions player';
   align-items: center;
-  gap: clamp(32px, 6vw, 96px);
+  column-gap: clamp(32px, 6vw, 96px);
+}
+.ld-how-copy {
+  grid-area: copy;
+  align-self: end;
+}
+.ld-player {
+  grid-area: player;
 }
 .ld-how h2 em {
   color: var(--ld-green);
   font-style: normal;
 }
 .ld-how-actions {
+  grid-area: actions;
+  align-self: start;
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -1890,7 +1902,11 @@
 .ld[data-motion='still'] :is(.ld-district, .ld-dot, .ld-pin, .ld-sum, .ld-perf li em, .ld-doc-bar, .ld-receipt) {
   transition: none !important;
 }
-.ld[data-motion='still'] :is(.ld-district, .ld-dot, .ld-pin, .ld-sum) {
+.ld[data-motion='still'] .ld-pin {
+  opacity: 1;
+}
+/* .ld-pin is placed by its SVG transform attribute, so it must never get a CSS transform */
+.ld[data-motion='still'] :is(.ld-district, .ld-dot, .ld-sum) {
   opacity: 1;
   transform: none;
 }
@@ -3060,5 +3076,66 @@
   }
   .ld-counts {
     gap: 18px;
+  }
+}
+
+/* ---- design polish ------------------------------------------------------------------------- */
+.ld-ops-head .ld-kicker {
+  margin-bottom: 0;
+}
+.ld-late-title {
+  display: block;
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 0.86rem;
+}
+.ld-late {
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.ld-late li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 0;
+  color: var(--ld-on-dark-2);
+  font-size: 0.8rem;
+}
+/* inside .ld-perf, so it must out-rank the bar fill rule (.ld-perf li em) */
+.ld-perf .ld-late em {
+  display: inline-block;
+  width: auto;
+  height: auto;
+  transition: none;
+  min-width: 30px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(255, 90, 95, 0.14);
+  color: #ff8a8e;
+  font-style: normal;
+  font-weight: 700;
+  text-align: center;
+}
+.ld-route svg {
+  min-width: 0;
+}
+.ld-route-end {
+  white-space: nowrap;
+}
+@media (max-width: 959px) {
+  .ld-how-grid {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      'copy'
+      'player'
+      'actions';
+    row-gap: 28px;
+  }
+  .ld-how-actions {
+    margin-top: 0;
+    max-width: none;
   }
 }

@@ -311,6 +311,7 @@ export function LandingJourney() {
       <div className="ld-journey-stage">
         <div className="ld-wrap ld-journey-grid">
           <div className="ld-journey-copy" data-reveal>
+            <span className="ld-kicker">رحلة المعاملة</span>
             <h2 id="ld-journey-title" className="ld-split">
               <span className="ld-l">
                 <span>من الطلب</span>
@@ -610,6 +611,11 @@ const PERF = [
   { icon: Leaf, name: 'دائرة الزراعة', v: 63 },
   { icon: Droplet, name: 'دائرة الموارد المائية', v: 70 },
 ]
+const LATE = [
+  { name: 'بلدية الشطرة', count: 14 },
+  { name: 'تسجيل عقاري الناصرية', count: 9 },
+  { name: 'بلدية سوق الشيوخ', count: 6 },
+]
 const SUMMARY = [
   { icon: FileText, label: 'المعاملات', bars: [78, 46], tone: '' },
   { icon: TrendingUp, label: 'الإيرادات', bars: [64, 38], tone: '' },
@@ -699,7 +705,7 @@ export function LandingOperations() {
       <div className="ld-wrap">
         <div className="ld-ops-head" data-reveal>
           <div>
-            <span className="ld-eyebrow">غرفة العمليات المركزية</span>
+            <span className="ld-kicker is-light">غرفة العمليات المركزية</span>
             <h2 id="ld-ops-title" className="ld-split">
               <span className="ld-l">
                 <span>المحافظة أمامك.</span>
@@ -830,6 +836,15 @@ export function LandingOperations() {
                 </li>
               ))}
             </ul>
+            <b className="ld-late-title">معاملات متأخرة عن المدة</b>
+            <ul className="ld-late">
+              {LATE.map(row => (
+                <li key={row.name}>
+                  <span>{row.name}</span>
+                  <em>{row.count.toLocaleString('ar-IQ')}</em>
+                </li>
+              ))}
+            </ul>
           </div>
 
           <div className="ld-summary">
@@ -909,6 +924,7 @@ export function LandingHow() {
     <section className="ld-how" id="how" ref={section} aria-labelledby="ld-how-title">
       <div className="ld-wrap ld-how-grid">
         <div className="ld-how-copy" data-reveal>
+          <span className="ld-kicker">فيديو تعريفي · ٤٠ ثانية</span>
           <h2 id="ld-how-title" className="ld-split">
             <span className="ld-l">
               <span>شوف شلون</span>
@@ -917,15 +933,15 @@ export function LandingHow() {
               <em>تشتغل.</em>
             </span>
           </h2>
-          <p>رحلة رقمية تربط المواطن بالدائرة.</p>
-          <div className="ld-how-actions">
-            <Link href="/onboarding" className="ld-btn is-ink">
-              إنشاء حساب <ArrowLeft aria-hidden="true" />
-            </Link>
-            <Link href="/directory" className="ld-btn is-outline">
-              استعراض الخدمات
-            </Link>
-          </div>
+          <p>رحلة رقمية تربط المواطن بالدائرة، بواجهات المنصة نفسها وشرح مكتوب على الشاشة.</p>
+        </div>
+        <div className="ld-how-actions">
+          <Link href="/onboarding" className="ld-btn is-ink">
+            إنشاء حساب <ArrowLeft aria-hidden="true" />
+          </Link>
+          <Link href="/directory" className="ld-btn is-outline">
+            استعراض الخدمات
+          </Link>
         </div>
 
         <motion.div
@@ -983,6 +999,7 @@ export function LandingFooter() {
         </Link>
         <nav aria-label="روابط التذييل">
           <Link href="/privacy">الخصوصية</Link>
+          <Link href="/accessibility">إمكانية الوصول</Link>
           <Link href="/directory">المساعدة</Link>
           <Link href="/citizen/feedback">تواصل معنا</Link>
         </nav>

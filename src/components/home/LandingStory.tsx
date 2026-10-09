@@ -120,7 +120,7 @@ export function LandingServices() {
     <section className="ld-services" id="services" ref={section} aria-labelledby="ld-services-title">
       <div className="ld-wrap ld-services-grid">
         <div className="ld-services-copy" data-reveal>
-          <span className="ld-kicker">المشهد الأول</span>
+          <span className="ld-kicker">دليل الخدمات</span>
           <h2 id="ld-services-title" className="ld-split">
             <span className="ld-l">
               <span>كل خدماتك،</span>
@@ -266,7 +266,7 @@ export function LandingDepartment() {
     <section className="ld-dept" id="department" ref={section} aria-labelledby="ld-dept-title">
       <div className="ld-wrap">
         <div className="ld-dept-head" data-reveal>
-          <span className="ld-kicker">المشهد الثالث</span>
+          <span className="ld-kicker">بوابة الدائرة</span>
           <h2 id="ld-dept-title" className="ld-split">
             <span className="ld-l">
               <span>
@@ -384,7 +384,7 @@ export function LandingAssistant() {
     <section className="ld-assist" id="assistant" aria-labelledby="ld-assist-title">
       <div className="ld-wrap">
         <div className="ld-assist-head" data-reveal>
-          <span className="ld-kicker">المشهد الخامس</span>
+          <span className="ld-kicker">المساعد الذكي</span>
           <h2 id="ld-assist-title" className="ld-split">
             <span className="ld-l">
               <span>
