@@ -126,12 +126,17 @@ export function PortalLayout({
     let socket: WebSocket | null = null
     let stopped = false
     let retryDelay = 1000
+    let connectedBefore = false
     const connect = () => {
       if (stopped) return
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
       socket = new WebSocket(`${protocol}//${window.location.host}/ws/employee-work-queue`)
       socket.addEventListener('open', () => {
         retryDelay = 1000
+        // events sent while the socket was down are lost: have the queues refetch once
+        if (connectedBefore)
+          window.dispatchEvent(new CustomEvent('employee-work-queue-updated', { detail: { entity: 'RESYNC' } }))
+        connectedBefore = true
       })
       socket.addEventListener('message', event => {
         try {

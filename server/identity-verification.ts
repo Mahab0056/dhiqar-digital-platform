@@ -203,11 +203,15 @@ export function nameFromMrz(text: string): string | null {
 // ---- orchestration ---------------------------------------------------------------------------
 export type AutoAssessment = 'PENDING' | 'READY_TO_APPROVE' | 'NEEDS_ATTENTION' | 'LIKELY_MISMATCH' | 'UNAVAILABLE'
 
+/** Average frame-to-frame similarity above this suggests a still image held to the camera. */
+export const STATIC_VIDEO_CONSISTENCY = 0.93
+
 function assess(face: FaceVerification | null, name: NameMatch): AutoAssessment {
   if (!face || face.status === 'UNAVAILABLE') return 'UNAVAILABLE'
   if (face.status === 'NO_MATCH') return 'LIKELY_MISMATCH'
-  if (face.status === 'MATCH' && (name.status === 'MATCH' || name.status === 'NO_NAME_ON_DOCUMENT'))
-    return 'READY_TO_APPROVE'
+  // a live face moves between frames; a printed or replayed portrait barely changes
+  const staticVideo = face.frameConsistency !== null && face.frameConsistency > STATIC_VIDEO_CONSISTENCY
+  if (face.status === 'MATCH' && name.status === 'MATCH' && !staticVideo) return 'READY_TO_APPROVE'
   return 'NEEDS_ATTENTION'
 }
 

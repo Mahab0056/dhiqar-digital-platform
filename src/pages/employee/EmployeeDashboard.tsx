@@ -8,7 +8,6 @@ import {
   BriefcaseBusiness,
   Building2,
   CheckCircle2,
-  Clock3,
   Eye,
   FileArchive,
   FileText,
@@ -77,11 +76,17 @@ export function EmployeeDashboard() {
       .catch(() => navigate('/staff/login?next=%2Femployee'))
   }, [load, navigate])
   useEffect(() => {
+    // bursts of events (one clerk's save echoes, several departments) collapse into one reload
+    let timer = 0
     const refreshQueue = () => {
-      void load()
+      window.clearTimeout(timer)
+      timer = window.setTimeout(() => void load(), 500)
     }
     window.addEventListener('employee-work-queue-updated', refreshQueue)
-    return () => window.removeEventListener('employee-work-queue-updated', refreshQueue)
+    return () => {
+      window.clearTimeout(timer)
+      window.removeEventListener('employee-work-queue-updated', refreshQueue)
+    }
   }, [load])
   const openAttachment = async (mediaId: string, label: string) => {
     setMediaError('')
@@ -94,6 +99,19 @@ export function EmployeeDashboard() {
   }
   const [rejectOpen, setRejectOpen] = useState(false)
   const [rejectReason, setRejectReason] = useState('')
+  const [requestedDoc, setRequestedDoc] = useState('')
+  const selectApp = (app: GovernmentApplication) => {
+    if (openedMedia) URL.revokeObjectURL(openedMedia.url)
+    setOpenedMedia(null)
+    setMediaError('')
+    setReviewError('')
+    setRejectOpen(false)
+    setRejectReason('')
+    setRequestedDoc('')
+    setSelected(app)
+    // the detail endpoint writes the APPLICATION_VIEW audit entry the screen promises
+    void api.getApplication(app.reference).catch(() => undefined)
+  }
   const act = async (kind: 'request' | 'approve' | 'reject') => {
     if (!selected) return
     setBusy(true)
@@ -101,7 +119,13 @@ export function EmployeeDashboard() {
     try {
       if (kind === 'request') {
         const needsFaceVideo = !selected.attachments.some(item => item.purpose === 'FACE_VIDEO' && item.available)
-        await api.requestDocument(selected.reference, needsFaceVideo ? 'فيديو توثيق الوجه القصير' : 'المستند المطلوب')
+        const documentName = needsFaceVideo ? 'فيديو توثيق الوجه القصير' : requestedDoc.trim()
+        if (documentName.length < 2) {
+          setReviewError('اكتب اسم المستند المطلوب من المواطن حتى يعرف ماذا يرفع.')
+          return
+        }
+        await api.requestDocument(selected.reference, documentName)
+        setRequestedDoc('')
       } else if (kind === 'reject') {
         await api.rejectApplication(selected.reference, rejectReason.trim())
         setRejectOpen(false)
@@ -153,7 +177,7 @@ export function EmployeeDashboard() {
           </button>
         </div>
       </section>
-      <section className="employee-live-work-queue" aria-live="polite">
+      <section className="employee-live-work-queue">
         <div>
           <span>
             <BriefcaseBusiness />
@@ -186,36 +210,6 @@ export function EmployeeDashboard() {
             <ShieldCheck /> فتح طلبات الخدمات
           </a>
         )}
-      </section>
-      <section className="employee-kpis">
-        <div>
-          <span className="blue">
-            <FileText />
-          </span>
-          <small>معاملات محلية جديدة</small>
-          <strong>{apps.filter(a => a.status === 'SUBMITTED').length}</strong>
-        </div>
-        <div>
-          <span className="green">
-            <Eye />
-          </span>
-          <small>معاملات محلية قيد التدقيق</small>
-          <strong>{apps.filter(a => a.status === 'UNDER_REVIEW').length}</strong>
-        </div>
-        <div>
-          <span className="amber">
-            <Bell />
-          </span>
-          <small>معاملات محلية بانتظار المواطن</small>
-          <strong>{apps.filter(a => a.status === 'ACTION_REQUIRED').length}</strong>
-        </div>
-        <div>
-          <span className="red">
-            <Clock3 />
-          </span>
-          <small>طلبات خدمات مفتوحة</small>
-          <strong>{workQueue.serviceRequests.toLocaleString('en-US')}</strong>
-        </div>
       </section>
       <WorkspaceTabs
         ariaLabel="أقسام بوابة الموظف"
@@ -261,14 +255,14 @@ export function EmployeeDashboard() {
                           {apps.length === 0 ? (
                             <div className="empty-queue">
                               <FileText />
-                              <p>لا توجد معاملات. قدّم طلباً من بوابة المواطن أولاً.</p>
+                              <p>لا توجد معاملات إجازة فتح محل في قائمتك حالياً.</p>
                             </div>
                           ) : (
                             apps.map(app => (
                               <button
                                 className={selected?.reference === app.reference ? 'queue-item selected' : 'queue-item'}
                                 key={app.reference}
-                                onClick={() => setSelected(app)}
+                                onClick={() => selectApp(app)}
                               >
                                 <div>
                                   <strong>{app.serviceName}</strong>
@@ -279,9 +273,11 @@ export function EmployeeDashboard() {
                                 <small>
                                   {app.reference} • {app.citizenName}
                                 </small>
-                                <p>{app.currentAction}</p>
-                                <time>
-                                  {new Date(app.updatedAt).toLocaleTimeString('en-GB', {
+                                <span className="queue-item-action">{app.currentAction}</span>
+                                <time dateTime={app.updatedAt}>
+                                  {new Date(app.updatedAt).toLocaleString('en-GB', {
+                                    day: '2-digit',
+                                    month: '2-digit',
                                     hour: '2-digit',
                                     minute: '2-digit',
                                   })}
@@ -314,7 +310,9 @@ export function EmployeeDashboard() {
                                 <ShieldCheck />
                                 <span>
                                   <strong>وصول حسب الحاجة الوظيفية</strong>
-                                  <small>بيانات الهوية الحساسة مخفية، وتم تسجيل فتح المعاملة في سجل التدقيق.</small>
+                                  <small>
+                                    بيانات الهوية الحساسة مخفية، ويُسجَّل فتح المعاملة باسمك في سجل التدقيق.
+                                  </small>
                                 </span>
                               </div>
                               <div className="review-section">
@@ -323,12 +321,11 @@ export function EmployeeDashboard() {
                                   <span>
                                     <small>الاسم</small>
                                     <strong>
-                                      {selected.citizenName} <BadgeCheck />
+                                      {selected.citizenName}{' '}
+                                      {selected.citizenVerificationStatus?.startsWith('VERIFIED') && (
+                                        <BadgeCheck aria-label="هوية موثقة" />
+                                      )}
                                     </strong>
-                                  </span>
-                                  <span>
-                                    <small>الرقم الوطني</small>
-                                    <strong>********** 4821</strong>
                                   </span>
                                   <span>
                                     <small>القضاء</small>
@@ -336,7 +333,15 @@ export function EmployeeDashboard() {
                                   </span>
                                   <span>
                                     <small>حالة الهوية</small>
-                                    <strong>موثّقة يدوياً أو قيد المراجعة</strong>
+                                    <strong>
+                                      {selected.citizenVerificationStatus === 'VERIFIED_MANUAL'
+                                        ? 'موثّقة بمراجعة بشرية'
+                                        : selected.citizenVerificationStatus === 'VERIFIED'
+                                          ? 'موثّقة'
+                                          : selected.citizenVerificationStatus === 'MANUAL_REVIEW'
+                                            ? 'قيد مراجعة الهوية'
+                                            : 'غير موثّقة'}
+                                    </strong>
                                   </span>
                                 </div>
                               </div>
@@ -405,6 +410,7 @@ export function EmployeeDashboard() {
                                       <strong>{openedMedia.label}</strong>
                                       <button
                                         type="button"
+                                        aria-label="إغلاق المعاينة"
                                         onClick={() => {
                                           URL.revokeObjectURL(openedMedia.url)
                                           setOpenedMedia(null)
@@ -476,6 +482,26 @@ export function EmployeeDashboard() {
                                   </div>
                                 </div>
                               )}
+                              {!missingFaceVerification &&
+                                selected.status !== 'APPROVED' &&
+                                selected.status !== 'REJECTED' && (
+                                  <label className="review-request-doc">
+                                    المستند المطلوب من المواطن <small>عند استخدام «طلب مستند»</small>
+                                    <input
+                                      value={requestedDoc}
+                                      onChange={event => setRequestedDoc(event.target.value.slice(0, 120))}
+                                      placeholder="مثال: عقد إيجار مصدّق، صورة واضحة لواجهة المحل"
+                                      list="employee-common-docs"
+                                    />
+                                    <datalist id="employee-common-docs">
+                                      <option value="عقد إيجار مصدّق" />
+                                      <option value="سند الملكية (الطابو)" />
+                                      <option value="صورة واضحة لواجهة المحل" />
+                                      <option value="بطاقة السكن" />
+                                      <option value="البطاقة الوطنية الموحدة (الوجهين)" />
+                                    </datalist>
+                                  </label>
+                                )}
                               <div className="review-actions">
                                 {!rejectOpen && selected.status !== 'APPROVED' && selected.status !== 'REJECTED' && (
                                   <button className="button ghost" onClick={() => setRejectOpen(true)} disabled={busy}>

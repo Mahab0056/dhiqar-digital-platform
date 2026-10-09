@@ -22,6 +22,14 @@ import { SecureCameraCapture } from '../../components/camera/SecureCameraCapture
 import { Brand } from '../../components/public/Brand'
 import { AuthAside, AuthShell } from '../../components/public/AuthShell'
 
+/** Mirrors server/person-name.ts: two or more words, none shorter than two letters. */
+const plausibleName = (value: string) => {
+  const name = value.replace(/\s+/g, ' ').trim()
+  if (name.length < 5 || !/^[\p{Script=Arabic}A-Za-z' -]+$/u.test(name)) return false
+  const words = name.split(' ')
+  return words.length >= 2 && words.every(word => word.replace(/[ـً-ٟ'-]/g, '').length >= 2)
+}
+
 export function OnboardingPage() {
   const [, navigate] = useLocation()
   const requestedContinuePath = new URLSearchParams(window.location.search).get('continue') || ''
@@ -142,7 +150,8 @@ export function OnboardingPage() {
     setMessage('')
     try {
       const result = await api.previewIdentityDocument({ documentType, document })
-      if (result.fields.fullName) setFullName(result.fields.fullName)
+      // the server already drops OCR fragments; never overwrite what the citizen typed themselves
+      if (result.fields.fullName && !fullName.trim()) setFullName(result.fields.fullName)
       if (result.fields.documentNumber) setDocumentNumber(result.fields.documentNumber)
       setExtractedFields({
         fullName: result.fields.fullName || '',
@@ -256,7 +265,7 @@ export function OnboardingPage() {
           <div className="saved-account-details">
             <span>
               <small>رقم الهاتف</small>
-              <strong>{savedCitizen.phoneMasked}</strong>
+              <strong dir="ltr">{savedCitizen.phoneMasked}</strong>
             </span>
             <span>
               <small>حالة الهوية</small>
@@ -548,8 +557,14 @@ export function OnboardingPage() {
                   value={fullName}
                   onChange={e => setFullName(e.target.value)}
                   autoComplete="name"
-                  placeholder="الاسم كما في المستند"
+                  placeholder="الاسم الثلاثي كما في المستند"
+                  aria-invalid={fullName.trim() !== '' && !plausibleName(fullName)}
                 />
+                {fullName.trim() !== '' && !plausibleName(fullName) && (
+                  <small className="field-hint is-error">
+                    راجع الاسم: اكتبه كاملاً بحروف واضحة (الاسم الثلاثي على الأقل كلمتين)، وصحّح أي حروف ناقصة.
+                  </small>
+                )}
               </label>
               <label>
                 {documentCopy.number}

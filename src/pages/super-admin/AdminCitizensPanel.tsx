@@ -126,7 +126,7 @@ export function AdminCitizensPanel() {
               <dl>
                 <div>
                   <dt>الهاتف</dt>
-                  <dd>{citizen.phoneMasked}</dd>
+                  <dd dir="ltr">{citizen.phoneMasked}</dd>
                 </div>
                 <div>
                   <dt>الهوية</dt>

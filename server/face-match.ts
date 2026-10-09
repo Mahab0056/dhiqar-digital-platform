@@ -42,8 +42,14 @@ export function faceMatchAvailable() {
 async function sessions() {
   const runtime = await ort()
   const options = { executionProviders: ['cpu'], graphOptimizationLevel: 'all' as const, intraOpNumThreads: 2 }
-  detector ||= runtime.InferenceSession.create(join(modelsDir, 'det_500m.onnx'), options)
-  recognizer ||= runtime.InferenceSession.create(join(modelsDir, 'w600k_mbf.onnx'), options)
+  detector ||= runtime.InferenceSession.create(join(modelsDir, 'det_500m.onnx'), options).catch(error => {
+    detector = null
+    throw error
+  })
+  recognizer ||= runtime.InferenceSession.create(join(modelsDir, 'w600k_mbf.onnx'), options).catch(error => {
+    recognizer = null
+    throw error
+  })
   return { runtime, det: await detector, rec: await recognizer }
 }
 
@@ -227,7 +233,10 @@ export type FaceEmbeddingResult = { embedding: number[]; face: DetectedFace; fac
 
 /** Largest detected face → embedding. Returns null when no face is found. */
 export async function embedLargestFace(imageBuffer: Buffer): Promise<FaceEmbeddingResult | null> {
-  const image = sharp(imageBuffer, { failOn: 'none' }).rotate()
+  // metadata() of a .rotate()d pipeline still reports the stored (pre-EXIF) size, which skews detection on
+  // portrait phone photos — so materialise the upright pixels first
+  const upright = await sharp(imageBuffer, { failOn: 'none' }).rotate().toBuffer()
+  const image = sharp(upright)
   const meta = await image.metadata()
   if (!meta.width || !meta.height) return null
   const faces = await detectFaces(image, meta.width, meta.height)

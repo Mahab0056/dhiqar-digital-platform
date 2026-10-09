@@ -58,6 +58,7 @@ export interface CitizenNotification {
 }
 
 export interface GovernmentApplication {
+  citizenVerificationStatus?: string | null
   id: number
   reference: string
   citizenId: number

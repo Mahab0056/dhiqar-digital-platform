@@ -8,6 +8,15 @@ import { productionOrigin as publicBaseUrl } from '../config.js'
 import { paymentProvider, sandboxAllowed } from '../payments/providers.js'
 import { getPaymentIntent, getPaymentIntentById, settlePayment } from '../payments/intents.js'
 
+/** A rejected or approved request owes nothing more: its fee can no longer be paid. */
+const requestClosed = (reference: string | null) =>
+  Boolean(
+    reference &&
+    (
+      db.prepare('SELECT status FROM service_requests WHERE reference = ?').get(reference) as
+        { status?: string } | undefined
+    )?.status?.match(/^(APPROVED|REJECTED)$/)
+  )
 export function registerPaymentRoutes(app: express.Express) {
   /** Public: which gateway is active (the UI labels sandbox/test modes honestly). */
   app.get('/api/payments/config', (_req, res) => {
@@ -35,6 +44,8 @@ export function registerPaymentRoutes(app: express.Express) {
     const intent = getPaymentIntent(param(req, 'reference'), citizen.id)
     if (!intent) return res.status(404).json({ message: 'عملية الدفع غير موجودة ضمن حسابك.' })
     if (intent.status === 'PAID') return res.status(409).json({ message: 'هذا الرسم مسدد مسبقاً.', intent })
+    if (requestClosed(intent.serviceRequestReference))
+      return res.status(409).json({ message: 'أُغلقت هذه المعاملة، فلا يلزمك دفع هذا الرسم.', intent })
     const provider = paymentProvider()
     if (!provider)
       return res.status(503).json({
@@ -74,6 +85,8 @@ export function registerPaymentRoutes(app: express.Express) {
     const intent = getPaymentIntent(param(req, 'reference'), citizen.id)
     if (!intent) return res.status(404).json({ message: 'عملية الدفع غير موجودة ضمن حسابك.' })
     const payload = z.object({ outcome: z.enum(['PAID', 'FAILED', 'CANCELLED']).default('PAID') }).parse(req.body || {})
+    if (payload.outcome === 'PAID' && requestClosed(intent.serviceRequestReference))
+      return res.status(409).json({ message: 'أُغلقت هذه المعاملة، فلا يلزمك دفع هذا الرسم.', intent })
     const result = provider.parseCallback({ intentId: intent.id, outcome: payload.outcome })
     const settled = settlePayment({
       intentId: intent.id,

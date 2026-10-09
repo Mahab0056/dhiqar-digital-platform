@@ -112,3 +112,133 @@
   background: var(--ds-surface);
   font-size: 11px;
 }
+
+/* ---- service-request queue: search, filters, age and overdue ----------------------------------- */
+.service-requests-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 14px;
+}
+.service-requests-search {
+  display: flex;
+  flex: 1 1 280px;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 0 12px;
+  border: 1px solid var(--ds-border-strong, var(--ds-border));
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-surface);
+}
+.service-requests-search:focus-within {
+  border-color: var(--ds-focus-color);
+  box-shadow: var(--ds-focus);
+}
+.service-requests-search svg {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  color: var(--ds-text-muted);
+}
+.service-requests-search input {
+  flex: 1;
+  min-width: 0;
+  height: 40px;
+  border: 0;
+  background: transparent;
+  color: var(--ds-text);
+  font: inherit;
+  font-size: var(--ds-text-sm);
+}
+.service-requests-search input:focus-visible {
+  outline: none;
+}
+.service-requests-filters select {
+  min-height: 42px;
+  padding: 0 10px;
+  border: 1px solid var(--ds-border-strong, var(--ds-border));
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-surface);
+  color: var(--ds-text);
+  font: inherit;
+  font-size: var(--ds-text-sm);
+}
+.service-requests-overdue {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--ds-danger-soft);
+  color: var(--ds-danger);
+  font-size: var(--ds-text-sm);
+  font-weight: 600;
+}
+.service-requests-overdue svg {
+  width: 16px;
+  height: 16px;
+}
+.service-request-admin-row .row-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  color: var(--ds-text-muted);
+  font-size: 12px;
+}
+.service-request-admin-row .row-overdue {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--ds-danger-soft);
+  color: var(--ds-danger);
+  font-size: 11px;
+}
+.service-request-admin-row .row-action {
+  display: block;
+  overflow: hidden;
+  margin-top: 4px;
+  color: var(--ds-text-muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.service-request-admin-row.overdue {
+  box-shadow: inset 3px 0 0 var(--ds-danger);
+}
+
+/* ---- shop-permit review: action line and the requested-document field --------------------------- */
+.queue-item .queue-item-action {
+  display: block;
+  margin: 7px 0 0;
+  color: var(--ds-text-muted);
+  font-size: 12px;
+}
+.review-request-doc {
+  display: grid;
+  gap: 6px;
+  margin: 14px 0 0;
+  color: var(--ds-text);
+  font-size: var(--ds-text-sm);
+  font-weight: 600;
+}
+.review-request-doc small {
+  color: var(--ds-text-muted);
+  font-weight: 400;
+}
+.review-request-doc input {
+  min-height: 42px;
+  padding: 0 12px;
+  border: 1px solid var(--ds-border-strong, var(--ds-border));
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-surface);
+  color: var(--ds-text);
+  font: inherit;
+  font-weight: 400;
+}
+.review-request-doc input:focus-visible {
+  border-color: var(--ds-focus-color);
+  outline: none;
+  box-shadow: var(--ds-focus);
+}

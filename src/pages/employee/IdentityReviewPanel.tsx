@@ -137,7 +137,7 @@ export function IdentityReviewPanel() {
                 </span>
                 <strong>{review.citizenName}</strong>
                 <small>
-                  {review.nationalIdMasked} • {review.phoneMasked}
+                  {review.nationalIdMasked} • <bdi dir="ltr">{review.phoneMasked}</bdi>
                 </small>
                 <time>{new Date(review.submittedAt).toLocaleString('en-GB')}</time>
               </button>
@@ -151,7 +151,7 @@ export function IdentityReviewPanel() {
                     <span className="review-status pending">{labels[selected.status] || selected.status}</span>
                     <h3>{selected.citizenName}</h3>
                     <p>
-                      {selected.nationalIdMasked} • {selected.phoneMasked}
+                      {selected.nationalIdMasked} • <bdi dir="ltr">{selected.phoneMasked}</bdi>
                     </p>
                   </div>
                   <small>الاحتفاظ حتى: {new Date(selected.retentionUntil).toLocaleString('en-GB')}</small>

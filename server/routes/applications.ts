@@ -518,6 +518,12 @@ export function registerApplicationsRoutes(app: express.Express) {
         newValue: { status: 'PAYMENT_REQUIRED' },
         metadata: { fee: item.fee, providerConfigured: false },
       })
+      employeeWorkQueueRealtime.publish({
+        entity: 'APPLICATION',
+        action: 'UPDATED',
+        reference: param(req, 'reference'),
+        departmentId: (item.departmentId as string | null) || null,
+      })
       return res.json(getApplicationByReference(param(req, 'reference')))
     }
     let issuedDocument: Awaited<ReturnType<typeof createIssuedDocument>>
@@ -599,6 +605,13 @@ export function registerApplicationsRoutes(app: express.Express) {
       db.exec('ROLLBACK')
       throw error
     }
+    // other clerks' queues and counters must see the approval too
+    employeeWorkQueueRealtime.publish({
+      entity: 'APPLICATION',
+      action: 'UPDATED',
+      reference: param(req, 'reference'),
+      departmentId: (item.departmentId as string | null) || null,
+    })
     res.json(getApplicationByReference(param(req, 'reference')))
   })
 }

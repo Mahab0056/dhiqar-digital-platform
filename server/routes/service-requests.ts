@@ -94,6 +94,23 @@ const fullRowSql = `SELECT sr.*, sc.name AS service_name, sc.channel AS service_
 const loadRequest = (reference: string) =>
   db.prepare(`${fullRowSql} WHERE sr.reference = ?`).get(reference) as Record<string, unknown> | undefined
 
+const latestAppointment = (serviceRequestId: number) => {
+  const appointment = db
+    .prepare(
+      `SELECT id, preferred_date, preferred_time, status, confirmation_note FROM appointments WHERE service_request_id = ? ORDER BY created_at DESC LIMIT 1`
+    )
+    .get(serviceRequestId) as Record<string, unknown> | undefined
+  return appointment
+    ? {
+        id: String(appointment.id),
+        preferredDate: String(appointment.preferred_date),
+        preferredTime: String(appointment.preferred_time),
+        status: String(appointment.status),
+        note: appointment.confirmation_note ? String(appointment.confirmation_note) : null,
+      }
+    : null
+}
+
 const serializeServiceRequestForEmployee = (row: Record<string, unknown>) => {
   const service = getCatalogService(String(row.service_id))
   const fieldLabels = new Map((service?.fields || []).map(field => [field.key, field.label]))
@@ -121,15 +138,12 @@ const serializeServiceRequestForEmployee = (row: Record<string, unknown>) => {
     paymentStatus: String(row.payment_status || 'NOT_REQUIRED'),
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at),
+    // the employee must see the date the citizen asked for before confirming one
+    appointment: latestAppointment(Number(row.id)),
   }
 }
 
 const serializeServiceRequestForCitizen = (row: Record<string, unknown>) => {
-  const appointment = db
-    .prepare(
-      `SELECT id, preferred_date, preferred_time, status, confirmation_note FROM appointments WHERE service_request_id = ? ORDER BY created_at DESC LIMIT 1`
-    )
-    .get(Number(row.id)) as Record<string, unknown> | undefined
   return {
     id: Number(row.id),
     reference: String(row.reference),
@@ -150,15 +164,7 @@ const serializeServiceRequestForCitizen = (row: Record<string, unknown>) => {
     paymentStatus: String(row.payment_status || 'NOT_REQUIRED'),
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at),
-    appointment: appointment
-      ? {
-          id: String(appointment.id),
-          preferredDate: String(appointment.preferred_date),
-          preferredTime: String(appointment.preferred_time),
-          status: String(appointment.status),
-          note: appointment.confirmation_note ? String(appointment.confirmation_note) : null,
-        }
-      : null,
+    appointment: latestAppointment(Number(row.id)),
   }
 }
 
@@ -769,6 +775,21 @@ export function registerServiceRequestsRoutes(app: express.Express) {
         })
         .safeParse(req.body)
       if (!parsed.success) return res.status(400).json({ message: 'تحقق من الحالة ووصف الإجراء قبل الحفظ.' })
+      // while a fee is being paid the request is the citizen's move: the department may only send it back or reject it
+      if (String(row.status) === 'PAYMENT_PENDING' && !['ACTION_REQUIRED', 'REJECTED'].includes(parsed.data.status))
+        return res.status(409).json({
+          message: 'الطلب بانتظار سداد الرسم. يمكنك إعادته للمواطن أو رفضه فقط، وسيعود إليك تلقائياً بعد السداد.',
+        })
+      // re-saving "under review" with nothing new would only spam the citizen with the same notification
+      if (
+        parsed.data.status === 'UNDER_REVIEW' &&
+        String(row.status) === 'UNDER_REVIEW' &&
+        !parsed.data.currentAction &&
+        !parsed.data.decisionNote
+      )
+        return res
+          .status(409)
+          .json({ message: 'الطلب قيد التدقيق مسبقاً. اكتب ملاحظة أو إجراءً جديداً، أو اختر قراراً آخر.' })
       // a fee stays owed until it is PAID: a FAILED or CANCELLED attempt can be retried by the citizen, but it never
       // lets the request be approved (or a second fee be stacked on top of it)
       const pendingPayments = listPaymentsForRequest(Number(row.id)).filter(item => item.status !== 'PAID')
@@ -897,6 +918,11 @@ export function registerServiceRequestsRoutes(app: express.Express) {
         timestamp,
         Number(row.id)
       )
+      if (decision.status === 'REJECTED')
+        // a rejected request owes nothing: close any open fee so the citizen can't pay for a refused service
+        db.prepare(
+          `UPDATE payment_intents SET status = 'CANCELLED', updated_at = ? WHERE service_request_id = ? AND status IN ('CREATED', 'PENDING', 'FAILED')`
+        ).run(timestamp, Number(row.id))
       if (decision.status === 'APPROVED' && decision.appointmentDate) {
         db.prepare(
           `UPDATE appointments SET status = 'CONFIRMED', confirmation_note = ?, updated_at = ? WHERE service_request_id = ?`

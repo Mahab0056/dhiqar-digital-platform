@@ -57,8 +57,31 @@ function rateLimitCount(column: 'phone_hash' | 'created_ip_hash', value: string)
  * Never active in production, regardless of configuration.
  */
 export function otpDevMode() {
-  return process.env.NODE_ENV !== 'production' && process.env.OTP_DEV_MODE === 'true'
+  return (
+    process.env.NODE_ENV !== 'production' &&
+    !process.env.RAILWAY_ENVIRONMENT &&
+    !process.env.RENDER &&
+    process.env.OTP_DEV_MODE === 'true'
+  )
 }
+
+/** Wrong codes allowed per phone across all its challenges in 24 hours (5 per challenge was not a real cap). */
+const OTP_DAILY_FAILED_LIMIT = 20
+const failedAttemptsToday = (phoneHash: string) =>
+  (
+    db
+      .prepare(`SELECT COALESCE(SUM(attempts), 0) AS n FROM otp_challenges WHERE phone_hash = ? AND created_at >= ?`)
+      .get(phoneHash, new Date(Date.now() - 24 * 3_600_000).toISOString()) as { n: number }
+  ).n
+
+/** A new code replaces the old ones: earlier unverified challenges for the phone stop accepting guesses. */
+const retireEarlierChallenges = (phoneHash: string, keepId: string) =>
+  db
+    .prepare(
+      // expire rather than max out attempts, so retired codes never count as failed guesses
+      `UPDATE otp_challenges SET expires_at = ? WHERE phone_hash = ? AND id != ? AND verified_at IS NULL AND expires_at > ?`
+    )
+    .run(new Date().toISOString(), phoneHash, keepId, new Date().toISOString())
 const devCode = () => (process.env.OTP_DEV_CODE?.trim() || '246810').padStart(6, '0').slice(0, 6)
 
 export async function createOtpChallenge(input: { phone: string; requesterIp: string }) {
@@ -99,6 +122,8 @@ export async function createOtpChallenge(input: { phone: string; requesterIp: st
     createdAt.toISOString()
   )
 
+  retireEarlierChallenges(phoneHash, challengeId)
+
   if (dev) {
     db.prepare(`UPDATE otp_challenges SET delivery_status = 'DEV_MODE' WHERE id = ?`).run(challengeId)
     console.log(`[otp] DEV MODE — code for ${maskPhone(phone)} is ${code}`)
@@ -121,7 +146,9 @@ export async function createOtpChallenge(input: { phone: string; requesterIp: st
         }
       : undefined
 
+  // a hanging provider must not hold the citizen's request open; a failed send leaves no usable challenge
   const response = await fetch(`${OTPIQ_BASE_URL}/sms`, {
+    signal: AbortSignal.timeout(10_000),
     method: 'POST',
     headers: {
       Authorization: `Bearer ${apiKey}`,
@@ -134,6 +161,13 @@ export async function createOtpChallenge(input: { phone: string; requesterIp: st
       provider: 'whatsapp-telegram-sms',
       ...(deliveryReport ? { deliveryReport } : {}),
     }),
+  }).catch(error => {
+    db.prepare('DELETE FROM otp_challenges WHERE id = ?').run(challengeId)
+    throw new Error(
+      (error as Error).name === 'TimeoutError'
+        ? 'تأخر مزود الرسائل في الرد. حاول مرة أخرى بعد قليل.'
+        : 'تعذر الاتصال بمزود الرسائل. حاول مرة أخرى بعد قليل.'
+    )
   })
 
   const body = (await response.json().catch(() => ({}))) as Record<string, unknown>
@@ -184,6 +218,8 @@ export function verifyOtpChallenge(input: { challengeId: string; phone: string; 
   if (row.verified_at) throw new Error('تم استخدام رمز التحقق مسبقاً.')
   if (new Date(row.expires_at).getTime() <= Date.now()) throw new Error('انتهت صلاحية رمز التحقق. اطلب رمزاً جديداً.')
   if (row.attempts >= row.max_attempts) throw new Error('تم تجاوز عدد المحاولات المسموح. اطلب رمزاً جديداً.')
+  if (failedAttemptsToday(row.phone_hash) >= OTP_DAILY_FAILED_LIMIT)
+    throw new Error('تجاوزت عدد المحاولات اليومية لهذا الرقم. حاول غداً أو راجع الدائرة.')
   if (!safeEqualHex(row.phone_hash, digest(`phone:${phone}`))) throw new Error('رقم الهاتف لا يطابق طلب التحقق.')
 
   const candidate = hashCode(input.challengeId, phone, input.otp)

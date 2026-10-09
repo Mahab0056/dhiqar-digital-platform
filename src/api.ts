@@ -439,6 +439,7 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ phone, challengeId, otp }),
     }),
+  /** @deprecated the endpoint is retired (410); identity is submitted through the identity-review upload */
   completeIdentity: (payload: { fullName: string; consent: boolean; livenessPassed: boolean }) =>
     request<Citizen>('/api/onboarding/complete-identity', {
       method: 'POST',

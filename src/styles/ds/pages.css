@@ -586,3 +586,16 @@
 .tq-state .tq-page-actions {
   justify-content: center;
 }
+
+/* inline field hint (e.g. onboarding name check) */
+.field-hint {
+  display: block;
+  margin-top: 6px;
+  color: var(--ds-text-muted);
+  font-size: var(--ds-text-xs);
+  font-weight: 400;
+  line-height: 1.6;
+}
+.field-hint.is-error {
+  color: var(--ds-danger);
+}

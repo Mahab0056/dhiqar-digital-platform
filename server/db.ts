@@ -942,11 +942,14 @@ function mapApplication(row: Record<string, unknown>) {
   `
     )
     .all(row.id as number) as Array<Record<string, unknown>>
+  const citizen = db.prepare('SELECT verification_status FROM citizens WHERE id = ?').get(row.citizen_id as number) as
+    { verification_status?: string } | undefined
   return {
     id: row.id,
     reference: row.reference,
     citizenId: row.citizen_id,
     citizenName: row.citizen_name,
+    citizenVerificationStatus: citizen?.verification_status ?? null,
     serviceKey: row.service_key,
     serviceName: row.service_name,
     department: row.department,

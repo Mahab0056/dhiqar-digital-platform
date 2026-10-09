@@ -182,6 +182,54 @@ describe('unpaid fees block approval', () => {
   })
 })
 
+describe('employee decisions while a fee is pending', () => {
+  it('only send-back or reject are allowed, and rejecting closes the fee for good', async () => {
+    const created = await birthCertificate()
+    expect(created.body.status).toBe('PAYMENT_PENDING')
+    const reference = created.body.reference as string
+    const payment = created.body.payment.reference as string
+    const review = await request(app)
+      .patch(`/api/employee/service-requests/${reference}`)
+      .set('Cookie', healthEmployee)
+      .send({ status: 'UNDER_REVIEW', decisionNote: 'بدأ التدقيق' })
+    expect(review.status).toBe(409)
+    const rejected = await request(app)
+      .patch(`/api/employee/service-requests/${reference}`)
+      .set('Cookie', healthEmployee)
+      .send({ status: 'REJECTED', decisionNote: 'المستمسكات لا تخص المولود' })
+    expect(rejected.status).toBe(200)
+    expect(rejected.body.payments.every((item: { status: string }) => item.status !== 'PENDING')).toBe(true)
+    const pay = await request(app)
+      .post(`/api/citizen/payments/${payment}/sandbox-confirm`)
+      .set('Cookie', citizen)
+      .send({ outcome: 'PAID' })
+    expect(pay.status).toBe(409)
+    const checkout = await request(app).post(`/api/citizen/payments/${payment}/checkout`).set('Cookie', citizen)
+    expect(checkout.status).toBe(409)
+  })
+
+  it('re-saving «under review» with nothing new is refused, and the employee sees the requested appointment', async () => {
+    const created = await birthCertificate()
+    const reference = created.body.reference as string
+    const payment = created.body.payment.reference as string
+    await request(app)
+      .post(`/api/citizen/payments/${payment}/sandbox-confirm`)
+      .set('Cookie', citizen)
+      .send({ outcome: 'PAID' })
+    const first = await request(app)
+      .patch(`/api/employee/service-requests/${reference}`)
+      .set('Cookie', healthEmployee)
+      .send({ status: 'UNDER_REVIEW', decisionNote: 'قيد التدقيق' })
+    expect(first.status).toBe(200)
+    expect(first.body).toHaveProperty('appointment')
+    const again = await request(app)
+      .patch(`/api/employee/service-requests/${reference}`)
+      .set('Cookie', healthEmployee)
+      .send({ status: 'UNDER_REVIEW' })
+    expect(again.status).toBe(409)
+  })
+})
+
 describe('client errors are 4xx, not 500', () => {
   it('malformed JSON is a 400', async () => {
     const response = await request(app)

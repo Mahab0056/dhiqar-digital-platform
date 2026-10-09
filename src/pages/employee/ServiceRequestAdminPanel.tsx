@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   AlertTriangle,
   BriefcaseBusiness,
@@ -10,6 +10,7 @@ import {
   Info,
   ReceiptText,
   RefreshCw,
+  Search,
   XCircle,
 } from 'lucide-react'
 import { api } from '../../api'
@@ -34,6 +35,28 @@ const checklistStatus: Record<ChecklistItem['status'], string> = {
 }
 
 type Decision = 'UNDER_REVIEW' | 'ACTION_REQUIRED' | 'APPROVED' | 'REJECTED' | 'PAYMENT_REQUIRED'
+type Sort = 'OLDEST' | 'NEWEST' | 'UPDATED'
+
+const CLOSED = ['APPROVED', 'REJECTED']
+// waiting on the citizen (documents or fee) does not count against the department's clock
+const WAITING_ON_CITIZEN = ['ACTION_REQUIRED', 'PAYMENT_PENDING']
+/** Open requests older than this many days are flagged until the catalog carries a real SLA per service. */
+const OVERDUE_DAYS = 3
+const DAY = 86_400_000
+const ageDays = (iso: string) => Math.floor((Date.now() - new Date(iso).getTime()) / DAY)
+const ageLabel = (iso: string) => {
+  const days = ageDays(iso)
+  if (days <= 0) {
+    const hours = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 3_600_000))
+    return hours < 1 ? 'الآن' : `منذ ${hours.toLocaleString('en-US')} ساعة`
+  }
+  return days === 1 ? 'منذ يوم' : `منذ ${days.toLocaleString('en-US')} أيام`
+}
+const isOverdue = (item: CitizenServiceRequest) =>
+  !CLOSED.includes(item.status) && !WAITING_ON_CITIZEN.includes(item.status) && ageDays(item.createdAt) >= OVERDUE_DAYS
+const digits = (value: string) => value.replace(/[^\d]/g, '')
+/** A fee is still owed until it is PAID; a cancelled one (closed request) is not. */
+const owed = (status: string) => status !== 'PAID' && status !== 'CANCELLED'
 
 export function ServiceRequestAdminPanel({
   departmentId,
@@ -49,6 +72,10 @@ export function ServiceRequestAdminPanel({
   const [items, setItems] = useState<CitizenServiceRequest[]>([])
   const [scope, setScope] = useState<{ scope: string; message?: string }>({ scope: 'ALL' })
   const [filter, setFilter] = useState<'OPEN' | 'ALL'>('OPEN')
+  const [query, setQuery] = useState('')
+  const [statusFilter, setStatusFilter] = useState('')
+  const [serviceFilter, setServiceFilter] = useState('')
+  const [sort, setSort] = useState<Sort>('OLDEST')
   const [selected, setSelected] = useState<CitizenServiceRequest | null>(null)
   const [status, setStatus] = useState<Decision>('UNDER_REVIEW')
   const [currentAction, setCurrentAction] = useState('')
@@ -65,10 +92,13 @@ export function ServiceRequestAdminPanel({
     setSelected(item)
     setError('')
     if (item) {
+      // a request waiting for its fee can only be sent back or rejected
       setStatus(
-        (item.status === 'SUBMITTED' || item.status === 'APPOINTMENT_REQUESTED' || item.status === 'PAYMENT_PENDING'
-          ? 'UNDER_REVIEW'
-          : item.status) as Decision
+        (item.status === 'PAYMENT_PENDING'
+          ? 'ACTION_REQUIRED'
+          : item.status === 'SUBMITTED' || item.status === 'APPOINTMENT_REQUESTED'
+            ? 'UNDER_REVIEW'
+            : item.status) as Decision
       )
       setCurrentAction('')
       setDecisionNote(item.decisionNote || '')
@@ -80,6 +110,8 @@ export function ServiceRequestAdminPanel({
     }
   }, [])
 
+  const selectedRef = useRef<CitizenServiceRequest | null>(null)
+  selectedRef.current = selected
   const load = useCallback(
     async (reference?: string) => {
       setBusy(true)
@@ -88,16 +120,26 @@ export function ServiceRequestAdminPanel({
         setScope({ scope: response.scope, message: response.message })
         const items = departmentId ? response.items.filter(item => item.departmentId === departmentId) : response.items
         setItems(items)
-        const target = reference || selected?.reference
-        const next = items.find(item => item.reference === target) || null
-        if (next || !target) selectItem(next || items[0] || null)
+        if (reference) {
+          // after the clerk's own decision: open the saved request with a clean form
+          selectItem(items.find(item => item.reference === reference) || null)
+          return
+        }
+        // background refresh (live update, manual refresh): fresh data, but the clerk's half-written decision stays
+        if (!selectedRef.current) {
+          // open the same request the list shows first: the oldest one still waiting on the department
+          const firstOpen = items
+            .filter(item => !CLOSED.includes(item.status) && !WAITING_ON_CITIZEN.includes(item.status))
+            .sort((a, b) => a.createdAt.localeCompare(b.createdAt))[0]
+          selectItem(firstOpen || items[0] || null)
+        } else setSelected(current => (current && items.find(item => item.reference === current.reference)) || current)
       } catch (loadError) {
         setError((loadError as Error).message)
       } finally {
         setBusy(false)
       }
     },
-    [selected?.reference, selectItem, departmentId]
+    [selectItem, departmentId]
   )
 
   useEffect(() => {
@@ -114,9 +156,19 @@ export function ServiceRequestAdminPanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focusReference, items])
   useEffect(() => {
-    const refreshQueue = () => void load()
+    // only service-request events (or a resync after reconnecting) matter here; bursts collapse into one reload
+    let timer = 0
+    const refreshQueue = (event: Event) => {
+      const entity = (event as CustomEvent<{ entity?: string }>).detail?.entity
+      if (entity && entity !== 'SERVICE_REQUEST' && entity !== 'RESYNC') return
+      window.clearTimeout(timer)
+      timer = window.setTimeout(() => void load(), 500)
+    }
     window.addEventListener('employee-work-queue-updated', refreshQueue)
-    return () => window.removeEventListener('employee-work-queue-updated', refreshQueue)
+    return () => {
+      window.clearTimeout(timer)
+      window.removeEventListener('employee-work-queue-updated', refreshQueue)
+    }
   }, [load])
 
   const reviewDocument = async (item: ChecklistItem, verdict: 'VERIFIED' | 'REJECTED') => {
@@ -145,6 +197,8 @@ export function ServiceRequestAdminPanel({
     if (status === 'REJECTED' && decisionNote.trim().length < 6) return setError('اكتب سبب الرفض للمواطن.')
     if (status === 'PAYMENT_REQUIRED' && !(Number(amountIqd) >= 250))
       return setError('أدخل مبلغ الرسم بالدينار (250 د.ع فأكثر).')
+    if (currentAction.trim() && currentAction.trim().length < 6)
+      return setError('نص الإجراء الظاهر للمواطن قصير جداً — اكتب 6 أحرف على الأقل أو اتركه فارغاً.')
     if (status === 'APPROVED' && pendingRequired.length)
       return setError(`دقّق كل المستمسكات المطلوبة قبل الموافقة: ${pendingRequired.map(doc => doc.label).join('، ')}.`)
     setBusy(true)
@@ -171,10 +225,41 @@ export function ServiceRequestAdminPanel({
   const pendingRequired = checklist.filter(item => item.required && item.status !== 'VERIFIED')
   const rejectedDocs = checklist.filter(item => item.status === 'REJECTED')
   const closed = selected ? ['APPROVED', 'REJECTED'].includes(selected.status) : false
-  const pendingPayment = selected?.payments?.find(payment => payment.status === 'PENDING')
+  const pendingPayment = selected?.payments?.find(payment => owed(payment.status))
   const paidPayments = selected?.payments?.filter(payment => payment.status === 'PAID') || []
-  const visibleItems = items.filter(item => filter === 'ALL' || !['APPROVED', 'REJECTED'].includes(item.status))
-  const openCount = items.filter(item => !['APPROVED', 'REJECTED'].includes(item.status)).length
+  const services = useMemo(
+    () => [...new Map(items.map(item => [item.serviceKey, item.serviceName || item.serviceKey])).entries()],
+    [items]
+  )
+  const visibleItems = useMemo(() => {
+    const term = query.trim().toLowerCase()
+    const termDigits = digits(query)
+    const rank = (item: CitizenServiceRequest) =>
+      CLOSED.includes(item.status) ? 2 : WAITING_ON_CITIZEN.includes(item.status) ? 1 : 0
+    return items
+      .filter(item => filter === 'ALL' || !CLOSED.includes(item.status))
+      .filter(item => !statusFilter || item.status === statusFilter)
+      .filter(item => !serviceFilter || item.serviceKey === serviceFilter)
+      .filter(
+        item =>
+          !term ||
+          item.reference.toLowerCase().includes(term) ||
+          (item.citizenName || '').toLowerCase().includes(term) ||
+          (item.serviceName || '').toLowerCase().includes(term) ||
+          (termDigits.length >= 3 && digits(item.citizenPhone || '').includes(termDigits))
+      )
+      .sort((a, b) => {
+        // the department's own work first, then what waits on citizens, closed last
+        const byRank = rank(a) - rank(b)
+        if (byRank) return byRank
+        if (sort === 'NEWEST') return b.createdAt.localeCompare(a.createdAt)
+        if (sort === 'UPDATED') return b.updatedAt.localeCompare(a.updatedAt)
+        return a.createdAt.localeCompare(b.createdAt)
+      })
+  }, [items, filter, statusFilter, serviceFilter, query, sort])
+  const openCount = items.filter(item => !CLOSED.includes(item.status)).length
+  const overdueCount = items.filter(isOverdue).length
+  const filtering = Boolean(query || statusFilter || serviceFilter)
   const attachmentFor = (item: ChecklistItem) =>
     selected?.attachments?.find(attachment => attachment.mediaId === item.mediaId) || null
 
@@ -204,6 +289,43 @@ export function ServiceRequestAdminPanel({
           </button>
         </div>
       </header>
+      <div className="service-requests-filters">
+        <label className="service-requests-search">
+          <Search aria-hidden="true" />
+          <input
+            value={query}
+            onChange={event => setQuery(event.target.value.slice(0, 80))}
+            placeholder="ابحث برقم المعاملة، اسم المواطن، الخدمة أو آخر أرقام الهاتف"
+            aria-label="بحث في الطلبات"
+          />
+        </label>
+        <select value={statusFilter} onChange={event => setStatusFilter(event.target.value)} aria-label="الحالة">
+          <option value="">كل الحالات</option>
+          {Object.entries(requestStatus).map(([key, label]) => (
+            <option key={key} value={key}>
+              {label}
+            </option>
+          ))}
+        </select>
+        <select value={serviceFilter} onChange={event => setServiceFilter(event.target.value)} aria-label="الخدمة">
+          <option value="">كل الخدمات</option>
+          {services.map(([key, label]) => (
+            <option key={key} value={key}>
+              {label}
+            </option>
+          ))}
+        </select>
+        <select value={sort} onChange={event => setSort(event.target.value as Sort)} aria-label="الترتيب">
+          <option value="OLDEST">الأقدم أولاً</option>
+          <option value="NEWEST">الأحدث أولاً</option>
+          <option value="UPDATED">آخر تحديث</option>
+        </select>
+        {overdueCount > 0 && (
+          <span className="service-requests-overdue" role="status">
+            <AlertTriangle aria-hidden="true" /> {overdueCount.toLocaleString('en-US')} متأخر ({OVERDUE_DAYS}+ أيام)
+          </span>
+        )}
+      </div>
       {scope.scope === 'NONE' && (
         <div className="form-error">
           <AlertTriangle /> {scope.message || 'حسابك غير مرتبط بدائرة بعد.'}
@@ -220,8 +342,16 @@ export function ServiceRequestAdminPanel({
             <div className="citizen-empty compact">
               <BriefcaseBusiness />
               <div>
-                <strong>{filter === 'OPEN' ? 'لا توجد طلبات مفتوحة' : 'لا توجد طلبات بعد'}</strong>
-                <span>تظهر الطلبات هنا فور إرسالها من المواطن مع مستمسكاتها.</span>
+                <strong>
+                  {filtering
+                    ? 'لا توجد طلبات تطابق البحث'
+                    : filter === 'OPEN'
+                      ? 'لا توجد طلبات مفتوحة'
+                      : 'لا توجد طلبات بعد'}
+                </strong>
+                <span>
+                  {filtering ? 'غيّر كلمة البحث أو الفلاتر.' : 'تظهر الطلبات هنا فور إرسالها من المواطن مع مستمسكاتها.'}
+                </span>
               </div>
             </div>
           ) : (
@@ -231,11 +361,8 @@ export function ServiceRequestAdminPanel({
                 <button
                   key={item.reference}
                   onClick={() => selectItem(item)}
-                  className={
-                    selected?.reference === item.reference
-                      ? 'service-request-admin-row active'
-                      : 'service-request-admin-row'
-                  }
+                  aria-current={selected?.reference === item.reference ? 'true' : undefined}
+                  className={`service-request-admin-row${selected?.reference === item.reference ? ' active' : ''}${isOverdue(item) ? ' overdue' : ''}`}
                 >
                   <span>
                     <BriefcaseBusiness />
@@ -251,7 +378,13 @@ export function ServiceRequestAdminPanel({
                       {item.reference} • {item.citizenName || 'مواطن'}
                       {scope.scope === 'ALL' && item.department ? ` • ${item.department}` : ''}
                     </small>
-                    <p>{pending ? `${pending.toLocaleString('en-US')} مستمسك بانتظار التدقيق` : item.currentAction}</p>
+                    <span className="row-meta">
+                      <time dateTime={item.createdAt}>{ageLabel(item.createdAt)}</time>
+                      {isOverdue(item) && <b className="row-overdue">متأخر</b>}
+                    </span>
+                    <span className="row-action">
+                      {pending ? `${pending.toLocaleString('en-US')} مستمسك بانتظار التدقيق` : item.currentAction}
+                    </span>
                   </div>
                 </button>
               )
@@ -269,8 +402,13 @@ export function ServiceRequestAdminPanel({
                   <h3>{selected.serviceName || selected.serviceKey}</h3>
                   <p>
                     {selected.reference} • {selected.citizenName || 'مواطن'}
-                    {selected.citizenPhone ? ` • ${selected.citizenPhone}` : ''} •{' '}
-                    {selected.department || selected.departmentId}
+                    {selected.citizenPhone ? (
+                      <>
+                        {' • '}
+                        <bdi dir="ltr">{selected.citizenPhone}</bdi>
+                      </>
+                    ) : null}{' '}
+                    • {selected.department || selected.departmentId}
                   </p>
                 </div>
                 <small>
@@ -307,7 +445,7 @@ export function ServiceRequestAdminPanel({
                   <ReceiptText />
                   <span>
                     {pendingPayment
-                      ? `بانتظار سداد ${pendingPayment.amountIqd.toLocaleString('en-US')} د.ع (${pendingPayment.reference}) — لا يمكن الموافقة قبل التسديد.`
+                      ? `${pendingPayment.status === 'FAILED' ? 'فشلت محاولة الدفع ويمكن للمواطن إعادتها —' : 'بانتظار سداد'} ${pendingPayment.amountIqd.toLocaleString('en-US')} د.ع (${pendingPayment.reference}) — لا يمكن الموافقة قبل التسديد.`
                       : `الرسوم مسددة: ${paidPayments.map(payment => `${payment.receiptNumber} — ${payment.amountIqd.toLocaleString('en-US')} د.ع`).join('، ')}`}
                   </span>
                 </div>
@@ -363,7 +501,7 @@ export function ServiceRequestAdminPanel({
                               <FileWarning /> {item.note}
                             </p>
                           )}
-                          {item.mediaId && (
+                          {item.mediaId && !readOnly && (
                             <div className="checklist-actions">
                               <a
                                 className="button outline small"
@@ -417,12 +555,20 @@ export function ServiceRequestAdminPanel({
                   <label>
                     الحالة
                     <select value={status} onChange={event => setStatus(event.target.value as Decision)}>
-                      <option value="UNDER_REVIEW">قيد التدقيق</option>
+                      <option value="UNDER_REVIEW" disabled={selected.status === 'PAYMENT_PENDING'}>
+                        قيد التدقيق
+                      </option>
                       <option value="ACTION_REQUIRED">إعادة للمواطن — نواقص</option>
-                      <option value="APPROVED" disabled={pendingRequired.length > 0}>
+                      <option
+                        value="APPROVED"
+                        disabled={pendingRequired.length > 0 || selected.status === 'PAYMENT_PENDING'}
+                      >
                         موافقة {pendingRequired.length ? `(بقي ${pendingRequired.length} مستمسك)` : ''}
                       </option>
-                      <option value="PAYMENT_REQUIRED" disabled={pendingPayment !== undefined}>
+                      <option
+                        value="PAYMENT_REQUIRED"
+                        disabled={pendingPayment !== undefined || selected.status === 'PAYMENT_PENDING'}
+                      >
                         طلب سداد رسم {pendingPayment ? '(يوجد رسم بانتظار السداد)' : ''}
                       </option>
                       <option value="REJECTED">رفض الطلب</option>

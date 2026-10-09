@@ -10,6 +10,8 @@ type ScreeningCheck = {
   label: string
   passed: boolean
   detail: string
+  /** shown to the reviewer but not counted towards pass/fail */
+  advisory?: boolean
 }
 
 export type IdentityScreeningResult = {
@@ -60,17 +62,21 @@ export function screenIdentitySubmission(input: {
       input.faceVideo.size >= 100_000,
       input.faceVideo.size >= 100_000 ? 'حجم متوافق مع تسجيل الكاميرا القصير' : 'الفيديو صغير أو غير مكتمل'
     ),
-    check(
-      'face-video-client-duration',
-      'تسجيل 7 ثوانٍ من الكاميرا',
-      /^face-video-7s-/i.test(input.faceVideo.originalname),
-      /^face-video-7s-/i.test(input.faceVideo.originalname)
-        ? 'أنشأته كاميرا المنصة ذات المؤقت'
-        : 'تعذر تأكيد مصدر التسجيل ومدته'
-    ),
+    {
+      ...check(
+        'face-video-client-duration',
+        'تسجيل 7 ثوانٍ من الكاميرا',
+        /^face-video-7s-/i.test(input.faceVideo.originalname),
+        /^face-video-7s-/i.test(input.faceVideo.originalname)
+          ? 'أنشأته كاميرا المنصة ذات المؤقت'
+          : 'رُفع من الجهاز بدل كاميرا المنصة — تحقق من الفيديو يدوياً'
+      ),
+      advisory: true,
+    },
   ]
-  const passed = checks.filter(item => item.passed).length
-  const qualityScore = Math.round((passed / checks.length) * 100)
+  const counted = checks.filter(item => !item.advisory)
+  const passed = counted.filter(item => item.passed).length
+  const qualityScore = Math.round((passed / counted.length) * 100)
   return {
     qualityStatus: qualityScore === 100 ? 'PASSED' : 'NEEDS_RECAPTURE',
     qualityScore,

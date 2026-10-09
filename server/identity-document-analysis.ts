@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { analyzeIdentityDocumentLocally } from './local-identity-ocr.js'
+import { plausiblePersonName } from './person-name.js'
 
 export type IdentityDocumentType = 'NATIONAL_ID' | 'PASSPORT' | 'DRIVING_LICENSE'
 
@@ -59,7 +60,15 @@ async function withTimeout(work: Promise<IdentityAnalysisResult>, ms: number): P
   }
 }
 
-export async function analyzeIdentityDocument(input: {
+/** OCR fragments (letters dropped from Arabic names) must never reach the citizen's form or the name match. */
+export async function analyzeIdentityDocument(input: Parameters<typeof analyzeIdentityDocumentRaw>[0]) {
+  const result = await analyzeIdentityDocumentRaw(input)
+  if (result.fields.fullName && !plausiblePersonName(result.fields.fullName))
+    return { ...result, fields: { ...result.fields, fullName: null } }
+  return result
+}
+
+async function analyzeIdentityDocumentRaw(input: {
   documentType: IdentityDocumentType
   documentImage: { buffer: Buffer; mimeType: string }
   faceVideo?: { buffer: Buffer; mimeType: string } | null

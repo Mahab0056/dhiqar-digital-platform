@@ -20,6 +20,7 @@ import { readDecryptedMedia, storeEncryptedMedia } from '../media.js'
 import { screenIdentitySubmission } from '../identity-screening.js'
 import { analyzeIdentityDocument } from '../identity-document-analysis.js'
 import { runIdentityVerification } from '../identity-verification.js'
+import { plausiblePersonName } from '../person-name.js'
 
 const parseJson = (value: unknown) => {
   try {
@@ -155,28 +156,10 @@ export function registerOnboardingRoutes(app: express.Express) {
     }
   })
 
-  app.post('/api/onboarding/complete-identity', requireSession('CITIZEN'), (req, res) => {
-    const payload = z
-      .object({ fullName: z.string().min(3), consent: z.literal(true), livenessPassed: z.boolean() })
-      .parse(req.body)
-    const citizen = currentCitizen(res)
-    if (!citizen) return
-    if (['VERIFIED', 'VERIFIED_MANUAL'].includes(citizen.verificationStatus))
-      return res.status(409).json({ message: 'هويتك موثقة مسبقاً ولا يمكن إعادة فتحها من هنا.' })
-    const timestamp = new Date().toISOString()
-    db.prepare(
-      'UPDATE citizens SET full_name = ?, verification_status = ?, consent_at = ?, updated_at = ? WHERE id = ?'
-    ).run(payload.fullName, 'MANUAL_REVIEW', timestamp, timestamp, citizen.id)
-    addAudit({
-      actor: payload.fullName,
-      role: 'CITIZEN',
-      action: 'IDENTITY_REVIEW_REQUESTED',
-      entityType: 'CitizenIdentity',
-      entityId: String(citizen.id),
-      newValue: { status: 'MANUAL_REVIEW' },
-      metadata: { livenessClaimed: payload.livenessPassed, mediaPersisted: false },
-    })
-    res.json(getCitizenById(citizen.id))
+  // Retired: it set the citizen's name with no documents, and could rename someone whose review was pending
+  // (the reviewer then approved a name that was never checked). Identity goes through /identity-review only.
+  app.post('/api/onboarding/complete-identity', requireSession('CITIZEN'), (_req, res) => {
+    res.status(410).json({ message: 'هذا المسار متوقف. وثّق هويتك برفع الهوية وفيديو الوجه من صفحة التسجيل.' })
   })
 
   app.post(
@@ -233,7 +216,7 @@ export function registerOnboardingRoutes(app: express.Express) {
       try {
         const payload = z
           .object({
-            fullName: z.string().min(3).max(120),
+            fullName: z.string().trim().max(120).refine(plausiblePersonName, { message: 'NAME' }),
             documentNumber: z.string().min(4).max(40),
             documentType: z.enum(['NATIONAL_ID', 'PASSPORT', 'DRIVING_LICENSE']).default('NATIONAL_ID'),
             consent: z.literal('true'),
@@ -469,6 +452,10 @@ export function registerOnboardingRoutes(app: express.Express) {
           screening,
         })
       } catch (error) {
+        if (error instanceof z.ZodError && error.issues.some(issue => issue.path[0] === 'fullName'))
+          return res.status(400).json({
+            message: 'راجع الاسم الكامل: اكتبه كما في المستند بحروف واضحة (كلمتان على الأقل)، وصحّح أي حروف ناقصة.',
+          })
         const message = safeMessage(error, 'تعذر حفظ طلب مراجعة الهوية.')
         res.status(400).json({ message })
       }
