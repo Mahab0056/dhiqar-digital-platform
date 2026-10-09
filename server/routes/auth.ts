@@ -63,6 +63,7 @@ function sessionView(session: SessionData) {
     username: staff?.username ?? null,
     departmentId: staff?.departmentId ?? null,
     departmentName: staff?.departmentName ?? null,
+    isDepartmentManager: session.isDepartmentManager,
     mustChangePassword: session.mustChangePassword,
     mfaEnabled: session.mfaEnabled,
   }

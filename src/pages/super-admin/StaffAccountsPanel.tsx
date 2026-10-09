@@ -236,6 +236,33 @@ export function StaffAccountsPanel() {
                       </option>
                     ))}
                   </select>
+                  {/* manager = an EMPLOYEE of that department with the flag (no separate role value) */}
+                  <label
+                    className="staff-manager-toggle"
+                    title={
+                      item.role === 'EMPLOYEE' && item.departmentId
+                        ? 'يسند الطلبات لموظفي الدائرة ويرى توزيع العمل والمتأخرات'
+                        : 'متاح لموظف معاملات مرتبط بدائرة فقط'
+                    }
+                  >
+                    <input
+                      type="checkbox"
+                      checked={item.isDepartmentManager}
+                      disabled={busy || item.role !== 'EMPLOYEE' || !item.departmentId}
+                      onChange={e => {
+                        // read now: a controlled checkbox snaps back to the prop value after the handler
+                        const next = e.target.checked
+                        void act(() =>
+                          api.updateStaffAccount(item.id, { isDepartmentManager: next }).then(() => ({
+                            title: next
+                              ? `أصبح ${item.fullName} مدير ${item.departmentName || 'الدائرة'}.`
+                              : `أُلغيت صلاحية مدير الدائرة عن ${item.fullName}.`,
+                          }))
+                        )
+                      }}
+                    />
+                    مدير الدائرة
+                  </label>
                 </td>
                 <td>
                   <span className={item.totpEnabled ? 'status-pill on' : 'status-pill off'}>

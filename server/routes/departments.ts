@@ -1,8 +1,13 @@
 import type express from 'express'
 import { param } from '../http/params.js'
-import { currentSession, requireSession, type SessionData } from '../auth/session.js'
+import { currentSession, isDeptManager, requireSession, type SessionData } from '../auth/session.js'
 import { departmentById, departmentCategories, registrySummary } from '../department-registry.js'
-import { getDepartmentDashboard, listPublicDepartments, publicDepartmentView } from '../departments.js'
+import {
+  getDepartmentDashboard,
+  getDepartmentManagement,
+  listPublicDepartments,
+  publicDepartmentView,
+} from '../departments.js'
 import { addAudit } from '../db.js'
 
 /** Department staff see only their own department; operations and super admin see all. */
@@ -54,6 +59,11 @@ export function registerDepartmentRoutes(app: express.Express) {
         // department staff do not need usernames of colleagues beyond names/presence
         dashboard!.staff = dashboard!.staff.map(member => ({ ...member, username: '' }))
       }
+      // per-employee workload is for the department manager (and supervisors), not for every colleague
+      const management =
+        session.role === 'SUPER_ADMIN' || session.role === 'OPERATIONS' || isDeptManager(session, id)
+          ? getDepartmentManagement(id)
+          : null
       addAudit({
         actor: session.actor,
         role: session.role,
@@ -61,7 +71,7 @@ export function registerDepartmentRoutes(app: express.Express) {
         entityType: 'Department',
         entityId: id,
       })
-      res.json(dashboard)
+      res.json({ ...dashboard, management })
     }
   )
 

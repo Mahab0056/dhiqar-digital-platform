@@ -1,6 +1,6 @@
 {
-  "base": "http://localhost:4101",
-  "ranAt": "2026-10-09T17:15:20.585Z",
+  "base": "http://localhost:4187",
+  "ranAt": "2026-10-09T17:24:53.236Z",
   "results": [
     {
       "id": "AUTH-01",
@@ -245,7 +245,7 @@
       "area": "الوثائق والتحقق",
       "scenario": "المواطن يستلم النتيجة ووثيقة PDF؛ صفحة التحقق العامة تعرض الحد الأدنى",
       "result": "PASS",
-      "evidence": "pdf 200 %PDF- (121925 bytes), verify 200 APPROVED, original 200, PII keys in verify=none"
+      "evidence": "pdf 200 %PDF- (122032 bytes), verify 200 APPROVED, original 200, PII keys in verify=none"
     },
     {
       "id": "DOC-02",
@@ -279,15 +279,15 @@
       "id": "DEP-10",
       "area": "معالجة الدائرة",
       "scenario": "إحالة الطلب إلى دائرة/موظف آخر",
-      "result": "NOT_IMPLEMENTED",
-      "evidence": "no referral/assignment endpoint exists (PATCH with status REFERRED → 409); requests are routed only by the catalog department"
+      "result": "PASS",
+      "evidence": "transfer 200 (short reason 400); DB dhiqar-governorate → dhiqar-water, assignee=null; old dept GET 403, decision 403, in old queue=false; in water queue=true; out-log=true; citizen notified=true"
     },
     {
       "id": "PAY-01",
       "area": "الدفع",
       "scenario": "خدمة برسم رسمي تُحجز «بانتظار الدفع» ولا تصل للدائرة قبل السداد",
       "result": "PASS",
-      "evidence": "201 TQS-2026-00004 PAYMENT_PENDING, payment PAY-2026-00001 5000 IQD (SANDBOX)"
+      "evidence": "201 TQS-2026-00005 PAYMENT_PENDING, payment PAY-2026-00001 5000 IQD (SANDBOX)"
     },
     {
       "id": "PAY-02",
@@ -413,7 +413,7 @@
       "area": "الأمان والصلاحيات",
       "scenario": "رفع الملفات: نوع غير مسموح، توقيع مزور، حجم زائد، اسم مسار",
       "result": "PASS",
-      "evidence": "html 400, spoofed jpeg 400, 21MB 413, traversal name 200 stored as C:\\Users\\asus\\AppData\\Local\\Temp\\claude\\C--Users-asus-Desktop---------------\\40f2f086-461c-407f-a519-db2e7f391d8c\\scratchpad\\qa-run4\\media\\media_898a93b05c6446a0aad226a71a65f71c.bin"
+      "evidence": "html 400, spoofed jpeg 400, 21MB 413, traversal name 200 stored as C:\\Users\\asus\\AppData\\Local\\Temp\\dq-qa-wf2\\media\\media_96713c601d124a22b7d0863741a7412a.bin"
     },
     {
       "id": "SEC-11",
@@ -462,7 +462,7 @@
       "area": "اللوحات",
       "scenario": "مؤشرات غرفة العمليات تطابق قاعدة البيانات",
       "result": "PASS",
-      "evidence": "completed=3, today=6, collected=6000 IQD, open complaints=1, automationRate=0 (hard-coded 0), departmentsOnline=60"
+      "evidence": "completed=3, today=7, collected=6000 IQD, open complaints=1, automationRate=0 (hard-coded 0), departmentsOnline=60"
     },
     {
       "id": "DASH-02",

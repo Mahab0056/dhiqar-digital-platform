@@ -20,8 +20,20 @@ export type SessionData = {
   actor: string
   username: string | null
   departmentId: string | null
+  /** EMPLOYEE flagged by the super admin as manager of `departmentId` (read fresh from the account each request). */
+  isDepartmentManager: boolean
   mustChangePassword: boolean
   mfaEnabled: boolean
+}
+
+/** Manager of this specific department. Super admins are handled separately by callers. */
+export function isDeptManager(session: SessionData, departmentId: string | null | undefined) {
+  return (
+    session.role === 'EMPLOYEE' &&
+    session.isDepartmentManager &&
+    Boolean(departmentId) &&
+    session.departmentId === departmentId
+  )
 }
 
 export const sessionCookieName = 'dhiqar_session'
@@ -88,6 +100,7 @@ function buildSessionData(row: SessionRow, staff: StaffAccount | null): SessionD
     actor: staff ? `${staff.fullName} (${staff.username})` : `citizen:${row.subject}`,
     username: staff?.username ?? null,
     departmentId: staff?.departmentId ?? null,
+    isDepartmentManager: staff?.role === 'EMPLOYEE' && Boolean(staff?.isDepartmentManager),
     mustChangePassword: staff?.mustChangePassword ?? false,
     mfaEnabled: staff?.totpEnabled ?? false,
   }

@@ -4,7 +4,8 @@ import { param, toLatinDigits } from '../http/params.js'
 import { randomUUID } from 'node:crypto'
 import { z } from 'zod'
 import { upload, uploadBudget, validateUploadedFile } from '../http/upload.js'
-import { requireSession, currentCitizen, currentSession, type SessionData } from '../auth/session.js'
+import { requireSession, currentCitizen, currentSession, isDeptManager, type SessionData } from '../auth/session.js'
+import { computeDueAt, isOverdue, nextSlaClock, WAITING_ON_CITIZEN_STATUSES } from '../services/sla.js'
 import { notifyCitizen, employeeWorkQueueRealtime } from '../realtime.js'
 import { addAudit, db, nextReference } from '../db.js'
 import { readDecryptedMedia, storeEncryptedMedia } from '../media.js'
@@ -88,8 +89,56 @@ const serviceRequestAttachments = (requestId: number) =>
     available: !item.deleted_at,
   }))
 
-const fullRowSql = `SELECT sr.*, sc.name AS service_name, sc.channel AS service_channel, d.name AS department_name, c.full_name AS citizen_name, c.phone_masked AS citizen_phone
-  FROM service_requests sr JOIN service_catalog sc ON sc.id = sr.service_id JOIN departments d ON d.id = sr.department_id JOIN citizens c ON c.id = sr.citizen_id`
+const fullRowSql = `SELECT sr.*, sc.name AS service_name, sc.channel AS service_channel, d.name AS department_name, c.full_name AS citizen_name, c.phone_masked AS citizen_phone,
+    sa.full_name AS assigned_staff_name, od.name AS origin_department_name
+  FROM service_requests sr JOIN service_catalog sc ON sc.id = sr.service_id JOIN departments d ON d.id = sr.department_id JOIN citizens c ON c.id = sr.citizen_id
+  LEFT JOIN staff_accounts sa ON sa.id = sr.assigned_staff_id LEFT JOIN departments od ON od.id = sr.origin_department_id`
+
+export type ServiceRequestTransferView = {
+  id: string
+  reference: string
+  fromDepartmentId: string
+  fromDepartmentName: string
+  toDepartmentId: string
+  toDepartmentName: string
+  reason: string
+  requestedBy: string
+  createdAt: string
+}
+
+const transferSelect = `SELECT t.*, sr.reference, fd.name AS from_department_name, td.name AS to_department_name
+  FROM service_request_transfers t JOIN service_requests sr ON sr.id = t.service_request_id
+  LEFT JOIN departments fd ON fd.id = t.from_department_id LEFT JOIN departments td ON td.id = t.to_department_id`
+
+const mapTransfer = (row: Record<string, unknown>): ServiceRequestTransferView => ({
+  id: String(row.id),
+  reference: String(row.reference),
+  fromDepartmentId: String(row.from_department_id),
+  fromDepartmentName: String(row.from_department_name || row.from_department_id),
+  toDepartmentId: String(row.to_department_id),
+  toDepartmentName: String(row.to_department_name || row.to_department_id),
+  reason: String(row.reason),
+  requestedBy: String(row.requested_by),
+  createdAt: String(row.created_at),
+})
+
+/** Referral history for many requests in one query (the list view must not do one query per row). */
+function transfersByRequest(ids: number[]) {
+  const byRequest = new Map<number, ServiceRequestTransferView[]>()
+  if (!ids.length) return byRequest
+  const rows = db
+    .prepare(
+      `${transferSelect} WHERE t.service_request_id IN (${ids.map(() => '?').join(', ')}) ORDER BY t.created_at ASC`
+    )
+    .all(...ids) as Array<Record<string, unknown>>
+  for (const row of rows) {
+    const id = Number(row.service_request_id)
+    const list = byRequest.get(id) || []
+    list.push(mapTransfer(row))
+    byRequest.set(id, list)
+  }
+  return byRequest
+}
 
 const loadRequest = (reference: string) =>
   db.prepare(`${fullRowSql} WHERE sr.reference = ?`).get(reference) as Record<string, unknown> | undefined
@@ -111,7 +160,10 @@ const latestAppointment = (serviceRequestId: number) => {
     : null
 }
 
-const serializeServiceRequestForEmployee = (row: Record<string, unknown>) => {
+const serializeServiceRequestForEmployee = (
+  row: Record<string, unknown>,
+  transfers: ServiceRequestTransferView[] = transfersByRequest([Number(row.id)]).get(Number(row.id)) || []
+) => {
   const service = getCatalogService(String(row.service_id))
   const fieldLabels = new Map((service?.fields || []).map(field => [field.key, field.label]))
   const formData = JSON.parse(String(row.form_data || '{}')) as Record<string, string>
@@ -140,6 +192,16 @@ const serializeServiceRequestForEmployee = (row: Record<string, unknown>) => {
     updatedAt: String(row.updated_at),
     // the employee must see the date the citizen asked for before confirming one
     appointment: latestAppointment(Number(row.id)),
+    assignedStaffId: row.assigned_staff_id ? String(row.assigned_staff_id) : null,
+    assignedStaffName: row.assigned_staff_name ? String(row.assigned_staff_name) : null,
+    assignedAt: row.assigned_at ? String(row.assigned_at) : null,
+    originDepartmentId: row.origin_department_id ? String(row.origin_department_id) : null,
+    originDepartmentName: row.origin_department_name ? String(row.origin_department_name) : null,
+    transfers,
+    dueAt: row.due_at ? String(row.due_at) : null,
+    overdue: isOverdue({ status: String(row.status), due_at: row.due_at }),
+    // waiting on the citizen: the department's clock is stopped until the request comes back
+    slaPaused: (WAITING_ON_CITIZEN_STATUSES as readonly string[]).includes(String(row.status)),
   }
 }
 
@@ -181,6 +243,35 @@ const approvalsInFlight = new Set<string>()
 function canActOn(session: SessionData, row: Record<string, unknown>) {
   if (session.role === 'SUPER_ADMIN') return true
   return Boolean(session.departmentId) && session.departmentId === String(row.department_id)
+}
+
+const isClosed = (row: Record<string, unknown>) => ['APPROVED', 'REJECTED'].includes(String(row.status))
+
+/**
+ * A request claimed by one employee is theirs to work: a colleague gets a clear 409 instead of overwriting the
+ * assignee's review. The department manager and the super admin can still step in. Unassigned requests stay open
+ * to every employee of the department (the behaviour before assignment existed).
+ */
+function assignmentConflict(session: SessionData, row: Record<string, unknown>) {
+  const assignee = row.assigned_staff_id ? String(row.assigned_staff_id) : null
+  if (!assignee || assignee === session.staffId) return null
+  if (session.role === 'SUPER_ADMIN' || isDeptManager(session, String(row.department_id))) return null
+  return `هذا الطلب مُسند إلى ${row.assigned_staff_name ? String(row.assigned_staff_name) : 'موظف آخر'}. اطلب منه تحريره، أو من مدير الدائرة إعادة إسناده.`
+}
+
+const publishRequest = (
+  row: Record<string, unknown>,
+  action: 'UPDATED' | 'ASSIGNED' | 'TRANSFERRED',
+  departmentId = String(row.department_id)
+) => {
+  const fresh = loadRequest(String(row.reference))
+  employeeWorkQueueRealtime.publish({
+    entity: 'SERVICE_REQUEST',
+    action,
+    reference: String(row.reference),
+    departmentId,
+    assignedStaffId: fresh?.assigned_staff_id ? String(fresh.assigned_staff_id) : null,
+  })
 }
 
 export function registerServiceRequestsRoutes(app: express.Express) {
@@ -372,8 +463,8 @@ export function registerServiceRequestsRoutes(app: express.Express) {
     try {
       const result = db
         .prepare(
-          `INSERT INTO service_requests (reference, citizen_id, service_id, department_id, status, form_data, current_action, document_checklist, payment_status, client_request_id, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+          `INSERT INTO service_requests (reference, citizen_id, service_id, department_id, status, form_data, current_action, document_checklist, payment_status, client_request_id, due_at, waiting_since, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
         )
         .run(
           reference,
@@ -386,6 +477,9 @@ export function registerServiceRequestsRoutes(app: express.Express) {
           '[]',
           feeDue ? 'PENDING' : payAtOffice ? 'PAY_AT_OFFICE' : 'NOT_REQUIRED',
           payload.clientRequestId || null,
+          computeDueAt(timestamp, service),
+          // a fee due online means the request starts out waiting on the citizen: the SLA clock is paused until paid
+          feeDue ? timestamp : null,
           timestamp,
           timestamp
         )
@@ -591,13 +685,17 @@ export function registerServiceRequestsRoutes(app: express.Express) {
           : stillMissing.length
             ? `بقي رفع: ${stillMissing.map(entry => entry.label).join('، ')}.`
             : 'اكتملت المستمسكات وأُعيد الطلب إلى الموظف للتدقيق.'
+        // back from the citizen → the deadline moves forward by the time it waited on them
+        const clock = nextSlaClock({ ...row, status: String(row.status) }, nextStatus, timestamp)
         db.prepare(
-          `UPDATE service_requests SET status = ?, current_action = ?, document_checklist = ?, required_document = ?, updated_at = ? WHERE id = ?`
+          `UPDATE service_requests SET status = ?, current_action = ?, document_checklist = ?, required_document = ?, due_at = ?, waiting_since = ?, updated_at = ? WHERE id = ?`
         ).run(
           nextStatus,
           currentAction,
           JSON.stringify(checklist),
           stillMissing.length ? stillMissing[0].label : null,
+          clock.dueAt,
+          clock.waitingSince,
           timestamp,
           Number(row.id)
         )
@@ -608,12 +706,7 @@ export function registerServiceRequestsRoutes(app: express.Express) {
           message: `${String(row.reference)} — ${currentAction}`,
           link: '/citizen#my-requests',
         })
-        employeeWorkQueueRealtime.publish({
-          entity: 'SERVICE_REQUEST',
-          action: 'UPDATED',
-          reference: String(row.reference),
-          departmentId: String(row.department_id),
-        })
+        publishRequest(row, 'UPDATED')
         addAudit({
           actor: citizen.fullName,
           role: 'CITIZEN',
@@ -651,7 +744,11 @@ export function registerServiceRequestsRoutes(app: express.Express) {
       ORDER BY CASE sr.status WHEN 'SUBMITTED' THEN 0 WHEN 'APPOINTMENT_REQUESTED' THEN 0 WHEN 'UNDER_REVIEW' THEN 1 WHEN 'ACTION_REQUIRED' THEN 2 ELSE 3 END, sr.updated_at DESC LIMIT 300`
         )
         .all(...scope.values, ...(statusSql ? [status] : [])) as Array<Record<string, unknown>>
-      res.json({ items: rows.map(serializeServiceRequestForEmployee), scope: scope.sql ? session.departmentId : 'ALL' })
+      const transfers = transfersByRequest(rows.map(row => Number(row.id)))
+      res.json({
+        items: rows.map(row => serializeServiceRequestForEmployee(row, transfers.get(Number(row.id)) || [])),
+        scope: scope.sql ? session.departmentId : 'ALL',
+      })
     }
   )
 
@@ -714,6 +811,8 @@ export function registerServiceRequestsRoutes(app: express.Express) {
       if (!canActOn(session, row)) return res.status(403).json({ message: 'هذا الطلب يخص دائرة أخرى.' })
       if (['APPROVED', 'REJECTED'].includes(String(row.status)) || approvalsInFlight.has(String(row.reference)))
         return res.status(409).json({ message: 'الطلب مغلق ولا يمكن تعديل نتائج التدقيق.' })
+      const conflict = assignmentConflict(session, row)
+      if (conflict) return res.status(409).json({ message: conflict, code: 'ASSIGNED_TO_OTHER' })
       const payload = z
         .object({ status: z.enum(['VERIFIED', 'REJECTED']), note: z.string().trim().max(400).optional() })
         .parse(req.body)
@@ -738,12 +837,7 @@ export function registerServiceRequestsRoutes(app: express.Express) {
         entityId: String(row.reference),
         newValue: { documentKey: item.key, note: item.note },
       })
-      employeeWorkQueueRealtime.publish({
-        entity: 'SERVICE_REQUEST',
-        action: 'UPDATED',
-        reference: String(row.reference),
-        departmentId: String(row.department_id),
-      })
+      publishRequest(row, 'UPDATED')
       res.json(serializeServiceRequestForEmployee(loadRequest(String(row.reference))!))
     }
   )
@@ -763,6 +857,8 @@ export function registerServiceRequestsRoutes(app: express.Express) {
         return res
           .status(409)
           .json({ message: 'يجري حفظ قرار الموافقة على هذا الطلب الآن. أعد تحميل الصفحة بعد لحظات.' })
+      const conflict = assignmentConflict(session, row)
+      if (conflict) return res.status(409).json({ message: conflict, code: 'ASSIGNED_TO_OTHER' })
       const parsed = z
         .object({
           status: z.enum(['UNDER_REVIEW', 'ACTION_REQUIRED', 'APPROVED', 'REJECTED', 'PAYMENT_REQUIRED']),
@@ -812,9 +908,18 @@ export function registerServiceRequestsRoutes(app: express.Express) {
           requestedBy: session.actor,
         })
         const action = `حددت الدائرة رسم الخدمة: ${parsed.data.amountIqd.toLocaleString('en-US')} د.ع${parsed.data.decisionNote ? ` — ${parsed.data.decisionNote}` : ''}. سدّد الرسم إلكترونياً لاستكمال المعاملة.`
+        const clock = nextSlaClock({ ...row, status: String(row.status) }, 'PAYMENT_PENDING', timestamp)
         db.prepare(
-          `UPDATE service_requests SET status = 'PAYMENT_PENDING', current_action = ?, decision_note = ?, payment_status = 'PENDING', review_started_at = COALESCE(review_started_at, ?), updated_at = ? WHERE id = ?`
-        ).run(action, parsed.data.decisionNote || null, timestamp, timestamp, Number(row.id))
+          `UPDATE service_requests SET status = 'PAYMENT_PENDING', current_action = ?, decision_note = ?, payment_status = 'PENDING', review_started_at = COALESCE(review_started_at, ?), due_at = ?, waiting_since = ?, updated_at = ? WHERE id = ?`
+        ).run(
+          action,
+          parsed.data.decisionNote || null,
+          timestamp,
+          clock.dueAt,
+          clock.waitingSince,
+          timestamp,
+          Number(row.id)
+        )
         notifyCitizen({
           citizenId: Number(row.citizen_id),
           type: 'PAYMENT_REQUIRED',
@@ -830,12 +935,7 @@ export function registerServiceRequestsRoutes(app: express.Express) {
           entityId: String(row.reference),
           newValue: { amountIqd: parsed.data.amountIqd, payment: intent.reference },
         })
-        employeeWorkQueueRealtime.publish({
-          entity: 'SERVICE_REQUEST',
-          action: 'UPDATED',
-          reference: String(row.reference),
-          departmentId: String(row.department_id),
-        })
+        publishRequest(row, 'UPDATED')
         return res.json(serializeServiceRequestForEmployee(loadRequest(String(row.reference))!))
       }
       if (parsed.data.status === 'APPROVED' && pendingPayments.length)
@@ -904,8 +1004,10 @@ export function registerServiceRequestsRoutes(app: express.Express) {
         ? `${currentAction} صدرت الوثيقة الرقمية ${issuedDocument.documentNumber} وهي محفوظة في الأرشيف.`
         : currentAction
       const decided = decision.status === 'APPROVED' || decision.status === 'REJECTED'
+      // sending it back to the citizen pauses the SLA; pulling it back into review resumes it (deadline pushed)
+      const clock = nextSlaClock({ ...row, status: String(row.status) }, decision.status, timestamp)
       db.prepare(
-        `UPDATE service_requests SET status = ?, current_action = ?, decision_note = ?, required_document = ?, document_checklist = ?, decided_by = ?, decided_at = ?, review_started_at = COALESCE(review_started_at, ?), updated_at = ? WHERE id = ?`
+        `UPDATE service_requests SET status = ?, current_action = ?, decision_note = ?, required_document = ?, document_checklist = ?, decided_by = ?, decided_at = ?, review_started_at = COALESCE(review_started_at, ?), due_at = ?, waiting_since = ?, updated_at = ? WHERE id = ?`
       ).run(
         decision.status,
         finalAction,
@@ -915,6 +1017,8 @@ export function registerServiceRequestsRoutes(app: express.Express) {
         decided ? session.actor : null,
         decided ? timestamp : null,
         timestamp,
+        clock.dueAt,
+        clock.waitingSince,
         timestamp,
         Number(row.id)
       )
@@ -950,12 +1054,7 @@ export function registerServiceRequestsRoutes(app: express.Express) {
         link: decision.status === 'APPROVED' ? '/citizen#issued-documents' : '/citizen#my-requests',
         pushLink: issuedDocument ? `/api/citizen/issued-documents/${issuedDocument.id}/pdf` : undefined,
       })
-      employeeWorkQueueRealtime.publish({
-        entity: 'SERVICE_REQUEST',
-        action: 'UPDATED',
-        reference: String(row.reference),
-        departmentId: String(row.department_id),
-      })
+      publishRequest(row, 'UPDATED')
       addAudit({
         actor: session.actor,
         role: session.role,
@@ -973,4 +1072,282 @@ export function registerServiceRequestsRoutes(app: express.Express) {
       res.json(serializeServiceRequestForEmployee(loadRequest(String(row.reference))!))
     }
   )
+
+  // ---- employee: claim / release / assign ---------------------------------------------------------
+  // Claiming is a single conditional UPDATE (… WHERE assigned_staff_id IS NULL), so two clerks clicking «استلام»
+  // at the same moment can never both win: the loser gets a 409 naming who holds it.
+  app.post('/api/employee/service-requests/:reference/claim', requireSession('EMPLOYEE'), (req, res) => {
+    const session = currentSession(res)
+    const row = loadRequest(param(req, 'reference'))
+    if (!row) return res.status(404).json({ message: 'طلب الخدمة غير موجود.' })
+    if (!canActOn(session, row)) return res.status(403).json({ message: 'هذا الطلب يخص دائرة أخرى.' })
+    if (isClosed(row)) return res.status(409).json({ message: 'الطلب مغلق ولا يحتاج استلاماً.' })
+    const timestamp = new Date().toISOString()
+    const result = db
+      .prepare(
+        `UPDATE service_requests SET assigned_staff_id = ?, assigned_at = ?
+         WHERE id = ? AND department_id = ? AND assigned_staff_id IS NULL AND status NOT IN ('APPROVED', 'REJECTED')`
+      )
+      .run(session.staffId, timestamp, Number(row.id), session.departmentId)
+    const fresh = loadRequest(String(row.reference))!
+    if (!result.changes) {
+      // a double click by the same clerk is not a conflict
+      if (fresh.assigned_staff_id && String(fresh.assigned_staff_id) === session.staffId)
+        return res.json(serializeServiceRequestForEmployee(fresh))
+      return res.status(409).json({
+        message: fresh.assigned_staff_id
+          ? `استلم ${fresh.assigned_staff_name ? String(fresh.assigned_staff_name) : 'موظف آخر'} هذا الطلب قبلك.`
+          : 'تغيّرت حالة الطلب للتو. حدّث القائمة وحاول مجدداً.',
+        code: 'ALREADY_ASSIGNED',
+        assignedStaffId: fresh.assigned_staff_id ? String(fresh.assigned_staff_id) : null,
+        assignedStaffName: fresh.assigned_staff_name ? String(fresh.assigned_staff_name) : null,
+      })
+    }
+    addAudit({
+      actor: session.actor,
+      role: session.role,
+      action: 'SERVICE_REQUEST_CLAIMED',
+      entityType: 'ServiceRequest',
+      entityId: String(row.reference),
+      newValue: { assignedStaffId: session.staffId },
+    })
+    publishRequest(row, 'ASSIGNED')
+    res.json(serializeServiceRequestForEmployee(fresh))
+  })
+
+  app.post(
+    '/api/employee/service-requests/:reference/release',
+    requireSession('EMPLOYEE', 'SUPER_ADMIN'),
+    (req, res) => {
+      const session = currentSession(res)
+      const row = loadRequest(param(req, 'reference'))
+      if (!row) return res.status(404).json({ message: 'طلب الخدمة غير موجود.' })
+      if (!canActOn(session, row)) return res.status(403).json({ message: 'هذا الطلب يخص دائرة أخرى.' })
+      const assignee = row.assigned_staff_id ? String(row.assigned_staff_id) : null
+      if (!assignee) return res.status(409).json({ message: 'الطلب غير مُسند لأحد.' })
+      if (
+        assignee !== session.staffId &&
+        session.role !== 'SUPER_ADMIN' &&
+        !isDeptManager(session, String(row.department_id))
+      )
+        return res.status(403).json({ message: 'تحرير الطلب لمن استلمه أو لمدير الدائرة فقط.' })
+      const result = db
+        .prepare(
+          'UPDATE service_requests SET assigned_staff_id = NULL, assigned_at = NULL WHERE id = ? AND assigned_staff_id = ?'
+        )
+        .run(Number(row.id), assignee)
+      if (!result.changes) return res.status(409).json({ message: 'تغيّر إسناد الطلب للتو. حدّث القائمة.' })
+      addAudit({
+        actor: session.actor,
+        role: session.role,
+        action: 'SERVICE_REQUEST_RELEASED',
+        entityType: 'ServiceRequest',
+        entityId: String(row.reference),
+        previousValue: { assignedStaffId: assignee },
+        newValue: { assignedStaffId: null },
+      })
+      publishRequest(row, 'ASSIGNED')
+      res.json(serializeServiceRequestForEmployee(loadRequest(String(row.reference))!))
+    }
+  )
+
+  app.post(
+    '/api/employee/service-requests/:reference/assign',
+    requireSession('EMPLOYEE', 'SUPER_ADMIN'),
+    (req, res) => {
+      const session = currentSession(res)
+      const row = loadRequest(param(req, 'reference'))
+      if (!row) return res.status(404).json({ message: 'طلب الخدمة غير موجود.' })
+      if (session.role !== 'SUPER_ADMIN' && !isDeptManager(session, String(row.department_id)))
+        return res.status(403).json({ message: 'إسناد الطلبات من صلاحية مدير الدائرة.' })
+      if (isClosed(row)) return res.status(409).json({ message: 'الطلب مغلق ولا يمكن إسناده.' })
+      const payload = z.object({ staffId: z.string().trim().min(3).max(80) }).safeParse(req.body)
+      if (!payload.success) return res.status(400).json({ message: 'اختر الموظف المراد إسناد الطلب إليه.' })
+      const target = db
+        .prepare(
+          `SELECT id, full_name FROM staff_accounts WHERE id = ? AND status = 'ACTIVE' AND role = 'EMPLOYEE' AND department_id = ?`
+        )
+        .get(payload.data.staffId, String(row.department_id)) as { id: string; full_name: string } | undefined
+      if (!target) return res.status(400).json({ message: 'اختر موظفاً فعّالاً من موظفي الدائرة نفسها.' })
+      const previous = row.assigned_staff_id ? String(row.assigned_staff_id) : null
+      const timestamp = new Date().toISOString()
+      const result = db
+        .prepare(
+          `UPDATE service_requests SET assigned_staff_id = ?, assigned_at = ?
+           WHERE id = ? AND department_id = ? AND status NOT IN ('APPROVED', 'REJECTED')`
+        )
+        .run(target.id, timestamp, Number(row.id), String(row.department_id))
+      if (!result.changes) return res.status(409).json({ message: 'تغيّرت حالة الطلب للتو. حدّث القائمة.' })
+      addAudit({
+        actor: session.actor,
+        role: session.role,
+        action: 'SERVICE_REQUEST_ASSIGNED',
+        entityType: 'ServiceRequest',
+        entityId: String(row.reference),
+        previousValue: { assignedStaffId: previous },
+        newValue: { assignedStaffId: target.id, assignedStaffName: target.full_name },
+      })
+      publishRequest(row, 'ASSIGNED')
+      res.json(serializeServiceRequestForEmployee(loadRequest(String(row.reference))!))
+    }
+  )
+
+  /** Active employees a request of this department can be assigned to (the manager's assign dropdown). */
+  app.get('/api/employee/department-staff', requireSession('EMPLOYEE', 'OPERATIONS', 'SUPER_ADMIN'), (req, res) => {
+    const session = currentSession(res)
+    const requested = String(req.query.departmentId || '').trim()
+    const departmentId = session.role === 'EMPLOYEE' ? session.departmentId : requested || null
+    if (session.role === 'EMPLOYEE' && requested && requested !== session.departmentId)
+      return res.status(403).json({ message: 'قائمة الموظفين متاحة لدائرتك فقط.' })
+    if (!departmentId) return res.json({ items: [] })
+    const rows = db
+      .prepare(
+        `SELECT id, full_name, is_department_manager FROM staff_accounts
+         WHERE department_id = ? AND role = 'EMPLOYEE' AND status = 'ACTIVE' ORDER BY full_name`
+      )
+      .all(departmentId) as Array<{ id: string; full_name: string; is_department_manager: number }>
+    res.json({
+      items: rows.map(row => ({
+        id: row.id,
+        fullName: row.full_name,
+        isDepartmentManager: Boolean(row.is_department_manager),
+      })),
+    })
+  })
+
+  // ---- employee: referral to the competent department ------------------------------------------------
+  app.post(
+    '/api/employee/service-requests/:reference/transfer',
+    requireSession('EMPLOYEE', 'SUPER_ADMIN'),
+    (req, res) => {
+      const session = currentSession(res)
+      const row = loadRequest(param(req, 'reference'))
+      if (!row) return res.status(404).json({ message: 'طلب الخدمة غير موجود.' })
+      if (!canActOn(session, row)) return res.status(403).json({ message: 'هذا الطلب يخص دائرة أخرى.' })
+      const payload = z
+        .object({
+          toDepartmentId: z.string().trim().min(2).max(120),
+          reason: z.string().trim().min(10).max(500),
+        })
+        .safeParse(req.body)
+      if (!payload.success)
+        return res.status(400).json({ message: 'اختر الدائرة المختصة واكتب سبب الإحالة (10 أحرف على الأقل).' })
+      if (isClosed(row)) return res.status(409).json({ message: 'الطلب مغلق ولا يمكن إحالته.' })
+      if (approvalsInFlight.has(String(row.reference)))
+        return res.status(409).json({ message: 'يجري حفظ قرار الموافقة على هذا الطلب الآن؛ لا يمكن إحالته.' })
+      const conflict = assignmentConflict(session, row)
+      if (conflict) return res.status(409).json({ message: conflict, code: 'ASSIGNED_TO_OTHER' })
+      const fromDepartmentId = String(row.department_id)
+      if (payload.data.toDepartmentId === fromDepartmentId)
+        return res.status(400).json({ message: 'الطلب لدى هذه الدائرة أصلاً. اختر الدائرة المختصة.' })
+      const target = departmentById.get(payload.data.toDepartmentId)
+      const targetRecord = db.prepare('SELECT id FROM departments WHERE id = ? AND active = 1').get(target?.id || '')
+      if (!target || !targetRecord)
+        return res.status(404).json({ message: 'الدائرة المختارة غير موجودة في سجل الدوائر.' })
+      // a fee is recorded against the department that set it (revenue, receipt, refund): moving the request while
+      // it is owed would collect money for one department on a file that now belongs to another
+      const openFee = listPaymentsForRequest(Number(row.id)).find(item => item.status !== 'PAID')
+      if (String(row.status) === 'PAYMENT_PENDING' || openFee)
+        return res.status(409).json({
+          message: `لا يمكن إحالة طلب عليه رسم غير مسدد${openFee ? ` (${openFee.reference})` : ''}: الرسم مسجل باسم هذه الدائرة. انتظر السداد، أو ارفض الطلب مع توجيه المواطن للدائرة المختصة.`,
+          code: 'OPEN_FEE',
+        })
+      const timestamp = new Date().toISOString()
+      const currentAction = `أُحيل الطلب إلى ${target.name} لأنها الجهة المختصة، وسيُستكمل تدقيقه هناك.`
+      db.exec('BEGIN')
+      try {
+        const moved = db
+          .prepare(
+            `UPDATE service_requests SET department_id = ?, origin_department_id = COALESCE(origin_department_id, ?),
+               assigned_staff_id = NULL, assigned_at = NULL, current_action = ?, updated_at = ?
+             WHERE id = ? AND department_id = ? AND status = ?`
+          )
+          .run(
+            target.id,
+            fromDepartmentId,
+            currentAction,
+            timestamp,
+            Number(row.id),
+            fromDepartmentId,
+            String(row.status)
+          )
+        if (!moved.changes) {
+          db.exec('ROLLBACK')
+          return res.status(409).json({ message: 'تغيّر الطلب للتو (قرار أو إحالة أخرى). حدّث القائمة.' })
+        }
+        db.prepare(
+          `INSERT INTO service_request_transfers (id, service_request_id, from_department_id, to_department_id, reason, requested_by, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?)`
+        ).run(
+          `trf_${randomUUID().replaceAll('-', '')}`,
+          Number(row.id),
+          fromDepartmentId,
+          target.id,
+          payload.data.reason,
+          session.actor,
+          timestamp
+        )
+        // an unconfirmed appointment request now belongs to the new department's calendar
+        db.prepare(
+          `UPDATE appointments SET department = ?, updated_at = ? WHERE service_request_id = ? AND status = 'REQUESTED'`
+        ).run(target.name, timestamp, Number(row.id))
+        db.exec('COMMIT')
+      } catch (error) {
+        db.exec('ROLLBACK')
+        throw error
+      }
+      notifyCitizen({
+        citizenId: Number(row.citizen_id),
+        type: 'SERVICE_REQUEST_TRANSFERRED',
+        title: 'أُحيل طلبك إلى الدائرة المختصة',
+        message: `${String(row.reference)} — أُحيل طلبك إلى ${target.name} لاستكمال معالجته. يبقى رقم المعاملة نفسه وتصلك التحديثات كالمعتاد.`,
+        link: '/citizen#my-requests',
+      })
+      addAudit({
+        actor: session.actor,
+        role: session.role,
+        action: 'SERVICE_REQUEST_TRANSFERRED',
+        entityType: 'ServiceRequest',
+        entityId: String(row.reference),
+        previousValue: {
+          departmentId: fromDepartmentId,
+          assignedStaffId: row.assigned_staff_id ? String(row.assigned_staff_id) : null,
+        },
+        newValue: { departmentId: target.id, reason: payload.data.reason },
+      })
+      // both queues change: it leaves the old department and arrives in the new one
+      publishRequest(row, 'TRANSFERRED', fromDepartmentId)
+      publishRequest(row, 'TRANSFERRED', target.id)
+      res.json(serializeServiceRequestForEmployee(loadRequest(String(row.reference))!))
+    }
+  )
+
+  /** Referral log of a department: `out` = sent by it, `in` = received by it. */
+  app.get('/api/employee/transfers', requireSession('EMPLOYEE', 'OPERATIONS', 'SUPER_ADMIN'), (req, res) => {
+    const session = currentSession(res)
+    const direction = req.query.direction === 'in' ? 'in' : 'out'
+    const departmentId =
+      session.role === 'EMPLOYEE' ? session.departmentId : String(req.query.departmentId || '').trim() || null
+    if (session.role === 'EMPLOYEE' && !departmentId) return res.json({ direction, items: [] })
+    const column = direction === 'in' ? 't.to_department_id' : 't.from_department_id'
+    const rows = db
+      .prepare(
+        `SELECT t.*, sr.reference, sr.status AS request_status, sc.name AS service_name,
+           fd.name AS from_department_name, td.name AS to_department_name
+         FROM service_request_transfers t JOIN service_requests sr ON sr.id = t.service_request_id
+         JOIN service_catalog sc ON sc.id = sr.service_id
+         LEFT JOIN departments fd ON fd.id = t.from_department_id LEFT JOIN departments td ON td.id = t.to_department_id
+         ${departmentId ? `WHERE ${column} = ?` : ''} ORDER BY t.created_at DESC LIMIT 200`
+      )
+      .all(...(departmentId ? [departmentId] : [])) as Array<Record<string, unknown>>
+    res.json({
+      direction,
+      items: rows.map(row => ({
+        ...mapTransfer(row),
+        serviceName: String(row.service_name),
+        // the sending department keeps only the reference and current status, not the file itself
+        requestStatus: String(row.request_status),
+      })),
+    })
+  })
 }

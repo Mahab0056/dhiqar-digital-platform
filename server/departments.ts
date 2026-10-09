@@ -1,4 +1,5 @@
 import { db } from './db.js'
+import { baghdadDayStart } from './services/sla.js'
 import { departmentById, departmentRegistry, type DepartmentRegistryItem } from './department-registry.js'
 
 /** Upserts the full Dhi Qar registry into the departments table (idempotent, runs at startup). */
@@ -99,7 +100,8 @@ export function getRegistryDepartments() {
     }
     current.total += count
     // anything waiting on the department (new, under review, appointment request) is open work for it
-    if (status === 'UNDER_REVIEW' || status === 'SUBMITTED' || status === 'APPOINTMENT_REQUESTED') current.underReview += count
+    if (status === 'UNDER_REVIEW' || status === 'SUBMITTED' || status === 'APPOINTMENT_REQUESTED')
+      current.underReview += count
     if (status === 'ACTION_REQUIRED') current.actionRequired += count
     if (status === 'APPROVED') current.completed += count
     if (status === 'REJECTED') current.rejected += count
@@ -111,7 +113,9 @@ export function getRegistryDepartments() {
     .all() as Array<{ department_id: string; status: string; total: number }>
   serviceRows.forEach(row => register(String(row.department_id), String(row.status), Number(row.total)))
   const applicationRows = db
-    .prepare('SELECT department_id, department, status, COUNT(*) AS total FROM applications GROUP BY department_id, department, status')
+    .prepare(
+      'SELECT department_id, department, status, COUNT(*) AS total FROM applications GROUP BY department_id, department, status'
+    )
     .all() as Array<{ department_id: string | null; department: string; status: string; total: number }>
   applicationRows.forEach(row => {
     const departmentId = row.department_id || registryByName.get(String(row.department))
@@ -221,6 +225,131 @@ export function getRegistryDepartments() {
 }
 
 const statusLabel = (status: string) => status
+
+/**
+ * Manager view of one department: who holds what, what nobody has picked up, what is late, and the referrals in
+ * and out. Every figure is one grouped query (no per-employee or per-request queries).
+ */
+export function getDepartmentManagement(id: string, now = new Date()) {
+  const dayStart = baghdadDayStart(now)
+  const weekStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString()
+  const nowIso = now.toISOString()
+
+  const staff = db
+    .prepare(
+      `SELECT id, username, full_name, is_department_manager FROM staff_accounts
+       WHERE department_id = ? AND role = 'EMPLOYEE' AND status = 'ACTIVE' ORDER BY full_name`
+    )
+    .all(id) as Array<{ id: string; username: string; full_name: string; is_department_manager: number }>
+  const openByAssignee = new Map(
+    (
+      db
+        .prepare(
+          `SELECT assigned_staff_id, COUNT(*) AS total,
+             SUM(CASE WHEN due_at < ? AND status NOT IN ('ACTION_REQUIRED', 'PAYMENT_PENDING') THEN 1 ELSE 0 END) AS overdue
+           FROM service_requests WHERE department_id = ? AND assigned_staff_id IS NOT NULL
+             AND status NOT IN ('APPROVED', 'REJECTED') GROUP BY assigned_staff_id`
+        )
+        .all(nowIso, id) as Array<{ assigned_staff_id: string; total: number; overdue: number | null }>
+    ).map(row => [row.assigned_staff_id, { open: Number(row.total), overdue: Number(row.overdue || 0) }])
+  )
+  // decided_by stores the audit actor label "Full Name (username)" — the same label the session builds
+  const decidedByActor = new Map(
+    (
+      db
+        .prepare(
+          `SELECT decided_by, SUM(CASE WHEN decided_at >= ? THEN 1 ELSE 0 END) AS today, COUNT(*) AS week
+           FROM service_requests WHERE department_id = ? AND decided_at >= ? AND decided_by IS NOT NULL GROUP BY decided_by`
+        )
+        .all(dayStart, id, weekStart) as Array<{ decided_by: string; today: number | null; week: number }>
+    ).map(row => [row.decided_by, { today: Number(row.today || 0), week: Number(row.week) }])
+  )
+  const workload = staff.map(member => {
+    const open = openByAssignee.get(member.id)
+    const decided = decidedByActor.get(`${member.full_name} (${member.username})`)
+    return {
+      staffId: member.id,
+      fullName: member.full_name,
+      isDepartmentManager: Boolean(member.is_department_manager),
+      openAssigned: open?.open || 0,
+      overdueAssigned: open?.overdue || 0,
+      decidedToday: decided?.today || 0,
+      decidedThisWeek: decided?.week || 0,
+    }
+  })
+
+  const backlog = db
+    .prepare(
+      `SELECT COUNT(*) AS total,
+         SUM(CASE WHEN status NOT IN ('ACTION_REQUIRED', 'PAYMENT_PENDING') THEN 1 ELSE 0 END) AS actionable
+       FROM service_requests WHERE department_id = ? AND assigned_staff_id IS NULL AND status NOT IN ('APPROVED', 'REJECTED')`
+    )
+    .get(id) as { total: number; actionable: number | null }
+
+  const overdueWhere = `sr.department_id = ? AND sr.due_at IS NOT NULL AND sr.due_at < ?
+    AND sr.status NOT IN ('APPROVED', 'REJECTED', 'ACTION_REQUIRED', 'PAYMENT_PENDING')`
+  const overdueTotal = Number(
+    (
+      db.prepare(`SELECT COUNT(*) AS total FROM service_requests sr WHERE ${overdueWhere}`).get(id, nowIso) as {
+        total: number
+      }
+    ).total
+  )
+  const overdue = (
+    db
+      .prepare(
+        `SELECT sr.reference, sr.status, sr.created_at, sr.due_at, sc.name AS service_name, c.full_name AS citizen_name,
+           sa.full_name AS assigned_staff_name
+         FROM service_requests sr JOIN service_catalog sc ON sc.id = sr.service_id JOIN citizens c ON c.id = sr.citizen_id
+         LEFT JOIN staff_accounts sa ON sa.id = sr.assigned_staff_id
+         WHERE ${overdueWhere} ORDER BY sr.due_at ASC LIMIT 25`
+      )
+      .all(id, nowIso) as Array<Record<string, unknown>>
+  ).map(row => ({
+    reference: String(row.reference),
+    status: String(row.status),
+    serviceName: String(row.service_name),
+    citizenName: String(row.citizen_name),
+    assignedStaffName: row.assigned_staff_name ? String(row.assigned_staff_name) : null,
+    createdAt: String(row.created_at),
+    dueAt: String(row.due_at),
+  }))
+
+  const referrals = (direction: 'in' | 'out') =>
+    (
+      db
+        .prepare(
+          `SELECT t.reason, t.requested_by, t.created_at, sr.reference, sr.status, sc.name AS service_name,
+             fd.name AS from_name, td.name AS to_name
+           FROM service_request_transfers t JOIN service_requests sr ON sr.id = t.service_request_id
+           JOIN service_catalog sc ON sc.id = sr.service_id
+           LEFT JOIN departments fd ON fd.id = t.from_department_id LEFT JOIN departments td ON td.id = t.to_department_id
+           WHERE ${direction === 'in' ? 't.to_department_id' : 't.from_department_id'} = ?
+           ORDER BY t.created_at DESC LIMIT 20`
+        )
+        .all(id) as Array<Record<string, unknown>>
+    ).map(row => ({
+      reference: String(row.reference),
+      serviceName: String(row.service_name),
+      status: String(row.status),
+      fromDepartmentName: String(row.from_name || ''),
+      toDepartmentName: String(row.to_name || ''),
+      reason: String(row.reason),
+      requestedBy: String(row.requested_by),
+      createdAt: String(row.created_at),
+    }))
+
+  return {
+    workload,
+    unassignedOpen: Number(backlog.total || 0),
+    // unassigned and actually waiting on the department (not on the citizen)
+    unassignedActionable: Number(backlog.actionable || 0),
+    overdueTotal,
+    overdue,
+    incomingReferrals: referrals('in'),
+    outgoingReferrals: referrals('out'),
+  }
+}
 
 /** Everything a department dashboard needs, scoped to one department. */
 export function getDepartmentDashboard(id: string) {

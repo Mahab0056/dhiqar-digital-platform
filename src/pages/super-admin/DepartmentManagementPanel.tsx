@@ -22,6 +22,7 @@ export function DepartmentManagementPanel() {
   const [error, setError] = useState('')
   const [filter, setFilter] = useState('')
   const [editing, setEditing] = useState<{ id: string; text: string } | null>(null)
+  const [slaDraft, setSlaDraft] = useState<Record<string, string>>({})
   const load = useCallback(async () => {
     setLoading(true)
     setError('')
@@ -51,6 +52,28 @@ export function DepartmentManagementPanel() {
     try {
       await api.updatePlatformService(service.id, { requiredDocuments })
       setEditing(null)
+      await load()
+    } catch (item) {
+      setError((item as Error).message)
+    } finally {
+      setBusyService(null)
+    }
+  }
+  const saveSla = async (service: DepartmentWorkbench['services'][number]) => {
+    const raw = (slaDraft[service.id] ?? '').trim()
+    // empty = back to the channel default
+    const value = raw === '' ? null : Number(raw)
+    if (value !== null && (!Number.isInteger(value) || value < 1 || value > 90))
+      return setError('مهلة الإنجاز عدد أيام عمل صحيح من 1 إلى 90، أو اتركها فارغة للقيمة الافتراضية.')
+    setBusyService(service.id)
+    setError('')
+    try {
+      await api.updatePlatformService(service.id, { slaWorkingDays: value })
+      setSlaDraft(current => {
+        const next = { ...current }
+        delete next[service.id]
+        return next
+      })
       await load()
     } catch (item) {
       setError((item as Error).message)
@@ -239,6 +262,38 @@ export function DepartmentManagementPanel() {
                               ))}
                             </ul>
                           )}
+                          <div className="service-sla-editor">
+                            <label>
+                              مهلة الإنجاز (أيام عمل، دون الجمعة والسبت)
+                              <input
+                                type="number"
+                                min={1}
+                                max={90}
+                                inputMode="numeric"
+                                value={slaDraft[service.id] ?? (service.slaWorkingDays ?? '').toString()}
+                                placeholder={`الافتراضي ${service.slaDefaultDays}`}
+                                onChange={event =>
+                                  setSlaDraft(current => ({ ...current, [service.id]: event.target.value.slice(0, 2) }))
+                                }
+                              />
+                            </label>
+                            <small>
+                              {service.slaWorkingDays
+                                ? `محددة: ${service.slaWorkingDays} يوم عمل`
+                                : `الافتراضي: ${service.slaDefaultDays} أيام عمل`}{' '}
+                              — تُطبق على الطلبات الجديدة؛ وقت انتظار المواطن لا يُحتسب.
+                            </small>
+                            {slaDraft[service.id] !== undefined && (
+                              <button
+                                type="button"
+                                className="button outline small"
+                                onClick={() => void saveSla(service)}
+                                disabled={busyService === service.id}
+                              >
+                                حفظ المهلة
+                              </button>
+                            )}
+                          </div>
                           <footer>
                             {editing?.id === service.id ? (
                               <>

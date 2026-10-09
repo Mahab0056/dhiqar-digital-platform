@@ -6,6 +6,7 @@ import { adminMutationLimiter } from '../http/rate-limit.js'
 import { requireSession, currentSession } from '../auth/session.js'
 import { ensureDepartmentRecord } from '../seed.js'
 import { invalidateSearchIndex } from '../services/search.js'
+import { defaultSlaWorkingDays } from '../services/sla.js'
 import { addAudit, db, listCitizensForSuperAdmin } from '../db.js'
 import { departmentRegistry, registrySummary } from '../department-registry.js'
 import {
@@ -27,7 +28,7 @@ export function registerSuperAdminRoutes(app: express.Express) {
       .all() as Array<Record<string, unknown>>
     const services = db
       .prepare(
-        `SELECT sc.id, sc.department_id, sc.name, sc.category, sc.required_documents, sc.active, sc.updated_at FROM service_catalog sc ORDER BY sc.name`
+        `SELECT sc.id, sc.department_id, sc.name, sc.category, sc.required_documents, sc.active, sc.channel, sc.sla_working_days, sc.updated_at FROM service_catalog sc ORDER BY sc.name`
       )
       .all() as Array<Record<string, unknown>>
     const requestRows = db
@@ -62,6 +63,11 @@ export function registerSuperAdminRoutes(app: express.Express) {
             category: String(service.category),
             requiredDocuments: JSON.parse(String(service.required_documents || '[]')),
             active: Boolean(service.active),
+            slaWorkingDays:
+              service.sla_working_days === null || service.sla_working_days === undefined
+                ? null
+                : Number(service.sla_working_days),
+            slaDefaultDays: defaultSlaWorkingDays(String(service.channel || 'ONLINE_SUBMISSION')),
             updatedAt: String(service.updated_at),
           })),
         requests: [...requestRows, ...normalisedApplications]
@@ -90,12 +96,23 @@ export function registerSuperAdminRoutes(app: express.Express) {
         .object({
           requiredDocuments: z.array(z.string().trim().min(2).max(240)).min(1).max(24).optional(),
           active: z.boolean().optional(),
+          // working days to finish a request (Fri/Sat excluded); null restores the default for the channel
+          slaWorkingDays: z.number().int().min(1).max(90).nullable().optional(),
         })
         .safeParse(req.body)
-      if (!payload.success || (!payload.data.requiredDocuments && payload.data.active === undefined))
-        return res.status(400).json({ message: 'أدخل متطلباً واحداً على الأقل أو حدّث حالة الخدمة.' })
+      if (
+        !payload.success ||
+        (!payload.data.requiredDocuments &&
+          payload.data.active === undefined &&
+          payload.data.slaWorkingDays === undefined)
+      )
+        return res
+          .status(400)
+          .json({ message: 'أدخل متطلباً واحداً على الأقل، أو حدّث حالة الخدمة، أو مهلة الإنجاز (1–90 يوم عمل).' })
       const current = db
-        .prepare('SELECT id, required_documents, document_schema, active FROM service_catalog WHERE id = ?')
+        .prepare(
+          'SELECT id, required_documents, document_schema, active, sla_working_days FROM service_catalog WHERE id = ?'
+        )
         .get(param(req, 'key')) as Record<string, unknown> | undefined
       if (!current) return res.status(404).json({ message: 'الخدمة غير موجودة في سجل المنصة.' })
       const timestamp = new Date().toISOString()
@@ -126,13 +143,19 @@ export function registerSuperAdminRoutes(app: express.Express) {
       }
       db.prepare(
         `UPDATE service_catalog SET required_documents = ?, document_schema = COALESCE(?, document_schema),
-          documents_overridden_at = CASE WHEN ? IS NULL THEN documents_overridden_at ELSE ? END, active = ?, updated_at = ? WHERE id = ?`
+          documents_overridden_at = CASE WHEN ? IS NULL THEN documents_overridden_at ELSE ? END, active = ?, sla_working_days = ?, updated_at = ? WHERE id = ?`
       ).run(
         JSON.stringify(payload.data.requiredDocuments || JSON.parse(String(current.required_documents || '[]'))),
         documentSchema,
         documentSchema,
         timestamp,
         payload.data.active === undefined ? Number(current.active) : Number(payload.data.active),
+        // new requests use the new SLA; requests already filed keep the deadline they were given
+        payload.data.slaWorkingDays === undefined
+          ? current.sla_working_days === null || current.sla_working_days === undefined
+            ? null
+            : Number(current.sla_working_days)
+          : payload.data.slaWorkingDays,
         timestamp,
         param(req, 'key')
       )
@@ -146,6 +169,7 @@ export function registerSuperAdminRoutes(app: express.Express) {
         previousValue: {
           requiredDocuments: JSON.parse(String(current.required_documents || '[]')),
           active: Boolean(current.active),
+          slaWorkingDays: current.sla_working_days ?? null,
         },
         newValue: payload.data,
       })
