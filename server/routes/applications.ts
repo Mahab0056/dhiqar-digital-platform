@@ -155,10 +155,21 @@ export function registerApplicationsRoutes(app: express.Express) {
           ),
           faceConsent: z.literal('true'),
           attachments: z.array(z.string()).default([]),
+          clientRequestId: z
+            .string()
+            .regex(/^[A-Za-z0-9-]{8,80}$/)
+            .optional(),
         })
         .parse(req.body)
       const citizen = currentCitizen(res)
       if (!citizen) return
+      // idempotency: a double click or a retried upload with the same form key returns the first application
+      const duplicate = payload.clientRequestId
+        ? (db
+            .prepare('SELECT reference FROM applications WHERE citizen_id = ? AND client_request_id = ?')
+            .get(citizen.id, payload.clientRequestId) as { reference: string } | undefined)
+        : undefined
+      if (duplicate) return res.status(200).json({ ...getApplicationByReference(duplicate.reference), duplicate: true })
       if (!['VERIFIED', 'VERIFIED_MANUAL'].includes(citizen.verificationStatus))
         return res.status(409).json({ message: 'أكمل مراجعة الهوية أولاً قبل تقديم خدمة جديدة.' })
       // Service name, department and fee always come from the catalog — never from the client.
@@ -190,8 +201,8 @@ export function registerApplicationsRoutes(app: express.Express) {
       INSERT INTO applications (
         reference, citizen_id, citizen_name, service_key, service_name, department, department_id, status,
         current_action, business_name, activity_type, address, district, ownership_type,
-        lat, lng, fee, payment_status, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        lat, lng, fee, payment_status, created_at, updated_at, client_request_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `
         )
         .run(
@@ -214,7 +225,8 @@ export function registerApplicationsRoutes(app: express.Express) {
           fee,
           fee > 0 ? 'PENDING' : 'NOT_REQUIRED',
           timestamp,
-          timestamp
+          timestamp,
+          payload.clientRequestId || null
         )
       const applicationId = Number(result.lastInsertRowid)
       const protectedFiles: Array<{

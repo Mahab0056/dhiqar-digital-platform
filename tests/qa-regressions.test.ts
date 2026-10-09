@@ -116,6 +116,21 @@ describe('service request idempotency', () => {
   })
 })
 
+describe('upload memory budget', () => {
+  it('refuses a service request whose attachments add up past the per-request cap', async () => {
+    const big = Buffer.concat([jpeg.subarray(0, 4), Buffer.alloc(16 * 1024 * 1024, 1)])
+    let req = request(app)
+      .post('/api/service-requests')
+      .set('Cookie', citizen)
+      .field('serviceKey', 'health-birth-certificate')
+      .field('data', '{}')
+    for (const key of ['hospital-birth-report', 'father-id', 'mother-id', 'marriage-contract'])
+      req = req.attach(`doc__${key}`, big, { filename: `${key}.jpg`, contentType: 'image/jpeg' })
+    const response = await req
+    expect(response.status).toBe(413)
+  })
+})
+
 describe('unpaid fees block approval', () => {
   it('a cancelled or failed payment never lets the department approve', async () => {
     const created = await birthCertificate()

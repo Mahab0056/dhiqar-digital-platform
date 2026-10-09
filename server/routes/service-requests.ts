@@ -3,7 +3,7 @@ import { safeMessage } from '../http/error-handler.js'
 import { param, toLatinDigits } from '../http/params.js'
 import { randomUUID } from 'node:crypto'
 import { z } from 'zod'
-import { upload, validateUploadedFile } from '../http/upload.js'
+import { upload, uploadBudget, validateUploadedFile } from '../http/upload.js'
 import { requireSession, currentCitizen, currentSession, type SessionData } from '../auth/session.js'
 import { notifyCitizen, employeeWorkQueueRealtime } from '../realtime.js'
 import { addAudit, db, nextReference } from '../db.js'
@@ -189,7 +189,7 @@ export function registerServiceRequestsRoutes(app: express.Express) {
   })
 
   // ---- citizen: submit ------------------------------------------------------------------
-  app.post('/api/service-requests', requireSession('CITIZEN'), upload.any(), (req, res) => {
+  app.post('/api/service-requests', requireSession('CITIZEN'), uploadBudget(60), upload.any(), (req, res) => {
     const rawData =
       typeof req.body.data === 'string'
         ? (() => {

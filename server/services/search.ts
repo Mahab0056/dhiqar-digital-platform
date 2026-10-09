@@ -16,6 +16,9 @@ const synonyms: Record<string, string[]> = {
   سواقه: ['سياقه', 'اجازه سياقه', 'المرور'],
   سوق: ['سياقه', 'اجازه سياقه'],
   سياقه: ['سواقه', 'المرور'],
+  قياده: ['سياقه', 'اجازه سياقه', 'المرور'],
+  ميلاد: ['ولاده', 'شهاده الولاده'],
+  مواليد: ['ولاده'],
   سياره: ['مركبه', 'المرور', 'تسجيل مركبه'],
   مركبه: ['سياره', 'المرور'],
   جواز: ['جوازات', 'جواز سفر'],
@@ -151,6 +154,16 @@ const stopWords = new Set([
 
 const stripAl = (token: string) => (token.length > 4 && token.startsWith('ال') ? token.slice(2) : token)
 
+// Place names whose first word is also an everyday word ("اجازة سوق" = driving licence, not سوق الشيوخ)
+// are kept as one token on both sides (marked so prefix/fuzzy matching on the first word can't reach it).
+const compounds: Array<[RegExp, string]> = [[/سوق (ال)?شيوخ/g, '_سوق_الشيوخ']]
+
+const words = (text: string) => {
+  let value = normalizeArabic(text)
+  for (const [pattern, joined] of compounds) value = value.replace(pattern, joined)
+  return value.split(' ').map(stripAl)
+}
+
 function bigrams(value: string) {
   const set = new Set<string>()
   for (let index = 0; index < value.length - 1; index++) set.add(value.slice(index, index + 2))
@@ -168,10 +181,7 @@ function similarity(left: string, right: string) {
 }
 
 export function expandQuery(query: string) {
-  const tokens = normalizeArabic(query)
-    .split(' ')
-    .map(stripAl)
-    .filter(token => token.length > 1 && !stopWords.has(token))
+  const tokens = words(query).filter(token => token.length > 1 && !stopWords.has(token))
   const groups = tokens.map(token => {
     const aliases: string[][] = []
     for (const alias of synonyms[token] || []) {
@@ -201,13 +211,11 @@ function index(): Indexed[] {
   if (cache && Date.now() - cache.at < 60_000) return cache.items
   const items = listCatalogServices().map(service => ({
     service,
-    title: normalizeArabic(service.title).split(' ').map(stripAl),
-    category: normalizeArabic(service.category).split(' ').map(stripAl),
-    department: normalizeArabic(service.departmentName).split(' ').map(stripAl),
-    docs: normalizeArabic(service.requiredDocuments.map(doc => doc.label).join(' '))
-      .split(' ')
-      .map(stripAl),
-    description: normalizeArabic(service.description).split(' ').map(stripAl),
+    title: words(service.title),
+    category: words(service.category),
+    department: words(service.departmentName),
+    docs: words(service.requiredDocuments.map(doc => doc.label).join(' ')),
+    description: words(service.description),
   }))
   cache = { at: Date.now(), items }
   return items
@@ -223,7 +231,9 @@ function fieldScore(words: string[], token: string, weight: number) {
     if (word === token) best = Math.max(best, 1)
     else if (Math.min(word.length, token.length) >= 3 && (word.startsWith(token) || token.startsWith(word)))
       best = Math.max(best, 0.6)
-    else {
+    // fuzzy only between words that start alike: typos rarely hit the first letter, while
+    // "قياده"/"عياده" share every other bigram and mean unrelated things
+    else if (word[0] === token[0]) {
       const score = similarity(word, token)
       if (score >= 0.66) best = Math.max(best, score * 0.5)
     }
@@ -264,8 +274,8 @@ export function searchCatalog(query: string, limit = 12): { hits: SearchHit[]; t
     }
     if (score <= 0) continue
     // Every word the citizen typed (or one of its synonyms) must hit somewhere when the query is short;
-    // long queries need at least half of the words.
-    const required = tokens.length <= 2 ? tokens.length : Math.ceil(tokens.length / 2)
+    // long queries need a strict majority, so "رخصة قيادة طائرة فضائية" doesn't ride on its first two words.
+    const required = tokens.length <= 2 ? tokens.length : Math.floor(tokens.length / 2) + 1
     if (matched < required) continue
     // a hit that only brushes the description with a weak fuzzy match is noise, not a result
     if (score < 1) continue
@@ -275,5 +285,7 @@ export function searchCatalog(query: string, limit = 12): { hits: SearchHit[]; t
     hits.push({ service: item.service, score })
   }
   hits.sort((a, b) => b.score - a.score || a.service.title.localeCompare(b.service.title, 'ar'))
-  return { hits: hits.slice(0, limit), tokens }
+  // drop the long tail that only shares a generic word with the query (e.g. "اجازة" alone)
+  const floor = hits.length ? hits[0].score * 0.4 : 0
+  return { hits: hits.filter(hit => hit.score >= floor).slice(0, limit), tokens }
 }

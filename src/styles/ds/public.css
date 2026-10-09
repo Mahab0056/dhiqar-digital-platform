@@ -116,7 +116,7 @@
 .tq-header-row {
   display: flex;
   align-items: center;
-  gap: 28px;
+  gap: 16px;
   min-height: 76px;
 }
 .tq-brand {
@@ -160,9 +160,9 @@
   position: relative;
   display: inline-flex;
   align-items: center;
-  padding: 0 12px;
+  padding: 0 9px;
   color: var(--ds-text-2);
-  font-size: var(--ds-text-base);
+  font-size: var(--ds-text-sm);
   font-weight: 500;
   text-decoration: none;
   white-space: nowrap;
@@ -171,7 +171,7 @@
 .tq-nav a::after {
   content: '';
   position: absolute;
-  inset-inline: 12px;
+  inset-inline: 9px;
   bottom: -1px;
   height: 3px;
   border-radius: 3px 3px 0 0;
@@ -194,6 +194,9 @@
   align-items: center;
   gap: 8px;
   flex: none;
+}
+.tq-header-actions .button {
+  padding-inline: 14px;
 }
 .tq-menu-toggle {
   display: none;
@@ -235,19 +238,8 @@
   gap: 8px;
   margin-top: 12px;
 }
-@media (max-width: 1240px) {
-  .tq-nav a {
-    padding: 0 9px;
-    font-size: var(--ds-text-sm);
-  }
-  .tq-nav a::after {
-    inset-inline: 9px;
-  }
-  .tq-header-row {
-    gap: 16px;
-  }
-}
-@media (max-width: 1100px) {
+/* below 1280px the six nav links would run into the actions, so the nav collapses into the menu */
+@media (max-width: 1280px) {
   .tq-nav,
   .tq-header-actions {
     display: none;
@@ -548,6 +540,19 @@
   box-shadow: var(--ds-shadow-lg);
   list-style: none;
   text-align: start;
+}
+.tq-search-empty {
+  padding: 14px 16px;
+  color: var(--ds-text-muted);
+  font-size: var(--ds-text-sm);
+  line-height: 1.8;
+}
+.tq-search-empty p {
+  margin: 0 0 8px;
+}
+.tq-search-empty a {
+  color: var(--ds-primary-text);
+  font-weight: 600;
 }
 .tq-search-results li a {
   display: grid;

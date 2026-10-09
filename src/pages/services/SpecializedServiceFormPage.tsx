@@ -2,7 +2,7 @@ import type React from 'react'
 import { useState } from 'react'
 import { useLocation } from 'wouter'
 import { AlertTriangle, Building2, Clock3, ReceiptText, Send, ShieldCheck } from 'lucide-react'
-import { api } from '../../api'
+import { api, newClientRequestId } from '../../api'
 import { formatIQD, services } from '../../data'
 import { LocationPicker, type PickedLocation } from '../../components/maps/LocationPicker'
 import { SecureCameraCapture } from '../../components/camera/SecureCameraCapture'
@@ -33,6 +33,7 @@ export function SpecializedServiceFormPage({ serviceKey }: { serviceKey: string 
   const [storefrontPhoto, setStorefrontPhoto] = useState<File | null>(null)
   const [faceVideo, setFaceVideo] = useState<File | null>(null)
   const [faceConsent, setFaceConsent] = useState(false)
+  const [clientRequestId] = useState(newClientRequestId)
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     setError('')
@@ -68,6 +69,7 @@ export function SpecializedServiceFormPage({ serviceKey }: { serviceKey: string 
         storefrontPhoto,
         faceVideo,
         faceConsent,
+        clientRequestId,
       })
       sessionStorage.removeItem(`dhiqar-service-draft:${service.key}`)
       navigate(`/citizen/application/${app.reference}`)

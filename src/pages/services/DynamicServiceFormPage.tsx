@@ -20,7 +20,7 @@ import {
   Send,
   ShieldCheck,
 } from 'lucide-react'
-import { api } from '../../api'
+import { api, newClientRequestId } from '../../api'
 import { getServiceDefinition } from '../../service-forms'
 import type { CatalogService } from '../../types'
 import { SecureCameraCapture } from '../../components/camera/SecureCameraCapture'
@@ -34,10 +34,6 @@ import {
 } from './submission-access'
 
 const draftKey = (serviceKey: string) => `dhiqar-service-draft:${serviceKey}`
-const newClientRequestId = () =>
-  typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
-    ? crypto.randomUUID()
-    : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`
 
 const channelLabel: Record<CatalogService['channel'], string> = {
   ONLINE_SUBMISSION: 'تقديم إلكتروني كامل',

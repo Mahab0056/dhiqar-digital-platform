@@ -28,6 +28,12 @@ import type {
   DepartmentSummary,
 } from './types'
 
+/** Idempotency key for one filled-in form: a double click or a retried upload resubmits the same key. */
+export const newClientRequestId = () =>
+  typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+    ? crypto.randomUUID()
+    : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`
+
 const readableRequestError = (status: number, message?: string, path = '') => {
   // login endpoints return 401 for wrong credentials — show the server's own explanation there
   if (status === 401 && !/\/(login|mfa|change-password|mfa\/disable|mfa\/confirm|verify-phone)$/.test(path))
@@ -638,6 +644,7 @@ export const api = {
       storefrontPhoto?: File | null
       faceVideo?: File | null
       faceConsent?: boolean
+      clientRequestId?: string
     }
   ) => {
     const form = new FormData()

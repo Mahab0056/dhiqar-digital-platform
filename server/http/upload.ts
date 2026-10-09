@@ -1,3 +1,4 @@
+import type express from 'express'
 import multer from 'multer'
 
 export const upload = multer({
@@ -17,6 +18,31 @@ export const upload = multer({
     callback(null, true)
   },
 })
+
+/**
+ * Caps the whole multipart body before multer buffers it in memory: `upload.any()` alone would accept
+ * 16 files × 20MB per request. Browsers always send Content-Length for FormData, so a missing one is refused.
+ */
+export function uploadBudget(maxMegabytes: number): express.RequestHandler {
+  const maxBytes = maxMegabytes * 1024 * 1024
+  return (req, res, next) => {
+    const declared = Number(req.headers['content-length'])
+    if (!Number.isFinite(declared) || declared <= 0)
+      return res.status(411).json({ message: 'تعذر قراءة حجم المرفقات. أعد الإرسال من المتصفح.' })
+    if (declared > maxBytes) {
+      // drain (and discard, never buffer) the body before answering, so the browser receives this
+      // message instead of a connection reset mid-upload
+      req.on('end', () =>
+        res.status(413).json({
+          message: `مجموع حجم المرفقات أكبر من ${maxMegabytes} ميغابايت. صغّر الصور أو ارفع ملفات أقل ثم أعد الإرسال.`,
+        })
+      )
+      req.resume()
+      return
+    }
+    next()
+  }
+}
 
 export function detectedMime(buffer: Buffer) {
   if (buffer.length >= 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) return 'image/jpeg'

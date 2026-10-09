@@ -47,6 +47,8 @@ export function SmartSearch({
 }) {
   const [, navigate] = useLocation()
   const [results, setResults] = useState<CatalogService[]>([])
+  // the term the current results belong to, so "no results" never flashes for a query still in flight
+  const [searchedTerm, setSearchedTerm] = useState('')
   const [open, setOpen] = useState(false)
   const [active, setActive] = useState(-1)
   const [listening, setListening] = useState(false)
@@ -61,6 +63,7 @@ export function SmartSearch({
     const term = value.trim()
     if (term.length < 2) {
       setResults([])
+      setSearchedTerm('')
       return
     }
     const id = ++requestId.current
@@ -70,6 +73,7 @@ export function SmartSearch({
         .then(items => {
           if (requestId.current === id) {
             setResults(items)
+            setSearchedTerm(term)
             // only pop the panel while the citizen is actually in the field (not for a prefilled ?q= on load)
             setOpen(document.activeElement === inputRef.current)
             setActive(-1)
@@ -168,7 +172,7 @@ export function SmartSearch({
         ref={inputRef}
         value={value}
         onChange={event => onChange(event.target.value)}
-        onFocus={() => results.length && setOpen(true)}
+        onFocus={() => searchedTerm && setOpen(true)}
         onKeyDown={onKeyDown}
         placeholder={listening ? 'أنا أسمعك… قل اسم الخدمة' : placeholder}
         aria-label="ابحث عن خدمة"
@@ -200,6 +204,16 @@ export function SmartSearch({
         <span>بحث</span>
       </button>
       {voiceError && <div className="tq-search-hint">{voiceError}</div>}
+      {open && searchedTerm && searchedTerm === value.trim() && results.length === 0 && (
+        <div className="tq-search-results tq-search-empty" role="status">
+          <p>
+            لم نجد خدمة تطابق «{searchedTerm}». جرّب كلمة أبسط مثل «جواز» أو «إجازة سياقة» أو «بطاقة وطنية».
+          </p>
+          <Link href="/directory" onClick={() => setOpen(false)}>
+            تصفّح دليل الخدمات كاملاً
+          </Link>
+        </div>
+      )}
       {open && results.length > 0 && (
         <ul className="tq-search-results" role="listbox">
           {results.map((service, index) => {
