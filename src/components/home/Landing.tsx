@@ -21,7 +21,7 @@ import {
   TrendingUp,
   UserRound,
   UsersRound,
-  Zap,
+  Leaf,
 } from 'lucide-react'
 import { TQLogoMotion } from './TQLogoMotion'
 import { useMotionPref } from './motion-pref'
@@ -47,7 +47,7 @@ export function LandingHeader() {
       </a>
       <div className="ld-wrap ld-header-row">
         <Link href="/" className="ld-brand" aria-label="ذي قار الرقمية — الصفحة الرئيسية">
-          <img src="/brand/dhiqar-unified-logo.png" alt="" width={34} height={34} />
+          <img src="/brand/home/tq-letters.png" alt="" width={40} height={28} />
           <span>ذي قار الرقمية</span>
         </Link>
         <nav className="ld-nav" aria-label="التنقل الرئيسي">
@@ -230,7 +230,8 @@ export function LandingJourney() {
         const section = ref.current
         if (!section) return
         const travel = section.offsetHeight - window.innerHeight
-        const progress = travel > 0 ? -section.getBoundingClientRect().top / travel : 0
+        const progress = Math.min(1, Math.max(0, travel > 0 ? -section.getBoundingClientRect().top / travel : 0))
+        section.style.setProperty('--p', progress.toFixed(3))
         setStage(progress < 0.3 ? 0 : progress < 0.66 ? 1 : 2)
       })
     }
@@ -258,13 +259,18 @@ export function LandingJourney() {
       id="journey"
       ref={ref}
       aria-labelledby="ld-journey-title"
+      style={sticky ? undefined : css({ '--p': stage / 2 })}
     >
       <div className="ld-journey-stage">
         <div className="ld-wrap ld-journey-grid">
           <div className="ld-journey-copy" data-reveal>
-            <h2 id="ld-journey-title">
-              من الطلب
-              <em>إلى الإنجاز.</em>
+            <h2 id="ld-journey-title" className="ld-split">
+              <span className="ld-l">
+                <span>من الطلب</span>
+              </span>
+              <span className="ld-l" style={css({ '--l': 1 })}>
+                <em>إلى الإنجاز.</em>
+              </span>
             </h2>
             <p>خطوات واضحة، ومتابعة بكل مرحلة.</p>
             <ol className="ld-steps">
@@ -307,7 +313,7 @@ export function LandingJourney() {
             <div className="ld-form">
               <div className="ld-form-head">
                 <b>طلب خدمة</b>
-                <i />
+                <i aria-hidden="true" />
               </div>
               <ol className="ld-stepper">
                 {['اختيار الخدمة', 'رفع المستمسكات', 'إرسال الطلب'].map((label, index) => (
@@ -320,7 +326,7 @@ export function LandingJourney() {
               <label className={`ld-field${stage === 0 ? ' is-focus' : ''}`}>
                 <small>نوع الخدمة</small>
                 <span>
-                  إجازة بناء دار سكنية <ChevronDown />
+                  إصدار هوية سكنية <ChevronDown />
                 </span>
               </label>
               <label className="ld-field">
@@ -334,7 +340,7 @@ export function LandingJourney() {
                 <div className={`ld-doc${stage >= 1 ? ' is-up' : ''}`}>
                   <span className="ld-pdf">PDF</span>
                   <span className="ld-doc-text">
-                    <b>البطاقة الوطنية الموحدة · pdf</b>
+                    <b>هوية الأحوال المدنية pdf</b>
                     <small>{stage >= 1 ? 'تم الرفع بنجاح' : 'بانتظار الرفع'}</small>
                   </span>
                   <span className="ld-doc-check">
@@ -388,14 +394,60 @@ const PERF = [
   { icon: Landmark, name: 'دائرة البلدية', v: 86 },
   { icon: GraduationCap, name: 'دائرة التربية', v: 74 },
   { icon: HeartPulse, name: 'دائرة الصحة', v: 81 },
-  { icon: Zap, name: 'دائرة الكهرباء', v: 63 },
-  { icon: Droplet, name: 'الموارد المائية', v: 70 },
+  { icon: Leaf, name: 'دائرة الزراعة', v: 63 },
+  { icon: Droplet, name: 'دائرة الموارد المائية', v: 70 },
 ]
 const SUMMARY = [
-  { icon: FileText, label: 'المعاملات', value: '١٢٬٤٨٠', bars: [78, 46], tone: '' },
-  { icon: TrendingUp, label: 'الإيرادات', value: '١٨٦ م.د', bars: [64, 38], tone: '' },
-  { icon: Bell, label: 'التنبيهات', value: '٣٧ متأخرة', bars: [42, 22], tone: 'is-alert' },
+  { icon: FileText, label: 'المعاملات', bars: [78, 46], tone: '' },
+  { icon: TrendingUp, label: 'الإيرادات', bars: [64, 38], tone: '' },
+  { icon: Bell, label: 'التنبيهات', bars: [42, 22], tone: 'is-alert' },
 ]
+
+// operators at their consoles, silhouetted against the wall of screens (pure SVG, no photo)
+const OPERATORS = [90, 300, 520, 760, 1010, 1240, 1470]
+function ConsoleRow() {
+  return (
+    <svg className="ld-consoles" viewBox="0 0 1600 260" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
+      <defs>
+        <linearGradient id="ld-screen" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#3ad584" stopOpacity="0.9" />
+          <stop offset="100%" stopColor="#0d4b2c" stopOpacity="0.9" />
+        </linearGradient>
+        <linearGradient id="ld-screen-b" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#5fb4ff" stopOpacity="0.75" />
+          <stop offset="100%" stopColor="#123a5c" stopOpacity="0.85" />
+        </linearGradient>
+        <radialGradient id="ld-spill" cx="50%" cy="0%" r="70%">
+          <stop offset="0%" stopColor="#35d07a" stopOpacity="0.28" />
+          <stop offset="100%" stopColor="#35d07a" stopOpacity="0" />
+        </radialGradient>
+      </defs>
+      {/* console monitors */}
+      {Array.from({ length: 22 }, (_, index) => (
+        <g key={index} transform={`translate(${index * 74 + 6} 168)`}>
+          <rect width="62" height="38" rx="3" fill={index % 3 === 1 ? 'url(#ld-screen-b)' : 'url(#ld-screen)'} />
+          <rect x="6" y="8" width={20 + (index % 4) * 6} height="3" rx="1.5" fill="#d9ffe9" opacity="0.55" />
+          <rect x="6" y="16" width={34 - (index % 3) * 6} height="3" rx="1.5" fill="#d9ffe9" opacity="0.35" />
+          <rect x="6" y="24" width="44" height="8" rx="2" fill="#ffffff" opacity="0.12" />
+          <ellipse cx="31" cy="44" rx="40" ry="10" fill="url(#ld-spill)" />
+        </g>
+      ))}
+      {/* desk */}
+      <rect y="206" width="1600" height="54" fill="#020705" />
+      <rect y="204" width="1600" height="3" fill="#35d07a" opacity="0.18" />
+      {/* seated operators: head + shoulders, with a rim of screen light */}
+      {OPERATORS.map((x, index) => (
+        <g key={x} transform={`translate(${x} ${index % 2 ? 132 : 124}) scale(${index % 3 === 0 ? 1.08 : 1})`}>
+          <path
+            d="M-58 140 C-58 92 -40 74 -20 68 C-30 60 -34 48 -34 36 C-34 14 -18 0 0 0 C18 0 34 14 34 36 C34 48 30 60 20 68 C40 74 58 92 58 140Z"
+            fill="#020604"
+          />
+          <path d="M-30 30 C-28 12 -14 3 0 3" fill="none" stroke="#7df0b0" strokeOpacity="0.35" strokeWidth="2" />
+        </g>
+      ))}
+    </svg>
+  )
+}
 
 export function LandingOperations() {
   const board = useRef<HTMLDivElement>(null)
@@ -406,6 +458,10 @@ export function LandingOperations() {
   const { scrollYProgress } = useScroll({ target: board, offset: ['start end', 'start 0.3'] })
   const tilt = useTransform(scrollYProgress, [0, 1], still ? [0, 0] : [18, 0])
   const scale = useTransform(scrollYProgress, [0, 1], still ? [1, 1] : [0.9, 1])
+  // the screen wall drifts slower than the board in front of it
+  const section = useRef<HTMLElement>(null)
+  const { scrollYProgress: passing } = useScroll({ target: section, offset: ['start end', 'end start'] })
+  const wallY = useTransform(passing, [0, 1], still ? ['0%', '0%'] : ['-8%', '8%'])
 
   useEffect(() => {
     const element = board.current
@@ -424,13 +480,18 @@ export function LandingOperations() {
   }, [])
 
   return (
-    <section className="ld-ops" id="operations" aria-labelledby="ld-ops-title">
-      <div className="ld-ops-backdrop" aria-hidden="true" />
+    <section className="ld-ops" id="operations" ref={section} aria-labelledby="ld-ops-title">
+      <motion.div className="ld-ops-backdrop" style={{ y: wallY }} aria-hidden="true" />
+      <ConsoleRow />
       <div className="ld-wrap">
         <div className="ld-ops-head" data-reveal>
           <div>
             <span className="ld-eyebrow">غرفة العمليات المركزية</span>
-            <h2 id="ld-ops-title">المحافظة أمامك.</h2>
+            <h2 id="ld-ops-title" className="ld-split">
+              <span className="ld-l">
+                <span>المحافظة أمامك.</span>
+              </span>
+            </h2>
             <p>رؤية موحدة، وقرارات أوضح.</p>
           </div>
           <a href="#how" className="ld-btn is-line">
@@ -444,10 +505,6 @@ export function LandingOperations() {
           data-on={on ? '' : undefined}
           style={{ rotateX: tilt, scale, transformPerspective: 1400 }}
         >
-          <span className="ld-demo">
-            <Info aria-hidden="true" /> بيانات تجريبية للعرض — ليست أرقاماً حقيقية
-          </span>
-
           <aside className="ld-board-side">
             <div className="ld-mini">
               <b>محافظة ذي قار</b>
@@ -478,16 +535,19 @@ export function LandingOperations() {
                   <stop offset="0%" stopColor="#4f8f4a" />
                   <stop offset="100%" stopColor="#1f5a35" />
                 </linearGradient>
-                <pattern id="ld-grain" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(32)">
-                  <path d="M0 0H8" stroke="#ffffff" strokeOpacity="0.05" strokeWidth="2" />
-                </pattern>
+                {/* fractal noise over the district fill reads as farmland and marsh from above */}
+                <filter id="ld-terrain" x="0" y="0" width="100%" height="100%">
+                  <feTurbulence type="fractalNoise" baseFrequency="0.032" numOctaves="4" seed="7" result="noise" />
+                  <feColorMatrix in="noise" type="saturate" values="0" result="mono" />
+                  <feBlend in="SourceGraphic" in2="mono" mode="overlay" result="mix" />
+                  <feComposite in="mix" in2="SourceGraphic" operator="in" />
+                </filter>
               </defs>
-              {geo.districts.map((district, index) => (
-                <path key={district.name} className="ld-district" d={district.d} style={css({ '--s': index })} />
-              ))}
-              {geo.districts.map(district => (
-                <path key={`g-${district.name}`} d={district.d} fill="url(#ld-grain)" pointerEvents="none" />
-              ))}
+              <g filter="url(#ld-terrain)">
+                {geo.districts.map((district, index) => (
+                  <path key={district.name} className="ld-district" d={district.d} style={css({ '--s': index })} />
+                ))}
+              </g>
               <path className="ld-gov" d={geo.gov} />
               {geo.points.map((point, index) => (
                 <circle
@@ -510,6 +570,7 @@ export function LandingOperations() {
                   style={css({ '--s': order })}
                   transform={`translate(${point.p[0]} ${point.p[1]})`}
                 >
+                  <circle className="ld-pin-pulse" r="10" style={css({ '--s': order })} />
                   <path d="M0 0 C-9 -12 -14 -19 -14 -27 A14 14 0 1 1 14 -27 C14 -19 9 -12 0 0Z" />
                   <circle cy="-27" r="5.5" fill="#fff" />
                   <rect x={-(label.length * 7 + 22) / 2} y="-72" width={label.length * 7 + 22} height="26" rx="13" />
@@ -519,6 +580,7 @@ export function LandingOperations() {
                 </g>
               ))}
             </svg>
+            <span className="ld-scan" aria-hidden="true" />
             <div className="ld-map-caption">
               {hover ? (
                 <>
@@ -559,7 +621,6 @@ export function LandingOperations() {
                 </span>
                 <span className="ld-sum-text">
                   <b>{card.label}</b>
-                  <small>{card.value}</small>
                   <i style={css({ '--v': `${card.bars[0]}%` })} />
                   <i style={css({ '--v': `${card.bars[1]}%` })} />
                 </span>
@@ -568,6 +629,9 @@ export function LandingOperations() {
             ))}
           </div>
         </motion.div>
+        <p className="ld-demo">
+          <Info aria-hidden="true" /> عرض توضيحي: المؤشرات تجريبية، وحدود الأقضية ومواقع الدوائر حقيقية.
+        </p>
       </div>
     </section>
   )
@@ -577,19 +641,62 @@ export function LandingOperations() {
    See how it works — the explainer video
    ============================================================================================ */
 export function LandingHow() {
+  const section = useRef<HTMLElement>(null)
   const video = useRef<HTMLVideoElement>(null)
+  const { still } = useMotionPref()
   const [started, setStarted] = useState(false)
   const [failed, setFailed] = useState(false)
+  const { scrollYProgress } = useScroll({ target: section, offset: ['start end', 'center center'] })
+  const playerScale = useTransform(scrollYProgress, [0, 1], still ? [1, 1] : [0.86, 1])
+  const playerTurn = useTransform(scrollYProgress, [0, 1], still ? [0, 0] : [-8, 0])
+
+  // a silent preview loops while the player is on screen (never with motion paused or reduced)
+  useEffect(() => {
+    const element = video.current
+    if (!element || started || still) return
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          element.muted = true
+          element.loop = true
+          element.play().catch(() => undefined)
+        } else element.pause()
+      },
+      { threshold: 0.4 }
+    )
+    observer.observe(element)
+    // only stop watching here: pausing would also cut off the full playback the visitor just started
+    return () => observer.disconnect()
+  }, [started, still])
+
+  // pausing motion also stops a running preview
+  useEffect(() => {
+    if (still && !started) video.current?.pause()
+  }, [still, started])
+
   const start = () => {
+    const element = video.current
     setStarted(true)
-    requestAnimationFrame(() => video.current?.play().catch(() => setFailed(true)))
+    if (!element) return
+    element.loop = false
+    element.currentTime = 0
+    // an interrupted play() (AbortError) is not a failure; anything else means the video can't run here
+    element.play().catch((error: DOMException) => {
+      if (error.name !== 'AbortError') setFailed(true)
+    })
   }
+
   return (
-    <section className="ld-how" id="how" aria-labelledby="ld-how-title">
+    <section className="ld-how" id="how" ref={section} aria-labelledby="ld-how-title">
       <div className="ld-wrap ld-how-grid">
         <div className="ld-how-copy" data-reveal>
-          <h2 id="ld-how-title">
-            شوف شلون <em>تشتغل.</em>
+          <h2 id="ld-how-title" className="ld-split">
+            <span className="ld-l">
+              <span>شوف شلون</span>
+            </span>
+            <span className="ld-l" style={css({ '--l': 1 })}>
+              <em>تشتغل.</em>
+            </span>
           </h2>
           <p>رحلة رقمية تربط المواطن بالدائرة.</p>
           <div className="ld-how-actions">
@@ -602,7 +709,10 @@ export function LandingHow() {
           </div>
         </div>
 
-        <div className="ld-player" data-reveal>
+        <motion.div
+          className={`ld-player${started ? ' is-started' : ''}`}
+          style={{ scale: playerScale, rotateY: playerTurn, transformPerspective: 1600 }}
+        >
           {failed ? (
             <div className="ld-player-fallback">
               <img src="/brand/home/video-poster.jpg" alt="" />
@@ -615,6 +725,7 @@ export function LandingHow() {
                 controls={started}
                 preload="none"
                 playsInline
+                muted
                 poster="/brand/home/video-poster.jpg"
                 onError={() => setFailed(true)}
                 aria-label="فيديو تعريفي بمنصة ذي قار الرقمية"
@@ -629,13 +740,12 @@ export function LandingHow() {
                     <Play aria-hidden="true" />
                   </span>
                   تعرّف على المنصة
-                  <small>٠:٤٠ · بدون صوت، مع شرح مكتوب</small>
                   <i className="ld-play-track" />
                 </button>
               )}
             </>
           )}
-        </div>
+        </motion.div>
       </div>
     </section>
   )
@@ -649,21 +759,12 @@ export function LandingFooter() {
     <footer className="ld-footer">
       <div className="ld-wrap ld-footer-row">
         <Link href="/" className="ld-footer-brand">
-          <img src="/brand/dhiqar-unified-logo.png" alt="" width={40} height={40} />
-          <span>
-            ذي قار الرقمية
-            <small>البوابة الحكومية لمحافظة ذي قار</small>
-          </span>
+          <img src="/brand/home/tq-letters.png" alt="" width={46} height={32} />
+          <span>ذي قار الرقمية</span>
         </Link>
         <nav aria-label="روابط التذييل">
-          <Link href="/departments">الدوائر الحكومية</Link>
-          <Link href="/verify">التحقق من وثيقة</Link>
-          <Link href="/citizen">متابعة معاملة</Link>
-          <Link href="/staff/login">بوابة الموظفين</Link>
-        </nav>
-        <nav aria-label="روابط قانونية" className="is-quiet">
           <Link href="/privacy">الخصوصية</Link>
-          <Link href="/accessibility">إمكانية الوصول</Link>
+          <Link href="/directory">المساعدة</Link>
           <Link href="/citizen/feedback">تواصل معنا</Link>
         </nav>
       </div>

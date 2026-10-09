@@ -163,8 +163,8 @@
   box-shadow: 0 8px 24px -10px rgba(0, 0, 0, 0.55);
 }
 .ld-brand img {
-  width: 34px;
-  height: 34px;
+  width: 40px;
+  height: 28px;
   object-fit: contain;
 }
 .ld-nav {
@@ -229,36 +229,32 @@
   min-height: max(100svh, 720px);
   padding-top: 84px;
   overflow: hidden;
-  background: var(--ld-night);
+  background: radial-gradient(80% 60% at 30% 30%, #0c2128 0%, var(--ld-night) 70%);
   color: var(--ld-on-dark);
 }
 .ld-hero-bg {
+  /* the monument and its reflection fill the left two thirds; the headline side stays night sky */
   position: absolute;
-  top: -4%;
+  top: 0;
   bottom: 0;
-  /* wider than the hero and shifted left, so the ziggurat stands behind the logo, not the headline */
-  left: -26%;
-  width: 125%;
+  left: 0;
+  width: 62%;
   will-change: transform;
+  -webkit-mask-image: linear-gradient(to left, transparent 0%, #000 30%);
+  mask-image: linear-gradient(to left, transparent 0%, #000 30%);
 }
 .ld-hero-bg img {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: 50% 58%;
+  object-position: 46% 64%;
 }
 .ld-hero-shade {
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(
-      270deg,
-      rgba(5, 13, 10, 0.95) 0%,
-      rgba(5, 13, 10, 0.72) 30%,
-      rgba(5, 13, 10, 0.08) 60%,
-      transparent
-    ),
-    linear-gradient(0deg, var(--ld-night) 0%, rgba(5, 13, 10, 0.5) 22%, transparent 42%),
+    linear-gradient(270deg, rgba(5, 13, 10, 0.9) 0%, rgba(5, 13, 10, 0.6) 30%, transparent 55%),
+    linear-gradient(0deg, var(--ld-night) 0%, rgba(5, 13, 10, 0.35) 12%, transparent 24%),
     linear-gradient(180deg, rgba(5, 13, 10, 0.75) 0%, transparent 20%);
 }
 /* a dark river at the foot of the scene, with slow ripples and the green glow of the platform */
@@ -483,6 +479,11 @@
 .ld-tile .tqm {
   --tqm-line: #017b3d;
 }
+/* the mockup shows the T and Q letters alone on the tile; !important because tq-logo-motion.css is
+   unlayered and would otherwise win over this layered sheet */
+.ld-tile .tqm-site {
+  display: none !important;
+}
 .ld-cue {
   position: absolute;
   z-index: 2;
@@ -568,18 +569,27 @@
 .ld-steps li + li {
   margin-top: 10px;
 }
-/* the connector between the number circles */
-.ld-steps li:not(:last-child)::after {
+/* one rail behind the number circles, filled by scroll progress (--p, set by the journey scene) */
+.ld-steps::before,
+.ld-steps::after {
   content: '';
   position: absolute;
   inset-inline-start: 21px;
-  top: 58px;
-  bottom: -14px;
+  top: 32px;
   width: 2px;
+  border-radius: 2px;
+}
+.ld-steps::before {
+  bottom: 32px;
   background: var(--ld-line);
 }
-.ld-steps li.is-done:not(:last-child)::after {
+.ld-steps::after {
+  height: calc((100% - 64px) * var(--p, 0.5));
   background: var(--ld-green);
+  transition: height 0.15s linear;
+}
+.ld-steps li {
+  z-index: 1;
 }
 .ld-steps button {
   display: flex;
@@ -997,12 +1007,13 @@
    ============================================================================================= */
 .ld-ops {
   position: relative;
-  padding-block: clamp(72px, 8vw, 110px) clamp(80px, 9vw, 130px);
+  /* room at the bottom for the operators in front of the screen wall */
+  padding-block: clamp(72px, 8vw, 110px) clamp(120px, 13vw, 190px);
   overflow: hidden;
   background: var(--ld-night);
   color: var(--ld-on-dark);
 }
-/* the wall of screens: the real dashboard, blurred into glow, with console lights along the floor */
+/* the wall of screens: the real dashboard, blurred into glow */
 .ld-ops-backdrop {
   position: absolute;
   inset: 0;
@@ -1010,26 +1021,17 @@
     linear-gradient(180deg, rgba(5, 13, 10, 0.92) 0%, rgba(5, 13, 10, 0.55) 35%, rgba(5, 13, 10, 0.82) 100%),
     url('/brand/home/ops-wall.jpg') center / cover no-repeat;
 }
-.ld-ops-backdrop::after {
-  content: '';
-  position: absolute;
-  inset: auto 0 0;
-  height: 120px;
-  background:
-    repeating-linear-gradient(
-      90deg,
-      transparent 0 34px,
-      rgba(53, 208, 122, 0.22) 34px 92px,
-      transparent 92px 110px,
-      rgba(120, 190, 255, 0.12) 110px 150px
-    ),
-    linear-gradient(0deg, #030806 0%, transparent 100%);
-  -webkit-mask-image: linear-gradient(0deg, #000 10%, transparent 70%);
-  mask-image: linear-gradient(0deg, #000 10%, transparent 70%);
-  filter: blur(6px);
-}
 .ld-ops .ld-wrap {
   position: relative;
+  z-index: 1;
+}
+.ld-consoles {
+  position: absolute;
+  inset: auto 0 0;
+  width: 100%;
+  height: clamp(110px, 12vw, 170px);
+  opacity: 0.75;
+  filter: blur(0.6px);
 }
 .ld-ops-head {
   display: flex;
@@ -1078,24 +1080,17 @@
   transform-origin: 50% 100%;
 }
 .ld-demo {
-  position: absolute;
-  z-index: 3;
-  top: -14px;
-  inset-inline-start: 24px;
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 5px 12px;
-  border: 1px solid rgba(232, 199, 120, 0.5);
-  border-radius: 999px;
-  background: #2a2412;
-  color: #f2d796;
-  font-size: 0.74rem;
-  font-weight: 600;
+  gap: 8px;
+  margin: 18px 0 0;
+  color: var(--ld-on-dark-2);
+  font-size: 0.8rem;
 }
 .ld-demo svg {
-  width: 14px;
-  height: 14px;
+  width: 15px;
+  height: 15px;
+  color: #f2d796;
 }
 .ld-board-side,
 .ld-perf,
@@ -1346,7 +1341,19 @@
   height: 22px;
 }
 .ld-sum.is-alert .ld-sum-icon {
+  position: relative;
   color: #ff6b6b;
+}
+.ld-sum.is-alert .ld-sum-icon::after {
+  content: '';
+  position: absolute;
+  top: 8px;
+  inset-inline-start: 9px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ff3b45;
+  box-shadow: 0 0 0 2px #1a2620;
 }
 .ld-sum-text {
   display: flex;
@@ -1357,10 +1364,6 @@
 }
 .ld-sum-text b {
   font-size: 0.88rem;
-}
-.ld-sum-text small {
-  color: var(--ld-on-dark-2);
-  font-size: 0.74rem;
 }
 .ld-sum-text i {
   display: block;
@@ -1501,7 +1504,7 @@
    ============================================================================================= */
 .ld-footer {
   /* room under the links for the fixed motion toggle */
-  padding-block: 32px 76px;
+  padding-block: 26px 70px;
   background: var(--ld-night);
   color: var(--ld-on-dark-2);
 }
@@ -1509,45 +1512,40 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 18px 40px;
+  justify-content: space-between;
+  gap: 16px 40px;
 }
 .ld-footer-brand {
   display: inline-flex;
   align-items: center;
   gap: 12px;
-  margin-inline-end: auto;
   color: #fff;
+  font-family: var(--ds-font-display);
+  font-size: 1.05rem;
+  font-weight: 700;
   text-decoration: none;
 }
 .ld-footer-brand img {
-  padding: 3px;
-  border-radius: 9px;
-  background: #fff;
-}
-.ld-footer-brand span {
-  display: flex;
-  flex-direction: column;
-  font-family: var(--ds-font-display);
-  font-weight: 700;
-}
-.ld-footer-brand small {
-  color: var(--ld-on-dark-2);
-  font-family: var(--ds-font-ui);
-  font-size: 0.74rem;
-  font-weight: 400;
+  width: 46px;
+  height: 32px;
+  object-fit: contain;
 }
 .ld-footer nav {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px 22px;
+  align-items: center;
 }
 .ld-footer nav a {
+  padding-inline: 18px;
   color: #dbe5df;
   font-size: 0.86rem;
   text-decoration: none;
 }
-.ld-footer nav.is-quiet a {
-  color: var(--ld-on-dark-2);
+.ld-footer nav a + a {
+  border-inline-start: 1px solid rgba(255, 255, 255, 0.25);
+}
+.ld-footer nav a:last-child {
+  padding-inline-end: 0;
 }
 .ld-footer nav a:hover {
   color: #fff;
@@ -1692,8 +1690,9 @@
     max-width: 520px;
   }
   .ld-hero-bg {
-    left: -10%;
-    width: 120%;
+    width: 100%;
+    -webkit-mask-image: none;
+    mask-image: none;
   }
   .ld-hero-shade {
     background: linear-gradient(
@@ -1787,8 +1786,134 @@
   .ld-how-actions {
     max-width: none;
   }
-  .ld-footer-brand {
-    margin-inline-end: 0;
-    width: 100%;
+}
+
+/* =============================================================================================
+   Motion layer
+   ============================================================================================= */
+/* headlines rise line by line out of a mask when their block scrolls into view */
+.ld-split .ld-l {
+  display: block;
+  overflow: hidden;
+  padding-bottom: 0.1em;
+  margin-bottom: -0.1em;
+}
+.ld-split .ld-l > * {
+  display: block;
+  transform: translateY(110%);
+  transition: transform 0.95s var(--ld-ease);
+  transition-delay: calc(var(--l, 0) * 130ms + 80ms);
+}
+.is-revealed .ld-split .ld-l > *,
+.ld-split.is-revealed .ld-l > * {
+  transform: none;
+}
+
+/* the request card floats a little as the visitor scrolls the pinned scene */
+.ld-journey.is-sticky .ld-form {
+  translate: 0 calc(var(--p, 0) * -18px);
+}
+.ld-journey.is-sticky .ld-receipt {
+  translate: 0 calc(var(--p, 0) * 22px);
+}
+.ld-journey.is-sticky .ld-journey-visual::before {
+  content: '';
+  position: absolute;
+  z-index: 0;
+  inset: 8% 4% -6% 10%;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(1, 123, 61, 0.12), transparent);
+  transform: scale(calc(0.85 + var(--p, 0) * 0.3));
+}
+
+/* operations: a scan line sweeps the map; labelled offices pulse; pins drop in */
+.ld-scan {
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  height: 70px;
+  background: linear-gradient(180deg, transparent, rgba(53, 208, 122, 0.16) 70%, rgba(160, 255, 200, 0.45) 100%);
+  border-bottom: 1px solid rgba(160, 255, 200, 0.5);
+  pointer-events: none;
+  opacity: 0;
+}
+.ld-board[data-on] .ld-scan {
+  animation: ld-scan 5.5s cubic-bezier(0.45, 0, 0.55, 1) 1.6s infinite;
+}
+@keyframes ld-scan {
+  0% {
+    opacity: 0;
+    transform: translateY(-70px);
   }
+  10%,
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(440px);
+  }
+}
+.ld-pin-pulse {
+  fill: none;
+  stroke: var(--ld-lit);
+  stroke-width: 2;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ld-ping 2.4s ease-out infinite;
+  animation-delay: calc(var(--s) * 0.45s);
+}
+@keyframes ld-ping {
+  from {
+    opacity: 0.9;
+    transform: scale(0.4);
+  }
+  to {
+    opacity: 0;
+    transform: scale(2.6);
+  }
+}
+.ld-pin > :not(.ld-pin-pulse) {
+  transform: translateY(-26px);
+  transition: transform 0.7s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition-delay: calc(1.4s + var(--s) * 140ms);
+}
+.ld-board[data-on] .ld-pin > :not(.ld-pin-pulse) {
+  transform: none;
+}
+.ld-ops-backdrop {
+  inset: -10% 0;
+}
+
+/* video: the preview plays behind a lighter veil; once started, the veil is gone */
+.ld-player {
+  transform-origin: 50% 60%;
+}
+.ld-play {
+  transition: background 0.3s var(--ld-ease);
+}
+.ld-play:hover {
+  background: linear-gradient(0deg, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0.05) 55%, rgba(0, 0, 0, 0.1) 100%);
+}
+.ld-play-ring {
+  animation: ld-breathe 3.2s ease-in-out infinite;
+}
+@keyframes ld-breathe {
+  50% {
+    box-shadow: 0 0 0 12px rgba(255, 255, 255, 0.12);
+  }
+}
+
+/* paused / reduced: final states, no loops */
+.ld[data-motion='still'] :is(.ld-scan, .ld-pin-pulse, .ld-play-ring) {
+  animation: none !important;
+}
+.ld[data-motion='still'] .ld-scan,
+.ld[data-motion='still'] .ld-pin-pulse {
+  display: none;
+}
+.ld[data-motion='still'] .ld-split .ld-l > *,
+.ld[data-motion='still'] .ld-pin > * {
+  transform: none;
+  transition: none;
 }
