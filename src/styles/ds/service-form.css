@@ -520,3 +520,22 @@
   background: transparent;
   box-shadow: none;
 }
+
+/* autosaved draft notice */
+.svc-draft-note {
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-surface-muted, var(--ds-bg));
+  color: var(--ds-text-muted);
+  font-size: var(--ds-text-sm);
+}
+.svc-draft-note .text-action {
+  border: 0;
+  background: none;
+  color: var(--ds-primary-text);
+  font: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+}

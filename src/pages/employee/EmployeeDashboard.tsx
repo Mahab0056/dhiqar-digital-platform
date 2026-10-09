@@ -100,6 +100,23 @@ export function EmployeeDashboard() {
   const [rejectOpen, setRejectOpen] = useState(false)
   const [rejectReason, setRejectReason] = useState('')
   const [requestedDoc, setRequestedDoc] = useState('')
+  const [receiptNumber, setReceiptNumber] = useState('')
+  const recordPayment = async () => {
+    if (!selected) return
+    if (receiptNumber.trim().length < 3) return setReviewError('اكتب رقم وصل القبض الصادر من الدائرة.')
+    setBusy(true)
+    setReviewError('')
+    try {
+      const updated = await api.recordOfficePayment(selected.reference, receiptNumber.trim(), Number(selected.fee || 0))
+      setReceiptNumber('')
+      setSelected(updated)
+      await load()
+    } catch (error) {
+      setReviewError((error as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
   const selectApp = (app: GovernmentApplication) => {
     if (openedMedia) URL.revokeObjectURL(openedMedia.url)
     setOpenedMedia(null)
@@ -108,6 +125,7 @@ export function EmployeeDashboard() {
     setRejectOpen(false)
     setRejectReason('')
     setRequestedDoc('')
+    setReceiptNumber('')
     setSelected(app)
     // the detail endpoint writes the APPLICATION_VIEW audit entry the screen promises
     void api.getApplication(app.reference).catch(() => undefined)
@@ -502,6 +520,30 @@ export function EmployeeDashboard() {
                                     </datalist>
                                   </label>
                                 )}
+                              {selected.status === 'PAYMENT_REQUIRED' && selected.paymentStatus !== 'PAID' && (
+                                <div className="review-office-payment">
+                                  <strong>
+                                    استيفاء الرسم في الدائرة: {Number(selected.fee || 0).toLocaleString('en-US')} د.ع
+                                  </strong>
+                                  <label>
+                                    رقم وصل القبض
+                                    <input
+                                      value={receiptNumber}
+                                      onChange={event => setReceiptNumber(event.target.value.slice(0, 40))}
+                                      placeholder="مثال: 2026/1182"
+                                      dir="ltr"
+                                    />
+                                  </label>
+                                  <button
+                                    type="button"
+                                    className="button outline"
+                                    disabled={busy}
+                                    onClick={() => void recordPayment()}
+                                  >
+                                    تسجيل الاستيفاء
+                                  </button>
+                                </div>
+                              )}
                               <div className="review-actions">
                                 {!rejectOpen && selected.status !== 'APPROVED' && selected.status !== 'REJECTED' && (
                                   <button className="button ghost" onClick={() => setRejectOpen(true)} disabled={busy}>
@@ -522,7 +564,7 @@ export function EmployeeDashboard() {
                                     busy ||
                                     missingFaceVerification ||
                                     selected.status === 'ACTION_REQUIRED' ||
-                                    selected.status === 'PAYMENT_REQUIRED' ||
+                                    (selected.status === 'PAYMENT_REQUIRED' && selected.paymentStatus !== 'PAID') ||
                                     selected.status === 'APPROVED' ||
                                     selected.status === 'REJECTED'
                                   }
@@ -532,7 +574,7 @@ export function EmployeeDashboard() {
                                     ? 'تمت الموافقة'
                                     : selected.status === 'REJECTED'
                                       ? 'مرفوضة'
-                                      : selected.status === 'PAYMENT_REQUIRED'
+                                      : selected.status === 'PAYMENT_REQUIRED' && selected.paymentStatus !== 'PAID'
                                         ? 'بانتظار الدفع'
                                         : missingFaceVerification
                                           ? 'بانتظار فيديو الوجه'

@@ -644,6 +644,8 @@ ensureColumn('payment_intents', 'requested_by', 'TEXT')
 // idempotency key sent by the citizen's form: a double click or a retried upload returns the same request
 ensureColumn('service_requests', 'client_request_id', 'TEXT')
 ensureColumn('applications', 'client_request_id', 'TEXT')
+// receipt of a fee paid at the department counter (shop permits)
+ensureColumn('applications', 'office_receipt_number', 'TEXT')
 db.exec(
   'CREATE UNIQUE INDEX IF NOT EXISTS idx_applications_client_request ON applications(citizen_id, client_request_id) WHERE client_request_id IS NOT NULL'
 )

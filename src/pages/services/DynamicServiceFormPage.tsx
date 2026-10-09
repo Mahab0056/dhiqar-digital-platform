@@ -1,5 +1,5 @@
 import type React from 'react'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation } from 'wouter'
 import {
   AlertTriangle,
@@ -34,6 +34,28 @@ import {
 } from './submission-access'
 
 const draftKey = (serviceKey: string) => `dhiqar-service-draft:${serviceKey}`
+/** Saved drafts on this device expire after a week (shared phones should not keep a citizen's answers forever). */
+const DRAFT_TTL_MS = 7 * 86_400_000
+type SavedDraft = { values: Record<string, string>; savedAt: number }
+const readDraft = (serviceKey: string): SavedDraft | null => {
+  try {
+    const saved = JSON.parse(localStorage.getItem(draftKey(serviceKey)) || 'null') as SavedDraft | null
+    if (saved?.values && Date.now() - saved.savedAt < DRAFT_TTL_MS) return saved
+    // the hand-off to onboarding still uses the session draft
+    const handoff = JSON.parse(sessionStorage.getItem(draftKey(serviceKey)) || 'null') as Record<string, string> | null
+    return handoff ? { values: handoff, savedAt: Date.now() } : null
+  } catch {
+    return null
+  }
+}
+const forgetDraft = (serviceKey: string) => {
+  try {
+    localStorage.removeItem(draftKey(serviceKey))
+    sessionStorage.removeItem(draftKey(serviceKey))
+  } catch {
+    /* storage unavailable: nothing to forget */
+  }
+}
 
 const channelLabel: Record<CatalogService['channel'], string> = {
   ONLINE_SUBMISSION: 'تقديم إلكتروني كامل',
@@ -149,13 +171,28 @@ export function DynamicServiceFormPage({ serviceKey }: { serviceKey: string }) {
   const [service, setService] = useState<CatalogService | null | undefined>(undefined)
   const [, navigate] = useLocation()
   const access = useCitizenSubmissionAccess()
-  const [draft] = useState<Record<string, string>>(() => {
-    try {
-      return JSON.parse(sessionStorage.getItem(draftKey(serviceKey)) || '{}') as Record<string, string>
-    } catch {
-      return {}
-    }
-  })
+  const [savedDraft] = useState(() => readDraft(serviceKey))
+  const [draft, setDraft] = useState<Record<string, string>>(() => savedDraft?.values || {})
+  const [draftSavedAt, setDraftSavedAt] = useState<number | null>(savedDraft?.savedAt ?? null)
+  const [formVersion, setFormVersion] = useState(0)
+  const draftTimer = useRef(0)
+  /** Autosaves the typed answers (not the files) a moment after the citizen stops typing. */
+  const saveDraft = (form: HTMLFormElement) => {
+    window.clearTimeout(draftTimer.current)
+    draftTimer.current = window.setTimeout(() => {
+      if (!service) return
+      const data = new FormData(form)
+      const values = Object.fromEntries(service.fields.map(field => [field.key, String(data.get(field.key) || '')]))
+      if (!Object.values(values).some(value => value.trim())) return
+      try {
+        const savedAt = Date.now()
+        localStorage.setItem(draftKey(service.key), JSON.stringify({ values, savedAt }))
+        setDraftSavedAt(savedAt)
+      } catch {
+        /* storage full or blocked: the form still works without a draft */
+      }
+    }, 600)
+  }
   const [busy, setBusy] = useState(false)
   // stable for this form: resubmitting after a network error cannot create a second request
   const [clientRequestId] = useState(newClientRequestId)
@@ -258,7 +295,7 @@ export function DynamicServiceFormPage({ serviceKey }: { serviceKey: string }) {
         documentConsent,
         clientRequestId,
       })
-      sessionStorage.removeItem(draftKey(service.key))
+      forgetDraft(service.key)
       setResult(created)
       window.scrollTo({ top: 0 })
     } catch (submitError) {
@@ -483,7 +520,33 @@ export function DynamicServiceFormPage({ serviceKey }: { serviceKey: string }) {
       {header}
       <section className="tq-content">
         <div className="tq-container tq-layout">
-          <form className="tq-stack svc-form" onSubmit={submit} noValidate={false}>
+          <form
+            key={formVersion}
+            className="tq-stack svc-form"
+            onSubmit={submit}
+            onInput={event => saveDraft(event.currentTarget)}
+            noValidate={false}
+          >
+            {draftSavedAt && (
+              <p className="svc-draft-note" role="status">
+                مسودة محفوظة على هذا الجهاز •{' '}
+                {new Date(draftSavedAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })} — المرفقات
+                لا تُحفظ في المسودة.{' '}
+                <button
+                  type="button"
+                  className="text-action"
+                  onClick={() => {
+                    if (service) forgetDraft(service.key)
+                    setDraftSavedAt(null)
+                    // remount the form so its fields drop the restored values
+                    setDraft({})
+                    setFormVersion(version => version + 1)
+                  }}
+                >
+                  مسح المسودة
+                </button>
+              </p>
+            )}
             <ol className="svc-stepper" aria-label="خطوات تقديم الخدمة">
               {steps.map((label, index) => (
                 <li key={label} className={index === 0 ? 'is-current' : ''}>

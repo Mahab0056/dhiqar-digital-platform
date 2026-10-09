@@ -465,6 +465,70 @@ export function registerApplicationsRoutes(app: express.Express) {
     res.json(getApplicationByReference(reference))
   })
 
+  /**
+   * The citizen paid the shop-permit fee at the department's counter: the clerk records the receipt so the permit can
+   * be issued (without this a permit with a fee waited for an online gateway that is not active).
+   */
+  app.post(
+    '/api/applications/:reference/record-office-payment',
+    requireSession('EMPLOYEE', 'SUPER_ADMIN'),
+    (req, res) => {
+      const session = currentSession(res)
+      const item = getApplicationByReference(param(req, 'reference'))
+      if (!item || !canActOnApplication(session, item)) return res.status(404).json({ message: 'المعاملة غير موجودة.' })
+      const parsed = z
+        .object({ receiptNumber: z.string().trim().min(3).max(40), amountIqd: z.number().int().min(1).max(50_000_000) })
+        .safeParse(req.body)
+      if (!parsed.success) return res.status(400).json({ message: 'اكتب رقم وصل القبض والمبلغ المستوفى بالدينار.' })
+      if (item.status !== 'PAYMENT_REQUIRED' || item.paymentStatus === 'PAID')
+        return res.status(409).json({ message: 'لا يوجد رسم بانتظار الاستيفاء لهذه المعاملة.' })
+      if (parsed.data.amountIqd < Number(item.fee || 0))
+        return res
+          .status(400)
+          .json({ message: `المبلغ أقل من رسم الخدمة (${Number(item.fee).toLocaleString('en-US')} د.ع).` })
+      const timestamp = new Date().toISOString()
+      const changed = db
+        .prepare(
+          `UPDATE applications SET payment_status = 'PAID', office_receipt_number = ?, current_action = ?, updated_at = ? WHERE reference = ? AND status = 'PAYMENT_REQUIRED' AND payment_status != 'PAID'`
+        )
+        .run(
+          parsed.data.receiptNumber,
+          `تم استيفاء الرسم في الدائرة (وصل ${parsed.data.receiptNumber}). تصدر الإجازة بعد اعتماد الموظف.`,
+          timestamp,
+          param(req, 'reference')
+        )
+      if (!changed.changes) return res.status(409).json({ message: 'تغيرت حالة المعاملة. أعد تحميل الصفحة.' })
+      addEvent(item.id as number, {
+        type: 'PAYMENT_RECORDED',
+        title: 'استيفاء الرسم في الدائرة',
+        description: `وصل ${parsed.data.receiptNumber} — ${parsed.data.amountIqd.toLocaleString('en-US')} د.ع`,
+        actor: session.actor,
+      })
+      addAudit({
+        actor: session.actor,
+        role: session.role,
+        action: 'APPLICATION_OFFICE_PAYMENT_RECORDED',
+        entityType: 'Application',
+        entityId: param(req, 'reference'),
+        newValue: { paymentStatus: 'PAID', receiptNumber: parsed.data.receiptNumber, amountIqd: parsed.data.amountIqd },
+      })
+      notifyCitizen({
+        citizenId: Number(item.citizenId),
+        type: 'PAYMENT_CONFIRMED',
+        title: 'تم تسجيل دفع الرسم',
+        message: `سُجّل وصل ${parsed.data.receiptNumber} للمعاملة ${param(req, 'reference')}. تصدر الإجازة بعد اعتمادها.`,
+        link: `/citizen/application/${param(req, 'reference')}`,
+      })
+      employeeWorkQueueRealtime.publish({
+        entity: 'APPLICATION',
+        action: 'UPDATED',
+        reference: param(req, 'reference'),
+        departmentId: (item.departmentId as string | null) || null,
+      })
+      res.json(getApplicationByReference(param(req, 'reference')))
+    }
+  )
+
   app.post('/api/applications/:reference/approve', requireSession('EMPLOYEE', 'SUPER_ADMIN'), async (req, res) => {
     const session = currentSession(res)
     const item = getApplicationByReference(param(req, 'reference'))

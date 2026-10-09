@@ -722,6 +722,11 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ reason }),
     }),
+  recordOfficePayment: (reference: string, receiptNumber: string, amountIqd: number) =>
+    request<GovernmentApplication>(`/api/applications/${reference}/record-office-payment`, {
+      method: 'POST',
+      body: JSON.stringify({ receiptNumber, amountIqd }),
+    }),
   approveApplication: (reference: string) =>
     request<GovernmentApplication>(`/api/applications/${reference}/approve`, { method: 'POST' }),
   getStats: () => request<DashboardStats>('/api/dashboard/stats'),
