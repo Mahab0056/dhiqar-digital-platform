@@ -18,7 +18,8 @@ import {
 } from 'lucide-react'
 import { api } from '../../api'
 import type { Citizen } from '../../types'
-import { SecureCameraCapture } from '../../components/camera/SecureCameraCapture'
+import { CardTile, FaceChallengeStart, type CardData } from '../../components/camera/IdentityCaptureTiles'
+import type { LivenessTimelineEntry } from '../../components/camera/IdentityCamera'
 import { Brand } from '../../components/public/Brand'
 import { AuthAside, AuthShell } from '../../components/public/AuthShell'
 
@@ -45,6 +46,8 @@ export function OnboardingPage() {
   const [idFront, setIdFront] = useState<File | null>(null)
   const [idBack, setIdBack] = useState<File | null>(null)
   const [faceVideo, setFaceVideo] = useState<File | null>(null)
+  const [cardData, setCardData] = useState<CardData | null>(null)
+  const [liveness, setLiveness] = useState<{ id: string; timeline: LivenessTimelineEntry[] } | null>(null)
   const [reviewId, setReviewId] = useState('')
   const [screeningScore, setScreeningScore] = useState<number | null>(null)
   const [faceComparison, setFaceComparison] = useState<{ status: string; confidence: number | null } | null>(null)
@@ -82,16 +85,6 @@ export function OnboardingPage() {
   const [retainMedia, setRetainMedia] = useState(true)
   const analysisConsent = true
   const profilePhotoConsent = true
-  const [analysisState, setAnalysisState] = useState<'idle' | 'loading' | 'complete' | 'unavailable'>('idle')
-  const [analysisNote, setAnalysisNote] = useState('')
-  const [extractedFields, setExtractedFields] = useState({
-    fullName: '',
-    documentNumber: '',
-    dateOfBirth: '',
-    nationality: '',
-    sex: '',
-    expiryDate: '',
-  })
   const [location, setLocation] = useState<{ lat: number; lng: number; accuracyM?: number } | null>(null)
   const [locationBusy, setLocationBusy] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -176,31 +169,13 @@ export function OnboardingPage() {
   }
   const analyzeDocument = async (document: File | null = idFront) => {
     if (!document) return
-    setAnalysisState('loading')
-    setAnalysisNote('جاري تحليل المستمسك تلقائياً…')
-    setMessage('')
     try {
       const result = await api.previewIdentityDocument({ documentType, document })
       // the server already drops OCR fragments; never overwrite what the citizen typed themselves
       if (result.fields.fullName && !fullName.trim()) setFullName(result.fields.fullName)
       if (result.fields.documentNumber) setDocumentNumber(result.fields.documentNumber)
-      setExtractedFields({
-        fullName: result.fields.fullName || '',
-        documentNumber: result.fields.documentNumber || '',
-        dateOfBirth: result.fields.dateOfBirth || '',
-        nationality: result.fields.nationality || '',
-        sex: result.fields.sex || '',
-        expiryDate: result.fields.expiryDate || '',
-      })
-      setAnalysisState(result.status === 'COMPLETED' ? 'complete' : 'unavailable')
-      setAnalysisNote(
-        result.status === 'COMPLETED'
-          ? 'تمت قراءة الحقول المتاحة تلقائياً. راجع الاسم والرقم قبل الإرسال؛ القرار النهائي للمراجع المخول.'
-          : result.message || 'تعذر تشغيل مزود التحليل الآن؛ سيظهر السبب بوضوح ويمكن إعادة المحاولة بعد توفر المزود.'
-      )
-    } catch (error) {
-      setAnalysisState('unavailable')
-      setAnalysisNote((error as Error).message)
+    } catch {
+      // prefilling is a convenience; the full reading happens on submission
     }
   }
   const saveChosenLocation = async (value: { lat: number; lng: number; accuracyM?: number }) => {
@@ -268,6 +243,8 @@ export function OnboardingPage() {
         idFront,
         idBack,
         faceVideo,
+        livenessChallengeId: liveness?.id,
+        livenessTimeline: liveness?.timeline,
       })
       setReviewId(review.id)
       setScreeningScore(review.screening.qualityScore)
@@ -431,63 +408,22 @@ export function OnboardingPage() {
               التوثيق بالبطاقة الوطنية الموحدة الأصلية فقط، وتُصوَّر الآن بكاميرا الهاتف مباشرة (لا تُقبل صور محفوظة أو
               نسخ). تُقرأ بياناتك من البطاقة وتُطابق صورتها مع وجهك بالذكاء الاصطناعي.
             </p>
-            <SecureCameraCapture
-              title={documentCopy.front}
-              guidance={documentCopy.guidance}
-              mode="photo"
-              facingMode="environment"
-              cameraOnly
-              liveOnly
-              file={idFront}
-              onChange={file => {
-                setIdFront(file)
-                if (file) void analyzeDocument(file)
-              }}
-            />
-            {idFront && (
-              <div
-                className={
-                  analysisState === 'complete'
-                    ? 'automatic-analysis-status complete'
-                    : analysisState === 'unavailable'
-                      ? 'automatic-analysis-status unavailable'
-                      : 'automatic-analysis-status'
-                }
-              >
-                <Sparkles />{' '}
-                <span>
-                  <strong>
-                    {analysisState === 'loading'
-                      ? 'جاري تحليل المستند تلقائياً'
-                      : analysisState === 'complete'
-                        ? 'اكتمل التحليل المبدئي'
-                        : 'التحليل التلقائي قيد التهيئة'}
-                  </strong>
-                  <small>
-                    {analysisState === 'loading'
-                      ? 'لا تغلق الصفحة حتى تكتمل القراءة.'
-                      : analysisState === 'complete'
-                        ? 'تُملأ البيانات المتاحة في الخطوة التالية.'
-                        : 'سيظهر سبب التعذر وخطوة التصحيح هنا.'}
-                  </small>
-                </span>
-                {analysisState !== 'loading' && (
-                  <button className="text-action" type="button" onClick={() => void analyzeDocument()}>
-                    إعادة المحاولة
-                  </button>
-                )}
-              </div>
-            )}
-            {analysisNote && (
-              <div className={analysisState === 'complete' ? 'form-success' : 'form-notice'}>
-                <Sparkles /> {analysisNote}
-              </div>
-            )}
+            <div className="id-tiles">
+              <CardTile
+                side="front"
+                file={idFront}
+                onFile={file => {
+                  setIdFront(file)
+                  if (file) void analyzeDocument(file)
+                }}
+              />
+              <CardTile side="back" file={idBack} onFile={setIdBack} onCard={setCardData} />
+            </div>
             <div className="stage-actions">
               <button className="button ghost" onClick={() => setStep(1)}>
                 <ArrowRight /> رجوع
               </button>
-              <button className="button primary" onClick={() => setStep(3)} disabled={!idFront}>
+              <button className="button primary" onClick={() => setStep(3)} disabled={!idFront || !idBack}>
                 متابعة <ArrowLeft />
               </button>
             </div>
@@ -498,64 +434,41 @@ export function OnboardingPage() {
             <span className="stage-icon">
               <FileCheck2 />
             </span>
-            <h2>صوّر ظهر البطاقة واكتب اسمك</h2>
-            <p>
-              في أسفل ظهر البطاقة ثلاثة أسطر بحروف وأرقام إنگليزية: منها تُقرأ بياناتك (رقم البطاقة، الميلاد، الجنس،
-              الانتهاء) وتُسجّل في حسابك. اجعلها واضحة وكاملة في الصورة.
-            </p>
-            <SecureCameraCapture
-              title={documentCopy.back}
-              guidance="صوّر ظهر البطاقة الأصلية كاملاً مع الأسطر الثلاثة في الأسفل، بلا وهج ولا ظل."
-              mode="photo"
-              facingMode="environment"
-              cameraOnly
-              liveOnly
-              file={idBack}
-              onChange={setIdBack}
-            />
-            <section className="identity-extracted-data" aria-live="polite">
-              <header>
-                <div>
-                  <span className="section-kicker">نتيجة القراءة التلقائية</span>
-                  <h3>بيانات المستند</h3>
-                </div>
-                <span className={analysisState === 'complete' ? 'analysis-chip complete' : 'analysis-chip'}>
-                  {analysisState === 'complete' ? 'تمت القراءة' : 'بانتظار القراءة'}
-                </span>
-              </header>
-              <div className="identity-document-data-grid">
+            <h2>راجع بياناتك واكتب اسمك</h2>
+            <p>هذه البيانات قُرئت من بطاقتك وستُسجّل في حسابك بعد التحقق. اكتب اسمك الثلاثي بالعربي كما في البطاقة.</p>
+            {cardData ? (
+              <div className="id-card-data" aria-live="polite">
                 <span>
-                  <small>نوع المستند</small>
-                  <strong>{documentCopy.label}</strong>
+                  <small>الاسم في البطاقة</small>
+                  <strong dir="ltr">{cardData.name || '—'}</strong>
                 </span>
                 <span>
-                  <small>الاسم الكامل</small>
-                  <strong>{fullName || extractedFields.fullName || 'لم يتم استخراجه تلقائياً'}</strong>
-                </span>
-                <span>
-                  <small>{documentCopy.number}</small>
-                  <strong dir="ltr">
-                    {documentNumber || extractedFields.documentNumber || 'لم يتم استخراجه تلقائياً'}
-                  </strong>
+                  <small>رقم البطاقة</small>
+                  <strong dir="ltr">•••• {cardData.documentLast4}</strong>
                 </span>
                 <span>
                   <small>تاريخ الميلاد</small>
-                  <strong dir="ltr">{extractedFields.dateOfBirth || 'غير ظاهر بوضوح في المستند'}</strong>
-                </span>
-                <span>
-                  <small>الجنسية</small>
-                  <strong>{extractedFields.nationality || 'غير ظاهر بوضوح في المستند'}</strong>
+                  <strong dir="ltr">{cardData.birthDate || '—'}</strong>
                 </span>
                 <span>
                   <small>الجنس</small>
-                  <strong>{extractedFields.sex || 'غير ظاهر بوضوح في المستند'}</strong>
+                  <strong>{cardData.sex || '—'}</strong>
                 </span>
                 <span>
-                  <small>تاريخ الانتهاء</small>
-                  <strong dir="ltr">{extractedFields.expiryDate || 'غير ظاهر أو غير منطبق'}</strong>
+                  <small>تنتهي في</small>
+                  <strong dir="ltr">{cardData.expiryDate || '—'}</strong>
+                </span>
+                <span>
+                  <small>الجنسية</small>
+                  <strong>{cardData.nationality === 'IRQ' ? 'عراقية' : cardData.nationality}</strong>
                 </span>
               </div>
-            </section>
+            ) : (
+              <div className="form-notice">
+                <Sparkles /> لم تُقرأ بيانات ظهر البطاقة بعد. يمكنك المتابعة، وستُقرأ بعد الإرسال؛ أو ارجع وأعد تصوير
+                الظهر بوضوح.
+              </div>
+            )}
             <div className="identity-edit-fields">
               <label>
                 الاسم الكامل
@@ -621,15 +534,12 @@ export function OnboardingPage() {
               لليسار. يطابق الذكاء الاصطناعي وجهك مع صورة البطاقة ويتأكد أنك أمام الكاميرا فعلاً؛ عند التطابق تُوثَّق
               هويتك فوراً، وإلا يراجع طلبك موظف مختص.
             </p>
-            <SecureCameraCapture
-              title="فيديو الوجه لمدة 7 ثوانٍ"
-              guidance="وجه واحد فقط في الصورة وإضاءة أمامية جيدة. انظر للكاميرا ثانيتين، ثم أدر رأسك ببطء لليمين ثم لليسار."
-              mode="video"
-              facingMode="user"
-              cameraOnly
-              liveOnly
-              file={faceVideo}
-              onChange={setFaceVideo}
+            <FaceChallengeStart
+              done={Boolean(faceVideo)}
+              onCaptured={(video, challengeId, timeline) => {
+                setFaceVideo(video)
+                setLiveness({ id: challengeId, timeline })
+              }}
             />
             <label className="consent-box">
               <input type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)} />
@@ -667,6 +577,13 @@ export function OnboardingPage() {
           <div className="form-stage success-stage">
             <span className="success-seal">
               <FileCheck2 />
+            </span>
+            <span className={`id-result-anim is-${autoResult.state}`} aria-hidden="true">
+              {autoResult.state === 'approved' ? (
+                <CheckCircle2 />
+              ) : autoResult.state === 'review' ? (
+                <UserRound />
+              ) : null}
             </span>
             <h2>
               {autoResult.state === 'approved'

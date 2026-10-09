@@ -4,6 +4,12 @@ import { employeeWorkQueueRealtime, notifyCitizen } from './realtime.js'
 import { faceMatchAvailable, verifyFaceAgainstDocument, type FaceVerification } from './face-match.js'
 import { readMrzLocally } from './local-identity-ocr.js'
 import { iraqiCardProblems, type Td1 } from './mrz.js'
+import {
+  verifyActiveLiveness,
+  type ActiveLiveness,
+  type LivenessStep,
+  type LivenessTimelineEntry,
+} from './active-liveness.js'
 
 /**
  * Automated identity checks that run right after a citizen submits ID photos + face video:
@@ -250,9 +256,13 @@ export function decideAutomatically(input: {
   name: NameMatch
   td1: Td1 | null
   duplicateAccount: boolean
+  /** the random head-movement challenge; undefined when the submission came without one */
+  activeLiveness?: ActiveLiveness | null
 }): AutoDecision {
   const reasons: string[] = []
   const { face } = input
+  if (!input.activeLiveness) reasons.push('لم يُجرَ تحدي حركات الرأس')
+  else if (!input.activeLiveness.passed) reasons.push(...input.activeLiveness.reasons)
   if (!face || face.status === 'UNAVAILABLE') reasons.push('محرك مطابقة الوجه غير متاح')
   else if (face.status !== 'MATCH' || (face.similarity ?? 0) < AUTO_APPROVE_SIMILARITY)
     reasons.push(
@@ -287,6 +297,7 @@ export const faceStatusLabel: Record<string, string> = {
 export async function runIdentityVerification(input: {
   reviewId: string
   citizenId?: number
+  liveness?: { expected: LivenessStep[]; timeline: LivenessTimelineEntry[] } | null
   documentImage: Buffer
   documentBack?: Buffer | null
   faceVideo: Buffer
@@ -321,7 +332,10 @@ export async function runIdentityVerification(input: {
       .prepare('SELECT id FROM citizens WHERE national_id_hash = ? AND id != ? LIMIT 1')
       .get(nationalIdHash(td1.documentNumber), input.citizenId)
   )
-  const decision = decideAutomatically({ face, name, td1, duplicateAccount })
+  const activeLiveness = input.liveness
+    ? await verifyActiveLiveness({ video: input.faceVideo, ...input.liveness }).catch(() => null)
+    : null
+  const decision = decideAutomatically({ face, name, td1, duplicateAccount, activeLiveness })
   const finishedAt = new Date().toISOString()
   db.prepare(
     `UPDATE identity_reviews SET face_match_status = ?, face_match_score = ?, face_match_provider = ?, face_match_details = ?,
@@ -330,7 +344,7 @@ export async function runIdentityVerification(input: {
     face ? face.status : error ? 'UNAVAILABLE' : 'UNAVAILABLE',
     face?.score ?? null,
     face ? face.provider : null,
-    JSON.stringify(face ? { ...face, error } : { error }),
+    JSON.stringify(face ? { ...face, error, activeLiveness: input.liveness ? activeLiveness : undefined } : { error }),
     name.status,
     name.score,
     JSON.stringify(name),

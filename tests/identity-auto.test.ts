@@ -7,6 +7,7 @@ configureTestEnv()
 let mod: typeof import('../server/identity-verification.ts')
 let parseTd1: typeof import('../server/mrz.ts').parseTd1
 let assessLiveness: typeof import('../server/face-match.ts').assessLiveness
+let live: typeof import('../server/active-liveness.ts')
 
 beforeAll(async () => {
   const { createPlatformServer } = await import('../server/create-server.ts')
@@ -14,7 +15,20 @@ beforeAll(async () => {
   mod = await import('../server/identity-verification.ts')
   ;({ parseTd1 } = await import('../server/mrz.ts'))
   ;({ assessLiveness } = await import('../server/face-match.ts'))
+  live = await import('../server/active-liveness.ts')
 })
+
+const passedChallenge = () =>
+  live.judgeActiveLiveness(
+    ['CENTER', 'LEFT', 'RIGHT', 'CENTER'],
+    [
+      { step: 'CENTER', startMs: 0, endMs: 1800 },
+      { step: 'LEFT', startMs: 1800, endMs: 3600 },
+      { step: 'RIGHT', startMs: 3600, endMs: 5400 },
+      { step: 'CENTER', startMs: 5400, endMs: 7200 },
+    ],
+    [0.02, 0.3, -0.28, -0.04]
+  )
 
 const card = () =>
   parseTd1(
@@ -66,7 +80,15 @@ describe('liveness from the face video', () => {
 describe('automatic decision', () => {
   it('approves only when face, liveness, card and name all agree', () => {
     const name = mod.compareNames('مهاب علي ياسين', 'MAHAB ALI YASEEN')
-    expect(mod.decideAutomatically({ face: matchingFace(), name, td1: card(), duplicateAccount: false })).toEqual({
+    expect(
+      mod.decideAutomatically({
+        face: matchingFace(),
+        name,
+        td1: card(),
+        duplicateAccount: false,
+        activeLiveness: passedChallenge(),
+      })
+    ).toEqual({
       approve: true,
       reasons: [],
     })
@@ -79,17 +101,36 @@ describe('automatic decision', () => {
       name,
       td1: card(),
       duplicateAccount: false,
+      activeLiveness: passedChallenge(),
     })
     expect(weak.approve).toBe(false)
     expect(weak.reasons).toContain('الوجه في الفيديو لا يطابق صورة البطاقة بدرجة كافية')
-    const noCard = mod.decideAutomatically({ face: matchingFace(), name, td1: null, duplicateAccount: false })
+    const noCard = mod.decideAutomatically({
+      face: matchingFace(),
+      name,
+      td1: null,
+      duplicateAccount: false,
+      activeLiveness: passedChallenge(),
+    })
     expect(noCard.reasons).toContain('لم تُقرأ المنطقة المقروءة آلياً في ظهر البطاقة')
     const otherName = mod.compareNames('زينب حسن كاظم', 'MAHAB ALI YASEEN')
     expect(
-      mod.decideAutomatically({ face: matchingFace(), name: otherName, td1: card(), duplicateAccount: false }).reasons
+      mod.decideAutomatically({
+        face: matchingFace(),
+        name: otherName,
+        td1: card(),
+        duplicateAccount: false,
+        activeLiveness: passedChallenge(),
+      }).reasons
     ).toContain('الاسم المكتوب لا يطابق الاسم في البطاقة')
     expect(
-      mod.decideAutomatically({ face: matchingFace(), name, td1: card(), duplicateAccount: true }).reasons
+      mod.decideAutomatically({
+        face: matchingFace(),
+        name,
+        td1: card(),
+        duplicateAccount: true,
+        activeLiveness: passedChallenge(),
+      }).reasons
     ).toContain('هذه البطاقة مسجلة على حساب آخر')
   })
 
@@ -140,5 +181,44 @@ describe('automatic decision', () => {
       verification_status: string
     }
     expect(after.verification_status).toBe('REJECTED')
+  })
+})
+
+describe('random head-movement challenge', () => {
+  it('passes only when each move matches the requested order', () => {
+    expect(passedChallenge().passed).toBe(true)
+    const timeline = passedChallenge().steps.map((item, index) => ({
+      step: item.step,
+      startMs: index * 1800,
+      endMs: (index + 1) * 1800,
+    }))
+    // a video made for the other order: left and right swapped
+    const replay = live.judgeActiveLiveness(['CENTER', 'LEFT', 'RIGHT', 'CENTER'], timeline, [0.02, -0.3, 0.28, 0])
+    expect(replay.passed).toBe(false)
+    expect(replay.reasons).toContain('لم تُنفَّذ حركات الرأس المطلوبة بالترتيب')
+    // a still photo never turns
+    expect(live.judgeActiveLiveness(['CENTER', 'LEFT', 'RIGHT', 'CENTER'], timeline, [0, 0.01, 0, 0]).passed).toBe(
+      false
+    )
+    // face missing during a move
+    expect(
+      live.judgeActiveLiveness(['CENTER', 'LEFT', 'RIGHT', 'CENTER'], timeline, [0, null, -0.3, 0]).reasons
+    ).toContain('لم يظهر الوجه بوضوح أثناء بعض الحركات')
+  })
+
+  it('without the challenge there is no automatic approval', () => {
+    const name = mod.compareNames('مهاب علي ياسين', 'MAHAB ALI YASEEN')
+    const decision = mod.decideAutomatically({ face: matchingFace(), name, td1: card(), duplicateAccount: false })
+    expect(decision.approve).toBe(false)
+    expect(decision.reasons).toContain('لم يُجرَ تحدي حركات الرأس')
+  })
+
+  it('a challenge is random, single-use and belongs to one citizen', async () => {
+    const orders = new Set(Array.from({ length: 20 }, () => live.createLivenessChallenge(1).steps.join(',')))
+    expect(orders.size).toBe(2)
+    const challenge = live.createLivenessChallenge(7)
+    expect(live.consumeLivenessChallenge(challenge.id, 8)).toBeNull()
+    expect(live.consumeLivenessChallenge(challenge.id, 7)).toEqual(challenge.steps)
+    expect(live.consumeLivenessChallenge(challenge.id, 7)).toBeNull()
   })
 })

@@ -515,6 +515,35 @@ export const api = {
   },
   updateCitizenLocation: (payload: { lat: number; lng: number; accuracyM?: number; consent: true }) =>
     request<Citizen>('/api/citizen/location', { method: 'POST', body: JSON.stringify(payload) }),
+  /** A fresh single-use order of head movements for the face video. */
+  livenessChallenge: () =>
+    request<{ id: string; steps: Array<'CENTER' | 'LEFT' | 'RIGHT'>; stepMs: number; expiresInSeconds: number }>(
+      '/api/onboarding/liveness-challenge',
+      { method: 'POST', body: '{}' }
+    ),
+  /** Instant check of a card photo (portrait on the front, machine-readable zone on the back); nothing is stored. */
+  cardCheck: async (side: 'front' | 'back', image: File) => {
+    const form = new FormData()
+    form.append('side', side)
+    form.append('image', image)
+    const response = await fetch('/api/onboarding/card-check', { method: 'POST', body: form, credentials: 'include' })
+    const body = (await response.json().catch(() => ({}))) as {
+      ok?: boolean
+      message?: string
+      problems?: string[]
+      card?: {
+        name: string
+        documentLast4: string
+        birthDate: string | null
+        expiryDate: string | null
+        sex: string | null
+        nationality: string
+        valid: boolean
+      } | null
+    }
+    if (!response.ok) throw new Error(body.message || 'تعذر فحص الصورة. أعد المحاولة.')
+    return body
+  },
   submitIdentityReview: async (payload: {
     fullName: string
     documentNumber: string
@@ -527,6 +556,8 @@ export const api = {
     idFront: File
     idBack?: File | null
     faceVideo: File
+    livenessChallengeId?: string
+    livenessTimeline?: Array<{ step: string; startMs: number; endMs: number }>
   }) => {
     const form = new FormData()
     form.append('fullName', payload.fullName)
@@ -545,6 +576,10 @@ export const api = {
     form.append('idFront', payload.idFront)
     if (payload.idBack) form.append('idBack', payload.idBack)
     form.append('faceVideo', payload.faceVideo)
+    if (payload.livenessChallengeId) {
+      form.append('livenessChallengeId', payload.livenessChallengeId)
+      form.append('livenessTimeline', JSON.stringify(payload.livenessTimeline || []))
+    }
     const response = await fetch('/api/onboarding/identity-review', {
       method: 'POST',
       body: form,

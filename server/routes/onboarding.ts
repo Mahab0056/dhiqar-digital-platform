@@ -21,6 +21,15 @@ import { screenIdentitySubmission } from '../identity-screening.js'
 import { analyzeIdentityDocument } from '../identity-document-analysis.js'
 import { runIdentityVerification } from '../identity-verification.js'
 import { plausiblePersonName } from '../person-name.js'
+import {
+  consumeLivenessChallenge,
+  createLivenessChallenge,
+  type LivenessStep,
+  type LivenessTimelineEntry,
+} from '../active-liveness.js'
+import { embedLargestFace, faceMatchAvailable } from '../face-match.js'
+import { readMrzLocally } from '../local-identity-ocr.js'
+import { iraqiCardProblems } from '../mrz.js'
 
 const parseJson = (value: unknown) => {
   try {
@@ -86,6 +95,17 @@ function staffMayOpenMedia(session: SessionData, mediaId: string) {
         .get(mediaId, session.departmentId, departmentName)
     )
   return false
+}
+
+// a few card checks per minute are normal (retakes); more is abuse of the OCR/face engines
+const cardCheckLog = new Map<string, number[]>()
+const allowCardCheck = (key: string, limit = 40, windowMs = 10 * 60_000) => {
+  const now = Date.now()
+  const recent = (cardCheckLog.get(key) || []).filter(at => now - at < windowMs)
+  if (recent.length >= limit) return false
+  recent.push(now)
+  cardCheckLog.set(key, recent)
+  return true
 }
 
 export function registerOnboardingRoutes(app: express.Express) {
@@ -204,6 +224,69 @@ export function registerOnboardingRoutes(app: express.Express) {
     }
   )
 
+  /** A fresh, single-use order of head movements for the face video (see active-liveness.ts). */
+  app.post('/api/onboarding/liveness-challenge', requireSession('CITIZEN'), (_req, res) => {
+    const citizen = currentCitizen(res)
+    if (!citizen) return
+    if (!allowCardCheck(`challenge:${citizen.id}`))
+      return res.status(429).json({ message: 'محاولات كثيرة. انتظر دقائق ثم أعد المحاولة.' })
+    res.status(201).json(createLivenessChallenge(citizen.id))
+  })
+
+  /**
+   * Instant feedback right after each card photo, before anything is stored: the front must show the portrait, the
+   * back's machine-readable zone must read. Nothing is saved; the real checks run again on submission.
+   */
+  app.post('/api/onboarding/card-check', requireSession('CITIZEN'), upload.single('image'), async (req, res) => {
+    const citizen = currentCitizen(res)
+    if (!citizen) return
+    if (!allowCardCheck(`card:${citizen.id}`))
+      return res.status(429).json({ message: 'محاولات كثيرة. انتظر دقائق ثم أعد المحاولة.' })
+    const side = z.enum(['front', 'back']).safeParse(req.body?.side)
+    if (!side.success || !req.file) return res.status(400).json({ message: 'صوّر وجه البطاقة أو ظهرها.' })
+    try {
+      validateUploadedFile(req.file, ['image'])
+    } catch {
+      return res.status(400).json({ message: 'الصورة غير صالحة. أعد التصوير.' })
+    }
+    if (side.data === 'front') {
+      const face = faceMatchAvailable() ? await embedLargestFace(req.file.buffer).catch(() => null) : null
+      return res.json({
+        side: 'front',
+        ok: Boolean(face) || !faceMatchAvailable(),
+        faceFound: Boolean(face),
+        message: face
+          ? 'ظهرت صورة الوجه في البطاقة بوضوح.'
+          : faceMatchAvailable()
+            ? 'لم تظهر صورة الوجه في البطاقة بوضوح. أعد التصوير بلا انعكاس ضوء.'
+            : 'سيُتحقق من صورة البطاقة بعد الإرسال.',
+      })
+    }
+    const { td1 } = await readMrzLocally(req.file.buffer)
+    const problems = iraqiCardProblems(td1)
+    res.json({
+      side: 'back',
+      ok: Boolean(td1?.valid),
+      problems,
+      card: td1
+        ? {
+            name: `${td1.givenNames} ${td1.surname}`.trim(),
+            documentLast4: td1.documentNumber.slice(-4),
+            birthDate: td1.birthDate,
+            expiryDate: td1.expiryDate,
+            sex: td1.sex === 'M' ? 'ذكر' : td1.sex === 'F' ? 'أنثى' : null,
+            nationality: td1.nationality,
+            valid: td1.valid,
+          }
+        : null,
+      message: td1?.valid
+        ? 'قُرئت بيانات البطاقة بنجاح.'
+        : td1
+          ? 'قُرئت الأسطر جزئياً. أعد التصوير بإضاءة أفضل ودون ميلان.'
+          : 'لم تُقرأ الأسطر الثلاثة أسفل ظهر البطاقة. قرّب الهاتف واجعلها واضحة.',
+    })
+  })
+
   app.post(
     '/api/onboarding/identity-review',
     requireSession('CITIZEN'),
@@ -226,6 +309,8 @@ export function registerOnboardingRoutes(app: express.Express) {
             analysisConsent: z.literal('true'),
             profilePhotoConsent: z.literal('true'),
             locationConsent: z.enum(['true', 'false']).default('false'),
+            livenessChallengeId: z.string().trim().max(80).optional(),
+            livenessTimeline: z.string().max(4000).optional(),
             locationLat: z.coerce.number().min(-90).max(90).optional(),
             locationLng: z.coerce.number().min(-180).max(180).optional(),
             locationAccuracyM: z.coerce.number().min(0).max(50_000).optional(),
@@ -251,6 +336,26 @@ export function registerOnboardingRoutes(app: express.Express) {
           return res.status(400).json({
             message: 'صوّر وجهي البطاقة الوطنية الموحدة وفيديو الوجه القصير لإرسال طلب التوثيق.',
           })
+        // the movement challenge is single-use and must belong to this citizen
+        let liveness: { expected: LivenessStep[]; timeline: LivenessTimelineEntry[] } | null = null
+        if (payload.livenessChallengeId) {
+          const expected = consumeLivenessChallenge(payload.livenessChallengeId, submitter.id)
+          const timeline = z
+            .array(
+              z.object({
+                step: z.enum(['CENTER', 'LEFT', 'RIGHT']),
+                startMs: z.number().min(0).max(60_000),
+                endMs: z.number().min(0).max(60_000),
+              })
+            )
+            .max(8)
+            .safeParse(JSON.parse(payload.livenessTimeline || '[]'))
+          if (!expected || !timeline.success)
+            return res.status(400).json({
+              message: 'انتهت صلاحية تحدي التحقق من الوجه أو استُخدم سابقاً. أعد تسجيل فيديو الوجه.',
+            })
+          liveness = { expected, timeline: timeline.data }
+        }
         validateUploadedFile(idFront, ['image'])
         if (idBack) validateUploadedFile(idBack, ['image'])
         validateUploadedFile(faceVideo, ['video'])
@@ -407,6 +512,7 @@ export function registerOnboardingRoutes(app: express.Express) {
         void runIdentityVerification({
           reviewId,
           citizenId,
+          liveness,
           documentBack: idBack.buffer,
           documentImage: idFront.buffer,
           faceVideo: faceVideo.buffer,

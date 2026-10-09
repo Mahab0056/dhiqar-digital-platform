@@ -332,7 +332,7 @@ export const LIVENESS_MIN_YAW_RANGE = 0.2
 export const LIVENESS_MAX_CONSISTENCY = 0.93
 
 /** Left/right turn from the 5 landmarks: nose offset from the eyes' midpoint, in eye-distance units. */
-const yawOf = (face: DetectedFace) => {
+export const yawOf = (face: DetectedFace) => {
   const [leftEye, rightEye, nose] = face.kps
   const eyeSpan = Math.abs(rightEye[0] - leftEye[0]) || 1
   return (nose[0] - (leftEye[0] + rightEye[0]) / 2) / eyeSpan
