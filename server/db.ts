@@ -657,6 +657,38 @@ db.exec(
   'CREATE INDEX IF NOT EXISTS idx_citizens_admin_directory ON citizens(verification_status, document_type, updated_at DESC)'
 )
 
+// ---- department workflow: assignment, referral, managers, SLA ------------------------------------------------
+// Additive only (ADD COLUMN / CREATE ... IF NOT EXISTS) so it is safe on the live database. The role CHECK on
+// staff_accounts can't change without a table rebuild, so "department manager" is a flag on an EMPLOYEE account.
+ensureColumn('staff_accounts', 'is_department_manager', 'INTEGER NOT NULL DEFAULT 0')
+// the employee who claimed the request (NULL = any employee of the department may pick it up)
+ensureColumn('service_requests', 'assigned_staff_id', 'TEXT')
+ensureColumn('service_requests', 'assigned_at', 'TEXT')
+// first department the request was filed with, kept across referrals
+ensureColumn('service_requests', 'origin_department_id', 'TEXT')
+// SLA: due_at is set at submission; while the request waits on the citizen waiting_since holds the pause start
+ensureColumn('service_requests', 'due_at', 'TEXT')
+ensureColumn('service_requests', 'waiting_since', 'TEXT')
+// NULL = default by channel (see server/services/sla.ts)
+ensureColumn('service_catalog', 'sla_working_days', 'INTEGER')
+db.exec(`
+  CREATE TABLE IF NOT EXISTS service_request_transfers (
+    id TEXT PRIMARY KEY,
+    service_request_id INTEGER NOT NULL,
+    from_department_id TEXT NOT NULL,
+    to_department_id TEXT NOT NULL,
+    reason TEXT NOT NULL,
+    requested_by TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (service_request_id) REFERENCES service_requests(id) ON DELETE CASCADE
+  );
+  CREATE INDEX IF NOT EXISTS idx_service_request_transfers_request ON service_request_transfers(service_request_id, created_at);
+  CREATE INDEX IF NOT EXISTS idx_service_request_transfers_from ON service_request_transfers(from_department_id, created_at DESC);
+  CREATE INDEX IF NOT EXISTS idx_service_request_transfers_to ON service_request_transfers(to_department_id, created_at DESC);
+  CREATE INDEX IF NOT EXISTS idx_service_requests_department_queue ON service_requests(department_id, status, created_at);
+  CREATE INDEX IF NOT EXISTS idx_service_requests_assignee ON service_requests(assigned_staff_id, status);
+`)
+
 const now = () => new Date().toISOString()
 
 export function ensureDemoCitizen() {

@@ -6,6 +6,7 @@ import { createApp } from './http/app.js'
 import { errorHandler } from './http/error-handler.js'
 import { installRealtime } from './realtime.js'
 import { seedServiceCatalog } from './services/catalog.js'
+import { backfillServiceRequestDueDates } from './services/sla.js'
 import { registerServicesRoutes } from './routes/services.js'
 import { registerPaymentRoutes } from './routes/payments.js'
 import { registerPushRoutes } from './routes/push.js'
@@ -34,6 +35,8 @@ export function createPlatformServer(options: { serveStatic?: boolean } = {}) {
   seedVerifiedGovernmentServices()
   seedDepartments()
   seedServiceCatalog()
+  // requests filed before SLAs existed get a deadline from their creation date (no-op once done)
+  backfillServiceRequestDueDates()
   bootstrapStaffAccounts()
   purgeExpiredSessions()
   scheduleBackups()

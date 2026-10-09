@@ -37,6 +37,8 @@ export type CatalogService = {
   sourceQuality: 'OFFICIAL' | 'RELIABLE' | 'UNVERIFIED'
   notes: string
   active: boolean
+  /** Explicit SLA set by the super admin; null = default by channel (server/services/sla.ts). */
+  slaWorkingDays: number | null
   updatedAt: string
 }
 
@@ -205,6 +207,8 @@ function mapRow(row: Record<string, unknown>): CatalogService {
     sourceQuality: (String(row.source_quality || 'UNVERIFIED') as CatalogService['sourceQuality']) || 'UNVERIFIED',
     notes: String(row.notes || ''),
     active: Boolean(row.active),
+    slaWorkingDays:
+      row.sla_working_days === null || row.sla_working_days === undefined ? null : Number(row.sla_working_days),
     updatedAt: String(row.updated_at),
   }
 }

@@ -4,10 +4,12 @@ import { WebSocket, WebSocketServer } from 'ws'
 type EmployeeRole = 'EMPLOYEE' | 'IDENTITY_REVIEWER' | 'OPERATIONS' | 'SUPER_ADMIN'
 export type WorkQueueEvent = {
   entity: 'APPLICATION' | 'SERVICE_REQUEST' | 'IDENTITY_REVIEW' | 'FEEDBACK'
-  action: 'CREATED' | 'UPDATED'
+  action: 'CREATED' | 'UPDATED' | 'ASSIGNED' | 'TRANSFERRED'
   reference?: string
   /** When set, only staff of this department (plus super admins) receive the event. */
   departmentId?: string | null
+  /** Current assignee of a service request (null = unassigned), so open queues can update their chips. */
+  assignedStaffId?: string | null
 }
 
 type Options = {

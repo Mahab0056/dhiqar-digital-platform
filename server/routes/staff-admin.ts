@@ -20,6 +20,14 @@ import {
 
 const roleSchema = z.enum(['EMPLOYEE', 'IDENTITY_REVIEWER', 'OPERATIONS', 'SUPER_ADMIN'])
 
+/** A disabled or moved account can no longer work its claimed requests: put them back in the department's pool. */
+function releaseOpenAssignments(staffId: string) {
+  db.prepare(
+    `UPDATE service_requests SET assigned_staff_id = NULL, assigned_at = NULL
+     WHERE assigned_staff_id = ? AND status NOT IN ('APPROVED', 'REJECTED')`
+  ).run(staffId)
+}
+
 export function registerStaffAdminRoutes(app: express.Express) {
   const guard = requireSession('SUPER_ADMIN')
 
@@ -74,8 +82,16 @@ export function registerStaffAdminRoutes(app: express.Express) {
         fullName: z.string().trim().min(3).max(120).optional(),
         role: roleSchema.optional(),
         departmentId: z.string().trim().max(80).nullable().optional(),
+        isDepartmentManager: z.boolean().optional(),
       })
       .parse(req.body)
+    if (payload.isDepartmentManager) {
+      // the flag is scoped to one department through an EMPLOYEE account (no separate role value)
+      const role = payload.role || before.role
+      const departmentId = payload.departmentId === undefined ? before.departmentId : payload.departmentId
+      if (role !== 'EMPLOYEE' || !departmentId)
+        return res.status(400).json({ message: 'مدير الدائرة يجب أن يكون «موظف معاملات» مرتبطاً بدائرة.' })
+    }
     if (
       before.role === 'SUPER_ADMIN' &&
       payload.role &&
@@ -87,14 +103,25 @@ export function registerStaffAdminRoutes(app: express.Express) {
       return res.status(400).json({ message: 'الدائرة المحددة غير موجودة في سجل الدوائر.' })
     const account = updateStaffProfile(id, payload)
     if (payload.role && payload.role !== before.role) revokeStaffSessions(id, 'ROLE_CHANGED')
+    if (account.role !== before.role || account.departmentId !== before.departmentId) releaseOpenAssignments(id)
     addAudit({
       actor: session.actor,
       role: session.role,
       action: 'STAFF_ACCOUNT_UPDATED',
       entityType: 'StaffAccount',
       entityId: id,
-      previousValue: { fullName: before.fullName, role: before.role, departmentId: before.departmentId },
-      newValue: { fullName: account.fullName, role: account.role, departmentId: account.departmentId },
+      previousValue: {
+        fullName: before.fullName,
+        role: before.role,
+        departmentId: before.departmentId,
+        isDepartmentManager: before.isDepartmentManager,
+      },
+      newValue: {
+        fullName: account.fullName,
+        role: account.role,
+        departmentId: account.departmentId,
+        isDepartmentManager: account.isDepartmentManager,
+      },
     })
     res.json({ account })
   })
@@ -110,7 +137,10 @@ export function registerStaffAdminRoutes(app: express.Express) {
     if (account.role === 'SUPER_ADMIN' && payload.status === 'DISABLED' && countStaff('SUPER_ADMIN') <= 1)
       return res.status(409).json({ message: 'لا يمكن تعطيل آخر مدير نظام فعّال.' })
     setStaffStatus(id, payload.status)
-    if (payload.status === 'DISABLED') revokeStaffSessions(id, 'ACCOUNT_DISABLED')
+    if (payload.status === 'DISABLED') {
+      revokeStaffSessions(id, 'ACCOUNT_DISABLED')
+      releaseOpenAssignments(id)
+    }
     addAudit({
       actor: session.actor,
       role: session.role,

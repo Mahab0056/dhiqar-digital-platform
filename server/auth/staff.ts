@@ -13,6 +13,8 @@ export type StaffAccount = {
   role: StaffRole
   departmentId: string | null
   departmentName: string | null
+  /** Manager of their department (assigns requests, sees the team workload). Only meaningful for EMPLOYEE. */
+  isDepartmentManager: boolean
   mustChangePassword: boolean
   totpEnabled: boolean
   status: 'ACTIVE' | 'DISABLED'
@@ -28,7 +30,7 @@ const LOCK_MINUTES = 15
 
 const now = () => new Date().toISOString()
 
-const selectColumns = `s.id, s.username, s.full_name, s.role, s.department_id, d.name AS department_name, s.must_change_password,
+const selectColumns = `s.id, s.username, s.full_name, s.role, s.department_id, d.name AS department_name, s.is_department_manager, s.must_change_password,
   s.totp_enabled, s.status, s.failed_attempts, s.locked_until, s.last_login_at, s.created_at, s.updated_at`
 
 function mapStaff(row: Record<string, unknown>): StaffAccount {
@@ -39,6 +41,7 @@ function mapStaff(row: Record<string, unknown>): StaffAccount {
     role: String(row.role) as StaffRole,
     departmentId: row.department_id ? String(row.department_id) : null,
     departmentName: row.department_name ? String(row.department_name) : null,
+    isDepartmentManager: Boolean(row.is_department_manager),
     mustChangePassword: Boolean(row.must_change_password),
     totpEnabled: Boolean(row.totp_enabled),
     status: String(row.status) as 'ACTIVE' | 'DISABLED',
@@ -224,17 +227,22 @@ export function setStaffStatus(staffId: string, status: 'ACTIVE' | 'DISABLED') {
 
 export function updateStaffProfile(
   staffId: string,
-  input: { fullName?: string; role?: StaffRole; departmentId?: string | null }
+  input: { fullName?: string; role?: StaffRole; departmentId?: string | null; isDepartmentManager?: boolean }
 ) {
   const current = getStaffById(staffId)
   if (!current) throw new Error('الحساب غير موجود.')
-  db.prepare(`UPDATE staff_accounts SET full_name = ?, role = ?, department_id = ?, updated_at = ? WHERE id = ?`).run(
-    input.fullName?.trim() || current.fullName,
-    input.role || current.role,
-    input.departmentId === undefined ? current.departmentId : input.departmentId,
-    now(),
-    staffId
-  )
+  const role = input.role || current.role
+  const departmentId = input.departmentId === undefined ? current.departmentId : input.departmentId
+  // a manager manages one department as an employee of it: moving the account elsewhere (or to another role)
+  // drops the flag instead of silently making them manager of the new department
+  const keepsScope = role === 'EMPLOYEE' && Boolean(departmentId) && departmentId === current.departmentId
+  const isDepartmentManager =
+    input.isDepartmentManager !== undefined
+      ? input.isDepartmentManager && role === 'EMPLOYEE' && Boolean(departmentId)
+      : current.isDepartmentManager && keepsScope
+  db.prepare(
+    `UPDATE staff_accounts SET full_name = ?, role = ?, department_id = ?, is_department_manager = ?, updated_at = ? WHERE id = ?`
+  ).run(input.fullName?.trim() || current.fullName, role, departmentId, isDepartmentManager ? 1 : 0, now(), staffId)
   return getStaffById(staffId)!
 }
 

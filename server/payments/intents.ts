@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { addAudit, db, nextReference } from '../db.js'
 import { notifyCitizen, employeeWorkQueueRealtime } from '../realtime.js'
 import { paymentProvider } from './providers.js'
+import { nextSlaClock } from '../services/sla.js'
 
 export type PaymentIntentView = {
   id: string
@@ -133,15 +134,21 @@ export function settlePayment(input: {
     ).run(input.providerReference || null, receipt, timestamp, timestamp, input.intentId)
     if (row.service_request_id) {
       const request = db
-        .prepare('SELECT id, reference, status, review_started_at FROM service_requests WHERE id = ?')
+        .prepare(
+          'SELECT id, reference, status, review_started_at, due_at, waiting_since FROM service_requests WHERE id = ?'
+        )
         .get(Number(row.service_request_id)) as Record<string, unknown> | undefined
       if (request && request.status === 'PAYMENT_PENDING') {
         const next = request.review_started_at ? 'UNDER_REVIEW' : 'SUBMITTED'
+        // the department's SLA clock resumes now: the time spent waiting for the fee is added to the deadline
+        const clock = nextSlaClock({ ...request, status: String(request.status) }, next, timestamp)
         db.prepare(
-          `UPDATE service_requests SET status = ?, current_action = ?, payment_status = 'PAID', updated_at = ? WHERE id = ?`
+          `UPDATE service_requests SET status = ?, current_action = ?, payment_status = 'PAID', due_at = ?, waiting_since = ?, updated_at = ? WHERE id = ?`
         ).run(
           next,
           `تم سداد الرسم (إيصال ${receipt}). ${next === 'SUBMITTED' ? 'أُحيل الطلب والمستمسكات إلى الدائرة المختصة للتدقيق.' : 'استُؤنف تدقيق الطلب لدى الدائرة.'}`,
+          clock.dueAt,
+          clock.waitingSince,
           timestamp,
           Number(request.id)
         )
