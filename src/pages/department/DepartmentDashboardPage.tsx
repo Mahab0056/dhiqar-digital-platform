@@ -3,11 +3,13 @@ import { Link } from 'wouter'
 import {
   Activity,
   AlertTriangle,
+  ArrowLeftRight,
   Building2,
   Camera,
   CheckCircle2,
   Clock3,
   FileText,
+  Gauge,
   MessageSquareWarning,
   RefreshCw,
   UsersRound,
@@ -232,6 +234,135 @@ export function DepartmentDashboardPage({ id }: { id: string }) {
                 </p>
               )}
             </article>
+
+            {data.management && (
+              <>
+                <article className="department-panel department-requests" id="department-manager">
+                  <header>
+                    <div>
+                      <h2>توزيع العمل على الفريق</h2>
+                      <p>عرض مدير الدائرة — الطلبات المسندة المفتوحة وما أُنجز اليوم وخلال 7 أيام</p>
+                    </div>
+                    <Gauge />
+                  </header>
+                  <div className="department-manager-summary">
+                    <span>
+                      غير مسندة: <b>{data.management.unassignedOpen.toLocaleString('en-US')}</b> (
+                      {data.management.unassignedActionable.toLocaleString('en-US')} بانتظار الدائرة)
+                    </span>
+                    <span className={data.management.overdueTotal ? 'danger' : ''}>
+                      متأخرة عن المهلة: <b>{data.management.overdueTotal.toLocaleString('en-US')}</b>
+                    </span>
+                    <span>
+                      إحالات واردة: <b>{data.management.incomingReferrals.length.toLocaleString('en-US')}</b> • صادرة:{' '}
+                      <b>{data.management.outgoingReferrals.length.toLocaleString('en-US')}</b>
+                    </span>
+                  </div>
+                  <div className="table-scroll">
+                    <table className="department-table">
+                      <thead>
+                        <tr>
+                          <th>الموظف</th>
+                          <th>مسندة مفتوحة</th>
+                          <th>منها متأخرة</th>
+                          <th>قرارات اليوم</th>
+                          <th>قرارات الأسبوع</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {data.management.workload.map(member => (
+                          <tr key={member.staffId}>
+                            <td>
+                              {member.fullName}
+                              {member.isDepartmentManager ? <small className="muted"> • مدير الدائرة</small> : null}
+                            </td>
+                            <td>{member.openAssigned.toLocaleString('en-US')}</td>
+                            <td className={member.overdueAssigned ? 'danger-text' : ''}>
+                              {member.overdueAssigned.toLocaleString('en-US')}
+                            </td>
+                            <td>{member.decidedToday.toLocaleString('en-US')}</td>
+                            <td>{member.decidedThisWeek.toLocaleString('en-US')}</td>
+                          </tr>
+                        ))}
+                        {!data.management.workload.length && (
+                          <tr>
+                            <td colSpan={5} className="muted">
+                              لا يوجد موظفو معاملات فعّالون في هذه الدائرة.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </article>
+
+                <article className="department-panel">
+                  <header>
+                    <div>
+                      <h2>متأخرة عن المهلة</h2>
+                      <p>
+                        {data.management.overdueTotal
+                          ? `${data.management.overdueTotal} طلب — الأقدم استحقاقاً أولاً`
+                          : 'لا طلبات متأخرة'}
+                      </p>
+                    </div>
+                    <AlertTriangle />
+                  </header>
+                  <ul className="department-activity">
+                    {data.management.overdue.map(item => (
+                      <li key={item.reference}>
+                        <strong>
+                          <a href="#department-review" onClick={() => setFocusReference(item.reference)}>
+                            {item.reference}
+                          </a>{' '}
+                          — {item.serviceName}
+                        </strong>
+                        <small>
+                          {item.citizenName} • المهلة {formatDate(item.dueAt)} •{' '}
+                          {item.assignedStaffName ? `مُسند إلى ${item.assignedStaffName}` : 'غير مسند'}
+                        </small>
+                      </li>
+                    ))}
+                    {!data.management.overdue.length && <li className="muted">كل الطلبات ضمن المهلة.</li>}
+                  </ul>
+                </article>
+
+                <article className="department-panel">
+                  <header>
+                    <div>
+                      <h2>الإحالات بين الدوائر</h2>
+                      <p>آخر 20 إحالة واردة وصادرة</p>
+                    </div>
+                    <ArrowLeftRight />
+                  </header>
+                  <ul className="department-manager-referrals">
+                    {[
+                      ...data.management.incomingReferrals.map(item => ({ ...item, direction: 'in' as const })),
+                      ...data.management.outgoingReferrals.map(item => ({ ...item, direction: 'out' as const })),
+                    ]
+                      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+                      .slice(0, 20)
+                      .map(item => (
+                        <li key={`${item.direction}-${item.reference}-${item.createdAt}`}>
+                          <strong>
+                            {item.direction === 'in'
+                              ? `واردة من ${item.fromDepartmentName}`
+                              : `صادرة إلى ${item.toDepartmentName}`}{' '}
+                            — {item.reference}
+                          </strong>
+                          <span>{item.reason}</span>
+                          <small>
+                            {item.serviceName} • {item.requestedBy} • {formatDate(item.createdAt)}
+                          </small>
+                        </li>
+                      ))}
+                    {!data.management.incomingReferrals.length && !data.management.outgoingReferrals.length && (
+                      <li className="muted">لا توجد إحالات بعد.</li>
+                    )}
+                  </ul>
+                </article>
+              </>
+            )}
 
             <article className="department-panel department-requests">
               <header>

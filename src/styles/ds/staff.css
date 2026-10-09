@@ -207,6 +207,218 @@
 .service-request-admin-row.overdue {
   box-shadow: inset 3px 0 0 var(--ds-danger);
 }
+/* SLA: amber in the last 24h before the deadline */
+.service-request-admin-row.due-soon {
+  box-shadow: inset 3px 0 0 var(--ds-warning);
+}
+.service-requests-overdue.due-soon {
+  background: var(--ds-warning-soft);
+  color: var(--ds-warning);
+}
+.service-request-admin-row .row-meta {
+  flex-wrap: wrap;
+}
+.service-request-admin-row :is(.row-due-soon, .row-assignee, .row-referred) {
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+}
+.service-request-admin-row .row-due-soon {
+  background: var(--ds-warning-soft);
+  color: var(--ds-warning);
+}
+.service-request-admin-row .row-assignee {
+  background: var(--ds-surface-2, var(--ds-surface));
+  border: 1px solid var(--ds-border);
+  color: var(--ds-text);
+  font-weight: 500;
+}
+.service-request-admin-row .row-assignee.mine {
+  border-color: transparent;
+  background: var(--ds-primary-soft);
+  color: var(--ds-primary-text, var(--ds-primary));
+}
+.service-request-admin-row .row-referred {
+  background: var(--ds-info-soft);
+  color: var(--ds-info);
+}
+.sla-due {
+  font-weight: 600;
+}
+.sla-due.overdue {
+  color: var(--ds-danger);
+}
+.sla-due.due-soon {
+  color: var(--ds-warning);
+}
+.sla-due.paused {
+  color: var(--ds-text-muted);
+}
+
+/* ---- assignment bar, referral form and history ---------------------------------------------------- */
+.service-request-assignment {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 10px 0;
+  padding: 10px 12px;
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-surface);
+}
+.service-request-assignment > svg {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  color: var(--ds-text-muted);
+}
+.service-request-assignment .assignment-chip {
+  flex: 1 1 200px;
+  color: var(--ds-text-muted);
+  font-size: var(--ds-text-sm);
+}
+.service-request-assignment .assignment-chip.mine {
+  color: var(--ds-primary-text, var(--ds-primary));
+  font-weight: 600;
+}
+.service-request-assignment .assignment-chip.other {
+  color: var(--ds-text);
+  font-weight: 600;
+}
+.service-request-assignment .assignment-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.service-request-assignment select {
+  min-height: 36px;
+  max-width: 100%;
+  padding: 0 10px;
+  border: 1px solid var(--ds-border-strong, var(--ds-border));
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-surface);
+  color: var(--ds-text);
+  font: inherit;
+  font-size: var(--ds-text-sm);
+}
+.service-request-transfers {
+  display: grid;
+  gap: 6px;
+  margin: 0 0 12px;
+  padding: 0;
+  list-style: none;
+}
+.service-request-transfers li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-info-soft);
+  color: var(--ds-text);
+  font-size: var(--ds-text-sm);
+}
+.service-request-transfers svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+  color: var(--ds-info);
+}
+.service-request-transfers small {
+  display: block;
+  color: var(--ds-text-muted);
+  font-size: 12px;
+}
+.service-request-transfer {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px dashed var(--ds-border);
+}
+.service-request-transfer h4 {
+  margin: 0;
+}
+.service-request-transfer .transfer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* ---- department manager view --------------------------------------------------------------------- */
+.department-manager-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0 0 12px;
+}
+.department-manager-summary span {
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--ds-surface-2, var(--ds-surface));
+  border: 1px solid var(--ds-border);
+  font-size: var(--ds-text-sm);
+}
+.department-manager-summary span.danger {
+  border-color: transparent;
+  background: var(--ds-danger-soft);
+  color: var(--ds-danger);
+}
+.department-manager-referrals {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.department-manager-referrals li {
+  display: grid;
+  gap: 2px;
+  font-size: var(--ds-text-sm);
+}
+.department-manager-referrals small {
+  color: var(--ds-text-muted);
+}
+.department-table .danger-text {
+  color: var(--ds-danger);
+  font-weight: 600;
+}
+.service-sla-editor {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px;
+  margin: 10px 0;
+  font-size: var(--ds-text-sm);
+}
+.service-sla-editor label {
+  display: grid;
+  gap: 4px;
+}
+.service-sla-editor input {
+  width: 120px;
+  min-height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--ds-border-strong, var(--ds-border));
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-surface);
+  color: var(--ds-text);
+  font: inherit;
+}
+.service-sla-editor small {
+  flex: 1 1 100%;
+  color: var(--ds-text-muted);
+}
+.staff-manager-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  white-space: nowrap;
+}
 
 /* ---- shop-permit review: action line and the requested-document field --------------------------- */
 .queue-item .queue-item-action {

@@ -735,14 +735,51 @@ await check('DEP-09', 'معالجة الدائرة', 'الحالة متطابق�
 })
 
 await check('DEP-10', 'معالجة الدائرة', 'إحالة الطلب إلى دائرة/موظف آخر', async () => {
-  const r = await empGov.patch(`/api/employee/service-requests/${ctx.reqA}`, {
-    status: 'REFERRED',
-    departmentId: 'dhiqar-water',
+  // a fresh open request (ctx.reqA is already approved and closed)
+  const { form } = await serviceForm('gov-low-cost-housing')
+  const created = await citizenA.req('POST', '/api/service-requests', { form })
+  const ref = created.body.reference
+  ctx.reqReferred = ref
+  const claim = await empGov.post(`/api/employee/service-requests/${ref}/claim`, {})
+  const noReason = await empGov.post(`/api/employee/service-requests/${ref}/transfer`, {
+    toDepartmentId: 'dhiqar-water',
+    reason: 'قصير',
   })
-  return {
-    status: 'NOT_IMPLEMENTED',
-    evidence: `no referral/assignment endpoint exists (PATCH with status REFERRED → ${r.status}); requests are routed only by the catalog department`,
-  }
+  const r = await empGov.post(`/api/employee/service-requests/${ref}/transfer`, {
+    toDepartmentId: 'dhiqar-water',
+    reason: 'الطلب يخص شبكة الماء وليس ديوان المحافظة',
+  })
+  const row = one(
+    'SELECT department_id, origin_department_id, assigned_staff_id FROM service_requests WHERE reference = ?',
+    ref
+  )
+  const oldDirect = await empGov.get(`/api/employee/service-requests/${ref}`)
+  const oldDecision = await empGov.patch(`/api/employee/service-requests/${ref}`, {
+    status: 'UNDER_REVIEW',
+    decisionNote: 'محاولة بعد الإحالة',
+  })
+  const oldQueue = (await empGov.get('/api/employee/service-requests')).body.items.some(x => x.reference === ref)
+  const newQueue = (await empWater.get('/api/employee/service-requests')).body.items.some(x => x.reference === ref)
+  const outLog = (await empGov.get('/api/employee/transfers?direction=out')).body.items.some(x => x.reference === ref)
+  const notified = (await citizenA.get('/api/citizen/notifications')).body.items.some(
+    n => n.message.includes(ref) && n.message.includes('أُحيل طلبك إلى')
+  )
+  return expect(
+    created.status === 201 &&
+      claim.status === 200 &&
+      noReason.status === 400 &&
+      r.status === 200 &&
+      row.department_id === 'dhiqar-water' &&
+      row.origin_department_id === 'dhiqar-governorate' &&
+      row.assigned_staff_id === null &&
+      oldDirect.status === 403 &&
+      oldDecision.status === 403 &&
+      !oldQueue &&
+      newQueue &&
+      outLog &&
+      notified,
+    `transfer ${r.status} (short reason ${noReason.status}); DB ${row.origin_department_id} → ${row.department_id}, assignee=${row.assigned_staff_id}; old dept GET ${oldDirect.status}, decision ${oldDecision.status}, in old queue=${oldQueue}; in water queue=${newQueue}; out-log=${outLog}; citizen notified=${notified}`
+  )
 })
 
 // =================================================================================================
@@ -1119,11 +1156,17 @@ await check('SEC-15', 'الأمان والصلاحيات', 'سجل التدقي�
 
 await check('SEC-16', 'الأمان والصلاحيات', 'لا توجد أسرار حقيقية في المستودع (فحص نمطي)', async () => {
   const { execSync } = await import('node:child_process')
-  const out = execSync(
-    `git grep -nIE "(sk-[A-Za-z0-9]{20,}|AKIA[0-9A-Z]{16}|-----BEGIN (RSA |EC )?PRIVATE KEY|ghp_[A-Za-z0-9]{30,}|xox[bp]-)" -- . ":(exclude)pnpm-lock.yaml" || true`
-  )
-    .toString()
-    .trim()
+  let out = ''
+  try {
+    out = execSync(
+      `git grep -nIE "(sk-[A-Za-z0-9]{20,}|AKIA[0-9A-Z]{16}|-----BEGIN (RSA |EC )?PRIVATE KEY|ghp_[A-Za-z0-9]{30,}|xox[bp]-)" -- . ":(exclude)pnpm-lock.yaml"`
+    )
+      .toString()
+      .trim()
+  } catch (error) {
+    // git grep exits 1 when nothing matches; `|| true` is not available when node runs the command through cmd.exe
+    if (error.status !== 1) throw error
+  }
   return expect(!out, out ? out.split('\n').slice(0, 3).join(' | ') : 'no key-shaped secrets matched')
 })
 

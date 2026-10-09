@@ -249,6 +249,30 @@ export interface CitizenServiceRequest {
     status: string
     note?: string | null
   } | null
+  // ---- employee view only ----
+  assignedStaffId?: string | null
+  assignedStaffName?: string | null
+  assignedAt?: string | null
+  originDepartmentId?: string | null
+  originDepartmentName?: string | null
+  transfers?: ServiceRequestTransfer[]
+  /** SLA deadline (working days, Fri/Sat excluded); pushed forward by time spent waiting on the citizen. */
+  dueAt?: string | null
+  overdue?: boolean
+  /** Waiting on the citizen (documents or fee): the department's clock is stopped. */
+  slaPaused?: boolean
+}
+
+export type ServiceRequestTransfer = {
+  id: string
+  reference: string
+  fromDepartmentId: string
+  fromDepartmentName: string
+  toDepartmentId: string
+  toDepartmentName: string
+  reason: string
+  requestedBy: string
+  createdAt: string
 }
 
 export type FeedbackKind = 'COMPLAINT' | 'SUGGESTION'
@@ -453,6 +477,9 @@ export interface DepartmentWorkbench {
     category: string
     requiredDocuments: string[]
     active: boolean
+    /** Explicit SLA in working days; null = the channel default below. */
+    slaWorkingDays: number | null
+    slaDefaultDays: number
     updatedAt: string
   }>
   requests: Array<{
@@ -478,6 +505,8 @@ export type StaffSession = {
   username: string | null
   departmentId: string | null
   departmentName: string | null
+  /** EMPLOYEE flagged as manager of their department (assigns requests, sees the team workload). */
+  isDepartmentManager?: boolean
   mustChangePassword: boolean
   mfaEnabled: boolean
 }
@@ -502,6 +531,7 @@ export type StaffAccount = {
   role: StaffRole
   departmentId: string | null
   departmentName: string | null
+  isDepartmentManager: boolean
   mustChangePassword: boolean
   totpEnabled: boolean
   status: 'ACTIVE' | 'DISABLED'
@@ -638,4 +668,43 @@ export type DepartmentDashboard = {
     entityId: string
     createdAt: string
   }>
+  /** Present for the department manager, operations and the super admin only. */
+  management?: DepartmentManagement | null
+}
+
+export type DepartmentReferral = {
+  reference: string
+  serviceName: string
+  status: string
+  fromDepartmentName: string
+  toDepartmentName: string
+  reason: string
+  requestedBy: string
+  createdAt: string
+}
+
+export type DepartmentManagement = {
+  workload: Array<{
+    staffId: string
+    fullName: string
+    isDepartmentManager: boolean
+    openAssigned: number
+    overdueAssigned: number
+    decidedToday: number
+    decidedThisWeek: number
+  }>
+  unassignedOpen: number
+  unassignedActionable: number
+  overdueTotal: number
+  overdue: Array<{
+    reference: string
+    status: string
+    serviceName: string
+    citizenName: string
+    assignedStaffName: string | null
+    createdAt: string
+    dueAt: string
+  }>
+  incomingReferrals: DepartmentReferral[]
+  outgoingReferrals: DepartmentReferral[]
 }

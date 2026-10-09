@@ -1,16 +1,21 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   AlertTriangle,
+  ArrowLeftRight,
   BriefcaseBusiness,
   CalendarClock,
   CheckCircle2,
+  Clock3,
   Eye,
   FileCheck2,
   FileWarning,
+  Hand,
   Info,
   ReceiptText,
   RefreshCw,
   Search,
+  Undo2,
+  UserRound,
   XCircle,
 } from 'lucide-react'
 import { api } from '../../api'
@@ -40,9 +45,37 @@ type Sort = 'OLDEST' | 'NEWEST' | 'UPDATED'
 const CLOSED = ['APPROVED', 'REJECTED']
 // waiting on the citizen (documents or fee) does not count against the department's clock
 const WAITING_ON_CITIZEN = ['ACTION_REQUIRED', 'PAYMENT_PENDING']
-/** Open requests older than this many days are flagged until the catalog carries a real SLA per service. */
-const OVERDUE_DAYS = 3
+const HOUR = 3_600_000
 const DAY = 86_400_000
+type Assignment = 'ALL' | 'MINE' | 'UNASSIGNED'
+
+/**
+ * SLA state from the server's per-service deadline (dueAt): red once it has passed, amber within the last 24h.
+ * A request waiting on the citizen is paused — the server pushes dueAt forward when it comes back.
+ */
+type SlaState = 'OVERDUE' | 'DUE_SOON' | 'OK' | 'PAUSED' | 'NONE'
+const slaState = (item: CitizenServiceRequest): SlaState => {
+  if (CLOSED.includes(item.status)) return 'NONE'
+  if (item.slaPaused || WAITING_ON_CITIZEN.includes(item.status)) return 'PAUSED'
+  if (!item.dueAt) return 'NONE'
+  const left = new Date(item.dueAt).getTime() - Date.now()
+  if (item.overdue || left < 0) return 'OVERDUE'
+  return left <= 24 * HOUR ? 'DUE_SOON' : 'OK'
+}
+const isOverdue = (item: CitizenServiceRequest) => slaState(item) === 'OVERDUE'
+const span = (ms: number) => {
+  const hours = Math.max(1, Math.round(Math.abs(ms) / HOUR))
+  if (hours < 24) return hours === 1 ? 'ساعة' : `${hours.toLocaleString('en-US')} ساعة`
+  const days = Math.round(hours / 24)
+  return days === 1 ? 'يوم' : `${days.toLocaleString('en-US')} أيام`
+}
+const dueLabel = (item: CitizenServiceRequest) => {
+  const state = slaState(item)
+  if (state === 'PAUSED') return 'المهلة متوقفة — بانتظار المواطن'
+  if (!item.dueAt || state === 'NONE') return ''
+  const left = new Date(item.dueAt).getTime() - Date.now()
+  return state === 'OVERDUE' ? `متأخر ${span(left)} عن المهلة` : `يستحق خلال ${span(left)}`
+}
 const ageDays = (iso: string) => Math.floor((Date.now() - new Date(iso).getTime()) / DAY)
 const ageLabel = (iso: string) => {
   const days = ageDays(iso)
@@ -52,8 +85,6 @@ const ageLabel = (iso: string) => {
   }
   return days === 1 ? 'منذ يوم' : `منذ ${days.toLocaleString('en-US')} أيام`
 }
-const isOverdue = (item: CitizenServiceRequest) =>
-  !CLOSED.includes(item.status) && !WAITING_ON_CITIZEN.includes(item.status) && ageDays(item.createdAt) >= OVERDUE_DAYS
 const digits = (value: string) => value.replace(/[^\d]/g, '')
 /** A fee is still owed until it is PAID; a cancelled one (closed request) is not. */
 const owed = (status: string) => status !== 'PAID' && status !== 'CANCELLED'
@@ -69,6 +100,21 @@ export function ServiceRequestAdminPanel({
 } = {}) {
   const { session } = useSession()
   const readOnly = session?.role === 'OPERATIONS' || session?.role === 'IDENTITY_REVIEWER'
+  const myId = session?.subject || ''
+  /** Department manager of this request's department, or the super admin: may assign, release and override. */
+  const managesRequest = (item: CitizenServiceRequest | null) =>
+    Boolean(item) &&
+    (session?.role === 'SUPER_ADMIN' ||
+      (session?.role === 'EMPLOYEE' &&
+        Boolean(session.isDepartmentManager) &&
+        session.departmentId === item?.departmentId))
+  const [assignment, setAssignment] = useState<Assignment>('ALL')
+  const [staffOptions, setStaffOptions] = useState<Array<{ id: string; fullName: string }>>([])
+  const [departments, setDepartments] = useState<Array<{ id: string; name: string }>>([])
+  const [transferOpen, setTransferOpen] = useState(false)
+  const [transferTo, setTransferTo] = useState('')
+  const [transferReason, setTransferReason] = useState('')
+  const [notice, setNotice] = useState('')
   const [items, setItems] = useState<CitizenServiceRequest[]>([])
   const [scope, setScope] = useState<{ scope: string; message?: string }>({ scope: 'ALL' })
   const [filter, setFilter] = useState<'OPEN' | 'ALL'>('OPEN')
@@ -91,6 +137,9 @@ export function ServiceRequestAdminPanel({
   const selectItem = useCallback((item: CitizenServiceRequest | null) => {
     setSelected(item)
     setError('')
+    setTransferOpen(false)
+    setTransferTo('')
+    setTransferReason('')
     if (item) {
       // a request waiting for its fee can only be sent back or rejected
       setStatus(
@@ -192,6 +241,81 @@ export function ServiceRequestAdminPanel({
     }
   }
 
+  /** Claim / release / assign return the updated request; the rest of the clerk's form is left as typed. */
+  const changeAssignment = async (task: () => Promise<CitizenServiceRequest>, message: string) => {
+    setBusy(true)
+    setError('')
+    setNotice('')
+    try {
+      const updated = await task()
+      setItems(current => current.map(entry => (entry.reference === updated.reference ? updated : entry)))
+      setSelected(updated)
+      setNotice(message)
+    } catch (assignError) {
+      setError((assignError as Error).message)
+      // someone else may have claimed it in the meantime: show who
+      void load()
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const selectedDepartmentId = selected?.departmentId || ''
+  const canManageSelected = managesRequest(selected)
+  useEffect(() => {
+    if (!canManageSelected || !selectedDepartmentId) return
+    let cancelled = false
+    api
+      .listDepartmentStaff(session?.role === 'SUPER_ADMIN' ? selectedDepartmentId : undefined)
+      .then(result => {
+        if (!cancelled) setStaffOptions(result.items)
+      })
+      .catch(() => {
+        if (!cancelled) setStaffOptions([])
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [canManageSelected, selectedDepartmentId, session?.role])
+
+  const openTransfer = async () => {
+    setTransferOpen(true)
+    setError('')
+    if (departments.length) return
+    try {
+      const result = await api.listDepartments()
+      setDepartments(result.items.map(item => ({ id: item.id, name: item.name })))
+    } catch (listError) {
+      setError((listError as Error).message)
+    }
+  }
+
+  const transfer = async () => {
+    if (!selected) return
+    if (!transferTo) return setError('اختر الدائرة المختصة.')
+    if (transferReason.trim().length < 10)
+      return setError('اكتب سبب الإحالة (10 أحرف على الأقل) — يظهر للدائرة المستلمة في سجل الطلب.')
+    const target = departments.find(item => item.id === transferTo)?.name || 'الدائرة المختارة'
+    if (!window.confirm(`إحالة ${selected.reference} إلى ${target}؟ سيخرج الطلب من قائمة دائرتك ويُبلَّغ المواطن.`))
+      return
+    setBusy(true)
+    setError('')
+    try {
+      await api.transferServiceRequest(selected.reference, {
+        toDepartmentId: transferTo,
+        reason: transferReason.trim(),
+      })
+      setNotice(`أُحيل ${selected.reference} إلى ${target}.`)
+      setTransferOpen(false)
+      // the request now belongs to another department: it leaves this list (supervisors still see it)
+      await load(selected.reference)
+    } catch (transferError) {
+      setError((transferError as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const save = async () => {
     if (!selected) return
     if (status === 'REJECTED' && decisionNote.trim().length < 6) return setError('اكتب سبب الرفض للمواطن.')
@@ -240,6 +364,13 @@ export function ServiceRequestAdminPanel({
       .filter(item => filter === 'ALL' || !CLOSED.includes(item.status))
       .filter(item => !statusFilter || item.status === statusFilter)
       .filter(item => !serviceFilter || item.serviceKey === serviceFilter)
+      .filter(item =>
+        assignment === 'MINE'
+          ? item.assignedStaffId === myId
+          : assignment === 'UNASSIGNED'
+            ? !item.assignedStaffId
+            : true
+      )
       .filter(
         item =>
           !term ||
@@ -256,10 +387,17 @@ export function ServiceRequestAdminPanel({
         if (sort === 'UPDATED') return b.updatedAt.localeCompare(a.updatedAt)
         return a.createdAt.localeCompare(b.createdAt)
       })
-  }, [items, filter, statusFilter, serviceFilter, query, sort])
+  }, [items, filter, statusFilter, serviceFilter, query, sort, assignment, myId])
   const openCount = items.filter(item => !CLOSED.includes(item.status)).length
   const overdueCount = items.filter(isOverdue).length
-  const filtering = Boolean(query || statusFilter || serviceFilter)
+  const dueSoonCount = items.filter(item => slaState(item) === 'DUE_SOON').length
+  const openItems = items.filter(item => !CLOSED.includes(item.status))
+  const mineCount = openItems.filter(item => item.assignedStaffId === myId).length
+  const unassignedCount = openItems.filter(item => !item.assignedStaffId).length
+  const filtering = Boolean(query || statusFilter || serviceFilter || assignment !== 'ALL')
+  const assignedToOther = Boolean(
+    selected?.assignedStaffId && selected.assignedStaffId !== myId && !managesRequest(selected)
+  )
   const attachmentFor = (item: ChecklistItem) =>
     selected?.attachments?.find(attachment => attachment.mediaId === item.mediaId) || null
 
@@ -320,12 +458,35 @@ export function ServiceRequestAdminPanel({
           <option value="NEWEST">الأحدث أولاً</option>
           <option value="UPDATED">آخر تحديث</option>
         </select>
+        <div className="gov-segmented" role="group" aria-label="الإسناد">
+          {session?.role === 'EMPLOYEE' && (
+            <button className={assignment === 'MINE' ? 'active' : ''} onClick={() => setAssignment('MINE')}>
+              طلباتي <b>{mineCount.toLocaleString('en-US')}</b>
+            </button>
+          )}
+          <button className={assignment === 'UNASSIGNED' ? 'active' : ''} onClick={() => setAssignment('UNASSIGNED')}>
+            غير مسندة <b>{unassignedCount.toLocaleString('en-US')}</b>
+          </button>
+          <button className={assignment === 'ALL' ? 'active' : ''} onClick={() => setAssignment('ALL')}>
+            الكل
+          </button>
+        </div>
         {overdueCount > 0 && (
           <span className="service-requests-overdue" role="status">
-            <AlertTriangle aria-hidden="true" /> {overdueCount.toLocaleString('en-US')} متأخر ({OVERDUE_DAYS}+ أيام)
+            <AlertTriangle aria-hidden="true" /> {overdueCount.toLocaleString('en-US')} متأخر عن المهلة
+          </span>
+        )}
+        {dueSoonCount > 0 && (
+          <span className="service-requests-overdue due-soon" role="status">
+            <Clock3 aria-hidden="true" /> {dueSoonCount.toLocaleString('en-US')} يستحق خلال 24 ساعة
           </span>
         )}
       </div>
+      {notice && (
+        <div className="form-success" role="status">
+          <CheckCircle2 /> {notice}
+        </div>
+      )}
       {scope.scope === 'NONE' && (
         <div className="form-error">
           <AlertTriangle /> {scope.message || 'حسابك غير مرتبط بدائرة بعد.'}
@@ -357,12 +518,13 @@ export function ServiceRequestAdminPanel({
           ) : (
             visibleItems.map(item => {
               const pending = (item.checklist || []).filter(doc => doc.status === 'UPLOADED').length
+              const sla = slaState(item)
               return (
                 <button
                   key={item.reference}
                   onClick={() => selectItem(item)}
                   aria-current={selected?.reference === item.reference ? 'true' : undefined}
-                  className={`service-request-admin-row${selected?.reference === item.reference ? ' active' : ''}${isOverdue(item) ? ' overdue' : ''}`}
+                  className={`service-request-admin-row${selected?.reference === item.reference ? ' active' : ''}${sla === 'OVERDUE' ? ' overdue' : sla === 'DUE_SOON' ? ' due-soon' : ''}`}
                 >
                   <span>
                     <BriefcaseBusiness />
@@ -380,7 +542,16 @@ export function ServiceRequestAdminPanel({
                     </small>
                     <span className="row-meta">
                       <time dateTime={item.createdAt}>{ageLabel(item.createdAt)}</time>
-                      {isOverdue(item) && <b className="row-overdue">متأخر</b>}
+                      {sla === 'OVERDUE' && <b className="row-overdue">متأخر</b>}
+                      {sla === 'DUE_SOON' && <b className="row-due-soon">يستحق اليوم</b>}
+                      {item.assignedStaffId ? (
+                        <b className={`row-assignee${item.assignedStaffId === myId ? ' mine' : ''}`}>
+                          {item.assignedStaffId === myId ? 'طلبي' : `مُسند إلى ${item.assignedStaffName || 'موظف'}`}
+                        </b>
+                      ) : null}
+                      {item.originDepartmentId && item.originDepartmentId !== item.departmentId && (
+                        <b className="row-referred">محال</b>
+                      )}
                     </span>
                     <span className="row-action">
                       {pending ? `${pending.toLocaleString('en-US')} مستمسك بانتظار التدقيق` : item.currentAction}
@@ -415,12 +586,107 @@ export function ServiceRequestAdminPanel({
                   أُرسل {new Date(selected.createdAt).toLocaleString('en-GB')}
                   <br />
                   آخر تحديث {new Date(selected.updatedAt).toLocaleString('en-GB')}
+                  {selected.dueAt && !closed && (
+                    <>
+                      <br />
+                      <span className={`sla-due ${slaState(selected).toLowerCase().replace('_', '-')}`}>
+                        المهلة {new Date(selected.dueAt).toLocaleString('en-GB')} — {dueLabel(selected)}
+                      </span>
+                    </>
+                  )}
                 </small>
               </header>
               <div className="service-request-current-action">
                 <Info />
                 <span>{selected.currentAction}</span>
               </div>
+
+              <div className="service-request-assignment">
+                <UserRound aria-hidden="true" />
+                <span
+                  className={`assignment-chip${selected.assignedStaffId ? (selected.assignedStaffId === myId ? ' mine' : ' other') : ''}`}
+                >
+                  {selected.assignedStaffId
+                    ? selected.assignedStaffId === myId
+                      ? 'مُسند إليك'
+                      : `مُسند إلى ${selected.assignedStaffName || 'موظف'}`
+                    : 'غير مسند — يستطيع أي موظف في الدائرة استلامه'}
+                  {selected.assignedAt ? ` • استُلم ${ageLabel(selected.assignedAt)}` : ''}
+                </span>
+                {!readOnly && !closed && (
+                  <div className="assignment-actions">
+                    {!selected.assignedStaffId && session?.role === 'EMPLOYEE' && (
+                      <button
+                        className="button primary small"
+                        disabled={busy}
+                        onClick={() =>
+                          void changeAssignment(
+                            () => api.claimServiceRequest(selected.reference),
+                            `استلمت ${selected.reference}. يظهر الآن في «طلباتي».`
+                          )
+                        }
+                      >
+                        <Hand /> استلام
+                      </button>
+                    )}
+                    {selected.assignedStaffId && (selected.assignedStaffId === myId || managesRequest(selected)) && (
+                      <button
+                        className="button outline small"
+                        disabled={busy}
+                        onClick={() =>
+                          void changeAssignment(
+                            () => api.releaseServiceRequest(selected.reference),
+                            `حُرِّر ${selected.reference} وعاد إلى الطلبات غير المسندة.`
+                          )
+                        }
+                      >
+                        <Undo2 /> تحرير
+                      </button>
+                    )}
+                    {managesRequest(selected) && staffOptions.length > 0 && (
+                      <select
+                        aria-label="إسناد إلى موظف"
+                        value=""
+                        disabled={busy}
+                        onChange={event => {
+                          const staffId = event.target.value
+                          const name = staffOptions.find(option => option.id === staffId)?.fullName || 'الموظف'
+                          if (staffId)
+                            void changeAssignment(
+                              () => api.assignServiceRequest(selected.reference, staffId),
+                              `أُسند ${selected.reference} إلى ${name}.`
+                            )
+                        }}
+                      >
+                        <option value="">إسناد إلى…</option>
+                        {staffOptions
+                          .filter(option => option.id !== selected.assignedStaffId)
+                          .map(option => (
+                            <option key={option.id} value={option.id}>
+                              {option.fullName}
+                            </option>
+                          ))}
+                      </select>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {(selected.transfers?.length || 0) > 0 && (
+                <ul className="service-request-transfers" aria-label="سجل الإحالة">
+                  {selected.transfers!.map(entry => (
+                    <li key={entry.id}>
+                      <ArrowLeftRight aria-hidden="true" />
+                      <span>
+                        أُحيل من <b>{entry.fromDepartmentName}</b> إلى <b>{entry.toDepartmentName}</b> — {entry.reason}
+                        <small>
+                          {entry.requestedBy} • {new Date(entry.createdAt).toLocaleString('en-GB')}
+                        </small>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
               {selected.appointment && (
                 <div className="service-request-current-action">
                   <CalendarClock />
@@ -511,7 +777,7 @@ export function ServiceRequestAdminPanel({
                               >
                                 <Eye /> عرض {attachment?.mimeType === 'application/pdf' ? 'PDF' : 'الصورة'}
                               </a>
-                              {!closed && !readOnly && item.status === 'UPLOADED' && (
+                              {!closed && !readOnly && !assignedToOther && item.status === 'UPLOADED' && (
                                 <>
                                   <input
                                     value={docNotes[item.key] || ''}
@@ -549,7 +815,15 @@ export function ServiceRequestAdminPanel({
                 )}
               </section>
 
-              {!closed && !readOnly ? (
+              {!closed && !readOnly && assignedToOther ? (
+                <div className="service-request-current-action">
+                  <Info />
+                  <span>
+                    هذا الطلب مُسند إلى {selected.assignedStaffName || 'موظف آخر'} — التدقيق والقرار والإحالة له أو
+                    لمدير الدائرة.
+                  </span>
+                </div>
+              ) : !closed && !readOnly ? (
                 <section className="service-request-update">
                   <h4>قرار الدائرة</h4>
                   <label>
@@ -651,6 +925,62 @@ export function ServiceRequestAdminPanel({
                   <button className="button primary" onClick={() => void save()} disabled={busy}>
                     <CheckCircle2 /> حفظ القرار وإشعار المواطن
                   </button>
+                  <div className="service-request-transfer">
+                    {!transferOpen ? (
+                      <button
+                        type="button"
+                        className="button ghost"
+                        disabled={busy}
+                        onClick={() => void openTransfer()}
+                      >
+                        <ArrowLeftRight /> إحالة لدائرة أخرى
+                      </button>
+                    ) : pendingPayment || selected.status === 'PAYMENT_PENDING' ? (
+                      <p className="gov-muted">
+                        لا يمكن إحالة طلب عليه رسم غير مسدد ({pendingPayment?.reference || 'رسم الخدمة'}) لأن الرسم مسجل
+                        باسم هذه الدائرة. انتظر السداد، أو ارفض الطلب مع توجيه المواطن للدائرة المختصة.
+                      </p>
+                    ) : (
+                      <>
+                        <h4>إحالة الطلب إلى الدائرة المختصة</h4>
+                        <label>
+                          الدائرة المختصة
+                          <select value={transferTo} onChange={event => setTransferTo(event.target.value)}>
+                            <option value="">اختر الدائرة…</option>
+                            {departments
+                              .filter(item => item.id !== selected.departmentId)
+                              .map(item => (
+                                <option key={item.id} value={item.id}>
+                                  {item.name}
+                                </option>
+                              ))}
+                          </select>
+                        </label>
+                        <label>
+                          سبب الإحالة <small>إلزامي — يظهر للدائرة المستلمة في سجل الطلب، ولا يُرسل للمواطن</small>
+                          <textarea
+                            rows={2}
+                            value={transferReason}
+                            onChange={event => setTransferReason(event.target.value.slice(0, 500))}
+                            placeholder="مثال: الطلب يخص شبكة الماء وليس من اختصاص الديوان"
+                          />
+                        </label>
+                        <div className="transfer-actions">
+                          <button
+                            type="button"
+                            className="button primary"
+                            disabled={busy}
+                            onClick={() => void transfer()}
+                          >
+                            <ArrowLeftRight /> إحالة وإبلاغ المواطن
+                          </button>
+                          <button type="button" className="button ghost" onClick={() => setTransferOpen(false)}>
+                            إلغاء
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
                 </section>
               ) : readOnly && !closed ? (
                 <div className="service-request-current-action">

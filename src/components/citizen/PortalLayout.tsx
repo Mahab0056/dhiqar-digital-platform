@@ -63,7 +63,7 @@ export function PortalLayout({
   const [liveNotification, setLiveNotification] = useState<CitizenNotification | null>(null)
   const [employeeWorkEvent, setEmployeeWorkEvent] = useState<{
     entity: 'APPLICATION' | 'SERVICE_REQUEST' | 'IDENTITY_REVIEW' | 'FEEDBACK'
-    action: 'CREATED' | 'UPDATED'
+    action: 'CREATED' | 'UPDATED' | 'ASSIGNED' | 'TRANSFERRED'
     reference?: string
   } | null>(null)
   const realtimeTimerRef = useRef<number | null>(null)
@@ -144,8 +144,9 @@ export function PortalLayout({
             type?: string
             payload?: {
               entity: 'APPLICATION' | 'SERVICE_REQUEST' | 'IDENTITY_REVIEW'
-              action: 'CREATED' | 'UPDATED'
+              action: 'CREATED' | 'UPDATED' | 'ASSIGNED' | 'TRANSFERRED'
               reference?: string
+              assignedStaffId?: string | null
             }
           }
           if (message.type === 'employee.work-queue.updated' && message.payload) {
@@ -395,7 +396,11 @@ export function PortalLayout({
                   : employeeWorkEvent.entity === 'SERVICE_REQUEST'
                     ? employeeWorkEvent.action === 'CREATED'
                       ? 'طلب خدمة جديد'
-                      : 'تحديث على طلب خدمة'
+                      : employeeWorkEvent.action === 'TRANSFERRED'
+                        ? 'إحالة طلب بين الدوائر'
+                        : employeeWorkEvent.action === 'ASSIGNED'
+                          ? 'تغيّر إسناد طلب'
+                          : 'تحديث على طلب خدمة'
                     : employeeWorkEvent.action === 'CREATED'
                       ? 'معاملة جديدة'
                       : 'تحديث على معاملة'}

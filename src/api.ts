@@ -17,6 +17,7 @@ import type {
   GovernmentServicePublicationStatus,
   IssuedDocument,
   PlatformServiceSettings,
+  ServiceRequestTransfer,
   StaffAccount,
   StaffLoginResponse,
   StaffRole,
@@ -119,7 +120,10 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(payload),
     }),
-  updateStaffAccount: (id: string, payload: { fullName?: string; role?: StaffRole; departmentId?: string | null }) =>
+  updateStaffAccount: (
+    id: string,
+    payload: { fullName?: string; role?: StaffRole; departmentId?: string | null; isDepartmentManager?: boolean }
+  ) =>
     request<{ account: StaffAccount }>(`/api/super-admin/staff/${encodeURIComponent(id)}`, {
       method: 'PATCH',
       body: JSON.stringify(payload),
@@ -190,7 +194,10 @@ export const api = {
     request<PlatformServiceSettings>(`/api/platform-services/${encodeURIComponent(serviceKey)}`),
   getDepartmentWorkbench: () =>
     request<{ departments: DepartmentWorkbench[] }>('/api/super-admin/department-workbench'),
-  updatePlatformService: (serviceKey: string, payload: { requiredDocuments?: string[]; active?: boolean }) =>
+  updatePlatformService: (
+    serviceKey: string,
+    payload: { requiredDocuments?: string[]; active?: boolean; slaWorkingDays?: number | null }
+  ) =>
     request<{ success: true; updatedAt: string }>(
       `/api/super-admin/platform-services/${encodeURIComponent(serviceKey)}`,
       { method: 'PATCH', body: JSON.stringify(payload) }
@@ -272,6 +279,33 @@ export const api = {
       method: 'PATCH',
       body: JSON.stringify(payload),
     }),
+  claimServiceRequest: (reference: string) =>
+    request<CitizenServiceRequest>(`/api/employee/service-requests/${encodeURIComponent(reference)}/claim`, {
+      method: 'POST',
+    }),
+  releaseServiceRequest: (reference: string) =>
+    request<CitizenServiceRequest>(`/api/employee/service-requests/${encodeURIComponent(reference)}/release`, {
+      method: 'POST',
+    }),
+  assignServiceRequest: (reference: string, staffId: string) =>
+    request<CitizenServiceRequest>(`/api/employee/service-requests/${encodeURIComponent(reference)}/assign`, {
+      method: 'POST',
+      body: JSON.stringify({ staffId }),
+    }),
+  transferServiceRequest: (reference: string, payload: { toDepartmentId: string; reason: string }) =>
+    request<CitizenServiceRequest>(`/api/employee/service-requests/${encodeURIComponent(reference)}/transfer`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  listDepartmentStaff: (departmentId?: string) =>
+    request<{ items: Array<{ id: string; fullName: string; isDepartmentManager: boolean }> }>(
+      `/api/employee/department-staff${departmentId ? `?departmentId=${encodeURIComponent(departmentId)}` : ''}`
+    ),
+  listServiceRequestTransfers: (direction: 'in' | 'out') =>
+    request<{
+      direction: string
+      items: Array<ServiceRequestTransfer & { serviceName: string; requestStatus: string }>
+    }>(`/api/employee/transfers?direction=${direction}`),
   getPushConfig: () => request<{ enabled: boolean; publicKey: string | null }>('/api/push/config'),
   subscribePush: (subscription: { endpoint: string; keys: { p256dh: string; auth: string } }) =>
     request<{ ok: boolean; devices: number }>('/api/citizen/push/subscribe', {
