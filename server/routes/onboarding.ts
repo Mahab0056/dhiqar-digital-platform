@@ -217,8 +217,10 @@ export function registerOnboardingRoutes(app: express.Express) {
         const payload = z
           .object({
             fullName: z.string().trim().max(120).refine(plausiblePersonName, { message: 'NAME' }),
-            documentNumber: z.string().min(4).max(40),
-            documentType: z.enum(['NATIONAL_ID', 'PASSPORT', 'DRIVING_LICENSE']).default('NATIONAL_ID'),
+            // read from the card's machine-readable zone; typing it is optional
+            documentNumber: z.string().trim().max(40).optional().default(''),
+            // only the unified national card is accepted for identity
+            documentType: z.literal('NATIONAL_ID').default('NATIONAL_ID'),
             consent: z.literal('true'),
             retainMedia: z.literal('true'),
             analysisConsent: z.literal('true'),
@@ -245,12 +247,9 @@ export function registerOnboardingRoutes(app: express.Express) {
         const idFront = files?.idFront?.[0]
         const idBack = files?.idBack?.[0]
         const faceVideo = files?.faceVideo?.[0]
-        if (!idFront || !faceVideo || (payload.documentType !== 'PASSPORT' && !idBack))
+        if (!idFront || !idBack || !faceVideo)
           return res.status(400).json({
-            message:
-              payload.documentType === 'PASSPORT'
-                ? 'صوّر صفحة البيانات في جواز السفر وفيديو الوجه القصير لإرسال طلب المراجعة.'
-                : 'صوّر وجهي المستند وفيديو الوجه القصير لإرسال طلب المراجعة.',
+            message: 'صوّر وجهي البطاقة الوطنية الموحدة وفيديو الوجه القصير لإرسال طلب التوثيق.',
           })
         validateUploadedFile(idFront, ['image'])
         if (idBack) validateUploadedFile(idBack, ['image'])
@@ -314,7 +313,8 @@ export function registerOnboardingRoutes(app: express.Express) {
               })
             : null
         const reviewId = `idv_${randomUUID().replaceAll('-', '')}`
-        const maskedNationalId = `********${payload.documentNumber.replace(/\s/g, '').slice(-4)}`
+        const typedNumber = payload.documentNumber.replace(/\s/g, '')
+        const maskedNationalId = typedNumber ? `********${typedNumber.slice(-4)}` : 'تُقرأ من البطاقة'
         const locationAllowed =
           payload.locationConsent === 'true' && payload.locationLat !== undefined && payload.locationLng !== undefined
         const extractionSummary = JSON.stringify({
@@ -397,6 +397,8 @@ export function registerOnboardingRoutes(app: express.Express) {
         // automated face + name checks run in the background and update the review when done
         void runIdentityVerification({
           reviewId,
+          citizenId,
+          documentBack: idBack.buffer,
           documentImage: idFront.buffer,
           faceVideo: faceVideo.buffer,
           typedName: payload.fullName,
@@ -468,7 +470,8 @@ export function registerOnboardingRoutes(app: express.Express) {
     const review = db
       .prepare(
         `
-      SELECT id, status, national_id_masked, submitted_at, reviewed_at, review_notes, retention_until, quality_status, quality_score, quality_checks, face_match_status, face_match_score, face_match_provider
+      SELECT id, status, national_id_masked, submitted_at, reviewed_at, review_notes, retention_until, quality_status, quality_score, quality_checks, face_match_status, face_match_score, face_match_provider,
+             auto_decision, auto_decision_reasons
       FROM identity_reviews WHERE citizen_id = ? ORDER BY created_at DESC LIMIT 1
     `
       )
@@ -486,7 +489,7 @@ export function registerOnboardingRoutes(app: express.Express) {
         .prepare(
           `
       SELECT r.id, r.status, r.national_id_masked, r.consent_at, r.submitted_at, r.reviewed_at, r.reviewed_by, r.review_notes, r.retention_until,
-             r.quality_status, r.quality_score, r.quality_checks, r.face_match_status, r.face_match_score, r.face_match_provider, r.face_match_details, r.name_match_status, r.name_match_score, r.name_match_details, r.auto_assessment, r.extracted_data,
+             r.quality_status, r.quality_score, r.quality_checks, r.face_match_status, r.face_match_score, r.face_match_provider, r.face_match_details, r.name_match_status, r.name_match_score, r.name_match_details, r.auto_assessment, r.extracted_data, r.mrz_data, r.auto_decision, r.auto_decision_reasons,
              c.full_name, c.phone_masked, c.location_lat, c.location_lng, c.location_accuracy_m, c.location_updated_at,
              front.id AS front_id, front.mime_type AS front_mime, front.size_bytes AS front_size,
              back.id AS back_id, back.mime_type AS back_mime, back.size_bytes AS back_size,
@@ -566,6 +569,9 @@ export function registerOnboardingRoutes(app: express.Express) {
             nameMatchScore: row.name_match_score,
             nameMatch: parseJson(row.name_match_details),
             autoAssessment: row.auto_assessment || 'PENDING',
+            mrz: parseJson(row.mrz_data),
+            autoDecision: row.auto_decision || null,
+            autoDecisionReasons: (parseJson(row.auto_decision_reasons) as string[] | null) || [],
           },
           media: [
             { id: row.front_id, label: 'وجه الهوية', mimeType: row.front_mime, sizeBytes: row.front_size },

@@ -314,6 +314,43 @@ export type FaceVerification = {
   documentFaces: number
   provider: 'insightface-buffalo_sc-onnx'
   thresholds: { match: number; uncertain: number }
+  /** presence checks from the video itself (head turn, one person, not a still image) */
+  liveness: Liveness | null
+}
+
+export type Liveness = {
+  passed: boolean
+  /** spread of the head's left-right turn across frames (0 = never turned) */
+  yawRange: number
+  maxFacesInFrame: number
+  reasons: string[]
+}
+
+/** Required spread of the turn when the citizen is asked to look left then right. */
+export const LIVENESS_MIN_YAW_RANGE = 0.2
+/** Frame-to-frame similarity above this means a still picture held to the camera. */
+export const LIVENESS_MAX_CONSISTENCY = 0.93
+
+/** Left/right turn from the 5 landmarks: nose offset from the eyes' midpoint, in eye-distance units. */
+const yawOf = (face: DetectedFace) => {
+  const [leftEye, rightEye, nose] = face.kps
+  const eyeSpan = Math.abs(rightEye[0] - leftEye[0]) || 1
+  return (nose[0] - (leftEye[0] + rightEye[0]) / 2) / eyeSpan
+}
+
+export function assessLiveness(
+  frames: Array<{ face: DetectedFace; faces: number }>,
+  consistency: number | null
+): Liveness {
+  const yaws = frames.map(frame => yawOf(frame.face))
+  const yawRange = yaws.length ? Math.round((Math.max(...yaws) - Math.min(...yaws)) * 1000) / 1000 : 0
+  const maxFacesInFrame = frames.reduce((max, frame) => Math.max(max, frame.faces), 0)
+  const reasons: string[] = []
+  if (frames.length < 3) reasons.push('الوجه لم يظهر بوضوح في معظم الفيديو')
+  if (maxFacesInFrame > 1) reasons.push('ظهر أكثر من وجه في الفيديو')
+  if (yawRange < LIVENESS_MIN_YAW_RANGE) reasons.push('لم يُلاحظ تحريك الرأس يميناً ويساراً')
+  if (consistency !== null && consistency > LIVENESS_MAX_CONSISTENCY) reasons.push('الفيديو شبه ثابت كأنه صورة')
+  return { passed: reasons.length === 0, yawRange, maxFacesInFrame, reasons }
 }
 
 const THRESHOLD_MATCH = 0.42
@@ -338,18 +375,24 @@ export async function verifyFaceAgainstDocument(input: {
     documentFaces: 0,
     provider: 'insightface-buffalo_sc-onnx',
     thresholds: { match: THRESHOLD_MATCH, uncertain: THRESHOLD_UNCERTAIN },
+    liveness: null,
   }
   if (!faceMatchAvailable()) return base
   const document = await embedLargestFace(input.documentImage)
   if (!document) return { ...base, status: 'NO_FACE_ON_DOCUMENT' }
   base.documentFaces = document.faces
   let frames = input.faceImages || []
-  if (!frames.length && input.faceVideo) frames = await extractVideoFrames(input.faceVideo, 5)
+  // seven frames over the 7 seconds catch the look-left / look-right the citizen is asked for
+  if (!frames.length && input.faceVideo) frames = await extractVideoFrames(input.faceVideo, 7)
   if (!frames.length) return { ...base, status: 'FRAMES_UNAVAILABLE' }
   const embeddings: number[][] = []
+  const detections: Array<{ face: DetectedFace; faces: number }> = []
   for (const frame of frames) {
     const result = await embedLargestFace(frame).catch(() => null)
-    if (result) embeddings.push(result.embedding)
+    if (result) {
+      embeddings.push(result.embedding)
+      detections.push({ face: result.face, faces: result.faces })
+    }
   }
   base.framesAnalysed = frames.length
   base.framesWithFace = embeddings.length
@@ -376,6 +419,7 @@ export async function verifyFaceAgainstDocument(input: {
     similarity,
     score: toScore(similarity),
     frameConsistency: consistency,
+    liveness: assessLiveness(detections, consistency),
     status: similarity >= THRESHOLD_MATCH ? 'MATCH' : similarity >= THRESHOLD_UNCERTAIN ? 'UNCERTAIN' : 'NO_MATCH',
   }
 }

@@ -599,3 +599,25 @@
 .field-hint.is-error {
   color: var(--ds-danger);
 }
+
+/* onboarding: the automatic identity result */
+.identity-auto-result {
+  margin: 0 0 16px;
+  padding: 14px 16px;
+  border-radius: var(--ds-radius-md);
+  background: var(--ds-surface-muted, var(--ds-bg));
+  line-height: 1.8;
+}
+.identity-auto-result p {
+  margin: 0;
+}
+.identity-auto-result.is-approved {
+  background: var(--ds-success-soft, #e7f4ee);
+  color: var(--ds-success, #0a6f4e);
+  font-weight: 600;
+}
+.identity-auto-result.is-review ul {
+  margin: 8px 0 0;
+  padding-inline-start: 20px;
+  color: var(--ds-danger);
+}

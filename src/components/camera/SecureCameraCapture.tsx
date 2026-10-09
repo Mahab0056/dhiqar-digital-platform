@@ -10,6 +10,7 @@ export function SecureCameraCapture({
   facingMode,
   allowPdf = false,
   cameraOnly = false,
+  liveOnly = false,
   file,
   onChange,
 }: {
@@ -19,6 +20,8 @@ export function SecureCameraCapture({
   facingMode: 'user' | 'environment'
   allowPdf?: boolean
   cameraOnly?: boolean
+  /** never offer a file from the device, even when the camera fails (identity must be captured live) */
+  liveOnly?: boolean
   file: File | null
   onChange: (file: File | null) => void
 }) {
@@ -337,7 +340,7 @@ export function SecureCameraCapture({
         <button type="button" className="button secondary" onClick={() => void openCamera()}>
           <Camera /> {cameraOpen ? 'إعادة محاولة الكاميرا' : file ? 'إعادة التصوير' : 'فتح الكاميرا'}
         </button>
-        {(!cameraOnly || cameraFailed) && (
+        {!liveOnly && (!cameraOnly || cameraFailed) && (
           <button type="button" className="button ghost" onClick={() => inputRef.current?.click()}>
             <FileText /> {mode === 'photo' ? 'رفع صورة' : 'رفع فيديو قصير'}
           </button>
@@ -359,6 +362,12 @@ export function SecureCameraCapture({
       {cameraError && (
         <div className="capture-error">
           <AlertTriangle /> {cameraError}
+          {liveOnly && cameraFailed && (
+            <small>
+              التوثيق يتطلب تصويراً مباشراً. افتح thi-qar.com في متصفح Chrome أو Safari على هاتف بكاميرا، واسمح باستخدام
+              الكاميرا.
+            </small>
+          )}
         </div>
       )}
     </div>

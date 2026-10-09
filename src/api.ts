@@ -567,6 +567,8 @@ export const api = {
       face_match_status: string
       face_match_score: number | null
       face_match_provider: string | null
+      auto_decision: 'APPROVED' | 'HUMAN_REVIEW' | null
+      auto_decision_reasons: string | null
     } | null>('/api/onboarding/identity-review/latest'),
   listIdentityReviews: () =>
     request<
@@ -610,6 +612,18 @@ export const api = {
           nameMatchScore: number | null
           nameMatch: { extracted?: string | null; method?: string; matchedTokens?: string[] } | null
           autoAssessment: 'PENDING' | 'READY_TO_APPROVE' | 'NEEDS_ATTENTION' | 'LIKELY_MISMATCH' | 'UNAVAILABLE'
+          mrz: {
+            documentNumber: string
+            birthDate: string | null
+            expiryDate: string | null
+            sex: string | null
+            nationality: string
+            surname: string
+            givenNames: string
+            valid: boolean
+          } | null
+          autoDecision: 'APPROVED' | 'HUMAN_REVIEW' | null
+          autoDecisionReasons: string[]
         }
         media: Array<{ id: string; label: string; mimeType: string; sizeBytes: number }>
       }>

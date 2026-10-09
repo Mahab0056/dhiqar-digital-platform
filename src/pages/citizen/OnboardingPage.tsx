@@ -38,7 +38,8 @@ export function OnboardingPage() {
   const [phone, setPhone] = useState('')
   const [otp, setOtp] = useState('')
   const [challengeId, setChallengeId] = useState('')
-  const [documentType, setDocumentType] = useState<'NATIONAL_ID' | 'PASSPORT' | 'DRIVING_LICENSE'>('NATIONAL_ID')
+  // identity is confirmed with the unified national card only
+  const documentType = 'NATIONAL_ID' as const
   const [fullName, setFullName] = useState('')
   const [documentNumber, setDocumentNumber] = useState('')
   const [idFront, setIdFront] = useState<File | null>(null)
@@ -47,6 +48,36 @@ export function OnboardingPage() {
   const [reviewId, setReviewId] = useState('')
   const [screeningScore, setScreeningScore] = useState<number | null>(null)
   const [faceComparison, setFaceComparison] = useState<{ status: string; confidence: number | null } | null>(null)
+  // the automatic decision arrives a few seconds after submission (face match, liveness, card zone)
+  const [autoResult, setAutoResult] = useState<{ state: 'checking' | 'approved' | 'review'; reasons: string[] }>({
+    state: 'checking',
+    reasons: [],
+  })
+  useEffect(() => {
+    if (step !== 5 || autoResult.state !== 'checking') return
+    let tries = 0
+    const timer = window.setInterval(async () => {
+      tries += 1
+      try {
+        const latest = await api.getLatestIdentityReview()
+        if (latest?.status === 'APPROVED') {
+          setAutoResult({ state: 'approved', reasons: [] })
+        } else if (latest?.auto_decision === 'HUMAN_REVIEW') {
+          const reasons = latest.auto_decision_reasons ? (JSON.parse(latest.auto_decision_reasons) as string[]) : []
+          setAutoResult({ state: 'review', reasons })
+        }
+      } catch {
+        /* keep polling; the result is also sent as a notification */
+      }
+      if (tries >= 45)
+        setAutoResult(current =>
+          current.state === 'checking'
+            ? { state: 'review', reasons: ['استغرق التحقق الآلي وقتاً أطول من المعتاد؛ ستصلك النتيجة كإشعار'] }
+            : current
+        )
+    }, 2000)
+    return () => window.clearInterval(timer)
+  }, [step, autoResult.state])
   const [consent, setConsent] = useState(false)
   const [retainMedia, setRetainMedia] = useState(true)
   const analysisConsent = true
@@ -71,9 +102,9 @@ export function OnboardingPage() {
     NATIONAL_ID: {
       label: 'البطاقة الوطنية الموحدة',
       number: 'الرقم الوطني',
-      front: 'وجه الهوية الوطنية',
-      back: 'ظهر الهوية الوطنية',
-      guidance: 'أظهر الحواف الأربع للبطاقة وتجنب الوهج أو الظلال.',
+      front: 'وجه البطاقة الوطنية الموحدة',
+      back: 'ظهر البطاقة الوطنية الموحدة',
+      guidance: 'صوّر البطاقة الأصلية مباشرة: ضعها على سطح داكن، أظهر الحواف الأربع، وتجنب الوهج والظلال.',
     },
     PASSPORT: {
       label: 'جواز السفر العراقي',
@@ -214,14 +245,14 @@ export function OnboardingPage() {
     )
   }
   const continueToFaceVerification = () => {
-    if ((documentType !== 'PASSPORT' && !idBack) || fullName.trim().length < 3 || documentNumber.length < 4) return
+    if (!idBack || !plausibleName(fullName)) return
     captureLocation(() => setStep(4))
   }
   const finish = async () => {
     if (!consent || !retainMedia)
       return setMessage('الموافقة على المراجعة والاحتفاظ المشفر بالمرفقات مطلوبة قبل الإرسال.')
-    if (!fullName || !documentNumber || !idFront || (!idBack && documentType !== 'PASSPORT') || !faceVideo)
-      return setMessage('أكمل الاسم والرقم وصور المستمسك وفيديو الوجه قبل الإرسال.')
+    if (!plausibleName(fullName) || !idFront || !idBack || !faceVideo)
+      return setMessage('أكمل الاسم وصورتي البطاقة الموحدة وفيديو الوجه قبل الإرسال.')
     setBusy(true)
     setMessage('')
     try {
@@ -241,6 +272,7 @@ export function OnboardingPage() {
       setReviewId(review.id)
       setScreeningScore(review.screening.qualityScore)
       setFaceComparison(review.analysis.faceComparison)
+      setAutoResult({ state: 'checking', reasons: [] })
       setStep(5)
     } catch (e) {
       setMessage((e as Error).message)
@@ -304,12 +336,12 @@ export function OnboardingPage() {
       aside={
         <AuthAside
           kicker="إنشاء حساب المواطن"
-          title="يبدأ حسابك بمستمسك رسمي موثق"
+          title="توثيق بالبطاقة الوطنية الموحدة"
           points={[
-            'البطاقة الوطنية أو جواز السفر أو إجازة السياقة',
-            'تُحفظ مرفقاتك مشفّرة ولا يطّلع عليها إلا الموظف المخوّل',
-            'لا يُتخذ قرار بشأن هويتك تلقائياً؛ المراجعة بشرية دائماً',
-            'توثيق واحد يكفي لكل خدمات المنصة',
+            'تصوّر بطاقتك الموحدة الأصلية مباشرة بكاميرا الهاتف، وتُقرأ بياناتك منها',
+            'يطابق الذكاء الاصطناعي وجهك مع صورة البطاقة ويتأكد أنك أمام الكاميرا',
+            'عند التطابق تُوثَّق هويتك فوراً؛ وإلا يراجع طلبك موظف مختص',
+            'تُحفظ مرفقاتك مشفّرة، وتوثيق واحد يكفي لكل خدمات المنصة',
           ]}
         />
       }
@@ -394,44 +426,18 @@ export function OnboardingPage() {
             <span className="stage-icon">
               <FileCheck2 />
             </span>
-            <h2>اختر المستمسك وصوّره</h2>
+            <h2>صوّر البطاقة الوطنية الموحدة</h2>
             <p>
-              اختر المستند الذي ستسجل به ثم التقط صورته بوضوح. جواز السفر يحتاج صفحة البيانات فقط، أما الهوية وإجازة
-              السياقة فيحتاجان الوجهين.
+              التوثيق بالبطاقة الوطنية الموحدة الأصلية فقط، وتُصوَّر الآن بكاميرا الهاتف مباشرة (لا تُقبل صور محفوظة أو
+              نسخ). تُقرأ بياناتك من البطاقة وتُطابق صورتها مع وجهك بالذكاء الاصطناعي.
             </p>
-            <div className="document-type-options">
-              {(Object.entries(documentOptions) as Array<[typeof documentType, typeof documentCopy]>).map(
-                ([value, option]) => (
-                  <button
-                    type="button"
-                    className={documentType === value ? 'active' : ''}
-                    onClick={() => {
-                      setDocumentType(value)
-                      setIdFront(null)
-                      setIdBack(null)
-                      setAnalysisState('idle')
-                      setAnalysisNote('')
-                      setExtractedFields({
-                        fullName: '',
-                        documentNumber: '',
-                        dateOfBirth: '',
-                        nationality: '',
-                        sex: '',
-                        expiryDate: '',
-                      })
-                    }}
-                    key={value}
-                  >
-                    {option.label}
-                  </button>
-                )
-              )}
-            </div>
             <SecureCameraCapture
               title={documentCopy.front}
               guidance={documentCopy.guidance}
               mode="photo"
               facingMode="environment"
+              cameraOnly
+              liveOnly
               file={idFront}
               onChange={file => {
                 setIdFront(file)
@@ -492,21 +498,21 @@ export function OnboardingPage() {
             <span className="stage-icon">
               <FileCheck2 />
             </span>
-            <h2>راجع بيانات المستند</h2>
+            <h2>صوّر ظهر البطاقة واكتب اسمك</h2>
             <p>
-              تظهر الحقول المقروءة من {documentCopy.label} كاملة قدر ما تسمح به جودة الصورة. راجع الاسم والرقم قبل
-              الإرسال؛ ولا يظهر الرقم كاملاً ضمن قوائم الموظفين.
+              في أسفل ظهر البطاقة ثلاثة أسطر بحروف وأرقام إنگليزية: منها تُقرأ بياناتك (رقم البطاقة، الميلاد، الجنس،
+              الانتهاء) وتُسجّل في حسابك. اجعلها واضحة وكاملة في الصورة.
             </p>
-            {documentType !== 'PASSPORT' && (
-              <SecureCameraCapture
-                title={documentCopy.back}
-                guidance="صوّر الجهة الخلفية بوضوح أو ارفع صورة موجودة على الهاتف."
-                mode="photo"
-                facingMode="environment"
-                file={idBack}
-                onChange={setIdBack}
-              />
-            )}
+            <SecureCameraCapture
+              title={documentCopy.back}
+              guidance="صوّر ظهر البطاقة الأصلية كاملاً مع الأسطر الثلاثة في الأسفل، بلا وهج ولا ظل."
+              mode="photo"
+              facingMode="environment"
+              cameraOnly
+              liveOnly
+              file={idBack}
+              onChange={setIdBack}
+            />
             <section className="identity-extracted-data" aria-live="polite">
               <header>
                 <div>
@@ -567,12 +573,12 @@ export function OnboardingPage() {
                 )}
               </label>
               <label>
-                {documentCopy.number}
+                {documentCopy.number} <small>اختياري — يُقرأ من البطاقة تلقائياً</small>
                 <input
                   value={documentNumber}
                   onChange={e => setDocumentNumber(e.target.value.replace(/\s/g, '').slice(0, 40))}
                   inputMode="text"
-                  placeholder={documentType === 'PASSPORT' ? 'رقم الجواز' : 'رقم المستند'}
+                  placeholder="يُقرأ من البطاقة"
                 />
               </label>
             </div>
@@ -597,12 +603,7 @@ export function OnboardingPage() {
               <button
                 className="button primary"
                 onClick={continueToFaceVerification}
-                disabled={
-                  locationBusy ||
-                  (documentType !== 'PASSPORT' && !idBack) ||
-                  fullName.trim().length < 3 ||
-                  documentNumber.length < 4
-                }
+                disabled={locationBusy || !idBack || !plausibleName(fullName)}
               >
                 متابعة <ArrowLeft />
               </button>
@@ -616,15 +617,17 @@ export function OnboardingPage() {
             </span>
             <h2>تأكيد الوجه بفيديو 7 ثوانٍ</h2>
             <p>
-              تفتح الكاميرا الأمامية ويبدأ التسجيل تلقائياً لمدة 7 ثوانٍ. تُحلل بيانات المستند تلقائياً بعد رفعه وتستعمل
-              نتيجة الجودة أو المطابقة كمساعدة للمراجع؛ لا تعتمد الهوية تلقائياً.
+              تفتح الكاميرا الأمامية ويبدأ التسجيل تلقائياً لمدة 7 ثوانٍ: انظر للكاميرا، ثم أدر رأسك ببطء لليمين ثم
+              لليسار. يطابق الذكاء الاصطناعي وجهك مع صورة البطاقة ويتأكد أنك أمام الكاميرا فعلاً؛ عند التطابق تُوثَّق
+              هويتك فوراً، وإلا يراجع طلبك موظف مختص.
             </p>
             <SecureCameraCapture
               title="فيديو الوجه لمدة 7 ثوانٍ"
-              guidance="افتح الكاميرا الأمامية؛ يبدأ التسجيل تلقائياً وينتهي بعد 7 ثوانٍ. انظر للكاميرا وحرّك رأسك ببطء لليمين واليسار."
+              guidance="وجه واحد فقط في الصورة وإضاءة أمامية جيدة. انظر للكاميرا ثانيتين، ثم أدر رأسك ببطء لليمين ثم لليسار."
               mode="video"
               facingMode="user"
               cameraOnly
+              liveOnly
               file={faceVideo}
               onChange={setFaceVideo}
             />
@@ -643,7 +646,7 @@ export function OnboardingPage() {
               <UserRound />
               <span>
                 <strong>صورة الملف تلقائية عند الثقة الكافية</strong>
-                <small>لا تُعرض صورة المستند الكاملة كصورة حساب، ويستمر المراجع البشري باتخاذ القرار.</small>
+                <small>لا تُعرض صورة المستند الكاملة كصورة حساب.</small>
               </span>
             </div>
             <div className="stage-actions">
@@ -655,7 +658,7 @@ export function OnboardingPage() {
                 onClick={finish}
                 disabled={busy || !faceVideo || !consent || !retainMedia}
               >
-                {busy ? 'جاري إرسال طلب المراجعة...' : 'إرسال للمراجعة'}
+                {busy ? 'جاري الإرسال...' : 'إرسال للتوثيق'}
               </button>
             </div>
           </div>
@@ -665,41 +668,53 @@ export function OnboardingPage() {
             <span className="success-seal">
               <FileCheck2 />
             </span>
-            <h2>تم استلام طلب التحقق</h2>
-            <p>
-              وصل المستند وفيديو الوجه بشكل مشفّر إلى قائمة المراجعة، وحُفظت المرفقات وفق موافقتك. ستتحول الهوية إلى
-              الحالة المناسبة بعد تدقيق الموظف المخول.
-            </p>
+            <h2>
+              {autoResult.state === 'approved'
+                ? 'تم توثيق هويتك'
+                : autoResult.state === 'review'
+                  ? 'طلبك عند مراجع الهوية'
+                  : 'جاري التحقق بالذكاء الاصطناعي…'}
+            </h2>
+            <div className={`identity-auto-result is-${autoResult.state}`} role="status" aria-live="polite">
+              {autoResult.state === 'checking' && (
+                <p>نقرأ بيانات البطاقة ونطابق وجهك مع صورتها ونتأكد من وجودك أمام الكاميرا. يستغرق ذلك عادةً ثوانٍ.</p>
+              )}
+              {autoResult.state === 'approved' && (
+                <p>
+                  تطابق وجهك مع صورة البطاقة الموحدة، وسُجلت بياناتك من البطاقة في حسابك. يمكنك تقديم المعاملات الآن.
+                </p>
+              )}
+              {autoResult.state === 'review' && (
+                <>
+                  <p>لم يكتمل التوثيق التلقائي للأسباب التالية، وسيراجع طلبك موظف مختص:</p>
+                  <ul>
+                    {autoResult.reasons.map(reason => (
+                      <li key={reason}>{reason}</li>
+                    ))}
+                  </ul>
+                </>
+              )}
+            </div>
             <div className="citizen-id-card">
               <Brand compact />
               <div>
                 <small>رقم طلب المراجعة</small>
                 <strong>{reviewId}</strong>
                 <span>
-                  <CheckCircle2 /> فحص الجودة {screeningScore?.toLocaleString('en-US') || '—'}% — قيد المراجعة المخولة
+                  <CheckCircle2 /> فحص الجودة {screeningScore?.toLocaleString('en-US') || '—'}%
                 </span>
               </div>
               <QrCode />
             </div>
-            <div
-              className={`face-comparison-result ${faceComparison?.status?.toLowerCase() || 'manual-review-required'}`}
-            >
-              <Fingerprint />
-              <span>
-                <strong>
-                  {faceComparison?.status === 'MATCH_ASSISTED'
-                    ? 'ظهر تشابه تقني أولي بين صورة المستند وفيديو الوجه'
-                    : faceComparison?.status === 'NO_MATCH_ASSISTED'
-                      ? 'نتيجة التشابه تحتاج تدقيقاً إضافياً من المراجع'
-                      : 'تم حفظ فيديو الوجه لمقارنته ضمن التدقيق المخول'}
-                </strong>
-                <small>
-                  {faceComparison?.confidence !== null && faceComparison?.confidence !== undefined
-                    ? `مؤشر التشابه التقني: ${(faceComparison.confidence * 100).toFixed(0)}% — القرار النهائي للمراجع المخول.`
-                    : 'لا يصدر النظام قرار هوية أو رفضاً تلقائياً؛ تظهر الوسائط للمراجع المخول فقط.'}
-                </small>
-              </span>
-            </div>
+            {autoResult.state === 'checking' && faceComparison && (
+              <div className="face-comparison-result manual-review-required">
+                <Fingerprint />
+                <span>
+                  <strong>تم استلام صورتي البطاقة وفيديو الوجه بشكل مشفّر</strong>
+                  <small>لا تغلق الصفحة حتى تظهر النتيجة.</small>
+                </span>
+              </div>
+            )}
             <button className="button primary full" onClick={() => navigate('/citizen')}>
               الدخول إلى حسابي <ArrowLeft />
             </button>

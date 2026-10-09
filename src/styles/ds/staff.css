@@ -242,3 +242,26 @@
   outline: none;
   box-shadow: var(--ds-focus);
 }
+
+/* ---- identity review: automatic (AI) checks --------------------------------------------------- */
+.identity-ai-panel {
+  margin: 16px 0;
+  padding: 16px;
+  border: 1px solid var(--ds-border);
+  border-inline-start: 4px solid var(--ds-warning, #b45309);
+  border-radius: var(--ds-radius-md);
+  background: var(--ds-surface);
+}
+.identity-ai-panel.is-ok {
+  border-inline-start-color: var(--ds-success, #0a6f4e);
+}
+.identity-ai-panel h4 {
+  margin: 4px 0 10px;
+}
+.identity-ai-reasons {
+  margin: 0 0 12px;
+  padding-inline-start: 20px;
+  color: var(--ds-danger);
+  font-size: var(--ds-text-sm);
+  line-height: 1.8;
+}

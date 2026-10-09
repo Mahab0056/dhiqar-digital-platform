@@ -1,6 +1,9 @@
+import { createHmac } from 'node:crypto'
 import { addAudit, db } from './db.js'
-import { employeeWorkQueueRealtime } from './realtime.js'
+import { employeeWorkQueueRealtime, notifyCitizen } from './realtime.js'
 import { faceMatchAvailable, verifyFaceAgainstDocument, type FaceVerification } from './face-match.js'
+import { readMrzLocally } from './local-identity-ocr.js'
+import { iraqiCardProblems, type Td1 } from './mrz.js'
 
 /**
  * Automated identity checks that run right after a citizen submits ID photos + face video:
@@ -30,6 +33,23 @@ ensureColumn('identity_reviews', 'name_match_status', "TEXT NOT NULL DEFAULT 'PE
 ensureColumn('identity_reviews', 'name_match_score', 'REAL')
 ensureColumn('identity_reviews', 'name_match_details', 'TEXT')
 ensureColumn('identity_reviews', 'auto_assessment', "TEXT NOT NULL DEFAULT 'PENDING'")
+// what the card's machine-readable zone said, and the automatic decision with its reasons
+ensureColumn('identity_reviews', 'mrz_data', 'TEXT')
+ensureColumn('identity_reviews', 'auto_decision', 'TEXT')
+ensureColumn('identity_reviews', 'auto_decision_reasons', 'TEXT')
+// details registered from the card once identity is confirmed (the full card number is kept only as a keyed hash)
+ensureColumn('citizens', 'date_of_birth', 'TEXT')
+ensureColumn('citizens', 'sex', 'TEXT')
+ensureColumn('citizens', 'document_expiry', 'TEXT')
+ensureColumn('citizens', 'latin_name', 'TEXT')
+ensureColumn('citizens', 'national_id_hash', 'TEXT')
+db.exec('CREATE INDEX IF NOT EXISTS idx_citizens_national_id_hash ON citizens(national_id_hash)')
+
+/** Keyed hash of the card number: finds the same card on two accounts without storing the number itself. */
+export const nationalIdHash = (documentNumber: string) =>
+  createHmac('sha256', process.env.MEDIA_ENCRYPTION_KEY?.trim() || 'dhiqar-local-dev')
+    .update(`national-id:${documentNumber.toUpperCase()}`)
+    .digest('hex')
 
 // ---- name matching --------------------------------------------------------------------------
 const arabicNormalize = (value: string) =>
@@ -215,6 +235,41 @@ function assess(face: FaceVerification | null, name: NameMatch): AutoAssessment 
   return 'NEEDS_ATTENTION'
 }
 
+/** Face similarity required for an automatic approval (stricter than the reviewer-facing MATCH). */
+export const AUTO_APPROVE_SIMILARITY = 0.45
+
+export type AutoDecision = { approve: boolean; reasons: string[] }
+
+/**
+ * The platform admits a citizen on its own only when every check agrees: the live face matches the card portrait,
+ * the video shows a live person turning their head, the card's machine-readable zone is intact, Iraqi and unexpired,
+ * the typed name matches the card, and the card is not already on another account. Anything else goes to a person.
+ */
+export function decideAutomatically(input: {
+  face: FaceVerification | null
+  name: NameMatch
+  td1: Td1 | null
+  duplicateAccount: boolean
+}): AutoDecision {
+  const reasons: string[] = []
+  const { face } = input
+  if (!face || face.status === 'UNAVAILABLE') reasons.push('محرك مطابقة الوجه غير متاح')
+  else if (face.status !== 'MATCH' || (face.similarity ?? 0) < AUTO_APPROVE_SIMILARITY)
+    reasons.push(
+      face.status === 'NO_FACE_ON_DOCUMENT'
+        ? 'لم تظهر صورة الوجه في البطاقة بوضوح'
+        : face.status === 'NO_FACE_IN_VIDEO' || face.status === 'FRAMES_UNAVAILABLE'
+          ? 'لم يظهر الوجه بوضوح في الفيديو'
+          : 'الوجه في الفيديو لا يطابق صورة البطاقة بدرجة كافية'
+    )
+  if (face?.liveness && !face.liveness.passed) reasons.push(...face.liveness.reasons)
+  reasons.push(...iraqiCardProblems(input.td1))
+  if (input.td1 && (input.name.status === 'NO_MATCH' || input.name.status === 'NO_NAME_ON_DOCUMENT'))
+    reasons.push('الاسم المكتوب لا يطابق الاسم في البطاقة')
+  if (input.duplicateAccount) reasons.push('هذه البطاقة مسجلة على حساب آخر')
+  return { approve: reasons.length === 0, reasons: [...new Set(reasons)] }
+}
+
 export const faceStatusLabel: Record<string, string> = {
   MATCH: 'الوجه مطابق للهوية',
   UNCERTAIN: 'تشابه غير حاسم — راجع يدوياً',
@@ -231,7 +286,9 @@ export const faceStatusLabel: Record<string, string> = {
  */
 export async function runIdentityVerification(input: {
   reviewId: string
+  citizenId?: number
   documentImage: Buffer
+  documentBack?: Buffer | null
   faceVideo: Buffer
   typedName: string
   extractedName: string | null
@@ -241,7 +298,11 @@ export async function runIdentityVerification(input: {
   const run = db
     .prepare(`INSERT INTO identity_verification_runs (review_id, started_at) VALUES (?, ?)`)
     .run(input.reviewId, startedAt)
-  const extracted = input.extractedName || (input.ocrText ? nameFromMrz(input.ocrText) : null)
+  // the back of the unified card carries the machine-readable zone: the most reliable source of the citizen's details
+  const mrz = input.documentBack ? await readMrzLocally(input.documentBack) : { td1: null, rawText: '' }
+  const td1 = mrz.td1
+  const mrzName = td1 ? `${td1.givenNames} ${td1.surname}`.trim() : null
+  const extracted = mrzName || input.extractedName || (input.ocrText ? nameFromMrz(input.ocrText) : null)
   const name = compareNames(input.typedName, extracted)
   let face: FaceVerification | null = null
   let error: string | null = null
@@ -253,6 +314,14 @@ export async function runIdentityVerification(input: {
     error = caught instanceof Error ? caught.message : String(caught)
   }
   const assessment = assess(face, name)
+  const duplicateAccount = Boolean(
+    td1?.documentNumber &&
+    input.citizenId &&
+    db
+      .prepare('SELECT id FROM citizens WHERE national_id_hash = ? AND id != ? LIMIT 1')
+      .get(nationalIdHash(td1.documentNumber), input.citizenId)
+  )
+  const decision = decideAutomatically({ face, name, td1, duplicateAccount })
   const finishedAt = new Date().toISOString()
   db.prepare(
     `UPDATE identity_reviews SET face_match_status = ?, face_match_score = ?, face_match_provider = ?, face_match_details = ?,
@@ -269,6 +338,13 @@ export async function runIdentityVerification(input: {
     finishedAt,
     input.reviewId
   )
+  db.prepare(`UPDATE identity_reviews SET mrz_data = ?, auto_decision = ?, auto_decision_reasons = ? WHERE id = ?`).run(
+    td1 ? JSON.stringify({ ...td1, documentNumber: `*****${td1.documentNumber.slice(-4)}` }) : null,
+    decision.approve ? 'APPROVED' : 'HUMAN_REVIEW',
+    JSON.stringify(decision.reasons),
+    input.reviewId
+  )
+  if (input.citizenId) applyAutomaticDecision({ reviewId: input.reviewId, citizenId: input.citizenId, td1, decision })
   db.prepare(
     `UPDATE identity_verification_runs SET finished_at = ?, face_status = ?, face_similarity = ?, name_status = ?, name_score = ?, error = ? WHERE id = ?`
   ).run(
@@ -296,4 +372,78 @@ export async function runIdentityVerification(input: {
   })
   employeeWorkQueueRealtime.publish({ entity: 'IDENTITY_REVIEW', action: 'UPDATED', reference: input.reviewId })
   return { face, name, assessment }
+}
+
+/**
+ * Admits the citizen when the automatic decision approves (and no person decided first); otherwise tells the citizen
+ * why their request now waits for a reviewer. Card details are registered only on approval.
+ */
+export function applyAutomaticDecision(input: {
+  reviewId: string
+  citizenId: number
+  td1: Td1 | null
+  decision: AutoDecision
+}) {
+  const timestamp = new Date().toISOString()
+  const current = db.prepare('SELECT status FROM identity_reviews WHERE id = ?').get(input.reviewId) as
+    { status?: string } | undefined
+  // a reviewer may have decided while the checks ran: their decision stands and the citizen already knows it
+  if (current?.status !== 'PENDING_REVIEW') return
+  if (!input.decision.approve) {
+    notifyCitizen({
+      citizenId: input.citizenId,
+      type: 'IDENTITY_REVIEW',
+      title: 'طلب التوثيق بانتظار مراجع الهوية',
+      message: `لم يكتمل التوثيق الآلي: ${input.decision.reasons.join('، ')}. سيراجع موظف مختص طلبك، أو يمكنك إعادة التصوير.`,
+      link: '/citizen',
+    })
+    return
+  }
+  const td1 = input.td1!
+  db.exec('BEGIN')
+  try {
+    const claimed = db
+      .prepare(
+        `UPDATE identity_reviews SET status = 'APPROVED', reviewed_at = ?, reviewed_by = ?, review_notes = ?, updated_at = ? WHERE id = ? AND status = 'PENDING_REVIEW'`
+      )
+      .run(timestamp, 'التحقق الآلي بالذكاء الاصطناعي', 'تطابق الوجه وفحص الحياة والبطاقة', timestamp, input.reviewId)
+    if (!claimed.changes) {
+      db.exec('ROLLBACK')
+      return
+    }
+    db.prepare(
+      `UPDATE citizens SET verification_status = 'VERIFIED', national_id_masked = ?, national_id_hash = ?, date_of_birth = ?, sex = ?,
+         document_expiry = ?, latin_name = ?, document_type = 'NATIONAL_ID', updated_at = ? WHERE id = ?`
+    ).run(
+      `*****${td1.documentNumber.slice(-4)}`,
+      nationalIdHash(td1.documentNumber),
+      td1.birthDate,
+      td1.sex === 'M' ? 'ذكر' : td1.sex === 'F' ? 'أنثى' : null,
+      td1.expiryDate,
+      `${td1.givenNames} ${td1.surname}`.trim(),
+      timestamp,
+      input.citizenId
+    )
+    addAudit({
+      actor: 'التحقق الآلي بالذكاء الاصطناعي',
+      role: 'SYSTEM',
+      action: 'IDENTITY_AUTO_APPROVED',
+      entityType: 'IdentityReview',
+      entityId: input.reviewId,
+      newValue: { status: 'APPROVED', citizenStatus: 'VERIFIED' },
+      metadata: { mrzValid: td1.valid, documentLast4: td1.documentNumber.slice(-4) },
+    })
+    db.exec('COMMIT')
+  } catch (error) {
+    db.exec('ROLLBACK')
+    throw error
+  }
+  notifyCitizen({
+    citizenId: input.citizenId,
+    type: 'IDENTITY_DECISION',
+    title: 'تم توثيق هويتك',
+    message: 'تطابق وجهك مع صورة البطاقة الموحدة، وسُجلت بياناتك. يمكنك الآن تقديم المعاملات.',
+    link: '/citizen',
+  })
+  employeeWorkQueueRealtime.publish({ entity: 'IDENTITY_REVIEW', action: 'UPDATED', reference: input.reviewId })
 }

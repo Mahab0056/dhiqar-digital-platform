@@ -37,11 +37,24 @@ export function IdentityReviewPanel() {
         framesWithFace?: number
         frameConsistency?: number | null
         error?: string | null
+        liveness?: { passed: boolean; yawRange: number; maxFacesInFrame: number; reasons: string[] } | null
       } | null
       nameMatchStatus: string
       nameMatchScore: number | null
       nameMatch: { extracted?: string | null; method?: string; matchedTokens?: string[] } | null
       autoAssessment: 'PENDING' | 'READY_TO_APPROVE' | 'NEEDS_ATTENTION' | 'LIKELY_MISMATCH' | 'UNAVAILABLE'
+      mrz: {
+        documentNumber: string
+        birthDate: string | null
+        expiryDate: string | null
+        sex: string | null
+        nationality: string
+        surname: string
+        givenNames: string
+        valid: boolean
+      } | null
+      autoDecision: 'APPROVED' | 'HUMAN_REVIEW' | null
+      autoDecisionReasons: string[]
     }
     media: Array<{ id: string; label: string; mimeType: string; sizeBytes: number }>
   }
@@ -219,6 +232,78 @@ export function IdentityReviewPanel() {
                     </a>
                   </section>
                 )}
+                <section
+                  className={`identity-ai-panel ${selected.screening.autoDecision === 'APPROVED' ? 'is-ok' : ''}`}
+                >
+                  <header>
+                    <span className="section-kicker">الذكاء الاصطناعي</span>
+                    <h4>
+                      {selected.screening.autoDecision === 'APPROVED'
+                        ? 'وُثّقت تلقائياً: تطابق الوجه والبطاقة'
+                        : selected.screening.autoDecision === 'HUMAN_REVIEW'
+                          ? 'لم يُقبل تلقائياً — قرارك مطلوب'
+                          : 'التحقق الآلي جارٍ…'}
+                    </h4>
+                  </header>
+                  {selected.screening.autoDecisionReasons.length > 0 && (
+                    <ul className="identity-ai-reasons">
+                      {selected.screening.autoDecisionReasons.map(reason => (
+                        <li key={reason}>{reason}</li>
+                      ))}
+                    </ul>
+                  )}
+                  <div className="review-data-grid">
+                    <span>
+                      <small>تطابق الوجه</small>
+                      <strong>
+                        {selected.screening.faceMatchScore !== null
+                          ? `${selected.screening.faceMatchScore.toLocaleString('en-US')}%`
+                          : '—'}{' '}
+                        ({selected.screening.faceMatchStatus})
+                      </strong>
+                    </span>
+                    <span>
+                      <small>فحص الحياة (تحريك الرأس)</small>
+                      <strong>
+                        {selected.screening.faceMatchDetails?.liveness
+                          ? selected.screening.faceMatchDetails.liveness.passed
+                            ? 'ناجح'
+                            : 'لم ينجح'
+                          : '—'}
+                      </strong>
+                    </span>
+                    <span>
+                      <small>المنطقة المقروءة آلياً</small>
+                      <strong>
+                        {selected.screening.mrz
+                          ? selected.screening.mrz.valid
+                            ? 'سليمة (أرقام التحقق متطابقة)'
+                            : 'أرقام التحقق غير متطابقة'
+                          : 'لم تُقرأ'}
+                      </strong>
+                    </span>
+                    {selected.screening.mrz && (
+                      <>
+                        <span>
+                          <small>الاسم في البطاقة</small>
+                          <strong dir="ltr">
+                            {selected.screening.mrz.givenNames} {selected.screening.mrz.surname}
+                          </strong>
+                        </span>
+                        <span>
+                          <small>رقم البطاقة</small>
+                          <strong dir="ltr">{selected.screening.mrz.documentNumber}</strong>
+                        </span>
+                        <span>
+                          <small>الميلاد / الانتهاء</small>
+                          <strong dir="ltr">
+                            {selected.screening.mrz.birthDate || '—'} / {selected.screening.mrz.expiryDate || '—'}
+                          </strong>
+                        </span>
+                      </>
+                    )}
+                  </div>
+                </section>
                 <div className="identity-screening-panel">
                   <div className="screening-score">
                     <span>{selected.screening.qualityScore?.toLocaleString('en-US') || '—'}%</span>

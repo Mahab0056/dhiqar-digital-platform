@@ -1,5 +1,6 @@
 import { createWorker } from 'tesseract.js'
 import type { IdentityAnalysisResult, IdentityDocumentType } from './identity-document-analysis.js'
+import { parseTd1, type Td1 } from './mrz.js'
 
 let workerPromise: Promise<Awaited<ReturnType<typeof createWorker>>> | null = null
 
@@ -176,5 +177,72 @@ export async function analyzeIdentityDocumentLocally(input: {
       faceCrop: null,
       faceComparison: { status: 'MANUAL_REVIEW_REQUIRED', confidence: null },
     }
+  }
+}
+
+// ---- machine-readable zone (back of the unified ID card) ------------------------------------------
+let mrzWorkerPromise: Promise<Awaited<ReturnType<typeof createWorker>>> | null = null
+
+/** A Latin-only worker restricted to the MRZ alphabet: far fewer misreads than the Arabic+English one. */
+async function getMrzWorker() {
+  if (!mrzWorkerPromise) {
+    const cachePath =
+      process.env.IDENTITY_OCR_CACHE_PATH?.trim() ||
+      `${process.env.RAILWAY_VOLUME_MOUNT_PATH || '/tmp'}/dhiqar-ocr-cache`
+    const langPath = process.env.IDENTITY_OCR_LANG_PATH?.trim() || undefined
+    mrzWorkerPromise = createWorker('eng', 1, {
+      cachePath,
+      ...(langPath ? { langPath, gzip: false } : {}),
+      logger: () => undefined,
+      errorHandler: (error: unknown) => {
+        console.error('[ocr] mrz worker error', error)
+        mrzWorkerPromise = null
+      },
+    })
+      .then(async worker => {
+        await worker.setParameters({
+          tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<',
+          preserve_interword_spaces: '0',
+          tessedit_pageseg_mode: '6' as never,
+        })
+        return worker
+      })
+      .catch(error => {
+        mrzWorkerPromise = null
+        throw error
+      })
+  }
+  return mrzWorkerPromise
+}
+
+/**
+ * Reads the TD1 zone from a photo of the card's back. Tries the lower half first (where the zone is printed),
+ * then the whole photo; returns the parsed zone or null. Never throws.
+ */
+export async function readMrzLocally(image: Buffer): Promise<{ td1: Td1 | null; rawText: string }> {
+  try {
+    const sharp = (await import('sharp')).default
+    const upright = await sharp(image, { failOn: 'none' }).rotate().toBuffer()
+    const meta = await sharp(upright).metadata()
+    if (!meta.width || !meta.height) return { td1: null, rawText: '' }
+    const prepare = (region?: { top: number; height: number }) => {
+      let pipeline = sharp(upright)
+      if (region) pipeline = pipeline.extract({ left: 0, top: region.top, width: meta.width!, height: region.height })
+      return pipeline.grayscale().normalise().resize({ width: 1800 }).sharpen().png().toBuffer()
+    }
+    const worker = await getMrzWorker()
+    const half = Math.floor(meta.height / 2)
+    let rawText = ''
+    for (const region of [{ top: half, height: meta.height - half }, undefined]) {
+      const { data } = await worker.recognize(await prepare(region))
+      rawText = data.text || ''
+      const td1 = parseTd1(rawText)
+      if (td1) return { td1, rawText }
+    }
+    return { td1: null, rawText }
+  } catch (error) {
+    console.warn('[ocr] mrz read failed', error)
+    mrzWorkerPromise = null
+    return { td1: null, rawText: '' }
   }
 }
