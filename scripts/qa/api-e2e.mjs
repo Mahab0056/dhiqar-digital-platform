@@ -1120,7 +1120,7 @@ await check('SEC-15', 'الأمان والصلاحيات', 'سجل التدقي�
 await check('SEC-16', 'الأمان والصلاحيات', 'لا توجد أسرار حقيقية في المستودع (فحص نمطي)', async () => {
   const { execSync } = await import('node:child_process')
   const out = execSync(
-    `git grep -nIE "(sk-[A-Za-z0-9]{20,}|AKIA[0-9A-Z]{16}|-----BEGIN (RSA |EC )?PRIVATE KEY|ghp_[A-Za-z0-9]{30,}|xox[bp]-)" -- . ':!pnpm-lock.yaml' || true`
+    `git grep -nIE "(sk-[A-Za-z0-9]{20,}|AKIA[0-9A-Z]{16}|-----BEGIN (RSA |EC )?PRIVATE KEY|ghp_[A-Za-z0-9]{30,}|xox[bp]-)" -- . ":(exclude)pnpm-lock.yaml" || true`
   )
     .toString()
     .trim()

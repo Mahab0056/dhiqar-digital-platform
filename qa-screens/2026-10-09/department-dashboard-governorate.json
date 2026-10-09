@@ -120,8 +120,8 @@
       "serviceName": "التقديم على الدور واطئة الكلفة",
       "status": "UNDER_REVIEW",
       "currentAction": "اكتملت المستمسكات وأُعيد الطلب إلى الموظف للتدقيق.",
-      "createdAt": "2026-10-09T13:42:45.770Z",
-      "updatedAt": "2026-10-09T13:42:46.123Z"
+      "createdAt": "2026-10-09T16:20:53.390Z",
+      "updatedAt": "2026-10-09T16:20:53.976Z"
     },
     {
       "reference": "TQS-2026-00005",
@@ -130,8 +130,8 @@
       "serviceName": "حجز موعد إلكتروني",
       "status": "APPROVED",
       "currentAction": "اكتمل تدقيق المستمسكات وتمت الموافقة. موعد الحضور لإكمال الإجراء: 2026-10-20 10:00 — قاعة المراجعين. صدرت الوثيقة الرقمية TQD-SVC-2026-000003 وهي محفوظة في الأرشيف.",
-      "createdAt": "2026-10-09T13:42:45.447Z",
-      "updatedAt": "2026-10-09T13:42:45.458Z"
+      "createdAt": "2026-10-09T16:20:53.156Z",
+      "updatedAt": "2026-10-09T16:20:53.170Z"
     },
     {
       "reference": "TQS-2026-00003",
@@ -140,8 +140,8 @@
       "serviceName": "التقديم على الدور واطئة الكلفة",
       "status": "REJECTED",
       "currentAction": "رُفض الطلب: المتقدم غير مشمول بالفئات المحددة",
-      "createdAt": "2026-10-09T13:42:44.812Z",
-      "updatedAt": "2026-10-09T13:42:44.830Z"
+      "createdAt": "2026-10-09T16:20:52.486Z",
+      "updatedAt": "2026-10-09T16:20:52.530Z"
     },
     {
       "reference": "TQS-2026-00001",
@@ -150,8 +150,8 @@
       "serviceName": "التقديم على الدور واطئة الكلفة",
       "status": "APPROVED",
       "currentAction": "اكتمل تدقيق المستمسكات وتمت الموافقة على الطلب. صدرت الوثيقة الرقمية TQD-SVC-2026-000001 وهي محفوظة في الأرشيف.",
-      "createdAt": "2026-10-09T13:42:44.193Z",
-      "updatedAt": "2026-10-09T13:42:44.353Z"
+      "createdAt": "2026-10-09T16:20:51.712Z",
+      "updatedAt": "2026-10-09T16:20:52.149Z"
     },
     {
       "reference": "TQS-2026-00002",
@@ -160,8 +160,8 @@
       "serviceName": "التقديم على الدور واطئة الكلفة",
       "status": "SUBMITTED",
       "currentAction": "أُرسل الطلب والمستمسكات إلى الدائرة المختصة للتدقيق.",
-      "createdAt": "2026-10-09T13:42:44.217Z",
-      "updatedAt": "2026-10-09T13:42:44.217Z"
+      "createdAt": "2026-10-09T16:20:51.744Z",
+      "updatedAt": "2026-10-09T16:20:51.744Z"
     }
   ],
   "services": [
@@ -173,7 +173,7 @@
       "feeStatus": "NOT_REQUIRED",
       "estimatedDuration": "",
       "active": true,
-      "updatedAt": "2026-10-09T13:42:02.204Z"
+      "updatedAt": "2026-10-09T16:20:31.818Z"
     },
     {
       "id": "gov-residential-land-plot",
@@ -183,7 +183,7 @@
       "feeStatus": "NOT_REQUIRED",
       "estimatedDuration": "",
       "active": true,
-      "updatedAt": "2026-10-09T13:42:02.204Z"
+      "updatedAt": "2026-10-09T16:20:31.818Z"
     },
     {
       "id": "gov-complaint",
@@ -193,7 +193,7 @@
       "feeStatus": "NOT_REQUIRED",
       "estimatedDuration": "",
       "active": true,
-      "updatedAt": "2026-10-09T13:42:02.204Z"
+      "updatedAt": "2026-10-09T16:20:31.818Z"
     },
     {
       "id": "gov-ration-card-transfer-approval",
@@ -203,7 +203,7 @@
       "feeStatus": "NOT_REQUIRED",
       "estimatedDuration": "",
       "active": true,
-      "updatedAt": "2026-10-09T13:42:02.204Z"
+      "updatedAt": "2026-10-09T16:20:31.818Z"
     },
     {
       "id": "online-appointment",
@@ -213,7 +213,7 @@
       "feeStatus": "NOT_REQUIRED",
       "estimatedDuration": "يؤكد الموعد بعد مراجعة الدائرة",
       "active": true,
-      "updatedAt": "2026-10-09T13:42:02.204Z"
+      "updatedAt": "2026-10-09T16:20:31.818Z"
     },
     {
       "id": "governorate-service",
@@ -223,7 +223,7 @@
       "feeStatus": "NOT_REQUIRED",
       "estimatedDuration": "تحددها الشعبة المختصة بعد تسجيل الطلب",
       "active": true,
-      "updatedAt": "2026-10-09T13:42:02.204Z"
+      "updatedAt": "2026-10-09T16:20:31.818Z"
     },
     {
       "id": "gov-official-statement",
@@ -233,7 +233,7 @@
       "feeStatus": "NOT_REQUIRED",
       "estimatedDuration": "",
       "active": true,
-      "updatedAt": "2026-10-09T13:42:02.204Z"
+      "updatedAt": "2026-10-09T16:20:31.818Z"
     },
     {
       "id": "gov-governor-meeting-request",
@@ -243,7 +243,7 @@
       "feeStatus": "NOT_REQUIRED",
       "estimatedDuration": "",
       "active": true,
-      "updatedAt": "2026-10-09T13:42:02.204Z"
+      "updatedAt": "2026-10-09T16:20:31.818Z"
     },
     {
       "id": "gov-project-followup",
@@ -253,7 +253,7 @@
       "feeStatus": "NOT_REQUIRED",
       "estimatedDuration": "",
       "active": true,
-      "updatedAt": "2026-10-09T13:42:02.204Z"
+      "updatedAt": "2026-10-09T16:20:31.818Z"
     },
     {
       "id": "land-request",
@@ -263,7 +263,7 @@
       "feeStatus": "NOT_REQUIRED",
       "estimatedDuration": "بحسب البرنامج وقرار التخصيص",
       "active": true,
-      "updatedAt": "2026-10-09T13:42:02.204Z"
+      "updatedAt": "2026-10-09T16:20:31.818Z"
     },
     {
       "id": "gov-furniture-transfer-approval",
@@ -273,7 +273,7 @@
       "feeStatus": "NOT_REQUIRED",
       "estimatedDuration": "",
       "active": true,
-      "updatedAt": "2026-10-09T13:42:02.204Z"
+      "updatedAt": "2026-10-09T16:20:31.818Z"
     }
   ],
   "feedback": [
@@ -283,18 +283,18 @@
       "category": "خدمات",
       "status": "IN_REVIEW",
       "subject": "شكوى اختبار QA",
-      "createdAt": "2026-10-09T13:42:45.883Z",
-      "updatedAt": "2026-10-09T13:42:45.903Z"
+      "createdAt": "2026-10-09T16:20:53.751Z",
+      "updatedAt": "2026-10-09T16:20:53.780Z"
     }
   ],
   "staff": [
     {
-      "id": "stf_08ddb469d20747f0ba1c2f1e9fec82d3",
+      "id": "stf_b6e713dfb35749ca9d1cd22a5bf4093c",
       "username": "",
       "fullName": "موظف ديوان المحافظة QA",
       "role": "EMPLOYEE",
       "status": "ACTIVE",
-      "lastLoginAt": "2026-10-09T13:42:10.628Z",
+      "lastLoginAt": "2026-10-09T16:20:40.208Z",
       "online": true
     }
   ],
@@ -321,15 +321,15 @@
       "action": "FEEDBACK_STATUS_UPDATED",
       "entityType": "CitizenFeedback",
       "entityId": "TQD-CMP-2026-00001",
-      "createdAt": "2026-10-09T13:42:45.906Z"
+      "createdAt": "2026-10-09T16:20:53.782Z"
     },
     {
       "actor": "موظف ديوان المحافظة QA (qa.gov)",
       "role": "EMPLOYEE",
       "action": "ISSUED_DOCUMENT_OPENED",
       "entityType": "IssuedDocument",
-      "entityId": "doc_a2787aec35ae4e7eb38673cdd5a1ddc0",
-      "createdAt": "2026-10-09T13:42:45.869Z"
+      "entityId": "doc_8a56648db79843eea736e5c371dbfb9f",
+      "createdAt": "2026-10-09T16:20:53.717Z"
     },
     {
       "actor": "موظف ديوان المحافظة QA (qa.gov)",
@@ -337,7 +337,7 @@
       "action": "SERVICE_REQUEST_APPROVED_DOCUMENT_ISSUED",
       "entityType": "ServiceRequest",
       "entityId": "TQS-2026-00005",
-      "createdAt": "2026-10-09T13:42:45.738Z"
+      "createdAt": "2026-10-09T16:20:53.309Z"
     },
     {
       "actor": "موظف ديوان المحافظة QA (qa.gov)",
@@ -345,7 +345,7 @@
       "action": "SERVICE_REQUEST_REJECTED",
       "entityType": "ServiceRequest",
       "entityId": "TQS-2026-00003",
-      "createdAt": "2026-10-09T13:42:44.832Z"
+      "createdAt": "2026-10-09T16:20:52.531Z"
     },
     {
       "actor": "موظف ديوان المحافظة QA (qa.gov)",
@@ -353,7 +353,7 @@
       "action": "SERVICE_REQUEST_APPROVED_DOCUMENT_ISSUED",
       "entityType": "ServiceRequest",
       "entityId": "TQS-2026-00001",
-      "createdAt": "2026-10-09T13:42:44.765Z"
+      "createdAt": "2026-10-09T16:20:52.353Z"
     },
     {
       "actor": "موظف ديوان المحافظة QA (qa.gov)",
@@ -361,7 +361,7 @@
       "action": "SERVICE_DOCUMENT_VERIFIED",
       "entityType": "ServiceRequest",
       "entityId": "TQS-2026-00001",
-      "createdAt": "2026-10-09T13:42:44.347Z"
+      "createdAt": "2026-10-09T16:20:52.131Z"
     },
     {
       "actor": "موظف ديوان المحافظة QA (qa.gov)",
@@ -369,7 +369,7 @@
       "action": "SERVICE_DOCUMENT_VERIFIED",
       "entityType": "ServiceRequest",
       "entityId": "TQS-2026-00001",
-      "createdAt": "2026-10-09T13:42:44.341Z"
+      "createdAt": "2026-10-09T16:20:52.118Z"
     },
     {
       "actor": "موظف ديوان المحافظة QA (qa.gov)",
@@ -377,7 +377,7 @@
       "action": "SERVICE_REQUEST_ACTION_REQUIRED",
       "entityType": "ServiceRequest",
       "entityId": "TQS-2026-00001",
-      "createdAt": "2026-10-09T13:42:44.315Z"
+      "createdAt": "2026-10-09T16:20:52.048Z"
     },
     {
       "actor": "موظف ديوان المحافظة QA (qa.gov)",
@@ -385,7 +385,7 @@
       "action": "SERVICE_DOCUMENT_VERIFIED",
       "entityType": "ServiceRequest",
       "entityId": "TQS-2026-00001",
-      "createdAt": "2026-10-09T13:42:44.302Z"
+      "createdAt": "2026-10-09T16:20:52.012Z"
     },
     {
       "actor": "موظف ديوان المحافظة QA (qa.gov)",
@@ -393,7 +393,7 @@
       "action": "SERVICE_DOCUMENT_REJECTED",
       "entityType": "ServiceRequest",
       "entityId": "TQS-2026-00001",
-      "createdAt": "2026-10-09T13:42:44.296Z"
+      "createdAt": "2026-10-09T16:20:51.994Z"
     },
     {
       "actor": "موظف ديوان المحافظة QA (qa.gov)",
@@ -401,23 +401,23 @@
       "action": "SERVICE_DOCUMENT_VIEWED",
       "entityType": "ServiceRequest",
       "entityId": "TQS-2026-00001",
-      "createdAt": "2026-10-09T13:42:44.276Z"
+      "createdAt": "2026-10-09T16:20:51.916Z"
     },
     {
       "actor": "موظف ديوان المحافظة QA (qa.gov)",
       "role": "EMPLOYEE",
       "action": "STAFF_PASSWORD_CHANGED",
       "entityType": "StaffAccount",
-      "entityId": "stf_08ddb469d20747f0ba1c2f1e9fec82d3",
-      "createdAt": "2026-10-09T13:42:10.947Z"
+      "entityId": "stf_b6e713dfb35749ca9d1cd22a5bf4093c",
+      "createdAt": "2026-10-09T16:20:40.392Z"
     },
     {
       "actor": "موظف ديوان المحافظة QA (qa.gov)",
       "role": "EMPLOYEE",
       "action": "STAFF_SESSION_CREATED",
       "entityType": "Session",
-      "entityId": "a4d65250-97a7-4e37-bc9a-6d88b480bef6",
-      "createdAt": "2026-10-09T13:42:10.628Z"
+      "entityId": "1308b6c5-7528-483b-8f36-3900564140f2",
+      "createdAt": "2026-10-09T16:20:40.209Z"
     }
   ]
 }

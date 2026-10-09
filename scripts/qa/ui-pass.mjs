@@ -3,7 +3,7 @@
 // compressed screenshots. Also submits one service form through the real UI (double-clicking the submit button).
 //   PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers QA_BASE=http://localhost:4100 QA_DB=/tmp/dq-qa-run/b/qa.sqlite node scripts/qa/ui-pass.mjs
 // Requires the API e2e run first (it creates the staff accounts and the verified citizens used here).
-import { chromium } from '/opt/node-tools/node_modules/playwright/index.mjs'
+import { chromium } from 'playwright'
 import { DatabaseSync } from 'node:sqlite'
 import { mkdirSync, writeFileSync } from 'node:fs'
 
@@ -14,8 +14,9 @@ const outDir = 'qa-screens/2026-10-09'
 mkdirSync(outDir, { recursive: true })
 const staffPassword = 'QA-Staff-Strong-Pass-2026!'
 
-// set PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers (never run `playwright install` here)
-const browser = await chromium.launch()
+// set PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers (never run `playwright install` here),
+// or PW_CHANNEL=msedge / chrome to use an installed browser instead
+const browser = await chromium.launch(process.env.PW_CHANNEL ? { channel: process.env.PW_CHANNEL } : {})
 const findings = []
 const pagesChecked = []
 const linkTargets = new Set()

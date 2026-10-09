@@ -500,6 +500,10 @@
   min-height: 52px;
   box-shadow: var(--ds-shadow-xs);
 }
+/* same specificity as .tq-search:focus-within but later, so the focus ring has to be restated */
+.tq-search.compact:focus-within {
+  box-shadow: var(--ds-shadow-xs), var(--ds-focus);
+}
 .tq-search.compact input {
   height: 40px;
 }

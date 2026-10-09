@@ -1,6 +1,6 @@
 {
   "base": "http://localhost:4100",
-  "ranAt": "2026-10-09T13:42:46.271Z",
+  "ranAt": "2026-10-09T16:20:54.191Z",
   "results": [
     {
       "id": "AUTH-01",
@@ -182,7 +182,7 @@
       "area": "رحلة المواطن",
       "scenario": "نقر مزدوج / إعادة الطلب نفسه لا يُنشئ معاملة مكررة (idempotency)",
       "result": "PASS",
-      "evidence": "parallel 200/201, retry 200; rows created=1; refs TQS-2026-00002/TQS-2026-00002/TQS-2026-00002"
+      "evidence": "parallel 201/200, retry 200; rows created=1; refs TQS-2026-00002/TQS-2026-00002/TQS-2026-00002"
     },
     {
       "id": "SVC-07",
@@ -245,7 +245,7 @@
       "area": "الوثائق والتحقق",
       "scenario": "المواطن يستلم النتيجة ووثيقة PDF؛ صفحة التحقق العامة تعرض الحد الأدنى",
       "result": "PASS",
-      "evidence": "pdf 200 %PDF- (122007 bytes), verify 200 APPROVED, original 200, PII keys in verify=none"
+      "evidence": "pdf 200 %PDF- (121913 bytes), verify 200 APPROVED, original 200, PII keys in verify=none"
     },
     {
       "id": "DOC-02",
@@ -413,7 +413,7 @@
       "area": "الأمان والصلاحيات",
       "scenario": "رفع الملفات: نوع غير مسموح، توقيع مزور، حجم زائد، اسم مسار",
       "result": "PASS",
-      "evidence": "html 400, spoofed jpeg 400, 21MB 413, traversal name 200 stored as media_9bab88534bb04b4b93a55575b4b15a0d.bin"
+      "evidence": "html 400, spoofed jpeg 400, 21MB 413, traversal name 200 stored as C:\\Users\\asus\\AppData\\Local\\Temp\\claude\\C--Users-asus-Desktop---------------\\40f2f086-461c-407f-a519-db2e7f391d8c\\scratchpad\\qa-run\\media\\media_141ccd9becff49c9ba8bd500f13ba84e.bin"
     },
     {
       "id": "SEC-11",
