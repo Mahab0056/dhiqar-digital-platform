@@ -329,6 +329,15 @@ export function registerOnboardingRoutes(app: express.Express) {
           faceComparison: analysis.faceComparison.status,
         })
 
+        // the document analysis above awaited: a second submission may have landed meanwhile — re-check right before
+        // writing (this section is synchronous, so nothing can slip in between the check and the insert)
+        const pendingNow = db
+          .prepare(`SELECT id FROM identity_reviews WHERE citizen_id = ? AND status = 'PENDING_REVIEW' LIMIT 1`)
+          .get(citizenId)
+        if (pendingNow)
+          return res.status(409).json({
+            message: 'طلب مراجعة هويتك قيد التدقيق حالياً. ستصلك النتيجة عبر الإشعارات قبل إمكانية إعادة الإرسال.',
+          })
         db.prepare(
           `
         INSERT INTO identity_reviews (
