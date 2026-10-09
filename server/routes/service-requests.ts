@@ -1,6 +1,6 @@
 import type express from 'express'
 import { safeMessage } from '../http/error-handler.js'
-import { param } from '../http/params.js'
+import { param, toLatinDigits } from '../http/params.js'
 import { randomUUID } from 'node:crypto'
 import { z } from 'zod'
 import { upload, validateUploadedFile } from '../http/upload.js'
@@ -261,6 +261,7 @@ export function registerServiceRequestsRoutes(app: express.Express) {
     const cleanData: Record<string, string> = {}
     for (const field of service.fields) {
       let value = String(payload.data[field.key] ?? '').trim()
+      if (['tel', 'number', 'date', 'time'].includes(field.type)) value = toLatinDigits(value)
       if (!value && field.key === 'fullName') value = citizen.fullName
       if (field.required && !value) return res.status(400).json({ message: `الحقل «${field.label}» مطلوب.` })
       if (field.maxLength && value.length > field.maxLength)

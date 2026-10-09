@@ -192,21 +192,21 @@ export function EmployeeDashboard() {
           <span className="blue">
             <FileText />
           </span>
-          <small>جديدة</small>
+          <small>معاملات محلية جديدة</small>
           <strong>{apps.filter(a => a.status === 'SUBMITTED').length}</strong>
         </div>
         <div>
           <span className="green">
             <Eye />
           </span>
-          <small>قيد التدقيق</small>
+          <small>معاملات محلية قيد التدقيق</small>
           <strong>{apps.filter(a => a.status === 'UNDER_REVIEW').length}</strong>
         </div>
         <div>
           <span className="amber">
             <Bell />
           </span>
-          <small>بانتظار المواطن</small>
+          <small>معاملات محلية بانتظار المواطن</small>
           <strong>{apps.filter(a => a.status === 'ACTION_REQUIRED').length}</strong>
         </div>
         <div>

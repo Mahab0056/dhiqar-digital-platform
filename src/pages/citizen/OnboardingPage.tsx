@@ -356,7 +356,15 @@ export function OnboardingPage() {
                   رمز التحقق
                   <input
                     value={otp}
-                    onChange={e => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    onChange={e =>
+                      setOtp(
+                        e.target.value
+                          // Arabic-Indic / Persian digits from Arabic keyboards count as digits, not as junk
+                          .replace(/[\u0660-\u0669\u06f0-\u06f9]/g, digit => String(digit.charCodeAt(0) & 0xf))
+                          .replace(/\D/g, '')
+                          .slice(0, 6)
+                      )
+                    }
                     inputMode="numeric"
                     autoComplete="one-time-code"
                     placeholder="6 digits"

@@ -195,6 +195,9 @@
 }
 .tq-stack {
   display: grid;
+  /* an explicit shrinkable track: without it the implicit column grows to the widest child's min-content
+     (service form stepper, chip strips) and the page is clipped by 12px+ on 390px phones */
+  grid-template-columns: minmax(0, 1fr);
   gap: 20px;
   min-width: 0;
 }

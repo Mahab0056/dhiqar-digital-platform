@@ -8,6 +8,8 @@
 /* filters rail */
 .dir-filters {
   display: grid;
+  /* shrinkable track: on phones the sector chip strip scrolls inside the rail instead of widening it to ~3,800px */
+  grid-template-columns: minmax(0, 1fr);
   gap: 20px;
   padding: 18px;
   border: 1px solid var(--ds-border);

@@ -1,5 +1,6 @@
 import { createHmac, randomInt, randomUUID, timingSafeEqual } from 'node:crypto'
 import { db } from './db.js'
+import { toLatinDigits } from './http/params.js'
 
 const OTPIQ_BASE_URL = 'https://api.otpiq.com/api'
 const OTP_TTL_MINUTES = 5
@@ -25,7 +26,7 @@ function safeEqualHex(left: string, right: string) {
 }
 
 export function normalizeIraqiPhone(input: string) {
-  let digits = input.replace(/\D/g, '')
+  let digits = toLatinDigits(input).replace(/\D/g, '')
   if (digits.startsWith('00964')) digits = digits.slice(2)
   if (digits.startsWith('07')) digits = `964${digits.slice(1)}`
   if (!/^9647\d{9}$/.test(digits)) {

@@ -1,6 +1,6 @@
 import type express from 'express'
 import { safeMessage } from '../http/error-handler.js'
-import { param } from '../http/params.js'
+import { param, toLatinDigits } from '../http/params.js'
 import { randomUUID } from 'node:crypto'
 import { z } from 'zod'
 import { upload, validateUploadedFile } from '../http/upload.js'
@@ -121,7 +121,7 @@ export function registerOnboardingRoutes(app: express.Express) {
           challengeId: z.string().startsWith('otp_'),
           otp: z.string().regex(/^\d{6}$/),
         })
-        .parse(req.body)
+        .parse({ ...req.body, otp: toLatinDigits(String(req.body?.otp ?? '')).trim() })
       const result = verifyOtpChallenge(payload)
       const citizen = getOrCreateCitizen(result.accountKey, result.phoneMasked)
       setSession(res, String(citizen.id), 'CITIZEN', req)

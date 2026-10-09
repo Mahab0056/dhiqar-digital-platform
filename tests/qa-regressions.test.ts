@@ -234,3 +234,19 @@ describe('authorization hardening', () => {
     expect((await request(app).get('/api/operations/new-request-alerts').set('Cookie', admin)).status).toBe(200)
   })
 })
+
+describe('Arabic-Indic digits', () => {
+  it('phone and OTP typed with Arabic keyboard digits are accepted', async () => {
+    const requested = await request(app).post('/api/onboarding/request-otp').send({ phone: '٠٧٨٠١٢٣٠٠٠٩' })
+    expect(requested.status).toBe(201)
+    const verified = await request(app)
+      .post('/api/onboarding/verify-phone')
+      .send({ phone: '٠٧٨٠١٢٣٠٠٠٩', challengeId: requested.body.challengeId, otp: '٢٤٦٨١٠' })
+    expect(verified.status).toBe(200)
+    // the same number typed with Latin digits is the same account
+    const latin = await citizenSession('07801230009')
+    const a = await request(app).get('/api/citizen/demo').set('Cookie', cookieOf(verified))
+    const b = await request(app).get('/api/citizen/demo').set('Cookie', latin)
+    expect(a.body.id).toBe(b.body.id)
+  })
+})
