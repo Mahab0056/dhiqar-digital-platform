@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import { addAudit, db } from '../db.js'
 import { generateTemporaryPassword, hashPassword, passwordPolicyError, verifyPassword } from './password.js'
 import { decryptSecret, encryptSecret, generateTotpSecret, verifyTotp } from './totp.js'
@@ -356,4 +356,42 @@ export function bootstrapStaffAccounts(log: (message: string) => void = console.
       '[auth] no staff accounts exist. Set STAFF_BOOTSTRAP_USERNAME and STAFF_BOOTSTRAP_PASSWORD to create the first super admin.'
     )
   }
+}
+
+// ---- recovery -------------------------------------------------------------
+
+/**
+ * Regains access when the super admin's password is lost. The operator sets STAFF_RECOVERY_USERNAME and
+ * STAFF_RECOVERY_PASSWORD on the server and restarts: that SUPER_ADMIN account is unlocked, re-enabled and given the
+ * password (to be changed at the next login). Each username/password pair is applied only once, so a password changed
+ * afterwards is never overwritten by later restarts. Only existing super admins can be recovered; no account is
+ * created. Remove the variables once signed in.
+ */
+export function recoverStaffAccount(log: (message: string) => void = console.log) {
+  const username = normalizeUsername(process.env.STAFF_RECOVERY_USERNAME || '')
+  const password = process.env.STAFF_RECOVERY_PASSWORD?.trim()
+  if (!username || !password) return
+  const policyError = passwordPolicyError(password)
+  if (policyError) return log(`[auth] staff recovery skipped: ${policyError}`)
+  db.exec(`CREATE TABLE IF NOT EXISTS staff_recovery_applied (fingerprint TEXT PRIMARY KEY, applied_at TEXT NOT NULL)`)
+  const fingerprint = createHash('sha256').update(`${username}\n${password}`).digest('hex')
+  if (db.prepare('SELECT 1 FROM staff_recovery_applied WHERE fingerprint = ?').get(fingerprint)) return
+  const account = getStaffByUsername(username)
+  if (!account || account.role !== 'SUPER_ADMIN')
+    return log(`[auth] staff recovery skipped: no super admin named "${username}".`)
+  const timestamp = now()
+  db.prepare(
+    `UPDATE staff_accounts SET password_hash = ?, password_updated_at = ?, must_change_password = 1, status = 'ACTIVE',
+       failed_attempts = 0, locked_until = NULL, updated_at = ? WHERE id = ?`
+  ).run(hashPassword(password), timestamp, timestamp, account.id)
+  db.prepare('INSERT INTO staff_recovery_applied (fingerprint, applied_at) VALUES (?, ?)').run(fingerprint, timestamp)
+  addAudit({
+    actor: 'recovery',
+    role: 'SYSTEM',
+    action: 'STAFF_ACCOUNT_RECOVERED',
+    entityType: 'StaffAccount',
+    entityId: account.id,
+    metadata: { username },
+  })
+  log(`[auth] super admin "${username}" recovered (unlocked, new password set). Remove STAFF_RECOVERY_* now.`)
 }

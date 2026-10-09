@@ -27,7 +27,7 @@ import { registerStaffAdminRoutes } from './routes/staff-admin.js'
 import { registerDepartmentRoutes } from './routes/departments.js'
 import { seedDepartments } from './departments.js'
 import { scheduleBackups } from './db-ops/backup.js'
-import { bootstrapStaffAccounts } from './auth/staff.js'
+import { bootstrapStaffAccounts, recoverStaffAccount } from './auth/staff.js'
 import { purgeExpiredSessions } from './auth/session.js'
 import { purgeExpiredMedia } from './media.js'
 import { isClientRoute, registerSeoRoutes } from './routes/seo.js'
@@ -39,6 +39,7 @@ export function createPlatformServer(options: { serveStatic?: boolean } = {}) {
   // requests filed before SLAs existed get a deadline from their creation date (no-op once done)
   backfillServiceRequestDueDates()
   bootstrapStaffAccounts()
+  recoverStaffAccount()
   purgeExpiredSessions()
   scheduleBackups()
   setInterval(purgeExpiredSessions, 60 * 60 * 1000).unref()
