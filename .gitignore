@@ -35,3 +35,6 @@ data/*.db-*
 # Local runtime data, encrypted media, and QA captures
 data/
 qa-screens/
+
+# agent worktrees (local only)
+.claude/worktrees/
