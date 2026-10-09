@@ -39,6 +39,30 @@ export function pushKeys() {
 
 export const pushEnabled = () => Boolean(pushKeys())
 
+/** Push services used by Chrome/Edge/Samsung (FCM), Firefox (Mozilla autopush), Windows (WNS) and Safari (APNs web push). */
+const pushServiceHosts = [
+  /^fcm\.googleapis\.com$/,
+  /^android\.googleapis\.com$/,
+  /^updates\.push\.services\.mozilla\.com$/,
+  /^[a-z0-9-]+\.notify\.windows\.com$/,
+  /^web\.push\.apple\.com$/,
+  /^[a-z0-9-]+\.push\.apple\.com$/,
+]
+
+export function isBrowserPushEndpoint(value: string) {
+  try {
+    const url = new URL(value)
+    return (
+      url.protocol === 'https:' &&
+      !url.port &&
+      !url.username &&
+      pushServiceHosts.some(pattern => pattern.test(url.hostname))
+    )
+  } catch {
+    return false
+  }
+}
+
 export function savePushSubscription(input: {
   citizenId: number
   endpoint: string
@@ -90,6 +114,8 @@ export function sendPushToCitizen(
     badge: '/brand/pwa-badge.png',
   })
   for (const row of rows) {
+    // subscriptions stored before endpoint validation existed are never contacted if they are not a push service
+    if (!isBrowserPushEndpoint(row.endpoint)) continue
     webpush
       .sendNotification({ endpoint: row.endpoint, keys: { p256dh: row.p256dh, auth: row.auth } }, body, {
         TTL: 60 * 60 * 24,

@@ -34,6 +34,10 @@ import {
 } from './submission-access'
 
 const draftKey = (serviceKey: string) => `dhiqar-service-draft:${serviceKey}`
+const newClientRequestId = () =>
+  typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+    ? crypto.randomUUID()
+    : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`
 
 const channelLabel: Record<CatalogService['channel'], string> = {
   ONLINE_SUBMISSION: 'تقديم إلكتروني كامل',
@@ -157,6 +161,8 @@ export function DynamicServiceFormPage({ serviceKey }: { serviceKey: string }) {
     }
   })
   const [busy, setBusy] = useState(false)
+  // stable for this form: resubmitting after a network error cannot create a second request
+  const [clientRequestId] = useState(newClientRequestId)
   const [error, setError] = useState('')
   const [faceVideo, setFaceVideo] = useState<File | null>(null)
   const [faceConsent, setFaceConsent] = useState(false)
@@ -254,6 +260,7 @@ export function DynamicServiceFormPage({ serviceKey }: { serviceKey: string }) {
         faceConsent,
         documents: attached,
         documentConsent,
+        clientRequestId,
       })
       sessionStorage.removeItem(draftKey(service.key))
       setResult(created)

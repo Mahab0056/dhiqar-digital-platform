@@ -186,7 +186,11 @@ export function registerOperationsRoutes(app: express.Express) {
     )
     const unstaffed = departments
       .filter(department => department.underReview + department.actionRequired > 0 && !staffed.has(department.id))
-      .map(department => ({ id: department.id, name: department.name, open: department.underReview + department.actionRequired }))
+      .map(department => ({
+        id: department.id,
+        name: department.name,
+        open: department.underReview + department.actionRequired,
+      }))
     res.json({
       todayApplications: byDay.get(new Date().toISOString().slice(0, 10))?.applications || 0,
       completed: dynamic.completed,
@@ -205,7 +209,7 @@ export function registerOperationsRoutes(app: express.Express) {
     })
   })
 
-  app.get('/api/operations/cameras', requireSession('EMPLOYEE', 'OPERATIONS', 'SUPER_ADMIN'), (_req, res) => {
+  app.get('/api/operations/cameras', requireSession('OPERATIONS', 'SUPER_ADMIN'), (_req, res) => {
     const rows = db
       .prepare(
         `SELECT id, department_id, label, stream_type, enabled, authorization_status, source_name, source_url, last_checked_at, created_at, updated_at
@@ -231,7 +235,9 @@ export function registerOperationsRoutes(app: express.Express) {
 
   app.get(
     '/api/operations/new-request-alerts',
-    requireSession('EMPLOYEE', 'OPERATIONS', 'SUPER_ADMIN'),
+    // province-wide feed (every department's references): operations room and platform admin only;
+    // department employees get their own scoped queue from /api/employee/service-requests
+    requireSession('OPERATIONS', 'SUPER_ADMIN'),
     (_req, res) => {
       const serviceRequests = db
         .prepare(

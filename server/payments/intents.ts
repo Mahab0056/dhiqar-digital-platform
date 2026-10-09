@@ -145,6 +145,12 @@ export function settlePayment(input: {
           timestamp,
           Number(request.id)
         )
+      } else if (request) {
+        // the request already moved on (e.g. the department sent it back for documents): still record the payment
+        db.prepare(`UPDATE service_requests SET payment_status = 'PAID', updated_at = ? WHERE id = ?`).run(
+          timestamp,
+          Number(request.id)
+        )
       }
     }
     db.exec('COMMIT')

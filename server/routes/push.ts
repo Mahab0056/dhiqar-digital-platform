@@ -1,7 +1,14 @@
 import type express from 'express'
 import { z } from 'zod'
 import { requireSession, currentCitizen } from '../auth/session.js'
-import { countPushSubscriptions, pushEnabled, pushKeys, removePushSubscription, savePushSubscription } from '../push.js'
+import {
+  countPushSubscriptions,
+  isBrowserPushEndpoint,
+  pushEnabled,
+  pushKeys,
+  removePushSubscription,
+  savePushSubscription,
+} from '../push.js'
 
 export function registerPushRoutes(app: express.Express) {
   app.get('/api/push/config', (_req, res) => {
@@ -21,7 +28,8 @@ export function registerPushRoutes(app: express.Express) {
     if (!pushEnabled()) return res.status(503).json({ message: 'إشعارات المتصفح غير مفعّلة على الخادم.' })
     const payload = z
       .object({
-        endpoint: z.string().url().max(2048),
+        // the server POSTs to this URL later: only accept the browsers' real push services (no SSRF to internal hosts)
+        endpoint: z.string().url().max(2048).refine(isBrowserPushEndpoint),
         keys: z.object({ p256dh: z.string().min(10).max(500), auth: z.string().min(5).max(500) }),
       })
       .safeParse(req.body)

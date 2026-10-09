@@ -428,9 +428,9 @@ describe('catalog-driven online services', () => {
     expect(municipality.underReview).toBeGreaterThan(0)
     expect(typeof stats.body.overdue).toBe('number')
     // the municipality has an active employee, so it must not be flagged as unstaffed
-    expect(
-      stats.body.unstaffedDepartments.some((item: { id: string }) => item.id === 'dhiqar-municipalities')
-    ).toBe(false)
+    expect(stats.body.unstaffedDepartments.some((item: { id: string }) => item.id === 'dhiqar-municipalities')).toBe(
+      false
+    )
   })
 
   it('scopes the employee queue to the employee department', async () => {
@@ -646,7 +646,10 @@ describe('push notifications', () => {
     const ok = await request(app)
       .post('/api/citizen/push/subscribe')
       .set('Cookie', citizen)
-      .send({ endpoint: 'https://push.example.test/sub/abc', keys: { p256dh: 'p256dh-key-value', auth: 'auth-value' } })
+      .send({
+        endpoint: 'https://fcm.googleapis.com/fcm/send/abc',
+        keys: { p256dh: 'p256dh-key-value', auth: 'auth-value' },
+      })
     expect(ok.status).toBe(200)
     expect(ok.body.devices).toBe(1)
     const status = await request(app).get('/api/citizen/push/status').set('Cookie', citizen)
@@ -654,7 +657,7 @@ describe('push notifications', () => {
     const off = await request(app)
       .post('/api/citizen/push/unsubscribe')
       .set('Cookie', citizen)
-      .send({ endpoint: 'https://push.example.test/sub/abc' })
+      .send({ endpoint: 'https://fcm.googleapis.com/fcm/send/abc' })
     expect(off.body.devices).toBe(0)
   })
 })

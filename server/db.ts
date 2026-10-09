@@ -639,6 +639,11 @@ ensureColumn('payment_intents', 'service_request_id', 'INTEGER')
 ensureColumn('payment_intents', 'checkout_url', 'TEXT')
 ensureColumn('payment_intents', 'description', 'TEXT')
 ensureColumn('payment_intents', 'requested_by', 'TEXT')
+// idempotency key sent by the citizen's form: a double click or a retried upload returns the same request
+ensureColumn('service_requests', 'client_request_id', 'TEXT')
+db.exec(
+  'CREATE UNIQUE INDEX IF NOT EXISTS idx_service_requests_client_request ON service_requests(citizen_id, client_request_id) WHERE client_request_id IS NOT NULL'
+)
 db.exec(
   'CREATE UNIQUE INDEX IF NOT EXISTS idx_citizens_account_key ON citizens(account_key) WHERE account_key IS NOT NULL'
 )
@@ -1149,4 +1154,5 @@ export function resetDemo() {
   }
 }
 
-ensureDemoCitizen()
+// The fabricated "verified" demo citizen is no longer inserted at import time: on a fresh database it appeared in
+// the citizens directory and the KPIs as if it were a real verified account (ensureDemoCitizen stays for old callers).

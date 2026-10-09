@@ -25,6 +25,22 @@ export const errorHandler = (
       .status(400)
       .json({ message: 'تعذر قبول المرفقات بسبب العدد أو الصيغة. تحقق من الملفات ثم أعد الإرسال.', requestId })
   }
+  // body-parser errors (malformed JSON, payload too large, bad charset) carry their own 4xx status and a `type`
+  const parserError = error as { status?: unknown; type?: unknown } | null
+  if (
+    typeof parserError?.status === 'number' &&
+    parserError.status >= 400 &&
+    parserError.status < 500 &&
+    typeof parserError.type === 'string'
+  )
+    return res.status(parserError.status).json({
+      message:
+        parserError.status === 413 ? 'حجم البيانات المرسلة أكبر من المسموح.' : 'صيغة البيانات المرسلة غير صالحة.',
+      requestId,
+    })
+  // rejected by the upload fileFilter (e.g. text/html, svg): a client error, not a server failure
+  if (error instanceof Error && error.message.includes('صيغة الملف غير مدعومة'))
+    return res.status(400).json({ message: 'صيغة الملف غير مدعومة. ارفع صورة (JPG/PNG/WebP) أو ملف PDF.', requestId })
   if (error instanceof Error && error.message.includes('محتوى الملف'))
     return res
       .status(400)

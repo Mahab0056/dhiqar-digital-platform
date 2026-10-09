@@ -169,6 +169,9 @@ function departmentScope(session: SessionData): { sql: string; values: string[] 
   return { sql: 'AND sr.department_id = ?', values: [session.departmentId] }
 }
 
+/** References whose approval (PDF issuance) is being written right now — single API replica, see docs/DATABASE.md. */
+const approvalsInFlight = new Set<string>()
+
 function canActOn(session: SessionData, row: Record<string, unknown>) {
   if (session.role === 'SUPER_ADMIN') return true
   return Boolean(session.departmentId) && session.departmentId === String(row.department_id)
@@ -203,8 +206,38 @@ export function registerServiceRequestsRoutes(app: express.Express) {
         data: z.record(z.string(), z.unknown()),
         faceConsent: z.literal('true'),
         documentConsent: z.literal('true').optional(),
+        clientRequestId: z
+          .string()
+          .regex(/^[A-Za-z0-9-]{8,80}$/)
+          .optional(),
       })
       .parse({ ...req.body, data: rawData })
+    // idempotency: a double click, a second tab or a retried upload with the same form key returns the first request
+    if (payload.clientRequestId) {
+      const sessionCitizen = currentCitizen(res)
+      if (!sessionCitizen) return
+      const existing = db
+        .prepare(`${fullRowSql} WHERE sr.citizen_id = ? AND sr.client_request_id = ?`)
+        .get(sessionCitizen.id, payload.clientRequestId) as Record<string, unknown> | undefined
+      if (existing) {
+        const view = serializeServiceRequestForCitizen(existing)
+        const pending = view.payments.find(item => item.status !== 'PAID')
+        return res.status(200).json({
+          id: view.id,
+          reference: view.reference,
+          serviceKey: view.serviceKey,
+          serviceName: view.serviceName,
+          department: view.departmentName,
+          status: view.status,
+          currentAction: view.currentAction,
+          checklist: view.checklist,
+          payment: pending ? { reference: pending.reference, amountIqd: pending.amountIqd, mode: pending.mode } : null,
+          appointment: view.appointment,
+          createdAt: view.createdAt,
+          duplicate: true,
+        })
+      }
+    }
     const service = getCatalogService(payload.serviceKey)
     if (!service || service.mode === 'SPECIALIZED' || service.mode === 'EXTERNAL')
       return res.status(404).json({ message: 'هذه الخدمة لا تُقدَّم عبر الاستمارة الإلكترونية.' })
@@ -332,8 +365,8 @@ export function registerServiceRequestsRoutes(app: express.Express) {
     try {
       const result = db
         .prepare(
-          `INSERT INTO service_requests (reference, citizen_id, service_id, department_id, status, form_data, current_action, document_checklist, payment_status, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+          `INSERT INTO service_requests (reference, citizen_id, service_id, department_id, status, form_data, current_action, document_checklist, payment_status, client_request_id, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
         )
         .run(
           reference,
@@ -345,6 +378,7 @@ export function registerServiceRequestsRoutes(app: express.Express) {
           currentAction,
           '[]',
           feeDue ? 'PENDING' : payAtOffice ? 'PAY_AT_OFFICE' : 'NOT_REQUIRED',
+          payload.clientRequestId || null,
           timestamp,
           timestamp
         )
@@ -494,7 +528,7 @@ export function registerServiceRequestsRoutes(app: express.Express) {
           .prepare(`${fullRowSql} WHERE sr.reference = ? AND sr.citizen_id = ?`)
           .get(param(req, 'reference'), citizen.id) as Record<string, unknown> | undefined
         if (!row) return res.status(404).json({ message: 'طلب الخدمة غير موجود ضمن حسابك.' })
-        if (['APPROVED', 'REJECTED'].includes(String(row.status)))
+        if (['APPROVED', 'REJECTED'].includes(String(row.status)) || approvalsInFlight.has(String(row.reference)))
           return res.status(409).json({ message: 'هذا الطلب مغلق ولا يمكن تعديل مستمسكاته.' })
         if (!req.file) return res.status(400).json({ message: 'اختر صورة أو ملف PDF واضحاً قبل الرفع.' })
         const checklist = parseChecklist(row.document_checklist)
@@ -671,7 +705,7 @@ export function registerServiceRequestsRoutes(app: express.Express) {
       const row = loadRequest(param(req, 'reference'))
       if (!row) return res.status(404).json({ message: 'طلب الخدمة غير موجود.' })
       if (!canActOn(session, row)) return res.status(403).json({ message: 'هذا الطلب يخص دائرة أخرى.' })
-      if (['APPROVED', 'REJECTED'].includes(String(row.status)))
+      if (['APPROVED', 'REJECTED'].includes(String(row.status)) || approvalsInFlight.has(String(row.reference)))
         return res.status(409).json({ message: 'الطلب مغلق ولا يمكن تعديل نتائج التدقيق.' })
       const payload = z
         .object({ status: z.enum(['VERIFIED', 'REJECTED']), note: z.string().trim().max(400).optional() })
@@ -718,6 +752,10 @@ export function registerServiceRequestsRoutes(app: express.Express) {
       if (!canActOn(session, row)) return res.status(403).json({ message: 'هذا الطلب يخص دائرة أخرى.' })
       if (['APPROVED', 'REJECTED'].includes(String(row.status)))
         return res.status(409).json({ message: 'صدر قرار نهائي سابق لهذا الطلب.' })
+      if (approvalsInFlight.has(String(row.reference)))
+        return res
+          .status(409)
+          .json({ message: 'يجري حفظ قرار الموافقة على هذا الطلب الآن. أعد تحميل الصفحة بعد لحظات.' })
       const parsed = z
         .object({
           status: z.enum(['UNDER_REVIEW', 'ACTION_REQUIRED', 'APPROVED', 'REJECTED', 'PAYMENT_REQUIRED']),
@@ -730,7 +768,9 @@ export function registerServiceRequestsRoutes(app: express.Express) {
         })
         .safeParse(req.body)
       if (!parsed.success) return res.status(400).json({ message: 'تحقق من الحالة ووصف الإجراء قبل الحفظ.' })
-      const pendingPayments = listPaymentsForRequest(Number(row.id)).filter(item => item.status === 'PENDING')
+      // a fee stays owed until it is PAID: a FAILED or CANCELLED attempt can be retried by the citizen, but it never
+      // lets the request be approved (or a second fee be stacked on top of it)
+      const pendingPayments = listPaymentsForRequest(Number(row.id)).filter(item => item.status !== 'PAID')
 
       // ---- fee determined by the department → citizen pays, then the request comes back ------
       if (parsed.data.status === 'PAYMENT_REQUIRED') {
@@ -802,18 +842,25 @@ export function registerServiceRequestsRoutes(app: express.Express) {
       const timestamp = new Date().toISOString()
       let issuedDocument: Awaited<ReturnType<typeof createIssuedDocument>> | null = null
       if (decision.status === 'APPROVED') {
-        issuedDocument = await createIssuedDocument({
-          sourceKind: 'SERVICE_REQUEST',
-          serviceRequestReference: String(row.reference),
-          citizenId: Number(row.citizen_id),
-          citizenName: String(row.citizen_name),
-          serviceName: String(row.service_name),
-          departmentName: String(row.department_name),
-          documentTitle: `وثيقة إتمام معاملة — ${String(row.service_name)}`,
-          issuedBy: session.actor,
-          issuedAt: timestamp,
-          details: serviceRequestDocumentDetails(row),
-        })
+        // PDF rendering is the only await in this handler: while it runs, every other change to this request
+        // (a second approval click, another decision, a citizen upload) is refused instead of racing it
+        approvalsInFlight.add(String(row.reference))
+        try {
+          issuedDocument = await createIssuedDocument({
+            sourceKind: 'SERVICE_REQUEST',
+            serviceRequestReference: String(row.reference),
+            citizenId: Number(row.citizen_id),
+            citizenName: String(row.citizen_name),
+            serviceName: String(row.service_name),
+            departmentName: String(row.department_name),
+            documentTitle: `وثيقة إتمام معاملة — ${String(row.service_name)}`,
+            issuedBy: session.actor,
+            issuedAt: timestamp,
+            details: serviceRequestDocumentDetails(row),
+          })
+        } finally {
+          approvalsInFlight.delete(String(row.reference))
+        }
       }
       const requiredList = [...rejectedDocs, ...missingDocs].map(item =>
         item.note ? `${item.label} (${item.note})` : item.label

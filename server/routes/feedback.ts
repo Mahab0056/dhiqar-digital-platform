@@ -62,10 +62,12 @@ export function registerFeedbackRoutes(app: express.Express) {
         return res.status(400).json({ message: 'حدد موقعاً كاملاً أو اترك حقلي الموقع فارغين.' })
       if (parsed.departmentId && !departmentRegistry.some(item => item.id === parsed.departmentId))
         return res.status(400).json({ message: 'الدائرة المحددة غير موجودة في سجل المنصة.' })
-      const feedback = createFeedback({ citizenId: citizen.id, ...parsed })
       const files = (req.files || []) as Express.Multer.File[]
+      // validate every attachment before writing anything, so a bad file never leaves a half-saved complaint
+      const mimeTypes = files.map(file => validateUploadedFile(file, ['image', 'pdf']))
+      const feedback = createFeedback({ citizenId: citizen.id, ...parsed })
       for (const [index, file] of files.entries()) {
-        const mimeType = validateUploadedFile(file, ['image', 'pdf'])
+        const mimeType = mimeTypes[index]
         const media = storeEncryptedMedia({
           citizenId: citizen.id,
           purpose: 'FEEDBACK_ATTACHMENT',

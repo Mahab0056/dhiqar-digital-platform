@@ -316,9 +316,12 @@ export const api = {
     faceConsent: boolean
     documents: Record<string, File>
     documentConsent: boolean
+    /** one key per filled form: a double click or a retried upload returns the same request instead of a duplicate */
+    clientRequestId?: string
   }) => {
     const form = new FormData()
     form.append('serviceKey', input.serviceKey)
+    if (input.clientRequestId) form.append('clientRequestId', input.clientRequestId)
     form.append('data', JSON.stringify(input.data))
     form.append('faceConsent', String(input.faceConsent))
     form.append('documentConsent', String(input.documentConsent))
