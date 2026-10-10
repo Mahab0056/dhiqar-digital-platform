@@ -1,0 +1,14 @@
+dhiqar-districts.geojson — Dhi Qar governorate and its 15 districts (أقضية)
+
+Boundaries: © OpenStreetMap contributors, Open Database License (ODbL 1.0) — https://www.openstreetmap.org/copyright
+  Source relations: governorate 3244380; districts 11044685, 11044688, 11044691, 11044692, 11044695, 11044697,
+  11044703, 11044705, 11044707, 11044709, 11044713, 11044715; Nasr 11044710, Batha 11044712 and
+  Karmat Bani Saad 11044694 (mapped in OSM as sub-districts; the 2024 census counts them as districts, so they are
+  cut out of their former parent district). Fetched 2026-10-10 via https://polygons.openstreetmap.fr and
+  simplified with shared edges preserved (shapely coverage_simplify, ~400 m tolerance).
+
+Why not geoBoundaries / OCHA COD-AB ADM2: that dataset (CC BY 3.0 IGO, 2021) still has Dhi Qar's five older
+districts (Nasiriya, Shatra, Rifai, Suq Al-Shoyokh, Chibayish), which no longer match the 2024 census or the
+department registry.
+
+areaKm2 is an approximate area computed from the simplified polygon, not an official figure.

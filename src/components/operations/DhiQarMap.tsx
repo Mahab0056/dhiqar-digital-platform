@@ -1,9 +1,25 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import L from 'leaflet'
 import type { Feature, FeatureCollection, Geometry, Polygon } from 'geojson'
-import { GeoJSON, MapContainer, Marker, Popup, ScaleControl, TileLayer, Tooltip, useMap, useMapEvents } from 'react-leaflet'
+import {
+  GeoJSON,
+  MapContainer,
+  Marker,
+  Popup,
+  ScaleControl,
+  TileLayer,
+  Tooltip,
+  useMap,
+  useMapEvents,
+} from 'react-leaflet'
 import { Building2, Crosshair, Layers, Landmark, Maximize2, Minimize2, Search, ShieldAlert } from 'lucide-react'
 import type { DashboardStats } from '../../types'
+import { MapBoundary, SwitchTo2D } from '../maps/map-fallback'
+import { hasWebGL } from '../maps/webgl'
+import type { DrillMapApi } from '../maps/DistrictDrillMap'
+
+// the 3D drill-down map (MapLibre) loads on demand; Leaflet below stays as its fallback
+const DistrictDrillMap = lazy(() => import('../maps/DistrictDrillMap'))
 
 type Department = DashboardStats['departments'][number]
 type Located = Department & { lat: number; lng: number }
@@ -58,7 +74,13 @@ const urIcon = L.divIcon({
 })
 
 /** Mouse position readout + map reference for the toolbar */
-function MapBridge({ onReady, onMove }: { onReady: (map: L.Map) => void; onMove: (latlng: L.LatLng | null) => void }) {
+function MapBridge({
+  onReady,
+  onMove,
+}: {
+  onReady: (map: L.Map) => void
+  onMove: (latlng: { lat: number; lng: number } | null) => void
+}) {
   const map = useMap()
   useEffect(() => {
     onReady(map)
@@ -70,9 +92,12 @@ function MapBridge({ onReady, onMove }: { onReady: (map: L.Map) => void; onMove:
 export function DhiQarMap({
   departments,
   unstaffed = [],
+  variant = 'operations',
 }: {
   departments: DashboardStats['departments']
   unstaffed?: DashboardStats['unstaffedDepartments']
+  /** what the 3D district drill-down summarises: workload (operations) or performance (governor) */
+  variant?: 'operations' | 'governor'
 }) {
   const shellRef = useRef<HTMLElement>(null)
   const mapRef = useRef<L.Map | null>(null)
@@ -84,8 +109,11 @@ export function DhiQarMap({
   const [category, setCategory] = useState('الكل')
   const [query, setQuery] = useState('')
   const [selected, setSelected] = useState<string | null>(null)
-  const [cursor, setCursor] = useState<L.LatLng | null>(null)
+  const [cursor, setCursor] = useState<{ lat: number; lng: number } | null>(null)
   const [fullscreen, setFullscreen] = useState(false)
+  const [mode, setMode] = useState<'3d' | '2d'>(() => (hasWebGL() ? '3d' : '2d'))
+  const drillApi = useRef<DrillMapApi | null>(null)
+  const switchTo2D = useCallback(() => setMode('2d'), [])
 
   useEffect(() => {
     let alive = true
@@ -124,6 +152,8 @@ export function DhiQarMap({
       .sort((a, b) => openWork(b) - openWork(a) || a.name.localeCompare(b.name, 'ar'))
   }, [located, category, query])
 
+  const visibleIds = useMemo(() => new Set(visible.map(item => String(item.id))), [visible])
+
   const stateOf = useCallback(
     (department: Department): 'idle' | 'busy' | 'alert' =>
       unstaffedIds.has(String(department.id)) ? 'alert' : openWork(department) > 0 ? 'busy' : 'idle',
@@ -145,8 +175,7 @@ export function DhiQarMap({
   }, [departments])
 
   const governorate = areas?.features.find(feature => feature.properties.kind === 'governorate') as
-    | Feature<Polygon, Area>
-    | undefined
+    Feature<Polygon, Area> | undefined
   const mask = useMemo(() => {
     if (!governorate) return null
     const world = [
@@ -165,10 +194,10 @@ export function DhiQarMap({
   const districts = useMemo(
     () =>
       areas
-        ? ({ ...areas, features: areas.features.filter(feature => feature.properties.kind === 'district') } as FeatureCollection<
-            Geometry,
-            Area
-          >)
+        ? ({
+            ...areas,
+            features: areas.features.filter(feature => feature.properties.kind === 'district'),
+          } as FeatureCollection<Geometry, Area>)
         : null,
     [areas]
   )
@@ -189,14 +218,21 @@ export function DhiQarMap({
         const lats = ring.map(point => point[1])
         return {
           name: feature.properties.name,
-          center: [(Math.min(...lats) + Math.max(...lats)) / 2, (Math.min(...lngs) + Math.max(...lngs)) / 2] as [number, number],
+          center: [(Math.min(...lats) + Math.max(...lats)) / 2, (Math.min(...lngs) + Math.max(...lngs)) / 2] as [
+            number,
+            number,
+          ],
         }
       }),
     [districts]
   )
-  const fitGovernorate = () => mapRef.current?.flyToBounds(GOVERNORATE_BOUNDS, { padding: [24, 24], duration: 0.9 })
+  const fitGovernorate = () =>
+    mode === '3d'
+      ? drillApi.current?.fitGovernorate()
+      : mapRef.current?.flyToBounds(GOVERNORATE_BOUNDS, { padding: [24, 24], duration: 0.9 })
   const focus = (department: Located) => {
     setSelected(String(department.id))
+    if (mode === '3d') return
     mapRef.current?.flyTo([department.lat, department.lng], 15, { duration: 0.9 })
     window.setTimeout(() => markerRefs.current.get(String(department.id))?.openPopup(), 950)
   }
@@ -289,173 +325,207 @@ export function DhiQarMap({
           </ul>
           {pendingCoordinates > 0 && (
             <p className="gis-note">
-              <Building2 aria-hidden="true" /> {pendingCoordinates.toLocaleString('en-US')} جهة أخرى بانتظار إحداثيات رسمية
-              موثّقة ولا تُرسم تخميناً.
+              <Building2 aria-hidden="true" /> {pendingCoordinates.toLocaleString('en-US')} جهة أخرى بانتظار إحداثيات
+              رسمية موثّقة ولا تُرسم تخميناً.
             </p>
           )}
         </aside>
 
         <div className="gis-stage">
-          <MapContainer
-            bounds={GOVERNORATE_BOUNDS}
-            boundsOptions={{ padding: [24, 24] }}
-            minZoom={7}
-            zoomSnap={0.25}
-            zoomDelta={0.5}
-            maxZoom={18}
-            scrollWheelZoom
-            zoomControl={false}
-            className="gis-map"
-          >
-            <MapBridge onReady={handleReady} onMove={setCursor} />
-            <TileLayer
-              key={basemap}
-              url={tiles.url}
-              attribution={tiles.attribution}
-              maxZoom={19}
-              maxNativeZoom={basemap === 'dark' ? 16 : 19}
-            />
-            {basemap !== 'light' && (
+          {mode === '3d' ? (
+            <MapBoundary fallback={<SwitchTo2D onSwitch={switchTo2D} />}>
+              <Suspense fallback={<div className="gis-map" aria-hidden="true" />}>
+                <DistrictDrillMap
+                  departments={departments}
+                  visibleIds={visibleIds}
+                  stateOf={stateOf}
+                  basemap={basemap}
+                  showDistricts={showDistricts}
+                  showLandmarks={showLandmarks}
+                  selectedId={selected}
+                  onSelectDepartment={setSelected}
+                  variant={variant}
+                  onReady={api => (drillApi.current = api)}
+                  onCursor={setCursor}
+                  onUnavailable={switchTo2D}
+                />
+              </Suspense>
+            </MapBoundary>
+          ) : (
+            <MapContainer
+              bounds={GOVERNORATE_BOUNDS}
+              boundsOptions={{ padding: [24, 24] }}
+              minZoom={7}
+              zoomSnap={0.25}
+              zoomDelta={0.5}
+              maxZoom={18}
+              scrollWheelZoom
+              zoomControl={false}
+              className="gis-map"
+            >
+              <MapBridge onReady={handleReady} onMove={setCursor} />
               <TileLayer
-                key={`labels-${basemap}`}
-                url={
-                  basemap === 'dark'
-                    ? 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}'
-                    : 'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}'
-                }
+                key={basemap}
+                url={tiles.url}
+                attribution={tiles.attribution}
                 maxZoom={19}
                 maxNativeZoom={basemap === 'dark' ? 16 : 19}
               />
-            )}
-            {mask && (
-              <GeoJSON
-                key="mask"
-                data={mask}
-                interactive={false}
-                style={{ stroke: false, fillColor: '#020a07', fillOpacity: basemap === 'light' ? 0.38 : 0.55 }}
-              />
-            )}
-            {showDistricts && districts && (
-              <GeoJSON
-                key={`districts-${districtStats.size}`}
-                data={districts}
-                style={{ color: '#7fd8aa', weight: 1.2, opacity: 0.75, dashArray: '4 4', fillColor: '#29c27f', fillOpacity: 0.04 }}
-                onEachFeature={(feature, layer) => {
-                  const name = (feature.properties as Area).name
-                  const row = districtStats.get(name)
-                  layer.bindTooltip(
-                    `<strong>قضاء ${name}</strong><span>${row ? `${row.total} جهة · ${row.open} طلب مفتوح` : 'لا توجد جهات مسجلة بعد'}</span>`,
-                    { sticky: true, className: 'gis-tip', direction: 'top' }
-                  )
-                  layer.on({
-                    mouseover: () => (layer as L.Path).setStyle({ fillOpacity: 0.16, weight: 2.2, dashArray: '' }),
-                    mouseout: () => (layer as L.Path).setStyle({ fillOpacity: 0.04, weight: 1.2, dashArray: '4 4' }),
-                    click: () => mapRef.current?.flyToBounds((layer as L.Polygon).getBounds(), { padding: [30, 30], duration: 0.8 }),
-                  })
-                }}
-              />
-            )}
-            {showDistricts &&
-              districtLabels.map(label => (
-                <Marker
-                  key={`label-${label.name}`}
-                  position={label.center}
-                  interactive={false}
-                  keyboard={false}
-                  icon={L.divIcon({
-                    className: '',
-                    iconSize: [120, 14],
-                    iconAnchor: [60, 7],
-                    html: `<div class="gis-district-label">${label.name}</div>`,
-                  })}
+              {basemap !== 'light' && (
+                <TileLayer
+                  key={`labels-${basemap}`}
+                  url={
+                    basemap === 'dark'
+                      ? 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}'
+                      : 'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}'
+                  }
+                  maxZoom={19}
+                  maxNativeZoom={basemap === 'dark' ? 16 : 19}
                 />
-              ))}
-            {governorate && (
-              <GeoJSON
-                key="governorate"
-                data={governorate}
-                interactive={false}
-                style={{ color: '#e2c57f', weight: 2.6, opacity: 0.95, fill: false, className: 'gis-border' }}
-              />
-            )}
-            {showLandmarks && (
-              <Marker position={UR} icon={urIcon} title="زقورة أور" zIndexOffset={-500}>
-                <Popup>
-                  <div className="gis-popup">
-                    <strong>زقورة أور</strong>
-                    <span>موقع أثري سومري — ضمن موقع «أهوار جنوب العراق» على قائمة التراث العالمي لليونسكو (2016)</span>
-                  </div>
-                </Popup>
-              </Marker>
-            )}
-            {visible.map(department => {
-              const state = stateOf(department)
-              const open = openWork(department)
-              return (
-                <Marker
-                  key={department.id}
-                  position={[department.lat, department.lng]}
-                  icon={markerIcon(state, open, String(department.id) === selected)}
-                  title={department.name}
-                  ref={marker => {
-                    if (marker) markerRefs.current.set(String(department.id), marker)
-                    else markerRefs.current.delete(String(department.id))
+              )}
+              {mask && (
+                <GeoJSON
+                  key="mask"
+                  data={mask}
+                  interactive={false}
+                  style={{ stroke: false, fillColor: '#020a07', fillOpacity: basemap === 'light' ? 0.38 : 0.55 }}
+                />
+              )}
+              {showDistricts && districts && (
+                <GeoJSON
+                  key={`districts-${districtStats.size}`}
+                  data={districts}
+                  style={{
+                    color: '#7fd8aa',
+                    weight: 1.2,
+                    opacity: 0.75,
+                    dashArray: '4 4',
+                    fillColor: '#29c27f',
+                    fillOpacity: 0.04,
                   }}
-                  eventHandlers={{ click: () => setSelected(String(department.id)) }}
-                >
-                  <Tooltip direction="top" offset={[0, -10]} className="gis-tip">
-                    <strong>{department.name}</strong>
-                  </Tooltip>
-                  <Popup minWidth={240}>
+                  onEachFeature={(feature, layer) => {
+                    const name = (feature.properties as Area).name
+                    const row = districtStats.get(name)
+                    layer.bindTooltip(
+                      `<strong>قضاء ${name}</strong><span>${row ? `${row.total} جهة · ${row.open} طلب مفتوح` : 'لا توجد جهات مسجلة بعد'}</span>`,
+                      { sticky: true, className: 'gis-tip', direction: 'top' }
+                    )
+                    layer.on({
+                      mouseover: () => (layer as L.Path).setStyle({ fillOpacity: 0.16, weight: 2.2, dashArray: '' }),
+                      mouseout: () => (layer as L.Path).setStyle({ fillOpacity: 0.04, weight: 1.2, dashArray: '4 4' }),
+                      click: () =>
+                        mapRef.current?.flyToBounds((layer as L.Polygon).getBounds(), {
+                          padding: [30, 30],
+                          duration: 0.8,
+                        }),
+                    })
+                  }}
+                />
+              )}
+              {showDistricts &&
+                districtLabels.map(label => (
+                  <Marker
+                    key={`label-${label.name}`}
+                    position={label.center}
+                    interactive={false}
+                    keyboard={false}
+                    icon={L.divIcon({
+                      className: '',
+                      iconSize: [120, 14],
+                      iconAnchor: [60, 7],
+                      html: `<div class="gis-district-label">${label.name}</div>`,
+                    })}
+                  />
+                ))}
+              {governorate && (
+                <GeoJSON
+                  key="governorate"
+                  data={governorate}
+                  interactive={false}
+                  style={{ color: '#e2c57f', weight: 2.6, opacity: 0.95, fill: false, className: 'gis-border' }}
+                />
+              )}
+              {showLandmarks && (
+                <Marker position={UR} icon={urIcon} title="زقورة أور" zIndexOffset={-500}>
+                  <Popup>
                     <div className="gis-popup">
-                      <strong>{department.name}</strong>
+                      <strong>زقورة أور</strong>
                       <span>
-                        {department.district} — {department.type}
+                        موقع أثري سومري — ضمن موقع «أهوار جنوب العراق» على قائمة التراث العالمي لليونسكو (2016)
                       </span>
-                      {state === 'alert' && (
-                        <p className="gis-popup-alert">
-                          <ShieldAlert aria-hidden="true" /> لا يوجد موظف مفعّل لمعالجة طلبات هذه الدائرة
-                        </p>
-                      )}
-                      <dl>
-                        <div>
-                          <dt>مفتوحة</dt>
-                          <dd>{open.toLocaleString('en-US')}</dd>
-                        </div>
-                        <div>
-                          <dt>منجزة</dt>
-                          <dd>{department.completed.toLocaleString('en-US')}</dd>
-                        </div>
-                        <div>
-                          <dt>شكاوى</dt>
-                          <dd>{department.openFeedback.toLocaleString('en-US')}</dd>
-                        </div>
-                      </dl>
-                      <small dir="ltr">
-                        {department.lat.toFixed(5)}, {department.lng.toFixed(5)}
-                      </small>
-                      <div className="gis-popup-links">
-                        <a href={`/departments/${encodeURIComponent(String(department.id))}`}>صفحة الدائرة</a>
-                        <a
-                          href={`https://www.google.com/maps/dir/?api=1&destination=${department.lat},${department.lng}`}
-                          target="_blank"
-                          rel="noreferrer"
-                        >
-                          الاتجاهات ↗
-                        </a>
-                        {department.sourceUrl && (
-                          <a href={department.sourceUrl} target="_blank" rel="noreferrer">
-                            المصدر ↗
-                          </a>
-                        )}
-                      </div>
                     </div>
                   </Popup>
                 </Marker>
-              )
-            })}
-            <ScaleControl position="bottomleft" imperial={false} />
-          </MapContainer>
+              )}
+              {visible.map(department => {
+                const state = stateOf(department)
+                const open = openWork(department)
+                return (
+                  <Marker
+                    key={department.id}
+                    position={[department.lat, department.lng]}
+                    icon={markerIcon(state, open, String(department.id) === selected)}
+                    title={department.name}
+                    ref={marker => {
+                      if (marker) markerRefs.current.set(String(department.id), marker)
+                      else markerRefs.current.delete(String(department.id))
+                    }}
+                    eventHandlers={{ click: () => setSelected(String(department.id)) }}
+                  >
+                    <Tooltip direction="top" offset={[0, -10]} className="gis-tip">
+                      <strong>{department.name}</strong>
+                    </Tooltip>
+                    <Popup minWidth={240}>
+                      <div className="gis-popup">
+                        <strong>{department.name}</strong>
+                        <span>
+                          {department.district} — {department.type}
+                        </span>
+                        {state === 'alert' && (
+                          <p className="gis-popup-alert">
+                            <ShieldAlert aria-hidden="true" /> لا يوجد موظف مفعّل لمعالجة طلبات هذه الدائرة
+                          </p>
+                        )}
+                        <dl>
+                          <div>
+                            <dt>مفتوحة</dt>
+                            <dd>{open.toLocaleString('en-US')}</dd>
+                          </div>
+                          <div>
+                            <dt>منجزة</dt>
+                            <dd>{department.completed.toLocaleString('en-US')}</dd>
+                          </div>
+                          <div>
+                            <dt>شكاوى</dt>
+                            <dd>{department.openFeedback.toLocaleString('en-US')}</dd>
+                          </div>
+                        </dl>
+                        <small dir="ltr">
+                          {department.lat.toFixed(5)}, {department.lng.toFixed(5)}
+                        </small>
+                        <div className="gis-popup-links">
+                          <a href={`/departments/${encodeURIComponent(String(department.id))}`}>صفحة الدائرة</a>
+                          <a
+                            href={`https://www.google.com/maps/dir/?api=1&destination=${department.lat},${department.lng}`}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            الاتجاهات ↗
+                          </a>
+                          {department.sourceUrl && (
+                            <a href={department.sourceUrl} target="_blank" rel="noreferrer">
+                              المصدر ↗
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    </Popup>
+                  </Marker>
+                )
+              })}
+              <ScaleControl position="bottomleft" imperial={false} />
+            </MapContainer>
+          )}
 
           <div className="gis-toolbar" role="toolbar" aria-label="أدوات الخريطة">
             <div className="gis-seg" role="group" aria-label="نوع الخريطة">
@@ -492,10 +562,18 @@ export function DhiQarMap({
           </div>
 
           <div className="gis-zoom" role="group" aria-label="التكبير">
-            <button type="button" onClick={() => mapRef.current?.zoomIn()} aria-label="تكبير">
+            <button
+              type="button"
+              onClick={() => (mode === '3d' ? drillApi.current?.zoomIn() : mapRef.current?.zoomIn())}
+              aria-label="تكبير"
+            >
               +
             </button>
-            <button type="button" onClick={() => mapRef.current?.zoomOut()} aria-label="تصغير">
+            <button
+              type="button"
+              onClick={() => (mode === '3d' ? drillApi.current?.zoomOut() : mapRef.current?.zoomOut())}
+              aria-label="تصغير"
+            >
               −
             </button>
             <button type="button" onClick={fitGovernorate} aria-label="عرض المحافظة كاملة" title="عرض المحافظة كاملة">

@@ -5,6 +5,7 @@ import Anthropic from '@anthropic-ai/sdk'
  * flip a flag on Railway and restart without code changes:
  * - ANTHROPIC_API_KEY             the Claude API key; without it the assistant runs in deterministic fallback mode
  * - ASSISTANT_MODEL               model id (default claude-opus-5-5)
+ * - ASSISTANT_CHAT_EFFORT         low | medium | high for the citizen chat (default medium)
  * - ASSISTANT_DOCUMENT_REVIEW     "true" lets the staff review send the uploaded files (ID documents) to the API
  * - ASSISTANT_DISABLED            "true" forces fallback mode even with a key (kill switch)
  * - ASSISTANT_DAILY_TOKEN_LIMIT   optional cost guard: past this many tokens today the chat falls back to search
@@ -13,6 +14,15 @@ export const DEFAULT_ASSISTANT_MODEL = 'claude-opus-5-5'
 export const FALLBACK_BETA = 'server-side-fallback-2026-07-01'
 
 export const assistantModel = () => process.env.ASSISTANT_MODEL?.trim() || DEFAULT_ASSISTANT_MODEL
+export type ChatEffort = 'low' | 'medium' | 'high'
+/**
+ * Effort of the citizen chat. Default medium: on Claude Opus 5.5 it is the API default and noticeably better than low
+ * at picking the right service and asking the right follow-up question, at a still modest cost per answer.
+ */
+export const chatEffort = (): ChatEffort => {
+  const value = process.env.ASSISTANT_CHAT_EFFORT?.trim().toLowerCase()
+  return value === 'low' || value === 'high' ? value : 'medium'
+}
 export const documentReviewEnabled = () => process.env.ASSISTANT_DOCUMENT_REVIEW?.trim().toLowerCase() === 'true'
 export const apiKeyConfigured = () => Boolean(process.env.ANTHROPIC_API_KEY?.trim())
 const killSwitch = () => process.env.ASSISTANT_DISABLED?.trim().toLowerCase() === 'true'
@@ -29,12 +39,20 @@ export type ModelRequest = Omit<Anthropic.Beta.MessageCreateParamsNonStreaming, 
  * The only surface the assistant needs from the SDK. Tests inject a fake implementation (setAssistantClient) so
  * no test ever reaches the real API.
  */
+export type StreamHandlers = {
+  /** A text delta of the current model turn. */
+  onText: (delta: string) => void
+  /**
+   * A server-side fallback took over mid-stream (a `fallback` content block started): the text streamed so far was
+   * written by the declining model and is superseded by what follows.
+   */
+  onFallback?: () => void
+  signal?: AbortSignal
+}
+
 export interface AssistantModelClient {
   /** Streams one model turn; `onText` receives text deltas as they arrive. Resolves with the complete message. */
-  stream(
-    request: ModelRequest,
-    handlers: { onText: (delta: string) => void; signal?: AbortSignal }
-  ): Promise<BetaMessage>
+  stream(request: ModelRequest, handlers: StreamHandlers): Promise<BetaMessage>
   /** One non-streaming call (structured output for the staff review). */
   create(request: ModelRequest, options?: { signal?: AbortSignal }): Promise<BetaMessage>
 }
@@ -46,9 +64,12 @@ class SdkAssistantClient implements AssistantModelClient {
     this.sdk = new Anthropic({ apiKey, maxRetries: 2, timeout: 120_000 })
   }
 
-  async stream(request: ModelRequest, handlers: { onText: (delta: string) => void; signal?: AbortSignal }) {
+  async stream(request: ModelRequest, handlers: StreamHandlers) {
     const stream = this.sdk.beta.messages.stream(request, { signal: handlers.signal })
     stream.on('text', delta => handlers.onText(delta))
+    stream.on('streamEvent', event => {
+      if (event.type === 'content_block_start' && event.content_block.type === 'fallback') handlers.onFallback?.()
+    })
     return stream.finalMessage()
   }
 

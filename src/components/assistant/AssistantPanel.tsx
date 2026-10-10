@@ -14,13 +14,19 @@ import {
   RotateCcw,
   Send,
   ShieldCheck,
-  Sparkles,
   Square,
   UserPlus,
+  Volume2,
+  VolumeX,
   X,
 } from 'lucide-react'
 import { useSession } from '../../lib/session'
 import { AssistantMarkdown } from './AssistantMarkdown'
+import { AfandiMark } from './afandi/AfandiMark'
+import { AfandiOrb } from './afandi/AfandiOrb'
+import { createOrbVoice, type OrbVoice } from './afandi/orbEngine'
+import { playAfandiSound, useAfandiMuted } from './afandi/sound'
+import { applyAssistantEvent } from './assistant-reducer'
 import {
   getAssistantConfig,
   handDraftToServicePage,
@@ -33,6 +39,8 @@ import {
   type AssistantUiPayload,
 } from './assistant-client'
 
+export const ASSISTANT_NAME = 'أفندي — مساعد ذي قار'
+
 type UiMessage = {
   id: string
   role: 'user' | 'assistant'
@@ -44,15 +52,16 @@ type UiMessage = {
   error?: string
 }
 
-const STORAGE_KEY = 'dqa-chat-v1'
+// v2: v1 conversations may hold answers stored with the repeated text of the old stream handling
+const STORAGE_KEY = 'dqa-chat-v2'
 const MAX_STORED = 30
 const GREETING: UiMessage = {
   id: 'greeting',
   role: 'assistant',
-  text: 'هلا بيك، آني **مساعد ذي قار الآلي**. أدلّك على المستمسكات والخطوات لأي خدمة، أفتحلك الخدمة مباشرة، وأتابع وياك معاملاتك. شتحتاج اليوم؟',
+  text: 'هلا بيك، آني **أفندي** — المساعد الآلي لمنصة ذي قار الرقمية. أدلّك على المستمسكات والخطوات لأي خدمة، أفتحلك الخدمة مباشرة، وأتابع وياك معاملاتك. شتحتاج اليوم؟',
   ui: [],
 }
-const SUGGESTIONS = ['كيف أسجّل؟', 'أريد أطلع جواز', 'شنو المستمسكات لإجازة بناء؟', 'تابع معاملتي']
+const SUGGESTIONS = ['كيف أسجّل؟', 'أريد أطلع جواز', 'شنو المستمسكات لإجازة بناء؟', 'شلون أدفع الرسم؟', 'تابع معاملتي']
 
 const newId = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
 
@@ -63,20 +72,6 @@ function readStored(): UiMessage[] {
   } catch {
     return [GREETING]
   }
-}
-
-/** Several tool results of one answer become one set of cards (newest first, no duplicates). */
-function mergeUi(list: AssistantUiPayload[], payload: AssistantUiPayload): AssistantUiPayload[] {
-  if (payload.kind === 'services') {
-    const previous = list.find(item => item.kind === 'services') as
-      Extract<AssistantUiPayload, { kind: 'services' }> | undefined
-    const items = [...payload.items, ...(previous?.items || [])].filter(
-      (item, index, all) => all.findIndex(other => other.key === item.key) === index
-    )
-    return [...list.filter(item => item.kind !== 'services'), { kind: 'services', items: items.slice(0, 3) }]
-  }
-  if (payload.kind === 'registration' && list.some(item => item.kind === 'registration')) return list
-  return [...list.filter(item => item.kind !== payload.kind), payload]
 }
 
 type SpeechRecognitionLike = {
@@ -125,6 +120,22 @@ export function AssistantPanel({
   const inputRef = useRef<HTMLTextAreaElement | null>(null)
   const abortRef = useRef<AbortController | null>(null)
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null)
+  const busyRef = useRef(false)
+  const promptRef = useRef<string | null>(null)
+  const orbRef = useRef<HTMLSpanElement | null>(null)
+  const voiceRef = useRef<OrbVoice | null>(null)
+  const [muted, setMuted] = useAfandiMuted()
+
+  useEffect(() => {
+    const orb = orbRef.current
+    if (!orb) return
+    const voice = createOrbVoice(orb)
+    voiceRef.current = voice
+    return () => {
+      voice.destroy()
+      voiceRef.current = null
+    }
+  }, [])
 
   useEffect(() => {
     if (!open || mode) return
@@ -190,7 +201,9 @@ export function AssistantPanel({
   const send = useCallback(
     async (raw: string) => {
       const text = raw.trim().slice(0, 2000)
-      if (!text || busy) return
+      // a ref, not the state: a double Enter / click (or a re-run effect) in the same frame must not send twice
+      if (!text || busyRef.current) return
+      busyRef.current = true
       const user: UiMessage = { id: newId(), role: 'user', text, ui: [] }
       const reply: UiMessage = { id: newId(), role: 'assistant', text: '', ui: [], streaming: true }
       const history: AssistantTurn[] = [...messages.filter(message => message.id !== GREETING.id), user]
@@ -202,30 +215,17 @@ export function AssistantPanel({
       setBusy(true)
       const controller = new AbortController()
       abortRef.current = controller
+      let finalText = ''
       const onEvent = (event: AssistantEvent) => {
-        switch (event.type) {
-          case 'meta':
-            setMode(event.mode)
-            break
-          case 'text':
-            update(reply.id, message => ({ ...message, text: message.text + event.delta, status: undefined }))
-            break
-          case 'status':
-            update(reply.id, message => ({ ...message, status: event.label }))
-            break
-          case 'ui':
-            update(reply.id, message => ({ ...message, ui: mergeUi(message.ui, event.payload) }))
-            break
-          case 'reset':
-            update(reply.id, message => ({ ...message, text: '', ui: [] }))
-            break
-          case 'notice':
-            update(reply.id, message => ({ ...message, notice: event.message }))
-            break
-          case 'error':
-            update(reply.id, message => ({ ...message, error: event.message }))
-            break
+        if (event.type === 'meta') {
+          setMode(event.mode)
+          return
         }
+        update(reply.id, message => {
+          const next = applyAssistantEvent(message, event)
+          if (event.type === 'done') finalText = next.text
+          return { ...message, ...next }
+        })
       }
       try {
         await streamAssistantChat(history, onEvent, controller.signal)
@@ -242,19 +242,28 @@ export function AssistantPanel({
           status: undefined,
           text: message.text || (controller.signal.aborted ? 'أوقفت الرد.' : message.text),
         }))
+        busyRef.current = false
         setBusy(false)
         abortRef.current = null
+        if (!controller.signal.aborted && finalText) {
+          voiceRef.current?.burst(finalText.length)
+          playAfandiSound('notify')
+        }
       }
     },
-    [busy, messages]
+    [messages]
   )
 
   useEffect(() => {
-    if (open && initialPrompt && !busy) {
-      onInitialPromptUsed?.()
-      void send(initialPrompt)
-    }
+    // the ref makes the hand-off idempotent (StrictMode re-runs effects; the parent clears the prompt a render later)
+    if (!open || !initialPrompt || busy || promptRef.current === initialPrompt) return
+    promptRef.current = initialPrompt
+    onInitialPromptUsed?.()
+    void send(initialPrompt)
   }, [open, initialPrompt, busy, send, onInitialPromptUsed])
+  useEffect(() => {
+    if (!initialPrompt) promptRef.current = null
+  }, [initialPrompt])
 
   const reset = () => {
     abortRef.current?.abort()
@@ -304,24 +313,32 @@ export function AssistantPanel({
       className={`dqa-panel${open ? ' is-open' : ''}`}
       role="dialog"
       aria-modal="false"
-      aria-label="مساعد ذي قار الآلي"
+      aria-label={ASSISTANT_NAME}
       hidden={!open}
     >
       <header className="dqa-head">
-        <span className="dqa-avatar" aria-hidden="true">
-          <Sparkles />
+        <span className="dqa-avatar afd-head-orb">
+          <AfandiOrb ref={orbRef} state={busy ? 'typing' : 'idle'} rest={!open} markSize={30} />
         </span>
         <div className="dqa-head-text">
-          <strong>مساعد ذي قار الآلي</strong>
+          <strong>
+            أفندي <span className="afd-head-sub">— مساعد ذي قار</span>
+          </strong>
           <small className={`dqa-mode ${mode === 'fallback' ? 'is-basic' : ''}`}>
             <i aria-hidden="true" />
-            {mode === 'fallback'
-              ? 'وضع البحث السريع في دليل الخدمات'
-              : mode === 'ai'
-                ? 'متصل — ذكاء اصطناعي'
-                : 'جارٍ الاتصال…'}
+            {mode === 'fallback' ? 'بحث سريع في دليل الخدمات' : mode === 'ai' ? 'متصل — ذكاء اصطناعي' : 'جارٍ الاتصال…'}
           </small>
         </div>
+        <button
+          type="button"
+          className="dqa-icon-button"
+          onClick={() => setMuted(!muted)}
+          aria-label={muted ? 'تشغيل أصوات أفندي' : 'كتم أصوات أفندي'}
+          aria-pressed={muted}
+          title={muted ? 'تشغيل الصوت' : 'كتم الصوت'}
+        >
+          {muted ? <VolumeX /> : <Volume2 />}
+        </button>
         <button
           type="button"
           className="dqa-icon-button"
@@ -348,7 +365,8 @@ export function AssistantPanel({
                     {message.streaming && <span className="dqa-caret" aria-hidden="true" />}
                   </div>
                 ) : message.streaming ? (
-                  <div className="dqa-bubble dqa-typing" aria-label="المساعد يكتب">
+                  <div className="dqa-bubble dqa-typing" role="status" aria-label="أفندي يكتب">
+                    <AfandiMark size={22} motion="typing" className="afd-typing-mark" />
                     <span />
                     <span />
                     <span />

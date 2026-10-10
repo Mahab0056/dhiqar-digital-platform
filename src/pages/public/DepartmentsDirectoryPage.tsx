@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'wouter'
 import { ArrowLeft, Building2, ExternalLink, MapPin, Search, ShieldCheck, X } from 'lucide-react'
-import { CircleMarker, MapContainer, Popup, TileLayer, Tooltip as LeafletTooltip } from 'react-leaflet'
 import { api } from '../../api'
 import type { DepartmentDirectoryResponse, DepartmentSummary } from '../../types'
 import { PublicHeader } from '../../components/public/PublicHeader'
 import { Footer } from '../../components/public/Footer'
 import { EmptyState, PageHeader } from '../../components/public/PageHeader'
+import { DepartmentsMap } from '../../components/maps/DepartmentsMap'
+import { isLocated } from '../../components/maps/departments-map-model'
 
 export const categoryIconLabel = (category: string) => category.split(' ')[0]
 
@@ -39,10 +40,10 @@ export function DepartmentsDirectoryPage() {
     })
   }, [data, query, category, district])
 
-  const located = items.filter(
-    (item): item is DepartmentSummary & { lat: number; lng: number } =>
-      typeof item.lat === 'number' && typeof item.lng === 'number'
-  )
+  const located = items.filter(isLocated)
+  // the 3D map draws every located department once and animates the filtered ones in and out
+  const allLocated = useMemo(() => (data ? data.items.filter(isLocated) : []), [data])
+  const visibleIds = useMemo(() => new Set(items.map(item => item.id)), [items])
   const grouped = useMemo(() => {
     const map = new Map<string, DepartmentSummary[]>()
     for (const item of items) map.set(item.category, [...(map.get(item.category) || []), item])
@@ -127,33 +128,11 @@ export function DepartmentsDirectoryPage() {
             )}
 
             <div className="depts-map">
-              <MapContainer center={[31.05, 46.25]} zoom={11} scrollWheelZoom={false} className="depts-leaflet">
-                <TileLayer
-                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                />
-                {located.map(item => (
-                  <CircleMarker
-                    key={item.id}
-                    center={[item.lat, item.lng]}
-                    radius={8}
-                    pathOptions={{ color: '#ffffff', weight: 2, fillColor: '#075e45', fillOpacity: 1 }}
-                  >
-                    <LeafletTooltip direction="top" offset={[0, -8]} opacity={1}>
-                      {item.name}
-                    </LeafletTooltip>
-                    <Popup>
-                      <div className="gis-popup">
-                        <strong>{item.name}</strong>
-                        <span>
-                          {item.district} — {item.category}
-                        </span>
-                        <Link href={`/departments/${item.id}`}>صفحة الدائرة ←</Link>
-                      </div>
-                    </Popup>
-                  </CircleMarker>
-                ))}
-              </MapContainer>
+              {data ? (
+                <DepartmentsMap departments={allLocated} visibleIds={visibleIds} />
+              ) : (
+                <div className="map3d-shell is-loading" aria-hidden="true" />
+              )}
               <p>
                 <MapPin aria-hidden="true" /> تُرسم فقط الجهات ذات الإحداثيات الموثقة (
                 {located.length.toLocaleString('en-US')} من {items.length.toLocaleString('en-US')})، والبقية بانتظار

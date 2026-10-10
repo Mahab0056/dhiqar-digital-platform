@@ -8,6 +8,7 @@ import { runChat, type ChatEvent } from '../assistant/chat.js'
 import {
   apiKeyConfigured,
   assistantModel,
+  chatEffort,
   dailyTokenLimit,
   documentReviewEnabled,
   getAssistantClient,
@@ -56,7 +57,7 @@ export function registerAssistantRoutes(app: express.Express) {
   /** Public: which mode the widget runs in (no secrets). */
   app.get('/api/assistant/config', (req, res) => {
     const session = readSession(req)
-    res.json({ mode: assistantMode(), signedIn: session?.role === 'CITIZEN', name: 'مساعد ذي قار الآلي' })
+    res.json({ mode: assistantMode(), signedIn: session?.role === 'CITIZEN', name: 'أفندي — مساعد ذي قار' })
   })
 
   /** Citizen chat, streamed as Server-Sent Events. Conversation state is held by the browser and capped here. */
@@ -109,7 +110,7 @@ export function registerAssistantRoutes(app: express.Express) {
       model: assistantModel(),
       documentReview: documentReviewEnabled(),
       dailyTokenLimit: dailyTokenLimit(),
-      effort: { chat: 'low', review: 'medium' },
+      effort: { chat: chatEffort(), review: 'medium' },
       usage: usageSummary(),
     })
   })

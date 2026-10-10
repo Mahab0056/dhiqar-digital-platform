@@ -335,6 +335,8 @@ export interface DashboardStats {
     completed: number
     rejected: number
     openFeedback: number
+    /** open service requests past their SLA due date (absent on older API responses) */
+    overdue?: number
     workforce: {
       totalEmployees: number | null
       presentEmployees: number | null

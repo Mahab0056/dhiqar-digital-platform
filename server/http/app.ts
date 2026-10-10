@@ -26,8 +26,20 @@ export function createApp() {
           // news photos are hot-linked from their publishers (https only), so any https host may serve an image
           imgSrc: ["'self'", 'data:', 'blob:', 'https:'],
           mediaSrc: ["'self'", 'blob:'],
-          connectSrc: ["'self'", 'ws:', 'wss:', 'https://nominatim.openstreetmap.org'],
+          // tiles.openfreemap.org: the 3D maps' keyless vector style, tiles, glyphs and sprites;
+          // server.arcgisonline.com: the operations map's satellite imagery (MapLibre fetches raster tiles)
+          connectSrc: [
+            "'self'",
+            'ws:',
+            'wss:',
+            'https://nominatim.openstreetmap.org',
+            'https://tiles.openfreemap.org',
+            'https://server.arcgisonline.com',
+          ],
           scriptSrc: ["'self'"],
+          // MapLibre's tile worker: a same-origin module file, with a blob: wrapper as its fallback
+          workerSrc: ["'self'", 'blob:'],
+          childSrc: ["'self'", 'blob:'],
           styleSrc: ["'self'", "'unsafe-inline'"],
           fontSrc: ["'self'", 'data:'],
           formAction: ["'self'"],

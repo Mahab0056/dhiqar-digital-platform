@@ -224,6 +224,18 @@ export function registerOperationsRoutes(app: express.Express) {
     )`
       )
       .get() as { hours: number | null }
+    // per-department SLA breaches (open requests past their due date) — feeds the district drill-down on the 3D map
+    const overdueByDepartment = new Map(
+      (
+        db
+          .prepare(
+            `SELECT department_id, COUNT(*) AS total FROM service_requests
+             WHERE status NOT IN ('APPROVED', 'REJECTED', 'ACTION_REQUIRED', 'PAYMENT_PENDING') AND due_at IS NOT NULL AND due_at < ?
+             GROUP BY department_id`
+          )
+          .all(new Date().toISOString()) as Array<{ department_id: string; total: number }>
+      ).map(row => [String(row.department_id), Number(row.total)])
+    )
     // departments receiving citizen work but with no active employee account to handle it
     const staffed = new Set(
       (
@@ -252,7 +264,10 @@ export function registerOperationsRoutes(app: express.Express) {
       unstaffedDepartments: unstaffed,
       automationRate: 0,
       series,
-      departments,
+      departments: departments.map(department => ({
+        ...department,
+        overdue: overdueByDepartment.get(department.id) || 0,
+      })),
       registry: registrySummary,
     })
   })

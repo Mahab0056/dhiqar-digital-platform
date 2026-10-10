@@ -2,8 +2,12 @@ import { z } from 'zod'
 import type Anthropic from '@anthropic-ai/sdk'
 import { db } from '../db.js'
 import { listPublicDepartments } from '../departments.js'
+import { paymentProvider } from '../payments/providers.js'
 import { getCatalogService, normalizeArabic, type CatalogService } from '../services/catalog.js'
 import { searchCatalog } from '../services/search.js'
+import { platformHelp, PLATFORM_HELP_TOPICS, registrationSteps } from './knowledge.js'
+
+export { registrationSteps }
 
 /**
  * Server-executed, read-only tools of the citizen assistant. The tool list is the SAME for every request (sorted by
@@ -79,6 +83,28 @@ export function feeNote(service: CatalogService) {
   return 'لا يوجد رسم مسجل لهذه الخدمة في بيانات المنصة'
 }
 
+/** How an OFFICIAL fee is paid on this deployment (online gateway vs the department office). */
+export function paymentNote(service: CatalogService) {
+  if (service.feeStatus !== 'OFFICIAL' || !service.feeIqd) return null
+  return paymentProvider()
+    ? 'يُدفع الرسم إلكترونياً من صفحة الطلب بعد التقديم (زر «سداد الرسم» في معاملاتي).'
+    : 'الدفع الإلكتروني غير مفعّل حالياً: يُدفع الرسم في الدائرة نفسها ويسجّل الموظف الوصل على طلبك.'
+}
+
+/** Public contact data of the department that runs a service (only what is officially recorded). */
+export function departmentContact(departmentId: string) {
+  const item = listPublicDepartments().find(department => department.id === departmentId)
+  if (!item) return null
+  return {
+    name: item.name,
+    district: item.district,
+    address: item.address || 'العنوان غير مسجل في بياناتنا',
+    phone: item.phone || 'لا يوجد رقم رسمي مسجل',
+    page: `/departments/${item.id}`,
+    onMap: item.lat != null && item.lng != null,
+  }
+}
+
 export function serviceCard(service: CatalogService): ServiceCard {
   return {
     key: service.key,
@@ -112,15 +138,6 @@ export function serviceSteps(service: CatalogService) {
     steps.push('بعد التدقيق تحدد الدائرة موعد حضورك؛ احضر بالموعد ومعك أصول المستمسكات.')
   return steps
 }
-
-export const registrationSteps = [
-  'ادخل رقم هاتفك العراقي واطلب رمز التحقق (OTP) ثم اكتبه في المنصة — لا تعطِ الرمز لأي شخص، حتى لو قال إنه موظف أو المساعد.',
-  'صوّر البطاقة الوطنية الموحدة (الوجه الأمامي ثم الخلفي) بالكاميرا مباشرة وبإضاءة جيدة.',
-  'راجع البيانات المقروءة من البطاقة واكتب اسمك الثلاثي بالعربي كما في البطاقة.',
-  'سجّل فيديو قصير للوجه (حوالي 7 ثوانٍ): انظر للكاميرا ثم أدر رأسك ببطء يميناً ثم يساراً (تحدي الحيوية).',
-  'يطابق الذكاء الاصطناعي وجهك مع صورة البطاقة؛ عند التطابق تُوثَّق هويتك فوراً، وإلا يراجع طلبك موظف مختص.',
-  'بعد التوثيق تقدر تقدم على كل خدمات المنصة بنفس الحساب، وتابع طلباتك من «معاملاتي».',
-]
 
 /** Question words citizens wrap around a service name ("شنو المستمسكات لـ…") that only add noise to the search. */
 const FILLER = new Set(
@@ -161,6 +178,7 @@ const draftInput = z.object({
   answers: z.array(z.object({ field_key: z.string().trim().min(1).max(80), value: z.string().max(1000) })).max(40),
 })
 const emptyInput = z.object({}).strict()
+const helpInput = z.object({ topic: z.enum(PLATFORM_HELP_TOPICS) })
 
 const objectSchema = (properties: Record<string, unknown>, required: string[]) => ({
   type: 'object' as const,
@@ -176,6 +194,21 @@ export const assistantTools: Anthropic.Beta.BetaTool[] = [
     description:
       'Lists the signed-in citizen\'s own service requests (reference, service, status, missing documents). Call it when the citizen asks about "معاملتي", "طلباتي", "شنو صار بطلبي" without giving a reference number. Returns NOT_SIGNED_IN for visitors.',
     input_schema: objectSchema({}, []),
+  },
+  {
+    name: 'get_platform_help',
+    description:
+      'Official answers about how the platform itself works: registration and identity verification, signing in, OTP safety, paying fees (online vs at the office), tracking requests and notifications, complaints and suggestions, news, tenders, tutorial videos, verifying an issued document by QR, privacy. Call it for any "how does the platform…" question that is not about one specific service.',
+    input_schema: objectSchema(
+      {
+        topic: {
+          type: 'string',
+          enum: [...PLATFORM_HELP_TOPICS],
+          description: 'The platform topic the citizen asks about',
+        },
+      },
+      ['topic']
+    ),
   },
   {
     name: 'get_registration_help',
@@ -238,7 +271,9 @@ export const assistantTools: Anthropic.Beta.BetaTool[] = [
       ['query']
     ),
   },
-].map(tool => ({ ...tool, strict: true }))
+]
+  .map(tool => ({ ...tool, strict: true }))
+  .sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0))
 
 const parseChecklist = (
   value: unknown
@@ -300,6 +335,7 @@ export function serviceDetails(service: CatalogService) {
     channel: channelLabels[service.channel],
     canApplyOnline: service.channel !== 'INFORMATION_ONLY',
     fee: feeNote(service),
+    payment: paymentNote(service) || undefined,
     estimatedDuration: service.estimatedDuration || 'غير محددة في البيانات',
     requiredDocuments: service.requiredDocuments.map(doc => ({
       label: doc.label,
@@ -314,6 +350,12 @@ export function serviceDetails(service: CatalogService) {
       options: field.options?.length ? field.options : undefined,
     })),
     notes: service.notes || undefined,
+    departmentContact: departmentContact(service.departmentId) || undefined,
+    links: {
+      servicePage: `/service/${service.key}`,
+      startForVisitor: `/onboarding?continue=${encodeURIComponent(`/service/${service.key}`)}`,
+      myRequests: '/citizen',
+    },
     servicePage: `/service/${service.key}`,
   }
 }
@@ -365,8 +407,11 @@ export function executeTool(name: string, rawInput: unknown, context: ToolContex
               title: service.title,
               department: service.departmentName,
               channel: channelLabels[service.channel],
+              canApplyOnline: service.channel !== 'INFORMATION_ONLY',
               fee: feeNote(service),
+              estimatedDuration: service.estimatedDuration || undefined,
               requiredDocuments: service.requiredDocuments.slice(0, 8).map(doc => doc.label),
+              servicePage: `/service/${service.key}`,
             })),
             note: services.length ? undefined : 'لا توجد خدمة مطابقة في الكتالوج. اقترح كلمات أخرى أو مراجعة الدائرة.',
           },
@@ -383,6 +428,15 @@ export function executeTool(name: string, rawInput: unknown, context: ToolContex
             isError: true,
           }
         return { content: serviceDetails(service), ui: { kind: 'services', items: [serviceCard(service)] } }
+      }
+      case 'get_platform_help': {
+        const input = helpInput.safeParse(rawInput)
+        if (!input.success) return invalid(`topic must be one of: ${PLATFORM_HELP_TOPICS.join(', ')}`)
+        const entry = platformHelp(input.data.topic, { onlinePayment: Boolean(paymentProvider()) })
+        return {
+          content: entry,
+          ui: input.data.topic === 'registration' ? { kind: 'registration' } : undefined,
+        }
       }
       case 'get_registration_help': {
         if (!emptyInput.safeParse(rawInput ?? {}).success) return invalid('no input expected')
@@ -414,12 +468,20 @@ export function executeTool(name: string, rawInput: unknown, context: ToolContex
             name: item.name,
             district: item.district,
             category: item.category,
+            parentMinistry: item.parentMinistry || undefined,
             address: item.address || 'العنوان غير مسجل في بياناتنا',
             phone: item.phone || 'لا يوجد رقم رسمي مسجل',
             onlineServices: item.digitalServices,
+            onMap: item.lat != null && item.lng != null,
             page: `/departments/${item.id}`,
           }))
-        return { content: { results: items } }
+        return {
+          content: {
+            results: items,
+            directoryPage: '/departments',
+            note: items.length ? undefined : 'لا توجد دائرة مطابقة. جرّب كلمة أخرى أو افتح دليل الدوائر /departments.',
+          },
+        }
       }
       case 'get_my_requests': {
         if (!context.citizenId) return { content: NEEDS_SIGN_IN, isError: true }

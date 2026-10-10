@@ -1,4 +1,6 @@
+import { paymentProvider } from '../payments/providers.js'
 import { normalizeArabic } from '../services/catalog.js'
+import { platformHelp, type PlatformHelpTopic } from './knowledge.js'
 import {
   citizenRequest,
   citizenRequests,
@@ -16,6 +18,25 @@ import {
  * registration steps and request lookups the model's tools use, phrased from templates. Never a broken widget.
  */
 export type FallbackAnswer = { text: string; ui: ToolUiPayload[] }
+
+/** Platform questions (not a service): keyword → get_platform_help topic. Order matters (first match wins). */
+const HELP_ROUTES: Array<[RegExp, PlatformHelpTopic]> = [
+  [/شكوى|شكاوى|اشتكي|مقترح|بلاغ|ابلغ/, 'complaints'],
+  [/ادفع|الدفع|دفع الرسم|سداد|زين ?كاش|فلوس الرسم/, 'payments'],
+  [/مناقص/, 'tenders'],
+  [/(^| )(اخبار|الاخبار)( |$)/, 'news'],
+  [/فيديو|فديو|فيديوهات تعليميه/, 'guides'],
+  [/تحقق من (وثيقه|الوثيقه|شهاده)|qr|رمز الاستجابه|باركود/, 'verify_document'],
+  [/خصوصيه|بياناتي|معلوماتي الشخصيه/, 'privacy'],
+  [/(ما وصلني|ما يوصل|ما اجاني).*(رمز|كود)|تسجيل الدخول|ادخل لحسابي|نسيت/, 'sign_in'],
+]
+
+function helpAnswer(topic: PlatformHelpTopic): FallbackAnswer {
+  const entry = platformHelp(topic, { onlinePayment: Boolean(paymentProvider()) })
+  const facts = entry.facts.map(fact => `- ${fact}`).join('\n')
+  const links = entry.links.map(link => `[${link.label}](${link.path})`).join(' · ')
+  return { text: `**${entry.title}**\n${facts}\n\n${links}`, ui: [] }
+}
 
 const REFERENCE = /\b(TQS|APP|SR)[-\s]?\d{4}[-\s]?\d{3,6}\b/i
 const has = (text: string, pattern: RegExp) => pattern.test(text)
@@ -56,7 +77,11 @@ export function fallbackAnswer(message: string, context: ToolContext): FallbackA
       }
     }
     const items = citizenRequests(context.citizenId, 5)
-    if (!items.length) return { text: 'ما عندك طلبات بعد. قلّي شنو الخدمة اللي تحتاجها وأدلك عليها.', ui: [] }
+    if (!items.length)
+      return {
+        text: 'ما عندك طلبات بعد. قلّي شنو الخدمة اللي تحتاجها وأدلك عليها، أو تصفح [دليل الخدمات](/directory).',
+        ui: [],
+      }
     return {
       text: `عندك ${items.length.toLocaleString('en-US')} طلبات حديثة. هذي حالتها:`,
       ui: [{ kind: 'requests', items }],
@@ -78,9 +103,12 @@ export function fallbackAnswer(message: string, context: ToolContext): FallbackA
 
   if (text.split(' ').length <= 3 && has(text, /^(هلا|اهلا|مرحبا|السلام|سلام|هاي|صباح|مساء|شلونك)/))
     return {
-      text: 'هلا بيك! آني مساعد ذي قار الآلي. اكتب اسم الخدمة اللي تحتاجها (مثلاً: جواز، إجازة بناء، شهادة ولادة) وأطلعلك المستمسكات والخطوات.',
+      text: 'هلا بيك! آني **أفندي**، مساعد منصة ذي قار الرقمية. اكتب اسم الخدمة اللي تحتاجها (مثلاً: جواز، إجازة بناء، شهادة ولادة) وأطلعلك المستمسكات والخطوات.',
       ui: [],
     }
+
+  const help = HELP_ROUTES.find(([pattern]) => has(text, pattern))
+  if (help) return helpAnswer(help[1])
 
   const hits = searchForCitizen(message, 4)
   if (!hits.length)
@@ -101,8 +129,15 @@ export function fallbackAnswer(message: string, context: ToolContext): FallbackA
     .join('\n')
   const nearby = [...new Set(hits.slice(1).map(service => service.title))].filter(title => title !== top.title)
   const others = nearby.length ? `\n\nخدمات قريبة: ${nearby.join('، ')}.` : ''
+  const servicePath = `/service/${top.key}`
+  const next =
+    top.channel === 'INFORMATION_ONLY'
+      ? `[تفاصيل الخدمة](${servicePath})`
+      : context.citizenId
+        ? `[افتح الخدمة وقدّم](${servicePath})`
+        : `[سجّل وابدأ الطلب](/onboarding?continue=${encodeURIComponent(servicePath)})`
   return {
-    text: `أقرب خدمة لطلبك: **${top.title}** — ${top.departmentName}.\n\n**المستمسكات:**\n${documents}\n\n**الرسم:** ${feeNote(top)}\n\n**الخطوات:**\n${steps}${others}`,
+    text: `أقرب خدمة لطلبك: **${top.title}** — ${top.departmentName}.\n\n**المستمسكات:**\n${documents}\n\n**الرسم:** ${feeNote(top)}\n\n**الخطوات:**\n${steps}${others}\n\n${next}`,
     ui: [{ kind: 'services', items: hits.slice(0, 3).map(serviceCard) }],
   }
 }

@@ -1,5 +1,5 @@
 /**
- * Browser side of "مساعد ذي قار الآلي": the SSE chat stream, the staff AI review and the admin status.
+ * Browser side of أفندي — مساعد ذي قار: the SSE chat stream, the staff AI review and the admin status.
  * Types mirror server/assistant (chat.ts, tools.ts, review.ts).
  */
 export type AssistantServiceCard = {
@@ -44,6 +44,8 @@ export type AssistantUiPayload =
 export type AssistantEvent =
   | { type: 'meta'; mode: 'ai' | 'fallback'; signedIn: boolean }
   | { type: 'text'; delta: string }
+  /** the text streamed so far was a note before tool calls, not the answer */
+  | { type: 'interim'; note: string }
   | { type: 'status'; label: string }
   | { type: 'ui'; payload: AssistantUiPayload }
   | { type: 'reset' }

@@ -230,10 +230,10 @@ describe('POST /api/assistant/chat', () => {
     expect(textOf(list)).toContain('قائمة الماء')
     expect(list[list.length - 1].type).toBe('done')
 
-    // request shape: cached stable prefix, low effort, strict tools, auto tool choice, server-side fallbacks
+    // request shape: cached stable prefix, medium effort, strict tools, auto tool choice, server-side fallbacks
     const first = client.requests[0]
     expect(first.model).toBe('claude-opus-5-5')
-    expect(first.output_config?.effort).toBe('low')
+    expect(first.output_config?.effort).toBe('medium')
     expect(first.tool_choice).toEqual({ type: 'auto' })
     expect('thinking' in first).toBe(false)
     expect(first.fallbacks).toBe('default')

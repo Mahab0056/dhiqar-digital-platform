@@ -1,6 +1,7 @@
 import type Anthropic from '@anthropic-ai/sdk'
 import {
   assistantModel,
+  chatEffort,
   dailyTokenLimit,
   describeModelError,
   FALLBACK_BETA,
@@ -20,6 +21,12 @@ export type ChatTurn = { role: 'user' | 'assistant'; text: string }
 export type ChatEvent =
   | { type: 'meta'; mode: 'ai' | 'fallback'; signedIn: boolean }
   | { type: 'text'; delta: string }
+  /**
+   * The text streamed since the previous `interim` (or the start) was a progress note the model wrote before calling
+   * tools, not the answer: the client drops it from the answer body (it may show `note` as a passing status line).
+   * Without this every tool round's text piled up in one bubble and the answer read two or three times.
+   */
+  | { type: 'interim'; note: string }
   | { type: 'status'; label: string }
   | { type: 'ui'; payload: ToolUiPayload }
   /** discard the text streamed so far for this answer (a refusal cut it off) */
@@ -30,10 +37,10 @@ export type ChatEvent =
 
 /** Cost guards for one chat turn. */
 export const CHAT_LIMITS = {
-  /** thinking counts toward max_tokens on this model; low effort keeps it short */
-  maxTokens: 6000,
+  /** thinking counts toward max_tokens on this model (it is always on); room for medium-effort thinking + the reply */
+  maxTokens: 12_000,
   /** model calls per citizen message (each tool round is one call) */
-  maxIterations: 5,
+  maxIterations: 6,
   historyTurns: 16,
   historyChars: 12_000,
   messageChars: 2_000,
@@ -43,6 +50,7 @@ const toolLabels: Record<string, string> = {
   search_services: 'يبحث في دليل الخدمات…',
   get_service_details: 'يجلب المستمسكات والخطوات…',
   get_registration_help: 'يجهز خطوات التسجيل…',
+  get_platform_help: 'يراجع دليل المنصة…',
   list_departments: 'يبحث في الدوائر…',
   get_my_requests: 'يراجع معاملاتك…',
   get_request_status: 'يتحقق من حالة طلبك…',
@@ -91,8 +99,9 @@ export function chatRequest(messages: Anthropic.Beta.BetaMessageParam[]): ModelR
     tool_choice: { type: 'auto' },
     messages,
     cache_control: { type: 'ephemeral' },
-    // thinking is always on for this model (omitted = adaptive); effort low = fast, cheap citizen answers
-    output_config: { effort: 'low' },
+    // thinking is always on for this model (omitted = adaptive, display omitted: never shown to the citizen);
+    // effort medium by default (ASSISTANT_CHAT_EFFORT) — low answered too thinly
+    output_config: { effort: chatEffort() },
     betas: [FALLBACK_BETA],
     fallbacks: 'default',
   }
@@ -138,26 +147,33 @@ export async function runChat(input: {
 
   const messages: Anthropic.Beta.BetaMessageParam[] = history.map(turn => ({ role: turn.role, content: turn.text }))
   messages.push({ role: 'system', content: sessionNote(context) })
-  let textSent = false
+  /** text of the final answer streamed so far (the current model call only) */
+  let answerText = ''
+  let anyText = false
 
   for (let iteration = 0; iteration < CHAT_LIMITS.maxIterations; iteration++) {
     let message: BetaMessage
-    let iterationText = false
+    answerText = ''
     try {
       message = await client.stream(chatRequest(messages), {
         signal,
         onText: delta => {
           if (!delta) return
-          textSent = true
-          iterationText = true
+          anyText = true
+          answerText += delta
           send({ type: 'text', delta })
+        },
+        onFallback: () => {
+          // the declining model's partial text is superseded by the fallback model's answer
+          if (answerText) send({ type: 'interim', note: '' })
+          answerText = ''
         },
       })
     } catch (error) {
       if (signal?.aborted) return
       console.error('[assistant] chat model call failed', modelErrorKind(error))
       recordUsage('chat', { errors: 1 })
-      if (!textSent) {
+      if (!anyText) {
         send({ type: 'notice', message: `${describeModelError(error)} هذي نتائج البحث المباشر:` })
         sendFallback(lastMessage, context, send)
       } else send({ type: 'error', message: describeModelError(error) })
@@ -175,6 +191,7 @@ export async function runChat(input: {
       return
     }
     if (message.stop_reason === 'pause_turn') {
+      if (answerText) send({ type: 'interim', note: progressNote(answerText) })
       messages.push({ role: 'assistant', content: echoContent(message.content) })
       continue
     }
@@ -182,11 +199,14 @@ export async function runChat(input: {
       (block): block is Anthropic.Beta.BetaToolUseBlock => block.type === 'tool_use'
     )
     if (message.stop_reason !== 'tool_use' || !toolUses.length) {
-      if (message.stop_reason === 'max_tokens' && !textSent)
+      if (message.stop_reason === 'max_tokens' && !answerText)
         send({ type: 'text', delta: 'عذراً، طال الرد. اسألني بشكل أقصر أو عن خدمة وحدة.' })
-      break
+      send({ type: 'done' })
+      return
     }
 
+    // text written before the tool calls is a progress note, never part of the answer (the answer comes after)
+    if (answerText) send({ type: 'interim', note: progressNote(answerText) })
     messages.push({ role: 'assistant', content: echoContent(message.content) })
     const results: Anthropic.Beta.BetaToolResultBlockParam[] = []
     for (const tool of toolUses) {
@@ -201,9 +221,21 @@ export async function runChat(input: {
       })
     }
     messages.push({ role: 'user', content: results })
-    if (iterationText) send({ type: 'text', delta: '\n\n' })
-    if (iteration === CHAT_LIMITS.maxIterations - 1)
-      send({ type: 'text', delta: 'وقفت هنا حتى لا أطوّل عليك. اسألني سؤالاً أدق وأكمل وياك.' })
   }
+  // the tool budget ran out before a final answer: answer from the catalog instead of a dead end
+  const fallback = fallbackAnswer(lastMessage, context)
+  send({ type: 'text', delta: fallback.text })
+  for (const payload of fallback.ui) send({ type: 'ui', payload })
   send({ type: 'done' })
+}
+
+/** First line of a between-tools note, trimmed for the status line. */
+export function progressNote(text: string) {
+  const line =
+    text
+      .replace(/[*_#>`]/g, '')
+      .split(/\n/)
+      .map(part => part.trim())
+      .find(Boolean) || ''
+  return line.length > 90 ? `${line.slice(0, 88)}…` : line
 }

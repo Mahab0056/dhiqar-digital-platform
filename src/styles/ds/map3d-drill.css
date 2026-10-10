@@ -1,0 +1,336 @@
+/* operations room / governor dashboard: 3D district drill-down (DistrictDrillMap) */
+
+.map3d-shell.is-ops {
+  --map3d-glass: rgba(6, 20, 14, 0.84);
+  --map3d-glass-border: rgba(226, 197, 127, 0.18);
+  position: absolute;
+  inset: 0;
+  height: auto;
+  background: #030b07;
+  color: #eaf4ee;
+  container: drillmap / inline-size;
+}
+.map3d-shell.is-ops[data-basemap='light'] {
+  --map3d-glass: rgba(255, 255, 255, 0.88);
+  --map3d-glass-border: rgba(23, 32, 28, 0.12);
+  background: #dfe7e2;
+  color: #17201c;
+}
+.map3d-shell.is-ops:not([data-basemap='light']) :is(.map3d-tooltip, .map3d-card, .drill-panel) {
+  --ds-text: #eaf4ee;
+  --ds-text-muted: #93b0a1;
+  --ds-text-2: #c9dbd1;
+}
+.map3d-shell.is-ops .map3d-loading {
+  color: #93b0a1;
+}
+.map3d-shell.is-ops .maplibregl-ctrl-scale {
+  border-color: #e2c57f;
+  background: rgba(6, 20, 14, 0.7) !important;
+  color: #eaf4ee;
+}
+
+.drill-picker {
+  position: absolute;
+  z-index: 4;
+  top: 64px;
+  inset-inline-start: 14px;
+}
+.drill-picker select {
+  min-height: 38px;
+  padding: 0 12px;
+  border: 1px solid var(--map3d-glass-border);
+  border-radius: 12px;
+  background: var(--map3d-glass);
+  color: inherit;
+  font: inherit;
+  font-size: var(--ds-text-sm);
+  font-weight: 600;
+  backdrop-filter: blur(12px);
+  cursor: pointer;
+}
+.drill-picker select:focus-visible {
+  outline: 2px solid #e2c57f;
+  outline-offset: 2px;
+}
+.drill-picker option {
+  background: #0b1f16;
+  color: #eaf4ee;
+}
+
+.drill-panel {
+  position: absolute;
+  z-index: 5;
+  top: 112px;
+  bottom: 48px;
+  inset-inline-start: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: min(340px, calc(100% - 28px));
+  overflow-y: auto;
+  padding: 16px;
+  border: 1px solid var(--map3d-glass-border);
+  border-radius: 18px;
+  background: var(--map3d-glass);
+  box-shadow: 0 24px 60px -20px rgba(0, 0, 0, 0.7);
+  color: var(--ds-text);
+  backdrop-filter: blur(16px) saturate(1.3);
+  animation: drill-in 520ms cubic-bezier(0.2, 0.9, 0.3, 1.1) both;
+  scrollbar-width: thin;
+}
+@keyframes drill-in {
+  from {
+    opacity: 0;
+    transform: translateX(40px);
+  }
+}
+.drill-back {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid rgba(226, 197, 127, 0.45);
+  border-radius: 999px;
+  background: rgba(226, 197, 127, 0.12);
+  color: #e2c57f;
+  font: inherit;
+  font-size: var(--ds-text-sm);
+  font-weight: 700;
+  cursor: pointer;
+}
+.map3d-shell.is-ops[data-basemap='light'] .drill-back {
+  color: #8a5a2b;
+}
+.drill-back svg {
+  width: 16px;
+  height: 16px;
+}
+.drill-back:focus-visible,
+.drill-list button:focus-visible,
+.drill-list a:focus-visible {
+  outline: 2px solid #e2c57f;
+  outline-offset: 2px;
+}
+.drill-panel header small {
+  color: var(--ds-text-muted);
+  font-size: var(--ds-text-xs);
+}
+.drill-panel h3 {
+  margin: 0;
+  font-size: 1.6rem;
+  line-height: 1.2;
+}
+.drill-panel header p {
+  margin: 4px 0 0;
+  color: var(--ds-text-muted);
+  font-size: var(--ds-text-xs);
+}
+.drill-facts,
+.drill-kpis {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: 0;
+}
+.drill-facts div,
+.drill-kpis div {
+  display: grid;
+  gap: 2px;
+  padding: 10px;
+  border: 1px solid var(--map3d-glass-border);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+}
+.drill-facts dt,
+.drill-kpis dt {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--ds-text-muted);
+  font-size: var(--ds-text-xs);
+}
+.drill-facts dt svg {
+  width: 14px;
+  height: 14px;
+  color: #e2c57f;
+}
+.drill-facts dd,
+.drill-kpis dd {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.drill-facts small {
+  color: var(--ds-text-muted);
+  font-size: 10.5px;
+  line-height: 1.5;
+}
+.drill-facts a {
+  color: #e2c57f;
+}
+.drill-kpis .is-busy dd {
+  color: #f2b24c;
+}
+.drill-kpis .is-alert dd {
+  color: #ff7a86;
+}
+.drill-panel h4 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 0 0;
+  font-size: var(--ds-text-sm);
+}
+.drill-panel h4 svg {
+  width: 16px;
+  height: 16px;
+  color: #e2c57f;
+}
+.drill-panel h4 small {
+  color: var(--ds-text-muted);
+  font-weight: 400;
+}
+.drill-empty {
+  margin: 0;
+  color: var(--ds-text-muted);
+  font-size: var(--ds-text-sm);
+}
+.drill-list {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.drill-list li {
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+  animation: drill-row 420ms both;
+  animation-delay: calc(var(--i, 0) * 30ms);
+}
+@keyframes drill-row {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+.drill-list button {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  min-height: 36px;
+  padding: 4px 10px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  color: inherit;
+  font: inherit;
+  font-size: var(--ds-text-sm);
+  text-align: start;
+  cursor: pointer;
+}
+.drill-list button:hover:not(:disabled),
+.drill-list button.is-selected {
+  border-color: rgba(226, 197, 127, 0.4);
+  background: rgba(226, 197, 127, 0.1);
+}
+.drill-list button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.drill-list button span {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.drill-list em {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: rgba(242, 178, 76, 0.18);
+  color: #f2b24c;
+  font-size: var(--ds-text-xs);
+  font-style: normal;
+  font-weight: 700;
+}
+.drill-list a {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  color: #e2c57f;
+  text-decoration: none;
+}
+.map3d-card.drill-card {
+  --sector: #e2c57f;
+  inset-block-start: auto;
+  bottom: 48px;
+  inset-inline-start: auto;
+  inset-inline-end: 14px;
+}
+.drill-card dl {
+  grid-template-columns: repeat(4, 1fr);
+}
+.drill-card dd {
+  font-size: 1.05rem;
+}
+.map3d-card p.drill-alert {
+  color: #ff8a94;
+}
+
+@container drillmap (max-width: 640px) {
+  .drill-panel {
+    top: auto;
+    bottom: 44px;
+    max-height: 46%;
+    inset-inline: 8px;
+    width: auto;
+  }
+  .drill-picker {
+    top: 70px;
+    inset-inline-start: 8px;
+  }
+  .map3d-card.drill-card {
+    inset-inline: 8px;
+    bottom: 44px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .drill-panel,
+  .drill-list li {
+    animation: none;
+  }
+}
+
+/* the portal's global heading / definition colours are tuned for light pages — keep the glass legible */
+.map3d-shell.is-ops :is(.drill-panel, .map3d-card, .map3d-tooltip) :is(h3, h4, dd, strong) {
+  color: var(--ds-text);
+}
+.map3d-shell.is-ops .drill-picker select {
+  color: var(--ds-text, #eaf4ee);
+}
+.map3d-shell.is-ops:not([data-basemap='light']) {
+  --ds-text: #eaf4ee;
+  --ds-text-muted: #93b0a1;
+}
+
+.drill-list button,
+.drill-list button span {
+  color: var(--ds-text);
+}
+.map3d-shell.is-ops:not([data-basemap='light']) .map3d-card .button.outline {
+  border-color: rgba(234, 244, 238, 0.28);
+  background: transparent;
+  color: #eaf4ee;
+}
+.map3d-shell.is-ops :is(.maplibregl-ctrl-bottom-right, .maplibregl-ctrl-bottom-left) {
+  bottom: 52px;
+}

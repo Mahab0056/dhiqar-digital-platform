@@ -13,6 +13,8 @@ export default defineConfig({
             { name: 'vendor-react', test: /node_modules[\\/](react|react-dom|scheduler|wouter)[\\/]/ },
             { name: 'vendor-charts', test: /node_modules[\\/](recharts|d3-|victory|internmap)/ },
             { name: 'vendor-map', test: /node_modules[\\/](leaflet|react-leaflet|@react-leaflet)/ },
+            // MapLibre stays in its own chunk, fetched only by pages that render the 3D map
+            { name: 'vendor-maplibre', test: /node_modules[\\/]maplibre-gl[\\/]/ },
             { name: 'vendor-motion', test: /node_modules[\\/](framer-motion|motion)/ },
             { name: 'vendor-icons', test: /node_modules[\\/]lucide-react/ },
             { name: 'vendor', test: /node_modules/ },
