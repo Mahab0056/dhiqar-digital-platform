@@ -13,6 +13,7 @@ import {
   FileArchive,
   FileText,
   Fingerprint,
+  Megaphone,
   RefreshCw,
   ShieldCheck,
   X,
@@ -29,6 +30,7 @@ import { IdentityReviewPanel } from './IdentityReviewPanel'
 import { ServiceRequestAdminPanel } from './ServiceRequestAdminPanel'
 import { AppointmentsDayPanel } from './AppointmentsDayPanel'
 import { ReportExport } from '../../components/shared/ReportExport'
+import { TendersAdminPanel } from '../../components/shared/TendersAdminPanel'
 
 export function EmployeeDashboard() {
   const [, navigate] = useLocation()
@@ -615,6 +617,16 @@ export function EmployeeDashboard() {
                     ]
                   : []),
                 { id: 'employee-feedback', label: 'الشكاوى والمقترحات', icon: Bell, content: <FeedbackAdminPanel /> },
+                ...(session?.isDepartmentManager
+                  ? [
+                      {
+                        id: 'employee-tenders',
+                        label: 'المناقصات والمزادات',
+                        icon: Megaphone,
+                        content: <TendersAdminPanel scope="department" />,
+                      },
+                    ]
+                  : []),
                 {
                   id: 'employee-archive',
                   label: 'الأرشيف',

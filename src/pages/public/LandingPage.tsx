@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Pause, Play } from 'lucide-react'
 import { api } from '../../api'
 import type { CatalogService, CatalogSummary, DepartmentDirectoryResponse } from '../../types'
 import { useRevealOnScroll } from '../../lib/reveal'
@@ -16,6 +15,8 @@ import {
   PortalTrack,
 } from '../../components/home/Portal'
 import { MotionPrefProvider, useMotionPrefState } from '../../components/home/motion-pref'
+import { NewsTicker, PortalNews, PortalTenders, useHomeNews } from '../../components/home/News'
+import { IntroSplash } from '../../components/home/IntroSplash'
 
 /**
  * Home: a working portal front page. Everything below the hero is live catalog and directory data —
@@ -28,6 +29,7 @@ export function LandingPage() {
   const [services, setServices] = useState<CatalogService[] | null>(null)
   const [departments, setDepartments] = useState<DepartmentDirectoryResponse | null>(null)
   const [failed, setFailed] = useState(false)
+  const news = useHomeNews()
 
   useEffect(() => {
     let alive = true
@@ -54,9 +56,11 @@ export function LandingPage() {
   return (
     <MotionPrefProvider value={motionPref}>
       <div className="ld" data-motion={motionPref.still ? 'still' : 'on'}>
+        <IntroSplash />
         <LandingHeader />
         <main id="main-content">
           <LandingHero
+            ticker={<NewsTicker data={news.ticker} />}
             stats={{
               services: summary?.total ?? null,
               departments: departments?.summary.total ?? null,
@@ -71,6 +75,8 @@ export function LandingPage() {
           <PortalPopular catalog={catalog} />
           <PortalCategories summary={summary} />
           <PortalLifeEvents catalog={catalog} />
+          <PortalNews data={news.news} />
+          <PortalTenders tenders={news.tenders} tenderNews={news.tenderNews} />
           <PortalTrack />
           <PortalHow />
           <PortalStaff summary={summary} departments={departments} />
@@ -79,17 +85,6 @@ export function LandingPage() {
           <PortalHelp />
         </main>
         <LandingFooter />
-
-        {!motionPref.reduced && (
-          <button type="button" className="ld-motion-toggle"
-            onClick={motionPref.toggle}
-            aria-pressed={motionPref.paused}
-            aria-label={motionPref.paused ? 'تشغيل الحركة' : 'إيقاف الحركة'}
-          >
-            {motionPref.paused ? <Play aria-hidden="true" /> : <Pause aria-hidden="true" />}
-            <span>{motionPref.paused ? 'تشغيل الحركة' : 'إيقاف الحركة'}</span>
-          </button>
-        )}
       </div>
     </MotionPrefProvider>
   )

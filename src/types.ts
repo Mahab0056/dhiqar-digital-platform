@@ -527,6 +527,8 @@ export type StaffSessionItem = {
 export type StaffAccount = {
   id: string
   username: string
+  /** Work email set by a super admin; enables Google / email-code sign-in. */
+  email: string | null
   fullName: string
   role: StaffRole
   departmentId: string | null
@@ -707,4 +709,85 @@ export type DepartmentManagement = {
   }>
   incomingReferrals: DepartmentReferral[]
   outgoingReferrals: DepartmentReferral[]
+}
+
+// ---- Dhi Qar news and tenders ----
+export type NewsKind = 'NEWS' | 'TENDER'
+export type NewsItem = {
+  id: string
+  source: string
+  sourceName: string
+  title: string
+  link: string
+  excerpt: string
+  imageUrl: string | null
+  publishedAt: string
+  kind: NewsKind
+}
+export type NewsListResponse = {
+  total: number
+  items: NewsItem[]
+  sources: Array<{ name: string; count: number }>
+  updatedAt: string | null
+}
+export type NewsTickerItem = Pick<NewsItem, 'id' | 'title' | 'link' | 'sourceName' | 'publishedAt' | 'kind'>
+export type NewsTickerResponse = { updatedAt: string | null; items: NewsTickerItem[] }
+export type AdminNewsItem = NewsItem & { hidden: boolean; fetchedAt: string }
+export type NewsRunSummary = {
+  startedAt: string
+  finishedAt: string
+  durationMs: number
+  added: number
+  total: number
+  images: number
+  sources: Array<{ id: string; name: string; ok: boolean; parsed: number; kept: number; added: number; error?: string }>
+}
+export type AdminNewsListResponse = {
+  total: number
+  items: AdminNewsItem[]
+  status: { lastRun: NewsRunSummary | null; updatedAt: string | null }
+}
+
+export type TenderType = 'TENDER' | 'AUCTION'
+export type TenderStatus = 'OPEN' | 'CLOSED' | 'CANCELLED' | 'AWARDED'
+export type Tender = {
+  id: string
+  reference: string
+  title: string
+  type: TenderType
+  departmentId: string | null
+  entityName: string
+  district: string | null
+  description: string
+  estimatedCostIqd: number | null
+  bidBond: string | null
+  publishedAt: string
+  closingAt: string
+  status: TenderStatus
+  stateNote: string | null
+  documentUrl: string | null
+  sourceUrl: string | null
+  createdAt: string
+  updatedAt: string
+}
+export type TenderInput = {
+  reference: string
+  title: string
+  type: TenderType
+  departmentId?: string | null
+  entityName?: string
+  district?: string | null
+  description?: string
+  estimatedCostIqd?: number | null
+  bidBond?: string | null
+  publishedAt?: string
+  closingAt: string
+  documentUrl?: string | null
+  sourceUrl?: string | null
+}
+export type TenderListResponse = {
+  total: number
+  counts: Record<TenderStatus, number>
+  items: Tender[]
+  entities: Array<{ id: string; name: string; count: number }>
 }

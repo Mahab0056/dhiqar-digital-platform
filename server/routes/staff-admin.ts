@@ -47,6 +47,7 @@ export function registerStaffAdminRoutes(app: express.Express) {
         fullName: z.string().trim().min(3).max(120),
         role: roleSchema,
         departmentId: z.string().trim().max(80).nullable().optional(),
+        email: z.string().trim().max(254).nullable().optional(),
       })
       .parse(req.body)
     let created: ReturnType<typeof createStaff>
@@ -67,6 +68,7 @@ export function registerStaffAdminRoutes(app: express.Express) {
         username: created.account.username,
         role: created.account.role,
         departmentId: created.account.departmentId,
+        email: created.account.email,
       },
     })
     res.status(201).json({ account: created.account, temporaryPassword: created.temporaryPassword })
@@ -83,6 +85,7 @@ export function registerStaffAdminRoutes(app: express.Express) {
         role: roleSchema.optional(),
         departmentId: z.string().trim().max(80).nullable().optional(),
         isDepartmentManager: z.boolean().optional(),
+        email: z.string().trim().max(254).nullable().optional(),
       })
       .parse(req.body)
     if (payload.isDepartmentManager) {
@@ -101,7 +104,12 @@ export function registerStaffAdminRoutes(app: express.Express) {
       return res.status(409).json({ message: 'لا يمكن إزالة آخر مدير نظام فعّال.' })
     if (payload.departmentId && !departmentById.has(payload.departmentId))
       return res.status(400).json({ message: 'الدائرة المحددة غير موجودة في سجل الدوائر.' })
-    const account = updateStaffProfile(id, payload)
+    let account: ReturnType<typeof updateStaffProfile>
+    try {
+      account = updateStaffProfile(id, payload)
+    } catch (error) {
+      return res.status(400).json({ message: (error as Error).message })
+    }
     if (payload.role && payload.role !== before.role) revokeStaffSessions(id, 'ROLE_CHANGED')
     if (account.role !== before.role || account.departmentId !== before.departmentId) releaseOpenAssignments(id)
     addAudit({
@@ -115,12 +123,14 @@ export function registerStaffAdminRoutes(app: express.Express) {
         role: before.role,
         departmentId: before.departmentId,
         isDepartmentManager: before.isDepartmentManager,
+        email: before.email,
       },
       newValue: {
         fullName: account.fullName,
         role: account.role,
         departmentId: account.departmentId,
         isDepartmentManager: account.isDepartmentManager,
+        email: account.email,
       },
     })
     res.json({ account })

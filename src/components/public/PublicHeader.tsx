@@ -14,6 +14,8 @@ const navItems = [
   },
   { label: 'الدوائر الحكومية', href: '/departments', match: (path: string) => path.startsWith('/departments') },
   { label: 'متابعة معاملة', href: '/citizen#my-requests', match: (path: string) => path === '/citizen' },
+  { label: 'الأخبار', href: '/news', match: (path: string) => path.startsWith('/news') },
+  { label: 'المناقصات', href: '/tenders', match: (path: string) => path.startsWith('/tenders') },
   { label: 'التحقق من وثيقة', href: '/verify', match: (path: string) => path.startsWith('/verify') },
   {
     label: 'الشكاوى والمقترحات',

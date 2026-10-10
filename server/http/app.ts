@@ -23,14 +23,8 @@ export function createApp() {
           defaultSrc: ["'self'"],
           baseUri: ["'self'"],
           frameAncestors: ["'none'"],
-          imgSrc: [
-            "'self'",
-            'data:',
-            'blob:',
-            'https://*.tile.openstreetmap.org',
-            'https://*.basemaps.cartocdn.com',
-            'https://server.arcgisonline.com',
-          ],
+          // news photos are hot-linked from their publishers (https only), so any https host may serve an image
+          imgSrc: ["'self'", 'data:', 'blob:', 'https:'],
           mediaSrc: ["'self'", 'blob:'],
           connectSrc: ["'self'", 'ws:', 'wss:', 'https://nominatim.openstreetmap.org'],
           scriptSrc: ["'self'"],
@@ -65,7 +59,8 @@ export function createApp() {
   app.use('/api', apiLimiter)
   // API responses are private and uncacheable by default (citizen, staff, payment and verification data);
   // only the public catalogue reads below may be cached briefly
-  const publicApi = /^\/api\/(health|services|departments|government-services|news|payments\/config|push\/config)(\/|$)/
+  const publicApi =
+    /^\/api\/(health|services|departments|government-services|news|tenders|payments\/config|push\/config)(\/|$)/
   app.use('/api', (req, res, next) => {
     if (req.method === 'GET' && publicApi.test(req.originalUrl.split('?')[0]) && !/\/dashboard(\/|$)/.test(req.path))
       res.setHeader('Cache-Control', 'public, max-age=60')

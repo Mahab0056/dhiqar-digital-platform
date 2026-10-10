@@ -4,6 +4,8 @@ import {
   CheckCircle2,
   Copy,
   KeyRound,
+  Mail,
+  Pencil,
   Plus,
   RefreshCw,
   ShieldOff,
@@ -21,13 +23,83 @@ export const staffRoleLabels: Record<StaffRole, string> = {
   SUPER_ADMIN: 'مدير النظام',
 }
 
+const emailLooksValid = (value: string) => !value.trim() || /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(value.trim())
+
+/** Work email used for Google / email-code sign-in. Only the super admin sets it; empty unlinks. */
+function StaffEmailCell({
+  account,
+  busy,
+  onSave,
+}: {
+  account: StaffAccount
+  busy: boolean
+  onSave: (email: string | null) => void
+}) {
+  const [editing, setEditing] = useState(false)
+  const [value, setValue] = useState(account.email || '')
+  if (!editing)
+    return (
+      <div className="staff-email-cell">
+        {account.email ? <small dir="ltr">{account.email}</small> : <small className="muted">لا يوجد بريد مرتبط</small>}
+        <button
+          type="button"
+          className="icon-button"
+          title="تعديل البريد الإلكتروني للدخول"
+          aria-label={`تعديل بريد ${account.username}`}
+          disabled={busy}
+          onClick={() => {
+            setValue(account.email || '')
+            setEditing(true)
+          }}
+        >
+          <Pencil />
+        </button>
+      </div>
+    )
+  const valid = emailLooksValid(value)
+  return (
+    <form
+      className="staff-email-cell editing"
+      onSubmit={event => {
+        event.preventDefault()
+        if (!valid) return
+        onSave(value.trim() ? value.trim().toLowerCase() : null)
+        setEditing(false)
+      }}
+    >
+      <input
+        type="email"
+        value={value}
+        onChange={event => setValue(event.target.value)}
+        placeholder="name@thi-qar.com"
+        dir="ltr"
+        aria-invalid={!valid}
+        aria-label={`بريد ${account.username}`}
+        autoFocus
+      />
+      <button type="submit" className="button primary" disabled={busy || !valid}>
+        حفظ
+      </button>
+      <button type="button" className="button ghost" onClick={() => setEditing(false)}>
+        إلغاء
+      </button>
+    </form>
+  )
+}
+
 export function StaffAccountsPanel() {
   const [accounts, setAccounts] = useState<StaffAccount[]>([])
   const [departments, setDepartments] = useState<Array<{ id: string; name: string }>>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState<{ title: string; secret?: string } | null>(null)
-  const [form, setForm] = useState({ username: '', fullName: '', role: 'EMPLOYEE' as StaffRole, departmentId: '' })
+  const [form, setForm] = useState({
+    username: '',
+    fullName: '',
+    email: '',
+    role: 'EMPLOYEE' as StaffRole,
+    departmentId: '',
+  })
   const [busy, setBusy] = useState(false)
   const [filter, setFilter] = useState('')
 
@@ -69,8 +141,9 @@ export function StaffAccountsPanel() {
         fullName: form.fullName,
         role: form.role,
         departmentId: form.departmentId || null,
+        email: form.email.trim() ? form.email.trim().toLowerCase() : null,
       })
-      setForm({ username: '', fullName: '', role: 'EMPLOYEE', departmentId: '' })
+      setForm({ username: '', fullName: '', email: '', role: 'EMPLOYEE', departmentId: '' })
       return {
         title: `أُنشئ الحساب ${result.account.username}. سلّم كلمة المرور المؤقتة للموظف بشكل آمن — لن تُعرض مرة أخرى.`,
         secret: result.temporaryPassword || undefined,
@@ -78,7 +151,7 @@ export function StaffAccountsPanel() {
     })
 
   const visible = accounts.filter(item =>
-    `${item.username} ${item.fullName} ${item.departmentName || ''} ${staffRoleLabels[item.role]}`
+    `${item.username} ${item.fullName} ${item.email || ''} ${item.departmentName || ''} ${staffRoleLabels[item.role]}`
       .toLowerCase()
       .includes(filter.toLowerCase())
   )
@@ -88,7 +161,10 @@ export function StaffAccountsPanel() {
       <div className="panel-heading">
         <div>
           <h2>حسابات الموظفين والصلاحيات</h2>
-          <p>حساب مستقل لكل موظف مرتبط بدائرته ودوره. كل إجراء يُسجل باسم صاحبه.</p>
+          <p>
+            حساب مستقل لكل موظف مرتبط بدائرته ودوره. كل إجراء يُسجل باسم صاحبه. البريد الإلكتروني المسجّل هنا هو الوحيد
+            الذي يقبله الدخول بحساب Google أو برمز البريد.
+          </p>
         </div>
         <button className="button ghost" onClick={() => void load()} disabled={loading}>
           <RefreshCw className={loading ? 'spin' : ''} /> تحديث
@@ -123,6 +199,17 @@ export function StaffAccountsPanel() {
           />
         </label>
         <label>
+          البريد الإلكتروني (اختياري)
+          <input
+            type="email"
+            value={form.email}
+            onChange={e => setForm({ ...form, email: e.target.value })}
+            placeholder="name@thi-qar.com"
+            dir="ltr"
+            aria-invalid={!emailLooksValid(form.email)}
+          />
+        </label>
+        <label>
           الدور
           <select value={form.role} onChange={e => setForm({ ...form, role: e.target.value as StaffRole })}>
             {(Object.keys(staffRoleLabels) as StaffRole[]).map(role => (
@@ -143,7 +230,7 @@ export function StaffAccountsPanel() {
             ))}
           </select>
         </label>
-        <button className="button primary" type="submit" disabled={busy}>
+        <button className="button primary" type="submit" disabled={busy || !emailLooksValid(form.email)}>
           <Plus /> إنشاء حساب
         </button>
       </form>
@@ -179,7 +266,11 @@ export function StaffAccountsPanel() {
       )}
 
       <div className="staff-table-tools">
-        <input value={filter} onChange={e => setFilter(e.target.value)} placeholder="بحث بالاسم أو الدائرة أو الدور" />
+        <input
+          value={filter}
+          onChange={e => setFilter(e.target.value)}
+          placeholder="بحث بالاسم أو البريد أو الدائرة أو الدور"
+        />
         <span>{visible.length.toLocaleString('en-US')} حساب</span>
       </div>
       <div className="table-scroll">
@@ -187,6 +278,9 @@ export function StaffAccountsPanel() {
           <thead>
             <tr>
               <th>المستخدم</th>
+              <th>
+                <Mail size={14} aria-hidden="true" /> بريد الدخول
+              </th>
               <th>الدور</th>
               <th>الدائرة</th>
               <th>MFA</th>
@@ -201,6 +295,22 @@ export function StaffAccountsPanel() {
                 <td>
                   <strong>{item.fullName}</strong>
                   <small dir="ltr">{item.username}</small>
+                </td>
+                <td>
+                  <StaffEmailCell
+                    key={item.email || ''}
+                    account={item}
+                    busy={busy}
+                    onSave={email =>
+                      void act(() =>
+                        api.updateStaffAccount(item.id, { email }).then(() => ({
+                          title: email
+                            ? `رُبط البريد ${email} بحساب ${item.username}؛ يمكنه الآن الدخول بحساب Google أو برمز البريد.`
+                            : `أُلغي ربط البريد عن حساب ${item.username}.`,
+                        }))
+                      )
+                    }
+                  />
                 </td>
                 <td>
                   <select
@@ -348,7 +458,7 @@ export function StaffAccountsPanel() {
             ))}
             {!visible.length && !loading && (
               <tr>
-                <td colSpan={7} className="muted">
+                <td colSpan={8} className="muted">
                   لا توجد حسابات مطابقة.
                 </td>
               </tr>

@@ -20,6 +20,7 @@ import {
   XCircle,
 } from 'lucide-react'
 import { api, type EmployeeServiceRequest } from '../../api'
+import { AiReviewPanel } from '../../components/assistant/AiReviewPanel'
 import { useSession } from '../../lib/session'
 import type { ChecklistItem, CitizenServiceRequest } from '../../types'
 
@@ -145,6 +146,16 @@ export function ServiceRequestAdminPanel({
   const [onlinePayments, setOnlinePayments] = useState<boolean | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const decisionRef = useRef<HTMLElement | null>(null)
+
+  /** "أرسل طلب الاستكمال للمواطن" from the AI review: prefills the normal decision form; the employee saves it. */
+  const applyAiNote = (note: string, missingItems: string[]) => {
+    setStatus('ACTION_REQUIRED')
+    setRequiredDocument(missingItems.join('، ').slice(0, 160))
+    setDecisionNote(note.slice(0, 1500))
+    setNotice('جُهزت ملاحظة الاستكمال من التدقيق الذكي — راجعها ثم اضغط «حفظ القرار وإشعار المواطن».')
+    window.requestAnimationFrame(() => decisionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }))
+  }
 
   const selectItem = useCallback((item: CitizenServiceRequest | null) => {
     setSelected(item)
@@ -1055,6 +1066,14 @@ export function ServiceRequestAdminPanel({
                 )}
               </section>
 
+              {!readOnly && (
+                <AiReviewPanel
+                  reference={selected.reference}
+                  canSendNote={!closed && !assignedToOther}
+                  onUseNote={applyAiNote}
+                />
+              )}
+
               {!closed && !readOnly && assignedToOther ? (
                 <div className="service-request-current-action">
                   <Info />
@@ -1064,7 +1083,7 @@ export function ServiceRequestAdminPanel({
                   </span>
                 </div>
               ) : !closed && !readOnly ? (
-                <section className="service-request-update">
+                <section className="service-request-update" ref={decisionRef}>
                   <h4>قرار الدائرة</h4>
                   <label>
                     الحالة

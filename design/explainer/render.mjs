@@ -1,14 +1,15 @@
 // Deterministic frame renderer: pauses every CSS/Web animation and seeks it frame by frame.
-// Usage: node design/explainer/render.mjs <file.html[?query]> <seconds> <fps> <width> <height> <outDir> [transparent]
+// Usage (from the project root, Edge must be installed): node design/explainer/render.mjs <file.html[?query]> <seconds> <fps> <width> <height> <outDir> [transparent]
 import fs from 'node:fs'
 import path from 'node:path'
-import { chromium } from '/opt/node-tools/node_modules/playwright/index.mjs'
+import { pathToFileURL } from 'node:url'
+import { chromium } from 'playwright'
 const [file, seconds, fps, width, height, outDir, transparent] = process.argv.slice(2)
 fs.mkdirSync(outDir, { recursive: true })
-const browser = await chromium.launch()
+const browser = await chromium.launch({ channel: 'msedge' })
 const page = await browser.newPage({ viewport: { width: +width, height: +height } })
 const [fpath, query = ''] = file.split('?')
-await page.goto('file://' + path.resolve(fpath) + (query ? '?' + query : ''))
+await page.goto(pathToFileURL(path.resolve(fpath)).href + (query ? '?' + query : ''))
 await page.evaluate(() => document.fonts.ready)
 await page.waitForTimeout(400)
 const total = Math.round(+seconds * +fps)

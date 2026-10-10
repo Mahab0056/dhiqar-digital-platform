@@ -37,6 +37,15 @@ export function isDeptManager(session: SessionData, departmentId: string | null 
 }
 
 export const sessionCookieName = 'dhiqar_session'
+
+// how the staff session was opened (PASSWORD, GOOGLE, EMAIL_CODE, …+TOTP); passwordless sessions skip the forced
+// temporary-password change, which only protects the password itself
+{
+  const columns = db.prepare(`PRAGMA table_info(auth_sessions)`).all() as Array<{ name: string }>
+  if (!columns.some(item => item.name === 'auth_method'))
+    db.exec(`ALTER TABLE auth_sessions ADD COLUMN auth_method TEXT`)
+}
+export const passwordlessMethods = new Set(['GOOGLE', 'GOOGLE+TOTP', 'EMAIL_CODE', 'EMAIL_CODE+TOTP'])
 export const staffSessionTtlSeconds = 12 * 60 * 60
 export const citizenSessionTtlSeconds = 7 * 24 * 60 * 60
 export const staffIdleTimeoutSeconds = 60 * 60
@@ -87,6 +96,7 @@ type SessionRow = {
   last_seen_at: string
   expires_at: string
   revoked_at: string | null
+  auth_method?: string | null
 }
 
 function buildSessionData(row: SessionRow, staff: StaffAccount | null): SessionData {
@@ -101,7 +111,7 @@ function buildSessionData(row: SessionRow, staff: StaffAccount | null): SessionD
     username: staff?.username ?? null,
     departmentId: staff?.departmentId ?? null,
     isDepartmentManager: staff?.role === 'EMPLOYEE' && Boolean(staff?.isDepartmentManager),
-    mustChangePassword: staff?.mustChangePassword ?? false,
+    mustChangePassword: (staff?.mustChangePassword ?? false) && !passwordlessMethods.has(row.auth_method || ''),
     mfaEnabled: staff?.totpEnabled ?? false,
   }
 }
@@ -113,7 +123,7 @@ export function readSession(req: Pick<IncomingMessage, 'headers'>): SessionData 
     if (!sid) return null
     const row = db
       .prepare(
-        `SELECT id, role, subject, staff_id, citizen_id, last_seen_at, expires_at, revoked_at FROM auth_sessions WHERE id = ?`
+        `SELECT id, role, subject, staff_id, citizen_id, last_seen_at, expires_at, revoked_at, auth_method FROM auth_sessions WHERE id = ?`
       )
       .get(sid) as SessionRow | undefined
     if (!row || row.revoked_at) return null
@@ -157,6 +167,7 @@ export function createSession(
     citizenId?: number | null
     ip?: string
     userAgent?: string
+    authMethod?: string
   }
 ) {
   const sid = randomUUID()
@@ -164,8 +175,8 @@ export function createSession(
   const timestamp = new Date()
   const expiresAt = new Date(timestamp.getTime() + ttl * 1000)
   db.prepare(
-    `INSERT INTO auth_sessions (id, role, subject, staff_id, citizen_id, ip_hash, user_agent, created_at, last_seen_at, expires_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    `INSERT INTO auth_sessions (id, role, subject, staff_id, citizen_id, ip_hash, user_agent, created_at, last_seen_at, expires_at, auth_method)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).run(
     sid,
     input.role,
@@ -176,7 +187,8 @@ export function createSession(
     input.userAgent?.slice(0, 300) || null,
     timestamp.toISOString(),
     timestamp.toISOString(),
-    expiresAt.toISOString()
+    expiresAt.toISOString(),
+    input.authMethod || null
   )
   res.append('Set-Cookie', `${sessionCookieName}=${cookieToken(sid)}; ${cookieAttributes(ttl)}`)
   const staff = input.staffId ? getStaffById(input.staffId) : null
@@ -190,6 +202,7 @@ export function createSession(
       last_seen_at: timestamp.toISOString(),
       expires_at: expiresAt.toISOString(),
       revoked_at: null,
+      auth_method: input.authMethod || null,
     },
     staff
   )

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import type { CSSProperties } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import { Link } from 'wouter'
 import { motion, useScroll, useTransform } from 'framer-motion'
 import {
@@ -33,6 +33,8 @@ const NAV = [
   { label: 'الدوائر', href: '/departments' },
   { label: 'تتبع معاملة', href: '#track' },
   { label: 'تحقق من وثيقة', href: '/verify' },
+  { label: 'الأخبار', href: '/news' },
+  { label: 'المناقصات', href: '/tenders' },
   { label: 'المساعدة', href: '#help' },
 ]
 
@@ -186,7 +188,7 @@ const EXAMPLES = ['اريد اطلع جواز', 'بطاقة سكن', 'شكوى �
 
 export type HeroStats = { services: number | null; departments: number | null; districts: number | null }
 
-export function LandingHero({ stats }: { stats: HeroStats }) {
+export function LandingHero({ stats, ticker }: { stats: HeroStats; ticker?: ReactNode }) {
   const ref = useRef<HTMLElement>(null)
   const tile = useRef<HTMLDivElement>(null)
   const [query, setQuery] = useState('')
@@ -245,6 +247,8 @@ export function LandingHero({ stats }: { stats: HeroStats }) {
         <div className="ld-hero-shade" />
         <div className="ld-water" />
       </div>
+
+      {ticker && <div className="ld-wrap ld-ticker-wrap">{ticker}</div>}
 
       <div className="ld-wrap ld-hero-grid">
         <div className="ld-hero-copy">
@@ -362,6 +366,8 @@ const FOOTER_COLUMNS = [
     links: [
       { label: 'عن المنصة', href: '#how' },
       { label: 'كيف تعمل المنصة', href: '#how' },
+      { label: 'أخبار ذي قار', href: '/news' },
+      { label: 'فيديوهات تعليمية', href: '/guides' },
       { label: 'الأسئلة الشائعة', href: '#faq' },
       { label: 'المساعدة والطوارئ', href: '#help' },
     ],
@@ -373,6 +379,7 @@ const FOOTER_COLUMNS = [
       { label: 'الخدمات الأكثر طلباً', href: '#popular' },
       { label: 'أحداث الحياة', href: '#life-events' },
       { label: 'الدوائر الحكومية', href: '/departments' },
+      { label: 'المناقصات والمزادات', href: '/tenders' },
     ],
   },
   {

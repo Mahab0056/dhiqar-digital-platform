@@ -22,6 +22,7 @@ import { CardTile, FaceChallengeStart, type CardData } from '../../components/ca
 import type { LivenessTimelineEntry } from '../../components/camera/IdentityCamera'
 import { Brand } from '../../components/public/Brand'
 import { AuthAside, AuthShell } from '../../components/public/AuthShell'
+import { GuideVideoLink } from '../../components/guides/GuideVideo'
 
 /** Mirrors server/person-name.ts: two or more words, none shorter than two letters. */
 const plausibleName = (value: string) => {
@@ -353,6 +354,7 @@ export function OnboardingPage() {
             </span>
             <h2>تأكيد رقم الهاتف</h2>
             <p>سنرسل رمز تحقق لمرة واحدة عبر واتساب أو تيليغرام أو رسالة نصية، بحسب المتاح.</p>
+            <GuideVideoLink id="register" label="شاهد: كيف تسجّل (دقيقة)" />
             <label>
               رقم الهاتف العراقي
               <input

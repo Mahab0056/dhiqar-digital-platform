@@ -1,0 +1,562 @@
+/* =============================================================================================
+   Intro splash — the TQ mark builds itself, then the overlay lifts into the home page.
+   Timeline (s):  0.0 traces + particles · 0.25 tile opens · 0.6 building rises · 0.85 T
+                  1.05 Q ring sweeps · 1.36 digital pixels snap in · 2.02 real logo swapped in
+                  2.05 shine · 2.15 wordmark · 2.95 exit · 3.5 removed
+   Only transform / opacity / clip-path / stroke-dashoffset (+ one mask angle) are animated.
+   ============================================================================================= */
+@property --ixs-a {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+
+.ixs {
+  --ixs-night: #050d0a;
+  --ixs-green: #017b3d;
+  --ixs-glow: #35d07a;
+  --ixs-red: #cd1125;
+  --ixs-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ixs-snap: cubic-bezier(0.3, 1.35, 0.5, 1);
+  position: fixed;
+  inset: 0;
+  z-index: 2147483000;
+  overflow: hidden;
+  color: #f1f5f2;
+  background:
+    radial-gradient(60% 50% at 50% 46%, #0d2a22 0%, transparent 70%),
+    radial-gradient(120% 90% at 50% 40%, #0a1d18 0%, var(--ixs-night) 65%);
+  color-scheme: dark;
+  cursor: default;
+  font-family: var(--ds-font-display, 'Readex Pro', 'IBM Plex Sans Arabic', system-ui, sans-serif);
+  animation: ixs-exit 0.55s cubic-bezier(0.6, 0, 0.3, 1) 2.95s both;
+  -webkit-tap-highlight-color: transparent;
+}
+.ixs.is-leaving {
+  animation: ixs-fade 0.32s ease both;
+}
+.ixs-scene {
+  position: absolute;
+  inset: 0;
+}
+
+/* ---- background: glow, grid, circuit traces ------------------------------------------------- */
+.ixs-glow {
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  width: 90vmin;
+  height: 90vmin;
+  margin: -45vmin 0 0 -45vmin;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(53, 208, 122, 0.2), rgba(53, 208, 122, 0.05) 55%, transparent);
+  animation: ixs-breathe 1.6s var(--ixs-ease) both;
+}
+.ixs-traces {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.ixs-grid {
+  -webkit-mask-image: radial-gradient(closest-side at 50% 50%, #000 0%, transparent 100%);
+  mask-image: radial-gradient(closest-side at 50% 50%, #000 0%, transparent 100%);
+  opacity: 0;
+  animation: ixs-in 0.9s ease 0.05s both;
+}
+.ixs-traces pattern path {
+  fill: none;
+  stroke: rgba(120, 220, 170, 0.09);
+  stroke-width: 1;
+}
+.ixs-trace path {
+  fill: none;
+  stroke: var(--ixs-glow);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation:
+    ixs-draw 0.9s cubic-bezier(0.6, 0, 0.2, 1) calc(0.05s + var(--d)) forwards,
+    ixs-dim 0.8s ease 1.6s forwards;
+}
+.ixs-trace circle {
+  fill: var(--ixs-glow);
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation:
+    ixs-pop 0.4s var(--ixs-snap) calc(0.85s + var(--d)) both,
+    ixs-dim 0.8s ease 1.6s forwards;
+}
+.ixs-trace.is-alt path {
+  stroke: #ff4b5c;
+}
+.ixs-trace.is-alt circle {
+  fill: #ff4b5c;
+}
+
+/* ---- particles converging on the centre ------------------------------------------------------ */
+.ixs-particles {
+  position: absolute;
+  left: 50%;
+  top: 44%;
+}
+.ixs-particles i {
+  position: absolute;
+  width: var(--sz);
+  height: var(--sz);
+  margin: calc(var(--sz) / -2);
+  background: var(--ixs-glow);
+  border-radius: 1px;
+  box-shadow: 0 0 10px rgba(53, 208, 122, 0.8);
+  opacity: 0;
+  animation: ixs-converge 1s cubic-bezier(0.55, 0, 0.35, 1) calc(0.05s + var(--d)) both;
+}
+.ixs-particles i.is-red {
+  background: #ff3b4e;
+  box-shadow: 0 0 10px rgba(255, 59, 78, 0.8);
+}
+
+/* ---- stage: tile + wordmark ------------------------------------------------------------------- */
+.ixs-stage {
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  width: min(64vw, 320px);
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(18px, 3.2vh, 30px);
+  animation: ixs-stage-out 0.55s cubic-bezier(0.6, 0, 0.3, 1) 2.95s both;
+}
+.ixs-tile {
+  position: relative;
+  width: 100%;
+  padding: 14% 10% 13%;
+}
+/* the stone plate opens from its centre; its shadow and glow fade in behind it */
+.ixs-tile::before,
+.ixs-plate {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: clamp(22px, 7vw, 30px);
+}
+.ixs-tile::before {
+  box-shadow:
+    0 30px 70px -12px rgba(0, 0, 0, 0.85),
+    0 0 90px rgba(53, 208, 122, 0.38);
+  opacity: 0;
+  transform: scale(0.6);
+  animation: ixs-shadow 0.7s var(--ixs-ease) 0.4s forwards;
+}
+.ixs-plate {
+  overflow: hidden;
+  background: linear-gradient(145deg, #ffffff 0%, #f1eee7 55%, #e2ddd1 100%);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.9) inset,
+    0 -3px 0 rgba(150, 140, 120, 0.28) inset;
+  clip-path: inset(50% 50% 50% 50% round 30px);
+  animation: ixs-open 0.6s cubic-bezier(0.7, 0, 0.2, 1) 0.25s forwards;
+}
+/* the outline of the plate is traced just before it opens */
+.ixs-outline {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.ixs-outline rect {
+  fill: none;
+  stroke: var(--ixs-glow);
+  stroke-width: 1.5;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation:
+    ixs-trace-rect 0.55s cubic-bezier(0.6, 0, 0.3, 1) 0.1s forwards,
+    ixs-off 0.3s ease 0.75s forwards;
+}
+.ixs-mark {
+  position: relative;
+  aspect-ratio: 820 / 603;
+  container-type: inline-size;
+}
+.ixs-mark img,
+.ixs-mark svg,
+.ixs-pieces,
+.ixs-final {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.ixs-mark img {
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+/* the building rises out of the ground */
+.ixs-body {
+  clip-path: inset(100% 0 0 0);
+  transform: translateY(5%);
+  animation: ixs-rise 0.7s var(--ixs-ease) 0.6s forwards;
+}
+/* the green arch sweeps in from the right (reading direction) */
+.ixs-arc {
+  clip-path: inset(0 0 0 100%);
+  animation: ixs-sweep-rtl 0.65s cubic-bezier(0.5, 0, 0.2, 1) 0.95s forwards;
+}
+/* T: the bar wipes across, the stem drops into it */
+.ixs-tbar {
+  --cut: 86.6%;
+  clip-path: inset(0 100% var(--cut) 0);
+  animation: ixs-bar 0.45s cubic-bezier(0.6, 0, 0.2, 1) 0.85s forwards;
+}
+.ixs-tstem {
+  clip-path: inset(13.4% 0 100% 0);
+  transform: translateY(-9%);
+  opacity: 0;
+  animation: ixs-stem 0.5s var(--ixs-snap) 1.12s forwards;
+}
+/* Q: the ring is painted by a rotating mask that starts at its open end */
+.ixs-ring {
+  -webkit-mask-image: conic-gradient(from 248deg at 58.41% 43.28%, #000 var(--ixs-a), transparent var(--ixs-a));
+  mask-image: conic-gradient(from 248deg at 58.41% 43.28%, #000 var(--ixs-a), transparent var(--ixs-a));
+  animation: ixs-ring 0.85s cubic-bezier(0.55, 0, 0.25, 1) 1.05s both;
+}
+/* a light running at the tip of the brush — masked to the Q so it never strays off the ring */
+.ixs-comet {
+  -webkit-mask: url('/brand/motion/tq-q.png') 0 0 / 100% 100% no-repeat;
+  mask: url('/brand/motion/tq-q.png') 0 0 / 100% 100% no-repeat;
+}
+.ixs-comet circle {
+  fill: none;
+  stroke: rgba(255, 170, 180, 0.55);
+  stroke-width: 70;
+  stroke-linecap: round;
+  stroke-dasharray: 0.07 0.93;
+  stroke-dashoffset: 0.07;
+  opacity: 0;
+  animation:
+    ixs-comet 0.85s cubic-bezier(0.55, 0, 0.25, 1) 1.05s forwards,
+    ixs-comet-fade 0.85s linear 1.05s forwards;
+}
+.ixs-comet circle.is-core {
+  stroke: rgba(255, 255, 255, 0.85);
+  stroke-width: 70;
+  stroke-dasharray: 0.03 0.97;
+  stroke-dashoffset: 0.03;
+  animation:
+    ixs-comet-core 0.85s cubic-bezier(0.55, 0, 0.25, 1) 1.05s forwards,
+    ixs-comet-fade 0.85s linear 1.05s forwards;
+}
+/* the digital pixels fly in and snap into the cluster */
+.ixs-bit {
+  opacity: 0;
+  transform: translate(var(--fx), var(--fy)) rotate(var(--fr)) scale(2.4);
+  animation: ixs-snap 0.46s var(--ixs-snap) calc(1.36s + var(--d)) forwards;
+}
+
+/* swap: pieces out, untouched logo in (same pixels, so the swap is invisible) */
+.ixs-pieces {
+  animation: ixs-off 0.01s linear 2.02s forwards;
+}
+.ixs-final {
+  opacity: 0;
+  animation: ixs-on 0.01s linear 2.02s forwards;
+}
+
+/* light sweep across the finished mark, clipped to its shape */
+.ixs-shine {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  -webkit-mask-image: url('/brand/motion/tq-site.png'), url('/brand/motion/tq-t.png'), url('/brand/motion/tq-q.png');
+  mask-image: url('/brand/motion/tq-site.png'), url('/brand/motion/tq-t.png'), url('/brand/motion/tq-q.png');
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+}
+.ixs-shine i {
+  position: absolute;
+  inset: -20% auto -20% 0;
+  width: 45%;
+  background: linear-gradient(
+    100deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0) 20%,
+    rgba(255, 255, 255, 0.75) 50%,
+    rgba(255, 255, 255, 0) 80%,
+    transparent 100%
+  );
+  transform: translateX(-110%) skewX(-12deg);
+  animation: ixs-shine 0.75s cubic-bezier(0.45, 0, 0.25, 1) 2.05s forwards;
+}
+/* and a glint across the plate itself */
+.ixs-glint {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, transparent 35%, rgba(255, 255, 255, 0.55) 50%, transparent 65%);
+  transform: translateX(-120%);
+  animation: ixs-glint 0.9s cubic-bezier(0.45, 0, 0.25, 1) 2s forwards;
+  pointer-events: none;
+}
+
+/* ---- wordmark --------------------------------------------------------------------------------- */
+.ixs-words {
+  text-align: center;
+  line-height: 1.25;
+}
+.ixs-title {
+  margin: 0;
+  font-size: clamp(26px, 7.4vw, 38px);
+  font-weight: 600;
+  letter-spacing: 0;
+  color: #fff;
+  white-space: nowrap;
+}
+.ixs-title span {
+  display: inline-block;
+  opacity: 0;
+  transform: translateY(60%);
+  animation: ixs-word 0.6s var(--ixs-ease) calc(2.12s + var(--d)) forwards;
+}
+.ixs-title span:last-child {
+  color: #5fe39a;
+}
+.ixs-sub {
+  margin: 8px 0 0;
+  font-size: clamp(12.5px, 3.4vw, 15px);
+  font-weight: 500;
+  color: rgba(225, 240, 232, 0.72);
+  opacity: 0;
+  transform: translateY(10px);
+  animation: ixs-word 0.6s var(--ixs-ease) 2.4s forwards;
+}
+
+/* ---- skip ------------------------------------------------------------------------------------- */
+.ixs-skip {
+  position: absolute;
+  top: max(16px, env(safe-area-inset-top));
+  left: 16px;
+  z-index: 2;
+  padding: 8px 18px;
+  min-height: 40px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.86);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  opacity: 0;
+  animation: ixs-in 0.4s ease 0.35s forwards;
+  transition:
+    background 0.2s,
+    border-color 0.2s;
+}
+.ixs-skip:hover {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+.ixs-skip:focus-visible {
+  outline: 2px solid var(--ixs-glow);
+  outline-offset: 3px;
+}
+
+/* ---- keyframes -------------------------------------------------------------------------------- */
+@keyframes ixs-in {
+  to {
+    opacity: 1;
+  }
+}
+@keyframes ixs-on {
+  to {
+    opacity: 1;
+  }
+}
+@keyframes ixs-off {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes ixs-breathe {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes ixs-draw {
+  0% {
+    stroke-dashoffset: 1;
+    opacity: 0.9;
+  }
+  100% {
+    stroke-dashoffset: 0;
+    opacity: 0.9;
+  }
+}
+@keyframes ixs-dim {
+  to {
+    opacity: 0.18;
+  }
+}
+@keyframes ixs-pop {
+  from {
+    opacity: 1;
+    transform: scale(0);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes ixs-converge {
+  0% {
+    opacity: 0;
+    transform: translate(var(--px), var(--py)) scale(1);
+  }
+  25% {
+    opacity: 1;
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(0, 0) scale(0.3);
+  }
+}
+@keyframes ixs-shadow {
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes ixs-trace-rect {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes ixs-open {
+  to {
+    clip-path: inset(0 0 0 0 round 30px);
+  }
+}
+@keyframes ixs-rise {
+  to {
+    clip-path: inset(0 0 0 0);
+    transform: none;
+  }
+}
+@keyframes ixs-sweep-rtl {
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+@keyframes ixs-bar {
+  to {
+    clip-path: inset(0 0 var(--cut) 0);
+  }
+}
+@keyframes ixs-stem {
+  to {
+    clip-path: inset(13.4% 0 0 0);
+    transform: none;
+    opacity: 1;
+  }
+}
+@keyframes ixs-ring {
+  from {
+    --ixs-a: 0deg;
+  }
+  to {
+    --ixs-a: 361deg;
+  }
+}
+@keyframes ixs-comet {
+  to {
+    stroke-dashoffset: -0.93;
+  }
+}
+@keyframes ixs-comet-core {
+  to {
+    stroke-dashoffset: -0.97;
+  }
+}
+@keyframes ixs-comet-fade {
+  0% {
+    opacity: 0;
+  }
+  8%,
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes ixs-snap {
+  0% {
+    opacity: 0;
+  }
+  35% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes ixs-shine {
+  to {
+    transform: translateX(330%) skewX(-12deg);
+  }
+}
+@keyframes ixs-glint {
+  to {
+    transform: translateX(120%);
+  }
+}
+@keyframes ixs-word {
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes ixs-stage-out {
+  to {
+    transform: translate(-50%, -58%) scale(0.86);
+    opacity: 0;
+  }
+}
+@keyframes ixs-exit {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes ixs-fade {
+  to {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ixs {
+    display: none;
+  }
+}

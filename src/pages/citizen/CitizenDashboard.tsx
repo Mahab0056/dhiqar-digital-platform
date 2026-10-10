@@ -15,6 +15,7 @@ import {
   MessageSquareWarning,
   Plus,
   Search,
+  ShieldCheck,
 } from 'lucide-react'
 import { api } from '../../api'
 import { PushNotificationsCard } from '../../components/citizen/PushNotificationsCard'
@@ -30,6 +31,7 @@ import type {
 } from '../../types'
 import { CitizenPdfActions } from '../../components/citizen/CitizenPdfActions'
 import { PortalLayout } from '../../components/citizen/PortalLayout'
+import { GuideVideo } from '../../components/guides/GuideVideo'
 import { describeAppointment, isOpenRequest, mergeCitizenRequests, summarizeCitizenRequests } from './my-requests'
 import '../../styles/ds/citizen-requests.css'
 
@@ -609,6 +611,19 @@ export function CitizenDashboard() {
             </Link>
           </section>
         )}
+        <section className="tq-panel guide-promo" aria-labelledby="guide-protect-title">
+          <div>
+            <span className="section-kicker">
+              <ShieldCheck size={15} /> أمان حسابك
+            </span>
+            <h2 id="guide-protect-title">احمِ حسابك وبياناتك</h2>
+            <p>دقيقة وحدة: لا تنطي رمز التحقق لأحد، ادخل فقط من thi-qar.com، وتحقق من أي وثيقة برمز QR.</p>
+            <Link href="/guides" className="gov-link">
+              كل الفيديوهات التعليمية <ArrowLeft size={14} />
+            </Link>
+          </div>
+          <GuideVideo id="protect" />
+        </section>
       </div>
     </PortalLayout>
   )

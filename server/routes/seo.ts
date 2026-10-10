@@ -2,6 +2,7 @@ import type express from 'express'
 import { listPublicDepartments } from '../departments.js'
 import { listGovernmentServices } from '../government-service-directory.js'
 import { listCatalogServices } from '../services/catalog.js'
+import { listTenders } from '../tenders.js'
 
 /**
  * Client routes the SPA renders. Anything else gets the SPA's not-found screen with a real 404 status, so
@@ -9,9 +10,9 @@ import { listCatalogServices } from '../services/catalog.js'
  */
 const clientRoutes: RegExp[] = [
   /^\/$/,
-  /^\/(directory|departments|login|onboarding|verify|privacy|terms|accessibility|employee|operations|governor|super-admin|citizen)\/?$/,
+  /^\/(directory|departments|login|onboarding|verify|privacy|terms|accessibility|news|tenders|guides|employee|operations|governor|super-admin|citizen)\/?$/,
   /^\/(staff\/login|staff\/security|operations\/login|super-admin\/login)\/?$/,
-  /^\/(departments|department|government-services|service|verify)\/[^/]+\/?$/,
+  /^\/(departments|department|government-services|service|verify|tenders)\/[^/]+\/?$/,
   /^\/citizen\/(notifications|feedback)\/?$/,
   /^\/citizen\/(feedback|application|request|pay)\/[^/]+\/?$/,
   /^\/citizen\/pay\/[^/]+\/sandbox\/?$/,
@@ -29,6 +30,9 @@ const publicPages = [
   '/privacy',
   '/terms',
   '/accessibility',
+  '/news',
+  '/tenders',
+  '/guides',
 ]
 
 const xmlEscape = (value: string) =>
@@ -67,6 +71,8 @@ export function registerSeoRoutes(app: express.Express) {
     for (const department of listPublicDepartments()) urls.add(`/departments/${encodeURIComponent(department.id)}`)
     for (const entry of listGovernmentServices({ publicationStatus: 'APPROVED', limit: 500 }))
       urls.add(`/government-services/${encodeURIComponent(entry.canonicalServiceId || entry.id)}`)
+    for (const tender of listTenders({ publishedOnly: true, limit: 200 }).items)
+      urls.add(`/tenders/${encodeURIComponent(tender.id)}`)
     const body = [...urls].map(path => `  <url><loc>${xmlEscape(origin + path)}</loc></url>`).join('\n')
     res.type('application/xml').setHeader('Cache-Control', 'public, max-age=3600')
     res.send(

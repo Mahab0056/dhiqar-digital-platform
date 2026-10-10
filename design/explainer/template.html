@@ -97,11 +97,13 @@ html, body { width: 1280px; height: 720px; overflow: hidden; background: var(--n
 @keyframes prog { from { transform: scaleX(0) } to { transform: scaleX(1) } }
 </style>
 </head>
-<body>
+<body style="--total:40s" data-total="40" data-poster="36.9">
 
 <!-- 0–6s: identity -->
-<section class="scene dark" style="--t:0s; --len:6s">
-  <div class="hero-logo pop" style="--at:.1s">
+<section class="scene dark" style="--t:0s; --len:6s"
+  data-cap="محافظة كاملة، مترابطة رقمياً — منصة ذي قار الرقمية."
+  data-vo="محافظة كاملة، مترابطة رقمياً. هاي منصة ذي قار الرقمية: كل دوائر المحافظة بمكان واحد.">
+  <div class="hero-logo pop" style="--at:.1s" data-sfx="pop">
     <div class="tqm" data-play style="--tqm-s:.75">
       __TQM__
     </div>
@@ -113,38 +115,44 @@ html, body { width: 1280px; height: 720px; overflow: hidden; background: var(--n
 </section>
 
 <!-- 6–12s: search -->
-<section class="scene light" style="--t:6s; --len:6s">
+<section class="scene light" style="--t:6s; --len:6s"
+  data-cap="ابحث بكلامك، والمنصة تطلعلك الخدمة والدائرة المسؤولة والمتطلبات."
+  data-vo="ابحث بكلامك، والمنصة تطلعلك الخدمة، والدائرة المسؤولة، والمتطلبات.">
   <div class="cap">
     <small class="a" style="--at:.2s">١ · اختيار الخدمة</small>
     <h2 class="a" style="--at:.35s">ابحث بكلامك، <em>والمنصة تفهمك.</em></h2>
     <p class="a" style="--at:.5s">اكتب اللي تحتاجه بالعامية، وتطلعلك الخدمة والدائرة المسؤولة والمتطلبات.</p>
   </div>
   <div class="stage card a" style="--at:.3s">
-    <div class="search"><span class="type" style="--at:.9s">اريد افتح محل بالناصرية</span></div>
-    <div class="row on a" style="--at:2.6s">إجازة فتح محل تجاري<small>بلدية الناصرية · خدمة إلكترونية</small></div>
-    <div class="check a" style="--at:3.1s"><i></i>البطاقة الوطنية الموحدة</div>
-    <div class="check a" style="--at:3.4s"><i></i>بطاقة السكن</div>
-    <div class="check a" style="--at:3.7s"><i></i>عقد إيجار أو سند ملكية المحل</div>
+    <div class="search"><span class="type" style="--at:.9s" data-sfx="type">اريد افتح محل بالناصرية</span></div>
+    <div class="row on a" style="--at:2.6s" data-sfx="pop">إجازة فتح محل تجاري<small>بلدية الناصرية · خدمة إلكترونية</small></div>
+    <div class="check a" style="--at:3.1s" data-sfx="click"><i></i>البطاقة الوطنية الموحدة</div>
+    <div class="check a" style="--at:3.4s" data-sfx="click"><i></i>بطاقة السكن</div>
+    <div class="check a" style="--at:3.7s" data-sfx="click"><i></i>عقد إيجار أو سند ملكية المحل</div>
   </div>
 </section>
 
 <!-- 12–18s: apply + upload -->
-<section class="scene light" style="--t:12s; --len:6s">
+<section class="scene light" style="--t:12s; --len:6s"
+  data-cap="قدّم وارفع مستمسكاتك من موبايلك، والمسودة تنحفظ تلقائياً."
+  data-vo="قدّم وارفع مستمسكاتك من موبايلك، والمسودة تنحفظ تلقائياً.">
   <div class="cap">
     <small class="a" style="--at:.2s">٢ · التقديم</small>
     <h2 class="a" style="--at:.35s">قدّم وارفع <em>مستمسكاتك من موبايلك.</em></h2>
     <p class="a" style="--at:.5s">بياناتك تنملي من حسابك الموثّق، والمسودة تنحفظ تلقائياً.</p>
   </div>
   <div class="stage card a" style="--at:.3s">
-    <div class="doc a" style="--at:.8s"><b>PDF</b><span>البطاقة الوطنية الموحدة<small>تم الرفع</small></span><i class="bar" style="--at:.9s"></i></div>
-    <div class="doc a" style="--at:1.6s"><b>PDF</b><span>بطاقة السكن<small>تم الرفع</small></span><i class="bar" style="--at:1.7s"></i></div>
-    <div class="doc a" style="--at:2.4s"><b>PDF</b><span>عقد إيجار المحل<small>تم الرفع</small></span><i class="bar" style="--at:2.5s"></i></div>
-    <div class="row on pop" style="--at:3.8s; text-align:center; font-weight:600">تم إرسال الطلب · TQ-2026-048213</div>
+    <div class="doc a" style="--at:.8s" data-sfx="pop"><b>PDF</b><span>البطاقة الوطنية الموحدة<small>تم الرفع</small></span><i class="bar" style="--at:.9s"></i></div>
+    <div class="doc a" style="--at:1.6s" data-sfx="pop"><b>PDF</b><span>بطاقة السكن<small>تم الرفع</small></span><i class="bar" style="--at:1.7s"></i></div>
+    <div class="doc a" style="--at:2.4s" data-sfx="pop"><b>PDF</b><span>عقد إيجار المحل<small>تم الرفع</small></span><i class="bar" style="--at:2.5s"></i></div>
+    <div class="row on pop" data-sfx="chime" style="--at:3.8s; text-align:center; font-weight:600">تم إرسال الطلب · TQ-2026-048213</div>
   </div>
 </section>
 
 <!-- 18–24s: routing to the department -->
-<section class="scene light" style="--t:18s; --len:6s">
+<section class="scene light" style="--t:18s; --len:6s"
+  data-cap="الطلب يوصل للدائرة الصحيحة ويدخل قائمة عمل الموظف المخوّل."
+  data-vo="طلبك يوصل للدائرة الصحيحة، ويدخل قائمة عمل الموظف المخوّل.">
   <div class="cap">
     <small class="a" style="--at:.2s">٣ · الدائرة المختصة</small>
     <h2 class="a" style="--at:.35s">الطلب يوصل <em>للدائرة الصحيحة.</em></h2>
@@ -152,43 +160,47 @@ html, body { width: 1280px; height: 720px; overflow: hidden; background: var(--n
   </div>
   <div class="route a" style="--at:.3s">
     <div class="node">المواطن<small>أرسل الطلب</small></div>
-    <div class="wire"><i class="packet" style="--at:.9s"></i></div>
+    <div class="wire"><i class="packet" style="--at:.9s" data-sfx="scan"></i></div>
     <div class="node dep">بلدية الناصرية<small>قسم الإجازات</small></div>
   </div>
   <div class="queue card a" style="--at:.5s">
-    <div class="q new pop" style="--at:2.6s"><span>إجازة فتح محل تجاري · علي حسين</span><em>جديد</em></div>
+    <div class="q new pop" style="--at:2.6s" data-sfx="ding"><span>إجازة فتح محل تجاري · علي حسين</span><em>جديد</em></div>
     <div class="q"><span>إجازة بناء سكني · زينب كاظم</span><em>يومان متبقيان</em></div>
     <div class="q late"><span>إجازة رصيف · حيدر سالم</span><em>متأخر يوم</em></div>
   </div>
 </section>
 
 <!-- 24–30s: review and tracking -->
-<section class="scene light" style="--t:24s; --len:6s">
+<section class="scene light" style="--t:24s; --len:6s"
+  data-cap="الموظف يدقق، وأنت تتابع وتوصلك الإشعارات بكل تغيير."
+  data-vo="الموظف يدقق، وإنت تتابع، وتوصلك الإشعارات بكل تغيير.">
   <div class="cap">
     <small class="a" style="--at:.2s">٤ · التدقيق والمتابعة</small>
     <h2 class="a" style="--at:.35s">الموظف يدقق، <em>وأنت تتابع.</em></h2>
     <p class="a" style="--at:.5s">كل تغيير بالحالة يوصلك بإشعار. وإذا ناقص شي، تعرف السبب وتكمله من نفس الطلب.</p>
   </div>
   <ul class="tl card a" style="--at:.3s">
-    <li class="done a" style="--at:.7s">تم الاستلام · الأحد ٩:١٤ ص</li>
-    <li class="done a" style="--at:1.2s">تدقيق المستمسكات · مكتمل</li>
+    <li class="done a" style="--at:.7s" data-sfx="click">تم الاستلام · الأحد ٩:١٤ ص</li>
+    <li class="done a" style="--at:1.2s" data-sfx="click">تدقيق المستمسكات · مكتمل</li>
     <li class="on a" style="--at:1.7s">الكشف الموقعي · الثلاثاء ١٠:٠٠ ص</li>
     <li class="a" style="--at:2.2s">إصدار الإجازة</li>
   </ul>
-  <div class="toast pop" style="--at:2.9s"><i></i><span>تحديث على معاملتك<small>موعد الكشف الموقعي: الثلاثاء ١٠:٠٠ ص</small></span></div>
+  <div class="toast pop" style="--at:2.9s" data-sfx="ding"><i></i><span>تحديث على معاملتك<small>موعد الكشف الموقعي: الثلاثاء ١٠:٠٠ ص</small></span></div>
 </section>
 
 <!-- 30–36s: operations room -->
-<section class="scene dark" style="--t:30s; --len:6s">
+<section class="scene dark" style="--t:30s; --len:6s"
+  data-cap="غرفة العمليات: الدوائر على الخريطة ومؤشرات الإنجاز. الأرقام بهذا المشهد تجريبية."
+  data-vo="وبغرفة العمليات، الدوائر على الخريطة ومؤشرات الإنجاز لحظة بلحظة.">
   <div class="cap">
     <small class="a" style="--at:.2s">٥ · غرفة العمليات</small>
     <h2 class="a" style="--at:.35s">المحافظة <em>أمامك.</em></h2>
     <p class="a" style="--at:.5s">__POINTS__ دائرة على الخريطة بمواقعها الموثّقة، ومؤشرات الإنجاز والتأخير لحظة بلحظة.</p>
     <span class="demo a" style="--at:.8s">الأرقام بهذا المشهد تجريبية للعرض</span>
   </div>
-  <div class="map">__MAP__</div>
+  <div class="map" style="--at:.3s" data-sfx="scan">__MAP__</div>
   <div class="kpis">
-    <div class="kpi a" style="--at:1.4s"><small>معاملات اليوم</small><b>١٬٣٠٨</b></div>
+    <div class="kpi a" style="--at:1.4s" data-sfx="pop"><small>معاملات اليوم</small><b>١٬٣٠٨</b></div>
     <div class="kpi a" style="--at:1.6s"><small>معدل الإنجاز</small><b>٤٫٢ يوم</b></div>
     <div class="kpi late a" style="--at:1.8s"><small>معاملات متأخرة</small><b>٣٧</b></div>
     <div class="kpi a" style="--at:2s"><small>إيرادات الشهر</small><b>١٨٦ مليون</b></div>
@@ -196,14 +208,16 @@ html, body { width: 1280px; height: 720px; overflow: hidden; background: var(--n
 </section>
 
 <!-- 36–40s: the document + close -->
-<section class="scene light is-last" style="--t:36s; --len:4s">
+<section class="scene light is-last" style="--t:36s; --len:4s"
+  data-cap="وثيقتك جاهزة وموثّقة برمز QR. ابدأ معاملتك على thi-qar.com"
+  data-vo="وثيقتك جاهزة وموثّقة برمز QR. ابدأ معاملتك على thi-qar.com">
   <div class="cap">
     <small class="a" style="--at:.2s">٦ · الوثيقة</small>
     <h2 class="a" style="--at:.35s">وثيقتك جاهزة، <em>وموثّقة برمز QR.</em></h2>
     <p class="a" style="--at:.5s">ابدأ معاملتك اليوم:</p>
-    <span class="url a" style="--at:.8s">thi-qar.com</span>
+    <span class="url a" style="--at:.8s" data-sfx="chime">thi-qar.com</span>
   </div>
-  <div class="paper pop" style="--at:.3s">
+  <div class="paper pop" style="--at:.3s" data-sfx="pop">
     <small>جمهورية العراق · محافظة ذي قار</small>
     <h3>إجازة فتح محل تجاري</h3>
     <i></i><i></i><i class="s"></i><i></i><i class="s"></i>

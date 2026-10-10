@@ -5,6 +5,7 @@ import { SessionGate } from './components/shared/SessionGate'
 import { NotFound } from './pages/NotFound'
 import { RouteFallback } from './components/shared/RouteFallback'
 import { LegacyLoginRedirect } from './pages/auth/StaffLoginPage'
+import { AssistantLauncher } from './components/assistant/AssistantLauncher'
 
 const LandingPage = lazy(() => import('./pages/public/LandingPage').then(m => ({ default: m.LandingPage })))
 const GovernmentDirectoryPage = lazy(() =>
@@ -61,6 +62,12 @@ const GovernorDashboard = lazy(() =>
   import('./pages/operations/GovernorDashboard').then(m => ({ default: m.GovernorDashboard }))
 )
 const VerifyScanner = lazy(() => import('./pages/verify/VerifyScanner').then(m => ({ default: m.VerifyScanner })))
+const GuidesPage = lazy(() => import('./pages/guides/GuidesPage').then(m => ({ default: m.GuidesPage })))
+const NewsPage = lazy(() => import('./pages/public/NewsPage').then(m => ({ default: m.NewsPage })))
+const TendersPage = lazy(() => import('./pages/public/TendersPage').then(m => ({ default: m.TendersPage })))
+const TenderDetailPage = lazy(() =>
+  import('./pages/public/TenderDetailPage').then(m => ({ default: m.TenderDetailPage }))
+)
 const InfoPage = lazy(() => import('./pages/public/InfoPage').then(m => ({ default: m.InfoPage })))
 const VerifyPage = lazy(() => import('./pages/verify/VerifyPage').then(m => ({ default: m.VerifyPage })))
 
@@ -74,11 +81,16 @@ function App() {
   return (
     <Suspense fallback={<RouteFallback />}>
       <HashScroller />
+      <AssistantLauncher />
       <Switch>
         <Route path="/" component={LandingPage} />
         <Route path="/directory" component={GovernmentDirectoryPage} />
         <Route path="/government-services/:id">{params => <GovernmentServiceDetailPage id={params.id} />}</Route>
         <Route path="/departments" component={DepartmentsDirectoryPage} />
+        <Route path="/news" component={NewsPage} />
+        <Route path="/guides" component={GuidesPage} />
+        <Route path="/tenders" component={TendersPage} />
+        <Route path="/tenders/:id">{params => <TenderDetailPage id={params.id} />}</Route>
         <Route path="/departments/:id">{params => <DepartmentPublicPage id={params.id} />}</Route>
         <Route path="/department/:id">
           {params => (

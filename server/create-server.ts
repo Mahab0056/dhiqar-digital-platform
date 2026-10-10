@@ -31,8 +31,12 @@ import { bootstrapStaffAccounts, recoverStaffAccount } from './auth/staff.js'
 import { purgeExpiredSessions } from './auth/session.js'
 import { purgeExpiredMedia } from './media.js'
 import { isClientRoute, registerSeoRoutes } from './routes/seo.js'
+import { registerNewsRoutes } from './routes/news.js'
+import { registerTenderRoutes } from './routes/tenders.js'
+import { registerAssistantRoutes } from './routes/assistant.js'
+import { startNewsScheduler } from './news/aggregator.js'
 
-export function createPlatformServer(options: { serveStatic?: boolean } = {}) {
+export function createPlatformServer(options: { serveStatic?: boolean; newsScheduler?: boolean } = {}) {
   seedVerifiedGovernmentServices()
   seedDepartments()
   seedServiceCatalog()
@@ -54,6 +58,11 @@ export function createPlatformServer(options: { serveStatic?: boolean } = {}) {
   }
   safePurge()
   setInterval(safePurge, 60 * 60 * 1000).unref()
+  // Dhi Qar news from public RSS: shortly after boot, then hourly. Never in tests (no network there);
+  // NEWS_FETCH=off disables it on a host without outbound access.
+  const newsScheduler =
+    options.newsScheduler ?? (process.env.NODE_ENV !== 'test' && process.env.NEWS_FETCH?.trim().toLowerCase() !== 'off')
+  if (newsScheduler) startNewsScheduler()
 
   const { app, httpServer } = createApp()
   installRealtime(httpServer)
@@ -75,6 +84,9 @@ export function createPlatformServer(options: { serveStatic?: boolean } = {}) {
   registerStaffAdminRoutes(app)
   registerDepartmentRoutes(app)
   registerSystemRoutes(app)
+  registerNewsRoutes(app)
+  registerTenderRoutes(app)
+  registerAssistantRoutes(app)
   registerSeoRoutes(app)
 
   // an unknown /api path is a client bug: answer 404 JSON instead of falling through to the SPA's index.html
@@ -90,7 +102,7 @@ export function createPlatformServer(options: { serveStatic?: boolean } = {}) {
       '/assets',
       express.static(join(distDir, 'assets'), { index: false, immutable: true, maxAge: '1y', fallthrough: false })
     )
-    app.use(express.static(distDir, { index: false, maxAge: '1h' }))
+    app.use(express.static(distDir, { index: false, redirect: false, maxAge: '1h' }))
     app.get('/{*path}', (req, res) => {
       // index.html must always be revalidated so a new release is picked up immediately
       res.setHeader('Cache-Control', 'no-cache')

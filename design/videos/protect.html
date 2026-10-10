@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>احمِ حسابك وبياناتك</title>
+<link rel="stylesheet" href="video.css">
+<style>
+.addr { margin-top: 10px; }
+.addr .url { margin: 10px 0 0; height: 42px; }
+.addr .verdict-s { margin-top: 4px; font-size: 13px; font-weight: 700; }
+.ok-t { color: var(--green); } .bad-t { color: #a3192a; }
+.doc { position: absolute; left: 120px; top: 110px; width: 300px; height: 420px; padding: 26px; background: #fffefb; border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 40px 80px -30px rgba(14,21,18,.45); }
+.doc small { color: var(--muted); font-size: 14px; } .doc h3 { font-size: 22px; margin: 10px 0 20px; }
+.doc i { display: block; height: 9px; border-radius: 5px; background: #ecebe4; margin-bottom: 12px; } .doc i.s { width: 60%; }
+.doc .qr { position: absolute; left: 24px; bottom: 24px; width: 110px; height: 110px; fill: var(--ink); }
+.scanner { position: absolute; left: 330px; top: 230px; width: 250px; height: 400px; padding: 9px; border-radius: 38px; background: #0b0f0d; transform: rotate(-8deg); box-shadow: 0 40px 80px -30px rgba(0,0,0,.5); }
+.scanner .screen { border-radius: 30px; }
+.scanner .screen::before { display: none; }
+.ok-card { position: absolute; inset-inline: 14px; top: 120px; padding: 18px; border-radius: 16px; background: #e3f3ea; color: var(--green); text-align: center; font-weight: 700; font-size: 17px; }
+.ok-card small { display: block; margin-top: 6px; color: var(--ink); font-weight: 400; font-size: 13px; }
+.vault { position: absolute; left: 110px; top: 120px; width: 480px; height: 460px; }
+.vault .idcard { position: absolute; left: 30px; top: 40px; width: 300px; height: 190px; right: auto; }
+.lockbig { position: absolute; left: 250px; top: 170px; width: 170px; height: 150px; border-radius: 24px; background: var(--green); box-shadow: 0 30px 60px -20px rgba(1,123,61,.6); }
+.lockbig::before { content: ''; position: absolute; left: 40px; top: -70px; width: 90px; height: 90px; border: 16px solid var(--green); border-bottom: 0; border-radius: 50px 50px 0 0; box-sizing: border-box; }
+.lockbig::after { content: ''; position: absolute; left: 73px; top: 50px; width: 24px; height: 44px; border-radius: 12px; background: #e3f3ea; }
+.cipher { position: absolute; left: 30px; top: 360px; width: 420px; direction: ltr; font: 600 18px/1.6 'Courier New', monospace; color: #7aa38b; word-break: break-all; }
+.org { position: absolute; left: 70px; top: 120px; width: 560px; height: 480px; }
+.org .node { position: absolute; width: 180px; padding: 16px 10px; border: 1px solid var(--border); border-radius: 16px; background: #fff; text-align: center; font-size: 19px; font-weight: 600; }
+.org .node small { display: block; color: var(--muted); font-size: 14px; font-weight: 400; }
+.org .node.dep { border: 2px solid var(--green); background: #f1f8f4; }
+.org .node.locked { opacity: .45; }
+.org .node.locked::after { content: 'لا صلاحية'; display: block; margin-top: 6px; color: #a3192a; font-size: 13px; }
+.org .wire { position: absolute; height: 3px; background: repeating-linear-gradient(90deg, var(--green) 0 10px, transparent 10px 18px); transform-origin: right; animation: grow 1s var(--ease) calc(var(--t) + var(--at)) both; }
+.log { position: absolute; left: 0; top: 300px; width: 560px; padding: 16px 18px; border-radius: 16px; background: var(--ink); color: #dfe8e2; font: 15px/1.9 Plex, sans-serif; }
+.log b { color: var(--lit); font-weight: 600; }
+.laptop { position: absolute; left: 100px; top: 140px; width: 520px; }
+.laptop .lid { height: 320px; padding: 12px; border-radius: 18px 18px 0 0; background: #0b0f0d; }
+.laptop .lid .screen { border-radius: 8px; }
+.laptop .lid .screen::before { display: none; }
+.laptop .base { height: 20px; margin: 0 -40px; border-radius: 0 0 16px 16px; background: #2a332e; }
+.side { position: absolute; top: 0; bottom: 0; right: 0; width: 150px; padding: 14px 10px; background: #fff; border-left: 1px solid var(--border); font-size: 13px; }
+.side div { padding: 8px; border-radius: 8px; margin-bottom: 4px; }
+.side .on { background: #f1f8f4; color: var(--green); font-weight: 700; }
+.side .lo { position: absolute; bottom: 14px; inset-inline: 10px; border: 1px solid var(--border); text-align: center; font-weight: 700; }
+.bye { position: absolute; inset: 0; display: grid; place-items: center; background: var(--paper); font-family: Readex; font-size: 22px; font-weight: 700; color: var(--green); }
+.sim { position: absolute; left: 250px; top: 150px; width: 210px; height: 270px; border-radius: 22px 60px 22px 22px; background: linear-gradient(135deg, #1b3a2a, #0f2419); border: 2px solid rgba(150,220,180,.35); }
+.sim::before { content: ''; position: absolute; left: 50px; top: 80px; width: 110px; height: 90px; border-radius: 14px; background: linear-gradient(135deg, #d7b768, #a7843a); }
+.sim::after { content: ''; position: absolute; left: 50px; top: 124px; width: 110px; height: 2px; background: #7d6125; }
+.tag { position: absolute; left: 160px; top: 460px; width: 400px; padding: 16px; border-radius: 16px; background: #11251b; border: 1px solid rgba(220,238,227,.14); text-align: center; font-size: 20px; }
+.tag b { color: var(--lit); }
+</style>
+</head>
+<body style="--total:58s" data-total="58" data-poster="7.2">
+
+<section class="scene dark" style="--t:0s; --len:5s"
+  data-cap="احمِ حسابك وبياناتك: ثماني نصائح بسيطة."
+  data-vo="حسابك بمنصة ذي قار الرقمية بيه بياناتك ومعاملاتك. هاي ثماني نصائح بسيطة حتى تحميه.">
+  <svg class="shield pop" style="--at:.2s" viewBox="0 0 210 250" data-sfx="pop"><path d="M105 8 196 42v74c0 62-39 106-91 126C53 222 14 178 14 116V42Z" fill="#11251b" stroke="#3cc27a" stroke-width="6"/><path d="m64 124 30 30 56-62" fill="none" stroke="#3cc27a" stroke-width="14" stroke-linecap="round" stroke-linejoin="round" pathLength="1" style="stroke-dasharray:1; stroke-dashoffset:1; animation: draw2 .8s var(--ease) 1s both"/></svg>
+  <style>@keyframes draw2 { to { stroke-dashoffset: 0 } }</style>
+  <div class="hero-text" style="top:350px">
+    <h1 class="a" style="--at:1.4s">احمِ حسابك <em>وبياناتك.</em></h1>
+    <p class="a" style="--at:1.8s">ثماني نصائح بسيطة · منصة ذي قار الرقمية</p>
+  </div>
+</section>
+
+<section class="scene light" style="--t:5s; --len:6s"
+  data-cap="لا تنطي رمز التحقق لأي أحد. موظفو المنصة ما يطلبون الرمز أبداً."
+  data-vo="أولاً، رمز التحقق إلك وحدك. لا تنطيه لأي أحد، حتى لو قال إنه من المنصة. موظفينا ما يطلبون الرمز أبداً.">
+  <div class="cap">
+    <small class="a" style="--at:.2s">١ · رمز التحقق</small>
+    <h2 class="a" style="--at:.35s">لا تنطي الرمز <em>لأي أحد.</em></h2>
+    <p class="a" style="--at:.5s">موظفو المنصة ما يطلبون رمز التحقق أبداً، لا بالتلفون ولا بالواتساب. الرمز ينتهي خلال دقائق.</p>
+  </div>
+  <div class="phone a" style="--at:.2s"><div class="screen">
+    <div class="sb"></div>
+    <div class="apphead" style="padding-top:4px">رقم غير معروف</div>
+    <div class="chat">
+      <div class="bub a" style="--at:.8s" data-sfx="pop">هلا، آني من المنصة. وصلك رمز؟<small>١٠:٢١</small></div>
+      <div class="bub a" style="--at:1.6s" data-sfx="pop">دزلي الرمز حتى نفعّل حسابك بسرعة<small>١٠:٢١</small></div>
+      <div class="bub me a" style="--at:2.6s">لا. الرمز ما أنطيه لأحد.<small>١٠:٢٢</small></div>
+    </div>
+    <div class="stamp-x pop" style="--at:3.4s; top:165px" data-sfx="error"></div>
+  </div></div>
+</section>
+
+<section class="scene light" style="--t:11s; --len:6s"
+  data-cap="ادخل فقط من العنوان الرسمي thi-qar.com، وانتبه للروابط المزيفة بالواتساب والرسائل."
+  data-vo="ثانياً، ادخل بس من العنوان الرسمي، thi-qar.com. باوع على شريط العنوان، ولا تفتح روابط توصلك بالواتساب أو الرسائل وتطلب بياناتك.">
+  <div class="cap">
+    <small class="a" style="--at:.2s">٢ · العنوان الرسمي</small>
+    <h2 class="a" style="--at:.35s">ادخل فقط من <em class="ltr">thi-qar.com</em></h2>
+    <p class="a" style="--at:.5s">باوع على شريط العنوان. الروابط اللي توصلك بالواتساب أو الرسائل وتطلب بياناتك ممكن تكون مزيفة.</p>
+  </div>
+  <div class="phone a" style="--at:.2s"><div class="screen">
+    <div class="sb"></div>
+    <div class="pad addr">
+      <div class="h" style="font-size:18px">أي عنوان هو الصحيح؟</div>
+      <div class="a" style="--at:.9s"><div class="url"><i class="lock"></i><b>thi-qar.com</b></div><div class="verdict-s ok-t pop" style="--at:3s" data-sfx="chime">✓ العنوان الرسمي</div></div>
+      <div class="a" style="--at:1.3s"><div class="url bad"><i class="lock"></i>thi-qar-gov.example-login.net</div><div class="verdict-s bad-t pop" style="--at:3.6s" data-sfx="error">✗ مزيف</div></div>
+      <div class="a" style="--at:1.7s"><div class="url bad"><i class="lock"></i>thiqar-services.example.xyz</div><div class="verdict-s bad-t pop" style="--at:3.9s">✗ مزيف</div></div>
+      <div class="sub a" style="--at:4.3s; margin-top:16px">شك بأي رابط؟ اكتب العنوان بيدك.</div>
+    </div>
+  </div></div>
+</section>
+
+<section class="scene light" style="--t:17s; --len:6s"
+  data-cap="تحقق من أي وثيقة برمز QR أو من thi-qar.com/verify."
+  data-vo="ثالثاً، أي وثيقة توصلك، تأكد منها. امسح رمز الكيو آر، أو افتح صفحة التحقق، وتشوف إذا صادرة فعلاً من المنصة.">
+  <div class="cap">
+    <small class="a" style="--at:.2s">٣ · تحقق من الوثيقة</small>
+    <h2 class="a" style="--at:.35s">أي وثيقة توصلك، <em>تحقق منها برمز QR.</em></h2>
+    <p class="a" style="--at:.5s">امسح الرمز أو افتح <span class="ltr">thi-qar.com/verify</span> وتعرف إذا الوثيقة صادرة فعلاً من المنصة.</p>
+  </div>
+  <div class="doc pop" style="--at:.3s">
+    <small>جمهورية العراق · محافظة ذي قار</small>
+    <h3>إجازة فتح محل تجاري</h3>
+    <i></i><i></i><i class="s"></i><i></i><i class="s"></i>
+    <svg class="qr" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 29 29" shape-rendering="crispEdges"><path fill="#ffffff" d="M0 0h29v29H0z"/><path stroke="#000000" d="M0 0.5h7m1 0h1m2 0h1m5 0h2m3 0h7M0 1.5h1m5 0h1m3 0h2m4 0h1m2 0h1m2 0h1m5 0h1M0 2.5h1m1 0h3m1 0h1m2 0h2m2 0h1m1 0h6m1 0h1m1 0h3m1 0h1M0 3.5h1m1 0h3m1 0h1m1 0h1m3 0h1m1 0h3m2 0h1m2 0h1m1 0h3m1 0h1M0 4.5h1m1 0h3m1 0h1m1 0h1m1 0h2m1 0h2m1 0h3m3 0h1m1 0h3m1 0h1M0 5.5h1m5 0h1m1 0h1m1 0h1m1 0h4m1 0h1m1 0h1m2 0h1m5 0h1M0 6.5h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7M8 7.5h4m2 0h1m2 0h3M0 8.5h1m3 0h1m1 0h3m1 0h1m2 0h5m1 0h7m2 0h1M0 9.5h3m1 0h1m6 0h2m8 0h8M3 10.5h2m1 0h1m2 0h1m1 0h1m1 0h3m2 0h1m3 0h3m3 0h1M1 11.5h3m1 0h1m3 0h1m1 0h3m1 0h3m1 0h4m1 0h2m1 0h2M0 12.5h1m1 0h1m1 0h1m1 0h1m1 0h2m2 0h2m3 0h1m2 0h2m5 0h1M0 13.5h1m2 0h3m2 0h1m1 0h1m2 0h2m1 0h1m1 0h1m1 0h1m1 0h1m1 0h5M1 14.5h1m1 0h1m2 0h1m2 0h2m1 0h1m3 0h3m2 0h1m2 0h3m1 0h1M0 15.5h1m1 0h2m3 0h1m1 0h1m1 0h2m1 0h1m2 0h3m1 0h2m4 0h2M0 16.5h2m3 0h4m1 0h1m2 0h5m1 0h1m1 0h1m1 0h1m3 0h1M0 17.5h1m1 0h2m1 0h1m1 0h3m2 0h1m9 0h4m1 0h2M3 18.5h2m1 0h1m2 0h3m1 0h3m4 0h2m2 0h1m1 0h1m1 0h1M3 19.5h1m4 0h1m1 0h1m1 0h2m1 0h3m4 0h1m4 0h2M0 20.5h3m3 0h1m3 0h4m3 0h1m1 0h7m2 0h1M8 21.5h1m3 0h3m1 0h5m3 0h1m3 0h1M0 22.5h7m1 0h1m1 0h2m4 0h2m1 0h2m1 0h1m1 0h3m1 0h1M0 23.5h1m5 0h1m2 0h3m2 0h1m2 0h4m3 0h1m2 0h1M0 24.5h1m1 0h3m1 0h1m1 0h2m3 0h3m1 0h1m1 0h7m1 0h2M0 25.5h1m1 0h3m1 0h1m2 0h1m2 0h2m4 0h1m1 0h1m2 0h1m3 0h1M0 26.5h1m1 0h3m1 0h1m2 0h3m1 0h1m1 0h1m2 0h1m2 0h1m3 0h4M0 27.5h1m5 0h1m2 0h1m3 0h5m1 0h2m3 0h2m1 0h2M0 28.5h7m1 0h2m2 0h1m2 0h3m2 0h2m1 0h2m2 0h1"/></svg>
+
+  </div>
+  <div class="scanner a" style="--at:1s"><div class="screen">
+    <div class="url" style="margin-top:14px; font-size:13px"><i class="lock"></i>thi-qar.com/verify</div>
+    <div class="ok-card pop" style="--at:2.8s" data-sfx="chime">✓ وثيقة صحيحة<small>صادرة من منصة ذي قار الرقمية</small></div>
+  </div></div>
+  <div class="scanline" style="--at:1.6s; left:150px; right:auto; width:240px; top:420px" data-sfx="scan"></div>
+</section>
+
+<section class="scene dark" style="--t:23s; --len:6s"
+  data-cap="بطاقتك تتصوّر مباشرة بالكاميرا، وصورها وفيديو الوجه تنحفظ مشفّرة."
+  data-vo="رابعاً، بطاقتك تتصوّر مباشرة بالكاميرا، وصورها وفيديو وجهك ينحفظن مشفّرات، وما تنعرض كصورة حساب.">
+  <div class="cap">
+    <small class="a" style="--at:.2s">٤ · بياناتك مشفّرة</small>
+    <h2 class="a" style="--at:.35s">بطاقتك تتصوّر مباشرة <em>وتنحفظ مشفّرة.</em></h2>
+    <p class="a" style="--at:.5s">صور البطاقة وفيديو الوجه تنخزن مشفّرة، وما تنعرض كصورة حساب.</p>
+  </div>
+  <div class="vault">
+    <div class="idcard a" style="--at:.4s"><div class="tt">جمهورية العراق · البطاقة الوطنية</div><div class="ph"></div><div class="chip"></div><i class="ln" style="top:84px"></i><i class="ln" style="top:100px; left:40px"></i><i class="ln" style="top:116px; left:60px"></i></div>
+    <div class="lockbig pop" style="--at:1.8s" data-sfx="lock"></div>
+    <div class="cipher a" style="--at:2.4s">9f3a c1e0 77b2 04de 5a81 e6f9 2c4b 0d17 b8a3 61fe 93c2 7e05</div>
+  </div>
+</section>
+
+<section class="scene light" style="--t:29s; --len:6s"
+  data-cap="طلبك يشوفه بس موظف الدائرة المختصة، وكل اطلاع عليه ينسجّل."
+  data-vo="خامساً، طلبك يشوفه بس الموظف المخوّل بالدائرة المختصة، وكل اطلاع على طلبك ينسجّل بسجل التدقيق.">
+  <div class="cap">
+    <small class="a" style="--at:.2s">٥ · خصوصية الطلب</small>
+    <h2 class="a" style="--at:.35s">طلبك يشوفه بس <em>الموظف المخوّل.</em></h2>
+    <p class="a" style="--at:.5s">موظف الدائرة المختصة بطلبك فقط، وكل اطلاع أو إجراء ينسجّل بسجل التدقيق.</p>
+  </div>
+  <div class="org">
+    <div class="node a" style="--at:.3s; right:0; top:90px">طلبك<small>إجازة محل</small></div>
+    <i class="wire" style="--at:1s; right:180px; top:122px; width:200px"></i>
+    <div class="node dep pop" style="--at:1.6s; left:0; top:90px" data-sfx="pop">بلدية الناصرية<small>قسم الإجازات</small></div>
+    <div class="node locked a" style="--at:2s; left:0; top:0">دائرة أخرى</div>
+    <div class="node locked a" style="--at:2.2s; left:0; top:190px">دائرة أخرى</div>
+    <div class="log a" style="--at:3s" data-sfx="type">سجل التدقيق · <b>عرض الطلب</b> — موظف قسم الإجازات · ١٠:٤٢<br>سجل التدقيق · <b>تدقيق المستمسكات</b> — موظف قسم الإجازات · ١٠:٥٠</div>
+  </div>
+</section>
+
+<section class="scene light" style="--t:35s; --len:6s"
+  data-cap="على جهاز مشترك؟ اضغط «تسجيل الخروج» بعد ما تخلص."
+  data-vo="سادساً، إذا استخدمت جهاز مشترك، أو بمكتب خدمة، اضغط تسجيل الخروج بعد ما تخلص.">
+  <div class="cap">
+    <small class="a" style="--at:.2s">٦ · جهاز مشترك؟</small>
+    <h2 class="a" style="--at:.35s">اطلع من حسابك <em>بعد ما تخلص.</em></h2>
+    <p class="a" style="--at:.5s">على أجهزة الآخرين أو بمكاتب الخدمة، اضغط «تسجيل الخروج» دائماً ولا تخلي الحساب مفتوح.</p>
+  </div>
+  <div class="laptop a" style="--at:.2s">
+    <div class="lid"><div class="screen">
+      <div class="side"><div class="on">الرئيسية</div><div>الخدمات</div><div>معاملاتي</div><div>شكوى أو مقترح</div><div class="lo">تسجيل الخروج</div></div>
+      <div style="padding:20px 170px 0 20px"><div class="h">أهلاً علي</div><div class="track" style="margin:12px 0">إجازة فتح محل تجاري<div class="bar"><i style="--at:.6s"></i></div></div><div class="track" style="margin:0">حجز موعد · الثلاثاء</div></div>
+      <i class="tap" style="left:442px; top:266px; --at:2.4s" data-sfx="click"></i>
+      <div class="bye fade" style="--at:3.1s" data-sfx="chime">تم تسجيل الخروج ✓</div>
+    </div></div>
+    <div class="base"></div>
+  </div>
+</section>
+
+<section class="scene light" style="--t:41s; --len:6s"
+  data-cap="وصلتك رسالة مشبوهة؟ بلّغنا من «شكوى أو مقترح» داخل حسابك."
+  data-vo="سابعاً، إذا وصلتك رسالة مشبوهة باسم المنصة، بلّغنا من شكوى أو مقترح داخل حسابك.">
+  <div class="cap">
+    <small class="a" style="--at:.2s">٧ · بلّغ</small>
+    <h2 class="a" style="--at:.35s">وصلتك رسالة مشبوهة؟ <em>بلّغنا.</em></h2>
+    <p class="a" style="--at:.5s">من حسابك اختار «شكوى أو مقترح»، واكتب شنو وصلك ومن يا رقم.</p>
+  </div>
+  <div class="phone a" style="--at:.2s"><div class="screen">
+    <div class="sb"></div>
+    <div class="pad">
+      <div class="h" style="font-size:19px">شكوى أو مقترح جديد</div>
+      <div class="field">النوع<div class="in" style="font-size:16px">شكوى</div></div>
+      <div class="field">الموضوع<div class="in" style="font-size:16px"><span class="type" style="--at:1s; --steps:14; --dur:1.2s" data-sfx="type">رسالة مشبوهة باسم المنصة</span></div></div>
+      <div class="field">التفاصيل<div class="in" style="height:96px; align-items:flex-start; padding-top:10px; font-size:14px; line-height:1.6"><span class="fade" style="--at:2.4s">وصلتني رسالة واتساب تطلب رمز التحقق من رقم غريب.</span></div></div>
+      <div class="btn">إرسال</div>
+    </div>
+    <i class="tap" style="left:148px; top:478px; --at:3.6s" data-sfx="click"></i>
+    <div class="notif blip" style="--at:4.1s; top:auto; bottom:20px" data-sfx="ding"><span class="ic">✓</span><span><b>تم استلام بلاغك</b><small>تقدر تتابعه من حسابك</small></span></div>
+  </div></div>
+</section>
+
+<section class="scene dark" style="--t:47s; --len:6s"
+  data-cap="رقم موبايلك هو مفتاح حسابك: خليه باسمك وبيدك."
+  data-vo="وثامناً، رقم موبايلك هو مفتاح حسابك. خليه باسمك وبيدك، ولا تنطي الخط لغيرك. وإذا ضاع، راجع شركة الاتصالات بسرعة.">
+  <div class="cap">
+    <small class="a" style="--at:.2s">٨ · رقمك مفتاحك</small>
+    <h2 class="a" style="--at:.35s">خلي رقم موبايلك <em>باسمك وبيدك.</em></h2>
+    <p class="a" style="--at:.5s">حسابك مربوط برقمك. لا تنطي الخط لغيرك، وإذا ضاع راجع شركة الاتصالات بأسرع وقت.</p>
+  </div>
+  <div class="sim pop" style="--at:.4s" data-sfx="pop"></div>
+  <div class="tag a" style="--at:1.4s">رقمك = <b>مفتاح حسابك</b></div>
+</section>
+
+<section class="scene dark is-last" style="--t:53s; --len:5s"
+  data-cap="منصة ذي قار الرقمية: thi-qar.com"
+  data-vo="منصة ذي قار الرقمية. خدماتك، بأمان.">
+  <div class="mark pop" style="--at:.2s" data-sfx="chime"><img src="../../public/brand/motion/tq-mark.png" alt=""></div>
+  <div class="hero-text">
+    <h1 class="a" style="--at:.6s">خدماتك، <em>بأمان.</em></h1>
+    <span class="chipurl a" style="--at:1s">thi-qar.com</span>
+  </div>
+</section>
+
+<div class="progress"><i></i></div>
+</body>
+</html>

@@ -419,6 +419,27 @@
   font-size: 12px;
   white-space: nowrap;
 }
+/* sign-in email (Google / email code), edited inline by the super admin */
+.staff-email-cell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.staff-email-cell small {
+  overflow-wrap: anywhere;
+}
+.staff-email-cell.editing {
+  flex-wrap: wrap;
+}
+.staff-email-cell.editing input {
+  flex: 1 1 190px;
+  min-width: 0;
+}
+.staff-email-cell.editing .button {
+  min-height: 32px;
+  padding-inline: 10px;
+}
 
 /* ---- shop-permit review: action line and the requested-document field --------------------------- */
 .queue-item .queue-item-action {

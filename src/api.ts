@@ -27,6 +27,17 @@ import type {
   DepartmentDashboard,
   DepartmentDirectoryResponse,
   DepartmentSummary,
+  NewsKind,
+  NewsListResponse,
+  NewsTickerResponse,
+  AdminNewsItem,
+  AdminNewsListResponse,
+  NewsRunSummary,
+  Tender,
+  TenderInput,
+  TenderListResponse,
+  TenderStatus,
+  TenderType,
 } from './types'
 
 /** Idempotency key for one filled-in form: a double click or a retried upload resubmits the same key. */
@@ -122,12 +133,26 @@ export type DepartmentCoverage = {
   }>
 }
 
+export type StaffLoginMethods = { password: boolean; google: boolean; email: boolean }
+
 export const api = {
   getSession: () => request<StaffSession>('/api/auth/session'),
   staffLogin: (username: string, password: string) =>
     request<StaffLoginResponse>('/api/auth/staff/login', {
       method: 'POST',
       body: JSON.stringify({ username, password }),
+    }),
+  /** Which staff sign-in methods this deployment offers (Google / email code depend on server configuration). */
+  staffLoginMethods: () => request<StaffLoginMethods>('/api/auth/staff/methods'),
+  requestStaffEmailCode: (email: string) =>
+    request<{ success: boolean; message: string; resendAfterSeconds: number; expiresInSeconds: number }>(
+      '/api/auth/staff/email/request',
+      { method: 'POST', body: JSON.stringify({ email }) }
+    ),
+  verifyStaffEmailCode: (email: string, code: string) =>
+    request<StaffLoginResponse>('/api/auth/staff/email/verify', {
+      method: 'POST',
+      body: JSON.stringify({ email, code }),
     }),
   staffMfa: (challengeToken: string, code: string) =>
     request<StaffSession>('/api/auth/staff/mfa', { method: 'POST', body: JSON.stringify({ challengeToken, code }) }),
@@ -173,6 +198,7 @@ export const api = {
     fullName: string
     role: StaffRole
     departmentId?: string | null
+    email?: string | null
   }) =>
     request<{ account: StaffAccount; temporaryPassword: string | null }>('/api/super-admin/staff', {
       method: 'POST',
@@ -180,7 +206,13 @@ export const api = {
     }),
   updateStaffAccount: (
     id: string,
-    payload: { fullName?: string; role?: StaffRole; departmentId?: string | null; isDepartmentManager?: boolean }
+    payload: {
+      fullName?: string
+      role?: StaffRole
+      departmentId?: string | null
+      isDepartmentManager?: boolean
+      email?: string | null
+    }
   ) =>
     request<{ account: StaffAccount }>(`/api/super-admin/staff/${encodeURIComponent(id)}`, {
       method: 'PATCH',
@@ -900,6 +932,41 @@ export const api = {
     request<GovernmentApplication>(`/api/applications/${reference}/approve`, { method: 'POST' }),
   getStats: () => request<DashboardStats>('/api/dashboard/stats'),
   verifyDocument: (verificationId: string) => request<GovernmentApplication>(`/api/verify/${verificationId}`),
+
+  // ---- Dhi Qar news (aggregated hourly from public RSS) and official tenders/auctions ----
+  getNews: (params: { limit?: number; offset?: number; kind?: NewsKind; source?: string; q?: string } = {}) =>
+    request<NewsListResponse>(`/api/news${queryString(params)}`),
+  getNewsTicker: () => request<NewsTickerResponse>('/api/news/ticker'),
+  listTenders: (
+    params: { status?: TenderStatus; type?: TenderType; department?: string; q?: string; limit?: number } = {}
+  ) => request<TenderListResponse>(`/api/tenders${queryString(params)}`),
+  getTender: (id: string) => request<Tender>(`/api/tenders/${encodeURIComponent(id)}`),
+  listStaffTenders: () => request<Omit<TenderListResponse, 'entities'>>('/api/staff/tenders'),
+  createTender: (input: TenderInput) =>
+    request<Tender>('/api/staff/tenders', { method: 'POST', body: JSON.stringify(input) }),
+  updateTender: (id: string, input: Partial<TenderInput>) =>
+    request<Tender>(`/api/staff/tenders/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(input) }),
+  setTenderState: (id: string, state: 'ACTIVE' | 'CLOSED' | 'CANCELLED' | 'AWARDED', note?: string) =>
+    request<Tender>(`/api/staff/tenders/${encodeURIComponent(id)}/status`, {
+      method: 'POST',
+      body: JSON.stringify({ state, note }),
+    }),
+  listAdminNews: (params: { q?: string; kind?: NewsKind; limit?: number } = {}) =>
+    request<AdminNewsListResponse>(`/api/admin/news${queryString(params)}`),
+  setNewsHidden: (id: string, hidden: boolean) =>
+    request<AdminNewsItem>(`/api/admin/news/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ hidden }),
+    }),
+  refreshNews: () => request<NewsRunSummary>('/api/admin/news/refresh', { method: 'POST' }),
+}
+
+const queryString = (params: Record<string, string | number | undefined>) => {
+  const search = new URLSearchParams()
+  for (const [key, value] of Object.entries(params))
+    if (value !== undefined && value !== '') search.set(key, String(value))
+  const text = search.toString()
+  return text ? `?${text}` : ''
 }
 
 /** Office receipt recorded by the department when the fee is paid at the counter. */

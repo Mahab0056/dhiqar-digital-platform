@@ -9,6 +9,9 @@ const columns = [
       { label: 'دليل الدوائر', href: '/departments' },
       { label: 'ابدأ معاملة جديدة', href: '/onboarding' },
       { label: 'متابعة معاملة', href: '/citizen#my-requests' },
+      { label: 'أخبار ذي قار', href: '/news' },
+      { label: 'فيديوهات تعليمية', href: '/guides' },
+      { label: 'المناقصات والمزادات', href: '/tenders' },
     ],
   },
   {

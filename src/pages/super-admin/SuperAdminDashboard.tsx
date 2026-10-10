@@ -17,6 +17,8 @@ import {
   Database,
   ShieldAlert,
   ShieldCheck,
+  Megaphone,
+  Newspaper,
 } from 'lucide-react'
 import { api } from '../../api'
 import { auditActionLabel } from '../../audit-labels'
@@ -29,6 +31,9 @@ import { DepartmentManagementPanel } from './DepartmentManagementPanel'
 import { GovernmentServiceAdminPanel } from './GovernmentServiceAdminPanel'
 import { StaffAccountsPanel } from './StaffAccountsPanel'
 import { SystemHealthPanel } from './SystemHealthPanel'
+import { AssistantStatusCard } from '../../components/assistant/AssistantStatusCard'
+import { NewsModerationPanel } from './NewsModerationPanel'
+import { TendersAdminPanel } from '../../components/shared/TendersAdminPanel'
 import { logoutAndRedirect, useSession } from '../../lib/session'
 
 export function SuperAdminDashboard() {
@@ -251,7 +256,24 @@ export function SuperAdminDashboard() {
           { id: 'departments', label: 'الدوائر والخدمات', icon: Building2, content: <DepartmentManagementPanel /> },
           { id: 'coverage', label: 'تغطية الدوائر', icon: ShieldAlert, content: <DepartmentCoveragePanel /> },
           { id: 'national', label: 'الخدمات الوطنية', icon: Landmark, content: <GovernmentServiceAdminPanel /> },
-          { id: 'system', label: 'النظام والنسخ الاحتياطي', icon: Database, content: <SystemHealthPanel /> },
+          {
+            id: 'tenders',
+            label: 'المناقصات والمزادات',
+            icon: Megaphone,
+            content: <TendersAdminPanel scope="admin" />,
+          },
+          { id: 'news', label: 'الأخبار', icon: Newspaper, content: <NewsModerationPanel /> },
+          {
+            id: 'system',
+            label: 'النظام والنسخ الاحتياطي',
+            icon: Database,
+            content: (
+              <>
+                <AssistantStatusCard />
+                <SystemHealthPanel />
+              </>
+            ),
+          },
         ]}
       />
     </OperationsShell>

@@ -9,6 +9,8 @@ export const staffRoles: StaffRole[] = ['EMPLOYEE', 'IDENTITY_REVIEWER', 'OPERAT
 export type StaffAccount = {
   id: string
   username: string
+  /** Lowercase work email set by a super admin; enables Google / email-code sign-in. Never self-registered. */
+  email: string | null
   fullName: string
   role: StaffRole
   departmentId: string | null
@@ -30,13 +32,43 @@ const LOCK_MINUTES = 15
 
 const now = () => new Date().toISOString()
 
-const selectColumns = `s.id, s.username, s.full_name, s.role, s.department_id, d.name AS department_name, s.is_department_manager, s.must_change_password,
+// email column (nullable, unique when set): added in place so existing databases upgrade on boot
+{
+  const columns = db.prepare(`PRAGMA table_info(staff_accounts)`).all() as Array<{ name: string }>
+  if (!columns.some(item => item.name === 'email')) db.exec(`ALTER TABLE staff_accounts ADD COLUMN email TEXT`)
+  db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_staff_accounts_email ON staff_accounts(email) WHERE email IS NOT NULL`)
+}
+
+const EMAIL_PATTERN =
+  /^[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$/
+
+export function normalizeEmail(input: string) {
+  return input.trim().toLowerCase()
+}
+
+/** Validates and normalizes an admin-supplied email. Empty → null (unlinks the account). */
+export function parseStaffEmail(input: string | null | undefined) {
+  if (input === null || input === undefined) return null
+  const email = normalizeEmail(input)
+  if (!email) return null
+  if (email.length > 254 || !EMAIL_PATTERN.test(email)) throw new Error('صيغة البريد الإلكتروني غير صحيحة.')
+  return email
+}
+
+function assertEmailFree(email: string | null, exceptId?: string) {
+  if (!email) return
+  const row = db.prepare(`SELECT id FROM staff_accounts WHERE email = ?`).get(email) as { id: string } | undefined
+  if (row && row.id !== exceptId) throw new Error('هذا البريد الإلكتروني مرتبط بحساب موظف آخر.')
+}
+
+const selectColumns = `s.id, s.username, s.email, s.full_name, s.role, s.department_id, d.name AS department_name, s.is_department_manager, s.must_change_password,
   s.totp_enabled, s.status, s.failed_attempts, s.locked_until, s.last_login_at, s.created_at, s.updated_at`
 
 function mapStaff(row: Record<string, unknown>): StaffAccount {
   return {
     id: String(row.id),
     username: String(row.username),
+    email: row.email ? String(row.email) : null,
     fullName: String(row.full_name),
     role: String(row.role) as StaffRole,
     departmentId: row.department_id ? String(row.department_id) : null,
@@ -75,6 +107,17 @@ export function getStaffByUsername(username: string) {
   return row ? mapStaff(row) : null
 }
 
+export function getStaffByEmail(email: string) {
+  const normalized = normalizeEmail(email)
+  if (!normalized) return null
+  const row = db
+    .prepare(
+      `SELECT ${selectColumns} FROM staff_accounts s LEFT JOIN departments d ON d.id = s.department_id WHERE s.email = ?`
+    )
+    .get(normalized) as Record<string, unknown> | undefined
+  return row ? mapStaff(row) : null
+}
+
 export function listStaff() {
   const rows = db
     .prepare(
@@ -98,6 +141,7 @@ export function createStaff(input: {
   fullName: string
   role: StaffRole
   departmentId?: string | null
+  email?: string | null
   password?: string
   mustChangePassword?: boolean
   createdBy?: string
@@ -107,6 +151,8 @@ export function createStaff(input: {
     throw new Error('اسم المستخدم يجب أن يكون 3–40 حرفاً لاتينياً صغيراً أو أرقاماً أو نقاطاً أو شرطات.')
   if (getStaffByUsername(username)) throw new Error('اسم المستخدم مستخدم مسبقاً.')
   if (!staffRoles.includes(input.role)) throw new Error('الدور غير معروف.')
+  const email = parseStaffEmail(input.email)
+  assertEmailFree(email)
   const temporaryPassword = input.password ?? generateTemporaryPassword()
   if (input.password) {
     const policyError = passwordPolicyError(input.password)
@@ -115,11 +161,12 @@ export function createStaff(input: {
   const id = `stf_${randomUUID().replaceAll('-', '')}`
   const timestamp = now()
   db.prepare(
-    `INSERT INTO staff_accounts (id, username, full_name, role, department_id, password_hash, password_updated_at, must_change_password, status, created_by, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVE', ?, ?, ?)`
+    `INSERT INTO staff_accounts (id, username, email, full_name, role, department_id, password_hash, password_updated_at, must_change_password, status, created_by, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVE', ?, ?, ?)`
   ).run(
     id,
     username,
+    email,
     input.fullName.trim(),
     input.role,
     input.departmentId || null,
@@ -156,33 +203,58 @@ export function authenticateStaff(
     return { ok: false, reason: 'LOCKED', retryAfterSeconds }
   }
   if (!verifyPassword(password, row.password_hash)) {
-    const attempts = Number(row.failed_attempts || 0) + 1
-    const lockedUntil =
-      attempts >= MAX_FAILED_ATTEMPTS ? new Date(Date.now() + LOCK_MINUTES * 60_000).toISOString() : null
-    db.prepare(`UPDATE staff_accounts SET failed_attempts = ?, locked_until = ?, updated_at = ? WHERE id = ?`).run(
-      lockedUntil ? 0 : attempts,
-      lockedUntil,
-      now(),
-      row.id
-    )
-    if (lockedUntil) {
-      addAudit({
-        actor: 'auth',
-        role: 'SYSTEM',
-        action: 'STAFF_ACCOUNT_LOCKED',
-        entityType: 'StaffAccount',
-        entityId: row.id,
-        metadata: { attempts, lockedUntil },
-      })
-      return { ok: false, reason: 'LOCKED', retryAfterSeconds: LOCK_MINUTES * 60 }
-    }
-    return { ok: false, reason: 'INVALID' }
+    return registerFailedStaffAttempt(row.id, 'PASSWORD')
+      ? { ok: false, reason: 'LOCKED', retryAfterSeconds: LOCK_MINUTES * 60 }
+      : { ok: false, reason: 'INVALID' }
   }
+  clearFailedStaffAttempts(row.id)
+  return { ok: true, account: getStaffById(row.id)! }
+}
+
+/** Shared lockout counter for every sign-in method. Returns true when this failure locked the account. */
+export function registerFailedStaffAttempt(staffId: string, method = 'PASSWORD') {
+  const row = db.prepare(`SELECT failed_attempts FROM staff_accounts WHERE id = ?`).get(staffId) as
+    { failed_attempts: number } | undefined
+  if (!row) return false
+  const attempts = Number(row.failed_attempts || 0) + 1
+  const lockedUntil =
+    attempts >= MAX_FAILED_ATTEMPTS ? new Date(Date.now() + LOCK_MINUTES * 60_000).toISOString() : null
+  db.prepare(`UPDATE staff_accounts SET failed_attempts = ?, locked_until = ?, updated_at = ? WHERE id = ?`).run(
+    lockedUntil ? 0 : attempts,
+    lockedUntil,
+    now(),
+    staffId
+  )
+  if (lockedUntil)
+    addAudit({
+      actor: 'auth',
+      role: 'SYSTEM',
+      action: 'STAFF_ACCOUNT_LOCKED',
+      entityType: 'StaffAccount',
+      entityId: staffId,
+      metadata: { attempts, lockedUntil, method },
+    })
+  return Boolean(lockedUntil)
+}
+
+export function clearFailedStaffAttempts(staffId: string) {
   db.prepare(`UPDATE staff_accounts SET failed_attempts = 0, locked_until = NULL, updated_at = ? WHERE id = ?`).run(
     now(),
-    row.id
+    staffId
   )
-  return { ok: true, account: getStaffById(row.id)! }
+}
+
+/** Gate for passwordless methods (Google / email code): the account must be active and not locked. */
+export function staffSignInBlock(
+  account: StaffAccount
+): { reason: 'LOCKED' | 'DISABLED'; retryAfterSeconds?: number } | null {
+  if (account.status !== 'ACTIVE') return { reason: 'DISABLED' }
+  if (account.lockedUntil && account.lockedUntil > now())
+    return {
+      reason: 'LOCKED',
+      retryAfterSeconds: Math.max(1, Math.ceil((Date.parse(account.lockedUntil) - Date.now()) / 1000)),
+    }
+  return null
 }
 
 export function recordStaffLogin(staffId: string) {
@@ -227,10 +299,18 @@ export function setStaffStatus(staffId: string, status: 'ACTIVE' | 'DISABLED') {
 
 export function updateStaffProfile(
   staffId: string,
-  input: { fullName?: string; role?: StaffRole; departmentId?: string | null; isDepartmentManager?: boolean }
+  input: {
+    fullName?: string
+    role?: StaffRole
+    departmentId?: string | null
+    isDepartmentManager?: boolean
+    email?: string | null
+  }
 ) {
   const current = getStaffById(staffId)
   if (!current) throw new Error('الحساب غير موجود.')
+  const email = input.email === undefined ? current.email : parseStaffEmail(input.email)
+  assertEmailFree(email, staffId)
   const role = input.role || current.role
   const departmentId = input.departmentId === undefined ? current.departmentId : input.departmentId
   // a manager manages one department as an employee of it: moving the account elsewhere (or to another role)
@@ -241,8 +321,16 @@ export function updateStaffProfile(
       ? input.isDepartmentManager && role === 'EMPLOYEE' && Boolean(departmentId)
       : current.isDepartmentManager && keepsScope
   db.prepare(
-    `UPDATE staff_accounts SET full_name = ?, role = ?, department_id = ?, is_department_manager = ?, updated_at = ? WHERE id = ?`
-  ).run(input.fullName?.trim() || current.fullName, role, departmentId, isDepartmentManager ? 1 : 0, now(), staffId)
+    `UPDATE staff_accounts SET full_name = ?, role = ?, department_id = ?, is_department_manager = ?, email = ?, updated_at = ? WHERE id = ?`
+  ).run(
+    input.fullName?.trim() || current.fullName,
+    role,
+    departmentId,
+    isDepartmentManager ? 1 : 0,
+    email,
+    now(),
+    staffId
+  )
   return getStaffById(staffId)!
 }
 

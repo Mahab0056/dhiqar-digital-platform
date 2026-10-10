@@ -638,3 +638,64 @@
   text-align: center;
   justify-items: center;
 }
+
+/* ---- staff sign-in methods: Google button (brand: white, #747775 outline, 4-colour G), divider, method switch ---- */
+.auth-google-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: var(--ds-control-lg);
+  padding: 0 16px;
+  border: 1px solid #747775;
+  border-radius: var(--ds-radius-sm);
+  background: #ffffff;
+  color: #1f1f1f;
+  font-family: var(--ds-font-ui);
+  font-size: var(--ds-text-md);
+  font-weight: 600;
+  text-decoration: none;
+  transition:
+    background-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+.auth-google-button:hover {
+  background: #f8f9fa;
+  box-shadow: 0 1px 2px rgb(60 64 67 / 0.3);
+}
+.auth-google-button:focus-visible {
+  outline: 2px solid var(--ds-focus, #1a73e8);
+  outline-offset: 2px;
+}
+.auth-google-mark {
+  flex: none;
+  width: 18px;
+  height: 18px;
+}
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--ds-text-muted);
+  font-size: var(--ds-text-xs);
+}
+.auth-divider::before,
+.auth-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--ds-border);
+}
+.auth-method-switch {
+  width: 100%;
+}
+.auth-method-switch button {
+  flex: 1;
+  padding-inline: 10px;
+}
+.auth-inline-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px;
+}

@@ -1,9 +1,10 @@
 // Builds explainer.html from template.html (inlines the logo layers, the district map and a real QR code).
 // Usage: node design/explainer/build.mjs
 import fs from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import QRCode from 'qrcode'
-const dir = new URL('.', import.meta.url).pathname
-const geo = JSON.parse(fs.readFileSync(dir + '../../src/components/home/dhiqar-geo.json', 'utf8'))
+const dir = fileURLToPath(new URL('.', import.meta.url))
+const geo = JSON.parse(fs.readFileSync(dir + 'dhiqar-geo.json', 'utf8'))
 const logoPage = fs.readFileSync(dir + '../../public/brand/motion/tq-logo-motion.html', 'utf8')
 const tqm = logoPage.slice(logoPage.indexOf('<svg viewBox'), logoPage.indexOf('<!-- … to here')).replace(/<\/div>\s*$/, '')
   .replace(/src="tq-/g, 'src="../../public/brand/motion/tq-')
