@@ -3,7 +3,8 @@ import { addAudit, db } from './db.js'
 import { employeeWorkQueueRealtime, notifyCitizen } from './realtime.js'
 import { faceMatchAvailable, verifyFaceAgainstDocument, type FaceVerification } from './face-match.js'
 import { readMrzLocally } from './local-identity-ocr.js'
-import { iraqiCardProblems, type Td1 } from './mrz.js'
+import { readDecryptedMedia } from './media.js'
+import { foldDocumentNumber, iraqiCardProblems, type Td1 } from './mrz.js'
 import {
   verifyActiveLiveness,
   type ActiveLiveness,
@@ -49,13 +50,171 @@ ensureColumn('citizens', 'sex', 'TEXT')
 ensureColumn('citizens', 'document_expiry', 'TEXT')
 ensureColumn('citizens', 'latin_name', 'TEXT')
 ensureColumn('citizens', 'national_id_hash', 'TEXT')
+// the same number folded over its OCR look-alikes (S/8, G/6, L/1, U/0…), also kept only as a keyed hash: two readings
+// of one card share it. Rows verified before this column existed stay NULL (the raw number was never kept, so there is
+// nothing to fold) and are still matched by the exact hash.
+ensureColumn('citizens', 'national_id_fold_hash', 'TEXT')
 db.exec('CREATE INDEX IF NOT EXISTS idx_citizens_national_id_hash ON citizens(national_id_hash)')
+db.exec('CREATE INDEX IF NOT EXISTS idx_citizens_national_id_fold_hash ON citizens(national_id_fold_hash)')
+// the same two keyed hashes of the number the automatic check read, kept on the review (mrz_data masks the number) so
+// a reviewer's approval registers the card exactly like an automatic one, without the number ever being stored
+ensureColumn('identity_reviews', 'card_hash', 'TEXT')
+ensureColumn('identity_reviews', 'card_fold_hash', 'TEXT')
+
+const cardHash = (value: string) =>
+  createHmac('sha256', process.env.MEDIA_ENCRYPTION_KEY?.trim() || 'dhiqar-local-dev')
+    .update(value)
+    .digest('hex')
 
 /** Keyed hash of the card number: finds the same card on two accounts without storing the number itself. */
-export const nationalIdHash = (documentNumber: string) =>
-  createHmac('sha256', process.env.MEDIA_ENCRYPTION_KEY?.trim() || 'dhiqar-local-dev')
-    .update(`national-id:${documentNumber.toUpperCase()}`)
-    .digest('hex')
+export const nationalIdHash = (documentNumber: string) => cardHash(`national-id:${documentNumber.toUpperCase()}`)
+
+/**
+ * Keyed hash of the card number folded over look-alikes (foldDocumentNumber): a misread that passed the check digits
+ * by luck ("S12345678" for 812345678) lands on the same key as the true reading.
+ */
+export const nationalIdFoldHash = (documentNumber: string) =>
+  cardHash(`national-id-fold:${foldDocumentNumber(documentNumber)}`)
+
+export const DUPLICATE_CARD_REASON = 'هذه البطاقة مسجلة على حساب آخر'
+export const POSSIBLE_DUPLICATE_CARD_REASON = 'احتمال تكرار البطاقة'
+
+/** Both keyed hashes of one card number: `exact` (nationalIdHash) and `fold` (nationalIdFoldHash). */
+export type CardHashes = { exact: string; fold: string }
+export const cardHashes = (documentNumber: string): CardHashes => ({
+  exact: nationalIdHash(documentNumber),
+  fold: nationalIdFoldHash(documentNumber),
+})
+
+/** A confirmed identity, whether admitted automatically or by a reviewer. */
+const VERIFIED_STATUSES = "('VERIFIED', 'VERIFIED_MANUAL')"
+
+/**
+ * Is this card already on another account? `exact`: the same number (any status). `possible`: not the same number,
+ * but one that folds to the same key on another verified citizen (automatic or manual) — the same card read
+ * differently, or (rarely) a different card a person must tell apart. Either keeps the request away from automatic
+ * approval.
+ */
+export function findCardDuplicates(documentNumber: string, citizenId: number) {
+  return findCardDuplicatesByHash(cardHashes(documentNumber), citizenId)
+}
+
+/** findCardDuplicates for hashes already computed (a review keeps the hashes, never the number). */
+export function findCardDuplicatesByHash(hashes: CardHashes, citizenId: number) {
+  const exact = Boolean(
+    db.prepare('SELECT id FROM citizens WHERE national_id_hash = ? AND id != ? LIMIT 1').get(hashes.exact, citizenId)
+  )
+  const possible =
+    !exact &&
+    Boolean(
+      db
+        .prepare(
+          `SELECT id FROM citizens WHERE national_id_fold_hash = ? AND id != ? AND verification_status IN ${VERIFIED_STATUSES} LIMIT 1`
+        )
+        .get(hashes.fold, citizenId)
+    )
+  return { exact, possible }
+}
+
+/**
+ * Another verified citizen (automatic or manual) already holds this card: 'EXACT' (the same number) or 'LOOK_ALIKE'
+ * (a reading that folds to the same key). A reviewer's approval is blocked on either — one card, one account.
+ */
+export function verifiedCardHolder(hashes: CardHashes, citizenId: number): 'EXACT' | 'LOOK_ALIKE' | null {
+  const holds = (column: 'national_id_hash' | 'national_id_fold_hash', hash: string) =>
+    Boolean(
+      db
+        .prepare(
+          `SELECT id FROM citizens WHERE ${column} = ? AND id != ? AND verification_status IN ${VERIFIED_STATUSES} LIMIT 1`
+        )
+        .get(hash, citizenId)
+    )
+  if (holds('national_id_hash', hashes.exact)) return 'EXACT'
+  if (holds('national_id_fold_hash', hashes.fold)) return 'LOOK_ALIKE'
+  return null
+}
+
+/** What a confirmed identity registers from the card: of the number only its last four digits and keyed hashes. */
+export type RegisteredCard = {
+  last4: string
+  hashes: CardHashes
+  birthDate: string | null
+  sex: 'M' | 'F' | null
+  expiryDate: string | null
+  latinName: string
+}
+export const registeredCardFromTd1 = (td1: Td1): RegisteredCard => ({
+  last4: td1.documentNumber.slice(-4),
+  hashes: cardHashes(td1.documentNumber),
+  birthDate: td1.birthDate,
+  sex: td1.sex,
+  expiryDate: td1.expiryDate,
+  latinName: `${td1.givenNames} ${td1.surname}`.trim(),
+})
+
+/** Writes the card's details on the citizen (both approval paths; the caller sets the verification status). */
+export function registerCard(citizenId: number, card: RegisteredCard, timestamp: string) {
+  db.prepare(
+    `UPDATE citizens SET national_id_masked = ?, national_id_hash = ?, national_id_fold_hash = ?,
+       date_of_birth = ?, sex = ?, document_expiry = ?, latin_name = ?, document_type = 'NATIONAL_ID', updated_at = ? WHERE id = ?`
+  ).run(
+    `*****${card.last4}`,
+    card.hashes.exact,
+    card.hashes.fold,
+    card.birthDate,
+    card.sex === 'M' ? 'ذكر' : card.sex === 'F' ? 'أنثى' : null,
+    card.expiryDate,
+    card.latinName,
+    timestamp,
+    citizenId
+  )
+}
+
+const asText = (value: unknown) => (typeof value === 'string' && value ? value : null)
+
+/**
+ * The card a reviewer's approval registers: the review's machine-readable zone when it passed every check digit,
+ * with the keyed hashes the automatic check stored next to it. Reviews read before those hashes were kept fall back to
+ * reading the stored back photo again, accepted only when it is valid and ends in the same four digits. Null when
+ * there is no validated zone (or it cannot be read again): the approval then registers no card, as before.
+ */
+export async function cardForManualApproval(review: {
+  mrz_data?: unknown
+  card_hash?: unknown
+  card_fold_hash?: unknown
+  id_back_media_id?: unknown
+}): Promise<RegisteredCard | null> {
+  let zone: Record<string, unknown> | null = null
+  try {
+    zone = review.mrz_data ? (JSON.parse(String(review.mrz_data)) as Record<string, unknown>) : null
+  } catch {
+    zone = null
+  }
+  if (!zone || zone.valid !== true) return null
+  const last4 = (asText(zone.documentNumber) ?? '').slice(-4)
+  if (!/^[0-9A-Z]{4}$/.test(last4)) return null
+  const exact = asText(review.card_hash)
+  const fold = asText(review.card_fold_hash)
+  if (exact && fold)
+    return {
+      last4,
+      hashes: { exact, fold },
+      birthDate: asText(zone.birthDate),
+      sex: zone.sex === 'M' || zone.sex === 'F' ? zone.sex : null,
+      expiryDate: asText(zone.expiryDate),
+      latinName: `${asText(zone.givenNames) ?? ''} ${asText(zone.surname) ?? ''}`.trim(),
+    }
+  const backId = asText(review.id_back_media_id)
+  if (!backId) return null
+  try {
+    const back = readDecryptedMedia(backId)
+    if (!back) return null
+    const { td1 } = await readMrzLocally(back.buffer, { budgetMs: 10_000 })
+    return td1?.valid && td1.documentNumber.slice(-4) === last4 ? registeredCardFromTd1(td1) : null
+  } catch {
+    return null
+  }
+}
 
 // ---- name matching --------------------------------------------------------------------------
 const arabicNormalize = (value: string) =>
@@ -256,6 +415,8 @@ export function decideAutomatically(input: {
   name: NameMatch
   td1: Td1 | null
   duplicateAccount: boolean
+  /** a look-alike reading of this card number is on another verified account (findCardDuplicates) */
+  possibleDuplicate?: boolean
   /** the random head-movement challenge; undefined when the submission came without one */
   activeLiveness?: ActiveLiveness | null
 }): AutoDecision {
@@ -276,7 +437,8 @@ export function decideAutomatically(input: {
   reasons.push(...iraqiCardProblems(input.td1))
   if (input.td1 && (input.name.status === 'NO_MATCH' || input.name.status === 'NO_NAME_ON_DOCUMENT'))
     reasons.push('الاسم المكتوب لا يطابق الاسم في البطاقة')
-  if (input.duplicateAccount) reasons.push('هذه البطاقة مسجلة على حساب آخر')
+  if (input.duplicateAccount) reasons.push(DUPLICATE_CARD_REASON)
+  else if (input.possibleDuplicate) reasons.push(POSSIBLE_DUPLICATE_CARD_REASON)
   return { approve: reasons.length === 0, reasons: [...new Set(reasons)] }
 }
 
@@ -325,17 +487,22 @@ export async function runIdentityVerification(input: {
     error = caught instanceof Error ? caught.message : String(caught)
   }
   const assessment = assess(face, name)
-  const duplicateAccount = Boolean(
-    td1?.documentNumber &&
-    input.citizenId &&
-    db
-      .prepare('SELECT id FROM citizens WHERE national_id_hash = ? AND id != ? LIMIT 1')
-      .get(nationalIdHash(td1.documentNumber), input.citizenId)
-  )
   const activeLiveness = input.liveness
     ? await verifyActiveLiveness({ video: input.faceVideo, ...input.liveness }).catch(() => null)
     : null
-  const decision = decideAutomatically({ face, name, td1, duplicateAccount, activeLiveness })
+  // looked up after the last await, right before deciding (applyAutomaticDecision checks again before admitting)
+  const duplicates =
+    td1?.documentNumber && input.citizenId
+      ? findCardDuplicates(td1.documentNumber, input.citizenId)
+      : { exact: false, possible: false }
+  const decision = decideAutomatically({
+    face,
+    name,
+    td1,
+    duplicateAccount: duplicates.exact,
+    possibleDuplicate: duplicates.possible,
+    activeLiveness,
+  })
   const finishedAt = new Date().toISOString()
   db.prepare(
     `UPDATE identity_reviews SET face_match_status = ?, face_match_score = ?, face_match_provider = ?, face_match_details = ?,
@@ -352,8 +519,13 @@ export async function runIdentityVerification(input: {
     finishedAt,
     input.reviewId
   )
-  db.prepare(`UPDATE identity_reviews SET mrz_data = ?, auto_decision = ?, auto_decision_reasons = ? WHERE id = ?`).run(
+  const hashes = td1 ? cardHashes(td1.documentNumber) : null
+  db.prepare(
+    `UPDATE identity_reviews SET mrz_data = ?, card_hash = ?, card_fold_hash = ?, auto_decision = ?, auto_decision_reasons = ? WHERE id = ?`
+  ).run(
     td1 ? JSON.stringify({ ...td1, documentNumber: `*****${td1.documentNumber.slice(-4)}` }) : null,
+    hashes?.exact ?? null,
+    hashes?.fold ?? null,
     decision.approve ? 'APPROVED' : 'HUMAN_REVIEW',
     JSON.stringify(decision.reasons),
     input.reviewId
@@ -382,6 +554,7 @@ export async function runIdentityVerification(input: {
       name: name.status,
       nameScore: name.score,
       assessment,
+      duplicateCard: duplicates.exact ? 'EXACT' : duplicates.possible ? 'LOOK_ALIKE' : null,
     },
   })
   employeeWorkQueueRealtime.publish({ entity: 'IDENTITY_REVIEW', action: 'UPDATED', reference: input.reviewId })
@@ -403,12 +576,27 @@ export function applyAutomaticDecision(input: {
     { status?: string } | undefined
   // a reviewer may have decided while the checks ran: their decision stands and the citizen already knows it
   if (current?.status !== 'PENDING_REVIEW') return
-  if (!input.decision.approve) {
+  let decision = input.decision
+  // checked again here, synchronously up to the commit below: another account holding the same card may have been
+  // admitted while this one's checks were running
+  if (decision.approve && input.td1) {
+    const duplicates = findCardDuplicates(input.td1.documentNumber, input.citizenId)
+    if (duplicates.exact || duplicates.possible) {
+      decision = {
+        approve: false,
+        reasons: [duplicates.exact ? DUPLICATE_CARD_REASON : POSSIBLE_DUPLICATE_CARD_REASON],
+      }
+      db.prepare(
+        `UPDATE identity_reviews SET auto_decision = 'HUMAN_REVIEW', auto_decision_reasons = ? WHERE id = ?`
+      ).run(JSON.stringify(decision.reasons), input.reviewId)
+    }
+  }
+  if (!decision.approve) {
     notifyCitizen({
       citizenId: input.citizenId,
       type: 'IDENTITY_REVIEW',
       title: 'طلب التوثيق بانتظار مراجع الهوية',
-      message: `لم يكتمل التوثيق الآلي: ${input.decision.reasons.join('، ')}. سيراجع موظف مختص طلبك، أو يمكنك إعادة التصوير.`,
+      message: `لم يكتمل التوثيق الآلي: ${decision.reasons.join('، ')}. سيراجع موظف مختص طلبك، أو يمكنك إعادة التصوير.`,
       link: '/citizen',
     })
     return
@@ -425,19 +613,11 @@ export function applyAutomaticDecision(input: {
       db.exec('ROLLBACK')
       return
     }
-    db.prepare(
-      `UPDATE citizens SET verification_status = 'VERIFIED', national_id_masked = ?, national_id_hash = ?, date_of_birth = ?, sex = ?,
-         document_expiry = ?, latin_name = ?, document_type = 'NATIONAL_ID', updated_at = ? WHERE id = ?`
-    ).run(
-      `*****${td1.documentNumber.slice(-4)}`,
-      nationalIdHash(td1.documentNumber),
-      td1.birthDate,
-      td1.sex === 'M' ? 'ذكر' : td1.sex === 'F' ? 'أنثى' : null,
-      td1.expiryDate,
-      `${td1.givenNames} ${td1.surname}`.trim(),
+    db.prepare(`UPDATE citizens SET verification_status = 'VERIFIED', updated_at = ? WHERE id = ?`).run(
       timestamp,
       input.citizenId
     )
+    registerCard(input.citizenId, registeredCardFromTd1(td1), timestamp)
     addAudit({
       actor: 'التحقق الآلي بالذكاء الاصطناعي',
       role: 'SYSTEM',

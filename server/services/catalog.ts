@@ -290,12 +290,21 @@ export function catalogSummary() {
   }
 }
 
+/**
+ * Search form of Arabic text: diacritics and tatweel removed, أ/إ/آ/ٱ → ا, ة → ه, ى → ي, ئ → ي, ؤ → و, and the
+ * Persian/Kurdish keyboard letters Iraqis type (ک ی گ پ ڤ چ) folded to their Arabic forms.
+ */
 export function normalizeArabic(value: string) {
   return value
     .toLowerCase()
     .normalize('NFKD')
-    .replace(/[ً-ٰٟ]/g, '')
-    .replace(/[أإآ]/g, 'ا')
+    .replace(/[ً-ٰٟـ]/g, '')
+    .replace(/[أإآٱ]/g, 'ا')
+    .replace(/[کگ]/g, 'ك')
+    .replace(/ی/g, 'ي')
+    .replace(/پ/g, 'ب')
+    .replace(/ڤ/g, 'ف')
+    .replace(/چ/g, 'ج')
     .replace(/ئ/g, 'ي')
     .replace(/ؤ/g, 'و')
     .replace(/ى/g, 'ي')

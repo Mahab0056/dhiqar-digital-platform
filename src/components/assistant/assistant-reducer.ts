@@ -79,3 +79,21 @@ export function dedupeParagraphs(text: string) {
 
 /** Folds a whole event list (tests, replays). */
 export const replyFromEvents = (events: AssistantEvent[]) => events.reduce(applyAssistantEvent, emptyReply())
+
+/** The primary next action of an answer: its last line when that line is exactly one internal markdown link. */
+export type AssistantAction = { label: string; path: string }
+
+const ACTION_LINE = /^\[([^\]\n]{1,60})\]\((\/(?!\/)[^)\s]{0,300})\)$/
+
+/**
+ * Splits the answer into its body and the primary action (rendered as a button card, not inline), so a reply ends
+ * with one clear CTA. Anything else (several links, an external link, a link inside a sentence) stays in the text.
+ */
+export function splitAction(text: string): { body: string; action: AssistantAction | null } {
+  const trimmed = text.trimEnd()
+  const lastBreak = trimmed.lastIndexOf('\n')
+  const lastLine = trimmed.slice(lastBreak + 1).trim()
+  const match = lastLine.match(ACTION_LINE)
+  if (!match) return { body: text, action: null }
+  return { body: trimmed.slice(0, Math.max(0, lastBreak)).trimEnd(), action: { label: match[1], path: match[2] } }
+}

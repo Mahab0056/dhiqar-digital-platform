@@ -39,3 +39,6 @@ qa-screens/
 # agent worktrees (local only)
 .claude/worktrees/
 .qa-tmp/
+
+# generated document samples (regenerate with scripts/generate-document-samples.mts)
+docs/document-samples/

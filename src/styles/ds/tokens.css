@@ -1,6 +1,6 @@
 /* =============================================================================================
    Thi Qar Digital — design tokens
-   Identity: Dhi Qar green (marshes, palms) + Sumerian brass, on calm green-tinted neutrals.
+   Identity: Dhi Qar green (marshes, palms) on calm green-tinted neutrals (the old brass/gold accents are retired).
    Iraqi flag red is reserved for the emblem and destructive states.
    Raw scales are theme-independent; semantic tokens (--ds-*) switch with data-gov-theme.
    ============================================================================================= */
@@ -19,14 +19,16 @@
   --green-900: #053b2c;
   --green-950: #03231a;
 
-  --brass-50: #fbf6ea;
-  --brass-100: #f4e7c5;
-  --brass-200: #e8cf95;
-  --brass-300: #d9b464;
-  --brass-400: #c69a42;
-  --brass-500: #a98032;
-  --brass-600: #8a6727;
-  --brass-700: #6b501f;
+  /* retired: the owner dropped the brass/gold accents. The names stay as aliases of the green scale so a leftover
+     consumer paints brand green, never brass; new rules use --green-* or the semantic tokens. */
+  --brass-50: var(--green-50);
+  --brass-100: var(--green-100);
+  --brass-200: var(--green-200);
+  --brass-300: var(--green-300);
+  --brass-400: var(--green-400);
+  --brass-500: var(--green-500);
+  --brass-600: var(--green-600);
+  --brass-700: var(--green-700);
 
   --neutral-0: #ffffff;
   --neutral-25: #fbfcfb;
@@ -93,8 +95,11 @@
   --ds-control-md: 44px;
   --ds-control-lg: 52px;
 
-  --ds-container: 1320px;
-  --ds-gutter: clamp(16px, 3vw, 32px);
+  /* fluid frame: content follows the screen up to a wide cap, with gutters that grow on big displays
+     (1440 → ~1325px of content, 1920 and wider → 1720px + growing side space). Long text is capped separately. */
+  --ds-container: 1720px;
+  --ds-gutter: clamp(16px, 4vw, 64px);
+  --ds-prose: 75ch;
 
   --ds-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
   --ds-fast: 140ms;
@@ -111,7 +116,9 @@
   --ds-text: #17201c;
   --ds-text-2: #3c4842;
   --ds-text-muted: #66726c;
-  --ds-heading: #8a5a2b;
+  /* titles: deep green-ink (was walnut #8a5a2b); the brand green is carried by the eyebrow + accent rule */
+  --ds-heading: #0e1f17;
+  --ds-eyebrow: #0a6f4d;
 
   --ds-primary: #0b7a55;
   --ds-primary-hover: #086446;
@@ -121,9 +128,12 @@
   --ds-primary-soft-2: #d6ecdf;
   --ds-primary-text: #0a6f4d;
 
-  --ds-accent: #b07d3c;
-  --ds-accent-soft: #fbf4e8;
-  --ds-accent-text: #8a5a2b;
+  /* marsh green (was brass #b07d3c / walnut #8a5a2b, which the owner retired): the brand green turned a little
+     toward the water, so «قيد المراجعة» pills and the 404 code stay apart from the success green. Text 7.0:1 on
+     --ds-accent-soft and 7.4:1 on --ds-bg; the accent rule 4.3:1 on --ds-surface. */
+  --ds-accent: #128a72;
+  --ds-accent-soft: #e2f4f0;
+  --ds-accent-text: #0b5c4c;
 
   --ds-success: var(--green-600);
   --ds-success-soft: var(--green-50);
@@ -146,7 +156,11 @@
   --ds-shadow-lg: 0 8px 20px rgba(23, 32, 28, 0.06), 0 30px 70px rgba(23, 32, 28, 0.12);
   --ds-focus: 0 0 0 3px rgba(11, 122, 85, 0.28);
   --ds-focus-color: #0b7a55;
-  --ds-gold-gradient: linear-gradient(135deg, #0d8a60 0%, #0a6f4d 100%);
+  --ds-gold-gradient: linear-gradient(
+    135deg,
+    #0b7a55 0%,
+    #086446 100%
+  ); /* white text holds 5.3:1 on the lightest stop */
   --ds-glass: rgba(255, 255, 255, 0.75);
   --ds-glass-strong: rgba(255, 255, 255, 0.9);
   --ds-glass-border: rgba(23, 32, 28, 0.08);
@@ -154,7 +168,7 @@
   color-scheme: light;
 }
 
-/* ---- semantic: dark — the platform's signature theme: night green, Sumerian gold ------------ */
+/* ---- semantic: dark — the platform's signature theme: night green, Dhi Qar green accents ---- */
 :root[data-gov-theme='dark'] {
   --ds-bg: #050f0b;
   --ds-bg-tint: #07140f;
@@ -167,20 +181,24 @@
   --ds-text-2: #d3cdbd;
   --ds-text-muted: #9f9a88;
 
-  /* gold carries every primary action, selection and highlight */
-  --ds-primary: #d6ad58;
-  --ds-primary-hover: #e8c77e;
-  --ds-primary-active: #c2963f;
-  --ds-primary-fg: #1a1205;
-  --ds-primary-soft: #1d1a10;
-  --ds-primary-soft-2: #2a2414;
-  --ds-primary-text: #e8c77e;
-  --ds-heading: #e8c77e;
-  --ds-gold-gradient: linear-gradient(135deg, #f3dc9f 0%, #d9b05c 45%, #b5883a 100%);
+  /* the brand green carries every primary action, selection and highlight (the owner retired the old
+     gold/brass accents). Measured on the night surfaces: --ds-primary-fg on --ds-primary 7.2:1 (5.4:1 on
+     the active/darkest gradient stop), --ds-primary-text 10.4:1 on --ds-surface and 8.8:1 on --ds-primary-soft. */
+  --ds-primary: #3fbf8a;
+  --ds-primary-hover: #5fcf9f;
+  --ds-primary-active: #2fa574;
+  --ds-primary-fg: #03231a;
+  --ds-primary-soft: #0e2a1f;
+  --ds-primary-soft-2: #14392a;
+  --ds-primary-text: #6fd8ab;
+  --ds-heading: #f4f1e8;
+  --ds-eyebrow: #6fd8ab;
+  /* name kept for the existing consumers: it is the primary-action gradient, green in both themes */
+  --ds-gold-gradient: linear-gradient(135deg, #7ddcb2 0%, #3fbf8a 50%, #2fa574 100%);
 
-  --ds-accent: #e8c77e;
-  --ds-accent-soft: #1d1a10;
-  --ds-accent-text: #e8c77e;
+  --ds-accent: #8fe3c0;
+  --ds-accent-soft: #0f2a1f;
+  --ds-accent-text: #8fe3c0;
 
   --ds-success: #6fd8ab;
   --ds-success-soft: #0f2a1f;
@@ -205,8 +223,8 @@
   --ds-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4), 0 4px 14px rgba(0, 0, 0, 0.35);
   --ds-shadow-md: 0 2px 6px rgba(0, 0, 0, 0.35), 0 16px 40px rgba(0, 0, 0, 0.45);
   --ds-shadow-lg: 0 6px 14px rgba(0, 0, 0, 0.4), 0 30px 70px rgba(0, 0, 0, 0.55);
-  --ds-focus: 0 0 0 3px rgba(232, 199, 126, 0.35);
-  --ds-focus-color: #e8c77e;
+  --ds-focus: 0 0 0 3px rgba(111, 216, 171, 0.4);
+  --ds-focus-color: #6fd8ab;
 
   color-scheme: dark;
 }

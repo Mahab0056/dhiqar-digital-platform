@@ -39,8 +39,44 @@ export function ensureAssistantTables() {
       FOREIGN KEY (service_request_id) REFERENCES service_requests(id) ON DELETE CASCADE
     );
     CREATE INDEX IF NOT EXISTS idx_ai_reviews_request ON ai_reviews(service_request_id, created_at);
+    CREATE TABLE IF NOT EXISTS assistant_voice_usage (
+      day TEXT PRIMARY KEY,
+      clips INTEGER NOT NULL DEFAULT 0,
+      audio_seconds INTEGER NOT NULL DEFAULT 0,
+      speech_chars INTEGER NOT NULL DEFAULT 0
+    );
   `)
   ready = true
+}
+
+/**
+ * Paid speech usage per day: clips sent to the transcription provider (and their length) and characters sent to
+ * the optional server voice. The transcription budget (ASSISTANT_DAILY_STT_LIMIT) is checked against `clips`.
+ */
+export function recordVoiceUsage(delta: { clips?: number; audioSeconds?: number; speechChars?: number }) {
+  ensureAssistantTables()
+  db.prepare(
+    `INSERT INTO assistant_voice_usage (day, clips, audio_seconds, speech_chars) VALUES (?, ?, ?, ?)
+     ON CONFLICT(day) DO UPDATE SET clips = clips + excluded.clips, audio_seconds = audio_seconds + excluded.audio_seconds,
+       speech_chars = speech_chars + excluded.speech_chars`
+  ).run(
+    today(),
+    Math.max(0, Math.round(delta.clips || 0)),
+    Math.max(0, Math.round(delta.audioSeconds || 0)),
+    Math.max(0, Math.round(delta.speechChars || 0))
+  )
+}
+
+export function voiceUsageToday() {
+  ensureAssistantTables()
+  const row = db
+    .prepare('SELECT clips, audio_seconds, speech_chars FROM assistant_voice_usage WHERE day = ?')
+    .get(today()) as { clips?: number; audio_seconds?: number; speech_chars?: number } | undefined
+  return {
+    clips: Number(row?.clips || 0),
+    audioSeconds: Number(row?.audio_seconds || 0),
+    speechChars: Number(row?.speech_chars || 0),
+  }
 }
 
 export type AssistantRoute = 'chat' | 'review'

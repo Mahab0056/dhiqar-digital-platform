@@ -1,6 +1,6 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import L from 'leaflet'
-import type { Feature, FeatureCollection, Geometry, Polygon } from 'geojson'
+import type { Feature, FeatureCollection, Geometry, MultiPolygon, Polygon } from 'geojson'
 import {
   GeoJSON,
   MapContainer,
@@ -17,36 +17,67 @@ import type { DashboardStats } from '../../types'
 import { MapBoundary, SwitchTo2D } from '../maps/map-fallback'
 import { hasWebGL } from '../maps/webgl'
 import type { DrillMapApi } from '../maps/DistrictDrillMap'
+import { districtKey, districtsWithDepartments, OFFICIAL_DISTRICT_COUNT } from '../maps/dhiqar-district-facts'
+import {
+  DRILL_SHEET_MAX_WIDTH,
+  summarizeDistricts,
+  useDrillPanelCollapsed,
+  useFacilityIndex,
+  useListedServices,
+  type DistrictProps,
+} from '../maps/district-data'
+import { DistrictPicker, DistrictProfilePanel } from '../maps/district-profile'
+import { plainLeafletPrefix } from '../maps/leaflet-attribution'
+import { OSM_TILE_ATTRIBUTION, OSM_TILE_MAX_ZOOM, OSM_TILE_URL } from '../maps/osm-tiles'
 
 // the 3D drill-down map (MapLibre) loads on demand; Leaflet below stays as its fallback
 const DistrictDrillMap = lazy(() => import('../maps/DistrictDrillMap'))
 
 type Department = DashboardStats['departments'][number]
 type Located = Department & { lat: number; lng: number }
-type Area = { kind: 'governorate' | 'district'; name: string; osmId: number }
+type Area = DistrictProps
+const DISTRICTS_URL = '/geo/dhiqar-districts.geojson'
+/** the district and governorate outlines drawn over every basemap are OSM data (public/geo/ATTRIBUTION.txt) */
+const BOUNDARIES_ATTRIBUTION = `<span dir="rtl">حدود الأقضية</span> ${OSM_TILE_ATTRIBUTION} (ODbL)`
 
 const BASEMAPS = {
   dark: {
     label: 'ليلي',
     url: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
-    attribution: 'Tiles &copy; Esri',
+    attribution: `Tiles &copy; Esri · ${BOUNDARIES_ATTRIBUTION}`,
   },
   light: {
     label: 'خريطة',
-    url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-    attribution: '&copy; OpenStreetMap contributors',
+    // tiles and boundaries alike: one OSM credit
+    url: OSM_TILE_URL,
+    attribution: OSM_TILE_ATTRIBUTION,
   },
   satellite: {
     label: 'قمر صناعي',
     url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-    attribution: 'Imagery &copy; Esri, Maxar, Earthstar Geographics',
+    attribution: `Imagery &copy; Esri, Maxar, Earthstar Geographics · ${BOUNDARIES_ATTRIBUTION}`,
   },
 } as const
 type BasemapKey = keyof typeof BASEMAPS
 
-// registry districts that are sub-districts (نواحي) of a larger قضاء on the boundary layer
-const DISTRICT_PARENT: Record<string, string> = { النصر: 'الرفاعي', البطحاء: 'الناصرية', أور: 'الناصرية' }
-const districtOf = (name: string) => DISTRICT_PARENT[name] || name
+// district outlines on the flat map: resting, hovered, and the district whose profile is open
+const DISTRICT_STYLE: L.PathOptions = {
+  color: '#7fd8aa',
+  weight: 1.2,
+  opacity: 0.75,
+  dashArray: '4 4',
+  fillColor: '#29c27f',
+  fillOpacity: 0.04,
+}
+const DISTRICT_HOVER: L.PathOptions = { ...DISTRICT_STYLE, fillOpacity: 0.16, weight: 2.2, dashArray: '' }
+const DISTRICT_ACTIVE: L.PathOptions = {
+  color: '#7fdcb4',
+  weight: 2.6,
+  opacity: 1,
+  dashArray: '',
+  fillColor: '#7fdcb4',
+  fillOpacity: 0.14,
+}
 
 // Ur — the ziggurat, part of the UNESCO "Ahwar of Southern Iraq" World Heritage property (2016)
 const UR: [number, number] = [30.9627, 46.1031]
@@ -100,6 +131,10 @@ export function DhiQarMap({
   variant?: 'operations' | 'governor'
 }) {
   const shellRef = useRef<HTMLElement>(null)
+  const stageRef = useRef<HTMLDivElement>(null)
+  const toolbarRef = useRef<HTMLDivElement>(null)
+  const legendRef = useRef<HTMLDivElement>(null)
+  const syncControls = useRef<() => void>(() => undefined)
   const mapRef = useRef<L.Map | null>(null)
   const markerRefs = useRef(new Map<string, L.Marker>())
   const [areas, setAreas] = useState<FeatureCollection<Geometry, Area> | null>(null)
@@ -112,12 +147,58 @@ export function DhiQarMap({
   const [cursor, setCursor] = useState<{ lat: number; lng: number } | null>(null)
   const [fullscreen, setFullscreen] = useState(false)
   const [mode, setMode] = useState<'3d' | '2d'>(() => (hasWebGL() ? '3d' : '2d'))
+  /** the district whose profile is open — drives the 3D drill-down and the flat map alike */
+  const [district, setDistrict] = useState<string | null>(null)
+  /** the profile folded to its title bar (kept across districts and visits) */
+  const [panelCollapsed, togglePanel] = useDrillPanelCollapsed()
   const drillApi = useRef<DrillMapApi | null>(null)
   const switchTo2D = useCallback(() => setMode('2d'), [])
+  const facilityIndex = useFacilityIndex(district !== null)
+  const services = useListedServices(district !== null)
+
+  // the floating controls wrap to more rows on a narrow map: the profile panel and the zoom column start below
+  // the toolbar, the 3D map's attribution sits above the legend (at the bottom edge while the legend is collapsed
+  // for an open district), and the profile panel (and the card that replaces it) end above the whole bottom-right
+  // control stack: the attribution, which wraps to 2–3 lines on a phone, and the 3D map's scale bar and compass
+  // stacked on it, on the panel's side of the map
+  useEffect(() => {
+    const stage = stageRef.current
+    const toolbar = toolbarRef.current
+    const legend = legendRef.current
+    if (!stage || !toolbar || !legend) return
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(() => sync())
+    let watched: Element | null = null
+    const sync = () => {
+      stage.style.setProperty('--gis-toolbar-bottom', `${toolbar.offsetTop + toolbar.offsetHeight}px`)
+      const clear = legend.offsetHeight ? stage.clientHeight - legend.offsetTop + 6 : 0
+      stage.style.setProperty('--gis-legend-clear', `${Math.max(0, clear)}px`)
+      const corner = stage.querySelector('.maplibregl-ctrl-bottom-right, .leaflet-bottom.leaflet-right')
+      const cornerTop = corner?.getBoundingClientRect().top
+      stage.style.setProperty(
+        '--gis-attrib-clear',
+        `${cornerTop ? Math.max(0, Math.ceil(stage.getBoundingClientRect().bottom - cornerTop) + 6) : 0}px`
+      )
+      // the attribution grows as tile sources add their credits, and the 3D map adds its controls late
+      if (corner && corner !== watched && observer) {
+        if (watched) observer.unobserve(watched)
+        observer.observe(corner)
+        watched = corner
+      }
+    }
+    syncControls.current = sync
+    sync()
+    if (!observer) return
+    for (const element of [toolbar, legend, stage]) observer.observe(element)
+    return () => observer.disconnect()
+  }, [])
+  // opening a district collapses the legend and the 2D fallback brings its own attribution: measure again
+  useEffect(() => syncControls.current(), [district, mode])
 
   useEffect(() => {
     let alive = true
-    fetch('/gis/dhi-qar.geojson')
+    // the same 15-district boundaries as the 3D drill map (public/geo/ATTRIBUTION.txt), so the 2D layer and the
+    // «أقضية» counter never disagree with the district picker
+    fetch(DISTRICTS_URL)
       .then(response => (response.ok ? response.json() : null))
       .then(data => alive && data && setAreas(data))
       .catch(() => undefined)
@@ -160,11 +241,11 @@ export function DhiQarMap({
     [unstaffedIds]
   )
 
-  // per-district roll-up for the boundary layer tooltips
+  // per-district roll-up for the boundary layer tooltips (registry spellings and sub-districts folded by districtKey)
   const districtStats = useMemo(() => {
     const result = new Map<string, { total: number; mapped: number; open: number }>()
     for (const department of departments) {
-      const key = districtOf(department.district)
+      const key = districtKey(department.district)
       const row = result.get(key) || { total: 0, mapped: 0, open: 0 }
       row.total += 1
       if (typeof department.lat === 'number') row.mapped += 1
@@ -175,9 +256,14 @@ export function DhiQarMap({
   }, [departments])
 
   const governorate = areas?.features.find(feature => feature.properties.kind === 'governorate') as
-    Feature<Polygon, Area> | undefined
+    Feature<Polygon | MultiPolygon, Area> | undefined
   const mask = useMemo(() => {
     if (!governorate) return null
+    // every outer ring of the governorate is a hole in the world mask (the outline may be a MultiPolygon)
+    const outlines =
+      governorate.geometry.type === 'MultiPolygon'
+        ? governorate.geometry.coordinates.map(polygon => polygon[0])
+        : [governorate.geometry.coordinates[0]]
     const world = [
       [-180, -85],
       [180, -85],
@@ -188,7 +274,7 @@ export function DhiQarMap({
     return {
       type: 'Feature',
       properties: {},
-      geometry: { type: 'Polygon', coordinates: [world, governorate.geometry.coordinates[0]] },
+      geometry: { type: 'Polygon', coordinates: [world, ...outlines] },
     } as Feature<Polygon>
   }, [governorate])
   const districts = useMemo(
@@ -202,14 +288,64 @@ export function DhiQarMap({
     [areas]
   )
 
-  const handleReady = useCallback((map: L.Map) => {
-    mapRef.current = map
-    // the stage gets its height from CSS after mount — measure again, then frame the governorate
-    window.setTimeout(() => {
-      map.invalidateSize()
-      map.fitBounds(GOVERNORATE_BOUNDS, { padding: [12, 12] })
-    }, 60)
+  const districtRows = useMemo(
+    () => summarizeDistricts(areas?.features ?? [], departments, stateOf),
+    [areas, departments, stateOf]
+  )
+  const current = districtRows.find(row => row.name === district)
+  const withDepartments = useMemo(() => districtsWithDepartments(departments), [departments])
+
+  // ---- flat map: frame the open district (clear of the profile panel) or the governorate ----------------
+  const flat = useRef({ district, rows: districtRows, framed: null as string | null, collapsed: panelCollapsed })
+  useLayoutEffect(() => {
+    flat.current.district = district
+    flat.current.rows = districtRows
+    flat.current.collapsed = panelCollapsed
+  })
+  const frameFlat = useCallback((animate: boolean) => {
+    const map = mapRef.current
+    if (!map) return
+    const { district: name, rows } = flat.current
+    flat.current.framed = name
+    const row = rows.find(item => item.name === name)
+    if (!row) {
+      if (animate) map.flyToBounds(GOVERNORATE_BOUNDS, { padding: [24, 24], duration: 0.9 })
+      else map.fitBounds(GOVERNORATE_BOUNDS, { padding: [12, 12] })
+      return
+    }
+    const box = map.getContainer()
+    const top = (parseFloat(stageRef.current?.style.getPropertyValue('--gis-toolbar-bottom') || '') || 54) + 12
+    // the panel is a column on the inline-start (right) edge, or a bottom sheet on a narrow map; folded to its
+    // title bar it leaves the whole map free
+    const padding: L.FitBoundsOptions = flat.current.collapsed
+      ? { paddingTopLeft: [30, top], paddingBottomRight: [30, 40] }
+      : box.clientWidth > DRILL_SHEET_MAX_WIDTH
+        ? { paddingTopLeft: [30, top], paddingBottomRight: [380, 40] }
+        : { paddingTopLeft: [20, top], paddingBottomRight: [20, Math.round(box.clientHeight * 0.5)] }
+    const bounds = L.geoJSON(row.feature).getBounds()
+    if (animate) map.flyToBounds(bounds, { ...padding, duration: 0.9 })
+    else map.fitBounds(bounds, padding)
   }, [])
+  useEffect(() => {
+    if (mode === '2d' && mapRef.current && flat.current.framed !== district) frameFlat(true)
+  }, [mode, district, frameFlat])
+
+  const handleReady = useCallback(
+    (map: L.Map) => {
+      mapRef.current = map
+      // the stage gets its height from CSS after mount — measure again, then frame the governorate (or the open
+      // district, when the 3D map fell back to this one mid-drill)
+      window.setTimeout(() => {
+        map.invalidateSize()
+        frameFlat(false)
+      }, 60)
+    },
+    [frameFlat]
+  )
+  const districtStyle = useCallback(
+    (feature?: Feature<Geometry, Area>) => (feature?.properties.name === district ? DISTRICT_ACTIVE : DISTRICT_STYLE),
+    [district]
+  )
   const districtLabels = useMemo(
     () =>
       (districts?.features || []).map(feature => {
@@ -226,15 +362,35 @@ export function DhiQarMap({
       }),
     [districts]
   )
-  const fitGovernorate = () =>
-    mode === '3d'
-      ? drillApi.current?.fitGovernorate()
-      : mapRef.current?.flyToBounds(GOVERNORATE_BOUNDS, { padding: [24, 24], duration: 0.9 })
+  const fitGovernorate = () => {
+    if (mode === '3d') return drillApi.current?.fitGovernorate()
+    if (district) setDistrict(null)
+    else frameFlat(true)
+  }
   const focus = (department: Located) => {
     setSelected(String(department.id))
     if (mode === '3d') return
-    mapRef.current?.flyTo([department.lat, department.lng], 15, { duration: 0.9 })
+    const map = mapRef.current
+    if (!map) return
+    // the flat map opens the department's district profile too (as the 3D drill-down does) without framing the
+    // whole district. Beside the side column the department lands clear of it; a bottom sheet gives way to the
+    // popup (map3d-drill.css), so there the department sits low enough for the popup to clear the toolbar
+    const home = districtKey(department.district)
+    const box = map.getContainer()
+    const sheet = box.clientWidth <= DRILL_SHEET_MAX_WIDTH
+    let shift: [number, number] = sheet ? [0, -Math.round(box.clientHeight * 0.26)] : [0, 0]
+    if (districtRows.some(row => row.name === home)) {
+      flat.current.framed = home
+      setDistrict(home)
+      if (!sheet) shift = [190, 0]
+    }
+    const target = map.unproject(map.project([department.lat, department.lng], 15).add(shift), 15)
+    map.flyTo(target, 15, { duration: 0.9 })
     window.setTimeout(() => markerRefs.current.get(String(department.id))?.openPopup(), 950)
+  }
+  const focusById = (id: string) => {
+    const department = located.find(item => String(item.id) === id)
+    if (department) focus(department)
   }
   const toggleFullscreen = () => {
     if (document.fullscreenElement) void document.exitFullscreen()
@@ -270,7 +426,8 @@ export function DhiQarMap({
           </div>
           <div>
             <dt>أقضية</dt>
-            <dd>{(districts?.features.length || 0).toLocaleString('en-US')}</dd>
+            <dd>{OFFICIAL_DISTRICT_COUNT.toLocaleString('en-US')}</dd>
+            <small>{withDepartments.toLocaleString('en-US')} بها دوائر على المنصة</small>
           </div>
         </dl>
       </header>
@@ -331,7 +488,7 @@ export function DhiQarMap({
           )}
         </aside>
 
-        <div className="gis-stage">
+        <div className="gis-stage" ref={stageRef}>
           {mode === '3d' ? (
             <MapBoundary fallback={<SwitchTo2D onSwitch={switchTo2D} />}>
               <Suspense fallback={<div className="gis-map" aria-hidden="true" />}>
@@ -344,8 +501,15 @@ export function DhiQarMap({
                   showLandmarks={showLandmarks}
                   selectedId={selected}
                   onSelectDepartment={setSelected}
+                  drill={district}
+                  onDrillChange={setDistrict}
                   variant={variant}
-                  onReady={api => (drillApi.current = api)}
+                  onReady={api => {
+                    drillApi.current = api
+                    // its scale bar, compass and attribution exist now: the panel and the cards end above them
+                    syncControls.current()
+                  }}
+                  panelCollapsed={panelCollapsed}
                   onCursor={setCursor}
                   onUnavailable={switchTo2D}
                 />
@@ -353,6 +517,7 @@ export function DhiQarMap({
             </MapBoundary>
           ) : (
             <MapContainer
+              ref={plainLeafletPrefix}
               bounds={GOVERNORATE_BOUNDS}
               boundsOptions={{ padding: [24, 24] }}
               minZoom={7}
@@ -368,8 +533,8 @@ export function DhiQarMap({
                 key={basemap}
                 url={tiles.url}
                 attribution={tiles.attribution}
-                maxZoom={19}
-                maxNativeZoom={basemap === 'dark' ? 16 : 19}
+                maxZoom={OSM_TILE_MAX_ZOOM}
+                maxNativeZoom={basemap === 'dark' ? 16 : OSM_TILE_MAX_ZOOM}
               />
               {basemap !== 'light' && (
                 <TileLayer
@@ -395,29 +560,21 @@ export function DhiQarMap({
                 <GeoJSON
                   key={`districts-${districtStats.size}`}
                   data={districts}
-                  style={{
-                    color: '#7fd8aa',
-                    weight: 1.2,
-                    opacity: 0.75,
-                    dashArray: '4 4',
-                    fillColor: '#29c27f',
-                    fillOpacity: 0.04,
-                  }}
+                  style={districtStyle}
                   onEachFeature={(feature, layer) => {
                     const name = (feature.properties as Area).name
                     const row = districtStats.get(name)
+                    const rest = () => (name === flat.current.district ? DISTRICT_ACTIVE : DISTRICT_STYLE)
                     layer.bindTooltip(
                       `<strong>قضاء ${name}</strong><span>${row ? `${row.total} جهة · ${row.open} طلب مفتوح` : 'لا توجد جهات مسجلة بعد'}</span>`,
                       { sticky: true, className: 'gis-tip', direction: 'top' }
                     )
                     layer.on({
-                      mouseover: () => (layer as L.Path).setStyle({ fillOpacity: 0.16, weight: 2.2, dashArray: '' }),
-                      mouseout: () => (layer as L.Path).setStyle({ fillOpacity: 0.04, weight: 1.2, dashArray: '4 4' }),
-                      click: () =>
-                        mapRef.current?.flyToBounds((layer as L.Polygon).getBounds(), {
-                          padding: [30, 30],
-                          duration: 0.8,
-                        }),
+                      mouseover: () =>
+                        (layer as L.Path).setStyle(name === flat.current.district ? rest() : DISTRICT_HOVER),
+                      mouseout: () => (layer as L.Path).setStyle(rest()),
+                      // opens the district profile; the framing effect flies there, clear of the panel
+                      click: () => setDistrict(name),
                     })
                   }}
                 />
@@ -442,7 +599,7 @@ export function DhiQarMap({
                   key="governorate"
                   data={governorate}
                   interactive={false}
-                  style={{ color: '#e2c57f', weight: 2.6, opacity: 0.95, fill: false, className: 'gis-border' }}
+                  style={{ color: '#7fdcb4', weight: 2.6, opacity: 0.95, fill: false, className: 'gis-border' }}
                 />
               )}
               {showLandmarks && (
@@ -527,7 +684,7 @@ export function DhiQarMap({
             </MapContainer>
           )}
 
-          <div className="gis-toolbar" role="toolbar" aria-label="أدوات الخريطة">
+          <div className="gis-toolbar" role="toolbar" aria-label="أدوات الخريطة" ref={toolbarRef}>
             <div className="gis-seg" role="group" aria-label="نوع الخريطة">
               {(Object.keys(BASEMAPS) as BasemapKey[]).map(key => (
                 <button
@@ -559,6 +716,9 @@ export function DhiQarMap({
             >
               <Landmark aria-hidden="true" /> <span>المعالم</span>
             </button>
+            {districtRows.length > 0 && (
+              <DistrictPicker value={district} districts={districtRows} onChange={setDistrict} />
+            )}
           </div>
 
           <div className="gis-zoom" role="group" aria-label="التكبير">
@@ -589,7 +749,25 @@ export function DhiQarMap({
             </button>
           </div>
 
-          <div className="gis-legend">
+          {current && (
+            <div className="drill-layer">
+              <DistrictProfilePanel
+                district={current}
+                districts={districtRows}
+                facilityIndex={facilityIndex}
+                services={services}
+                variant={variant}
+                stateOf={stateOf}
+                selectedId={selected}
+                onSelectDepartment={id => (mode === '3d' ? setSelected(id) : focusById(id))}
+                onBack={() => setDistrict(null)}
+                collapsed={panelCollapsed}
+                onToggleCollapsed={togglePanel}
+              />
+            </div>
+          )}
+
+          <div className="gis-legend" ref={legendRef}>
             <span>
               <i className="gis-dot is-idle" /> لا طلبات مفتوحة
             </span>

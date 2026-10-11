@@ -16,6 +16,15 @@ export function canAccessDepartment(session: SessionData, departmentId: string) 
   return Boolean(session.departmentId) && session.departmentId === departmentId
 }
 
+/**
+ * A department as anonymous visitors get it. The registry's `notes` are research notes (which sources were checked,
+ * OpenStreetMap element ids, open verification questions): they stay on the staff endpoints and never reach the
+ * public directory or a department's public page.
+ */
+function withoutResearchNotes<T extends { notes: string | null }>(item: T): T {
+  return { ...item, notes: null }
+}
+
 export function registerDepartmentRoutes(app: express.Express) {
   app.get('/api/departments', (req, res) => {
     const query = String(req.query.q || '')
@@ -32,7 +41,7 @@ export function registerDepartmentRoutes(app: express.Express) {
         .includes(query)
     })
     res.json({
-      items,
+      items: items.map(withoutResearchNotes),
       categories: departmentCategories,
       districts: [...new Set(listPublicDepartments().map(item => item.district))],
       summary: registrySummary,
@@ -42,7 +51,7 @@ export function registerDepartmentRoutes(app: express.Express) {
   app.get('/api/departments/:id', (req, res) => {
     const item = departmentById.get(param(req, 'id'))
     if (!item) return res.status(404).json({ message: 'الدائرة غير موجودة في السجل.' })
-    res.json(publicDepartmentView(item))
+    res.json(withoutResearchNotes(publicDepartmentView(item)))
   })
 
   app.get(

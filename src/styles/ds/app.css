@@ -5,6 +5,8 @@
 .app-shell {
   --app-sidebar: 272px;
   --app-topbar: 64px;
+  /* the national utility bar above the frame (CivicUtilityBar, public.css): a 38px row + its 1px rule */
+  --app-utility-bar: 39px;
   min-height: 100vh;
   background: var(--ds-bg);
   color: var(--ds-text);
@@ -12,17 +14,31 @@
 .app-frame {
   display: grid;
   grid-template-columns: var(--app-sidebar) minmax(0, 1fr);
-  min-height: calc(100vh - 38px);
+  min-height: calc(100vh - var(--app-utility-bar));
 }
-
 /* ---- sidebar ---------------------------------------------------------------------------------- */
+/* The utility bar scrolls away with the page but sits above the sidebar at scroll 0: a 100vh sidebar started 39px
+   down and its foot («تسجيل الخروج») ended below the fold. Sized to fit under the bar, the whole sidebar is on screen
+   at every scroll position (at the top: from the bar to the bottom edge; scrolled: from the top edge down). */
 .app-sidebar {
   position: sticky;
   top: 0;
   z-index: 50;
+  grid-column: 1;
+  grid-row: 1;
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: calc(100vh - var(--app-utility-bar));
+  height: calc(100dvh - var(--app-utility-bar));
+  border-inline-end: 1px solid var(--ds-border);
+  background: var(--ds-surface);
+}
+/* the sidebar's column under it: once scrolled, the sidebar ends one bar-height above the bottom edge and the
+   column keeps its surface and rule there (a grid item in the same cell, painted below the sticky sidebar) */
+.app-frame::before {
+  content: '';
+  grid-column: 1;
+  grid-row: 1;
   border-inline-end: 1px solid var(--ds-border);
   background: var(--ds-surface);
 }
@@ -190,6 +206,8 @@
 
 /* ---- top bar ------------------------------------------------------------------------------------ */
 .app-main {
+  grid-column: 2;
+  grid-row: 1;
   display: flex;
   flex-direction: column;
   min-width: 0;
@@ -204,9 +222,9 @@
   min-height: var(--app-topbar);
   padding: 0 clamp(16px, 2.4vw, 32px);
   border-bottom: 1px solid var(--ds-border);
-  background: color-mix(in srgb, var(--ds-surface) 92%, transparent);
-  backdrop-filter: saturate(1.4) blur(12px);
-  -webkit-backdrop-filter: saturate(1.4) blur(12px);
+  /* opaque, like the workspace tab bar: a translucent bar let the page scrolling under it (KPI numbers, PDF
+     buttons, map titles) show through crisply — the backdrop blur did not visibly apply */
+  background: var(--ds-surface);
 }
 .app-menu {
   display: none;
@@ -356,7 +374,7 @@
 .app-content {
   flex: 1;
   width: 100%;
-  max-width: 1480px;
+  max-width: calc(var(--ds-container) + 2 * var(--ds-gutter));
   margin-inline: auto;
   padding: clamp(18px, 2.6vw, 32px) clamp(16px, 2.6vw, 36px) 48px;
 }
@@ -460,6 +478,12 @@
 @media (max-width: 1024px) {
   .app-frame {
     grid-template-columns: minmax(0, 1fr);
+  }
+  .app-frame::before {
+    display: none;
+  }
+  .app-main {
+    grid-column: 1;
   }
   .app-sidebar {
     position: fixed;

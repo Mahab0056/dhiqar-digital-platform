@@ -20,7 +20,13 @@ import {
 import { notifyCitizen, employeeWorkQueueRealtime } from '../realtime.js'
 import { addAudit, db, nextReference } from '../db.js'
 import { readDecryptedMedia, storeEncryptedMedia } from '../media.js'
-import { createIssuedDocument } from '../issued-documents.js'
+import {
+  createEventDocument,
+  createIssuedDocument,
+  DocumentIssueError,
+  placeFromForm,
+  type IssuedDocumentSource,
+} from '../issued-documents.js'
 import { departmentById } from '../department-registry.js'
 import { getCatalogService, type CatalogDocument, type CatalogService } from '../services/catalog.js'
 import {
@@ -196,6 +202,64 @@ function transfersByRequest(ids: number[]) {
 
 const loadRequest = (reference: string) =>
   db.prepare(`${fullRowSql} WHERE sr.reference = ?`).get(reference) as Record<string, unknown> | undefined
+
+/**
+ * What every official document of a request prints about it (approval or event document), as issued by the
+ * department the request belongs to in `row`. `actor` is kept in the internal record only, never printed.
+ */
+function requestDocumentSource(row: Record<string, unknown>, actor: string, issuedAt: string): IssuedDocumentSource {
+  return {
+    sourceKind: 'SERVICE_REQUEST',
+    serviceRequestReference: String(row.reference),
+    citizenId: Number(row.citizen_id),
+    citizenName: String(row.citizen_name),
+    serviceName: String(row.service_name),
+    departmentName: String(row.department_name),
+    documentTitle: `وثيقة إتمام معاملة — ${String(row.service_name)}`,
+    issuedBy: actor,
+    issuedAt,
+    details: serviceRequestDocumentDetails(row),
+    // official template: the department's assignment for this service (server/documents)
+    departmentId: String(row.department_id),
+    serviceKey: String(row.service_id),
+    serviceCategory: getCatalogService(String(row.service_id))?.category,
+    ...placeFromForm(row.form_data),
+  }
+}
+
+/**
+ * «وصل استلام» of one fee collected on a request: issued once per PAID payment (its amount and receipt number), by
+ * the department that collected it, visible to the citizen and revocable like any issued document. Idempotent, so
+ * every place that records a payment as PAID (the office counter here; the online gateway's settlement) may call it.
+ * Returns null when the payment is not a PAID fee of this request.
+ */
+export async function issueFeeReceipt(reference: string, paymentId: string, actor: string) {
+  const row = loadRequest(reference)
+  if (!row) return null
+  const payment = db
+    .prepare(
+      `SELECT id, amount_iqd, receipt_number, paid_at, department_id FROM payment_intents
+       WHERE id = ? AND service_request_id = ? AND status = 'PAID'`
+    )
+    .get(paymentId, Number(row.id)) as Record<string, unknown> | undefined
+  if (!payment || !(Number(payment.amount_iqd) > 0)) return null
+  const collectedBy = payment.department_id ? String(payment.department_id) : String(row.department_id)
+  const department = db.prepare('SELECT name FROM departments WHERE id = ?').get(collectedBy) as
+    { name: string } | undefined
+  return createEventDocument(
+    {
+      ...requestDocumentSource(row, actor, String(payment.paid_at || new Date().toISOString())),
+      departmentId: collectedBy,
+      departmentName: department?.name || String(row.department_name),
+      fees: {
+        amountIqd: Number(payment.amount_iqd),
+        receiptNumber: payment.receipt_number ? String(payment.receipt_number) : null,
+      },
+    },
+    'RECEIPT',
+    `SR:${String(row.reference)}:RECEIPT:${String(payment.id)}`
+  )
+}
 
 const appointmentRow = (serviceRequestId: number) =>
   db
@@ -431,15 +495,19 @@ function serializeServiceRequestDetailForCitizen(row: Record<string, unknown>) {
   const base = serializeServiceRequestForCitizen(row)
   const service = getCatalogService(String(row.service_id))
   const owed = owedPayments(base.payments)
-  const issuedDocuments = (
+  const documents = (
     db
       .prepare(
-        `SELECT id, document_title, document_number, verification_id, status, issued_at, revoked_at, revoked_reason
-         FROM issued_documents WHERE service_request_reference = ? AND citizen_id = ? ORDER BY issued_at DESC`
+        `SELECT id, document_title, document_number, verification_id, status, issued_at, revoked_at, revoked_reason, issue_event
+         FROM issued_documents
+         WHERE (service_request_reference = ? OR (related_reference = ? AND source_kind = 'SERVICE_REQUEST')) AND citizen_id = ?
+         ORDER BY issued_at DESC`
       )
-      .all(String(row.reference), Number(row.citizen_id)) as Array<Record<string, unknown>>
+      .all(String(row.reference), String(row.reference), Number(row.citizen_id)) as Array<Record<string, unknown>>
   ).map(item => ({
     id: String(item.id),
+    /** null = the document of the approval; RECEIPT | REJECTION | REFERRAL = issued by that step of the request */
+    issueEvent: item.issue_event ? String(item.issue_event) : null,
     title: String(item.document_title),
     documentNumber: String(item.document_number),
     verificationId: String(item.verification_id),
@@ -476,7 +544,11 @@ function serializeServiceRequestDetailForCitizen(row: Record<string, unknown>) {
       toDepartmentName: item.toDepartmentName,
       createdAt: item.createdAt,
     })),
-    issuedDocuments,
+    // the document(s) of the approval, as before…
+    issuedDocuments: documents.filter(item => !item.issueEvent),
+    // …and those issued by the request's other steps, whatever its status: the fee receipt («وصل استلام»), the
+    // referral letter to the competent department («كتاب إحالة») and the reasoned rejection («قرار رفض مسبّب»)
+    eventDocuments: documents.filter(item => item.issueEvent),
     timeline: citizenTimeline(
       row,
       base.payments.map(item => item.reference)
@@ -1322,27 +1394,46 @@ export function registerServiceRequestsRoutes(app: express.Express) {
       const service = getCatalogService(String(row.service_id))
       const issuesDocument = serviceIssuesDocument(service)
       let issuedDocument: Awaited<ReturnType<typeof createIssuedDocument>> | null = null
-      if (decision.status === 'APPROVED' && issuesDocument) {
+      // the reasoned rejection decision («قرار رفض مسبّب») of a service that issues official documents: issued on
+      // rejection only (its template can never be assigned to an approval), with the reason the citizen is told
+      let rejectionDocument: Awaited<ReturnType<typeof createEventDocument>> | null = null
+      if ((decision.status === 'APPROVED' || decision.status === 'REJECTED') && issuesDocument) {
         // PDF rendering is the only await in this handler: while it runs, every other change to this request
         // (a second approval click, another decision, a citizen upload) is refused instead of racing it
         approvalsInFlight.add(String(row.reference))
         try {
-          issuedDocument = await createIssuedDocument({
-            sourceKind: 'SERVICE_REQUEST',
-            serviceRequestReference: String(row.reference),
-            citizenId: Number(row.citizen_id),
-            citizenName: String(row.citizen_name),
-            serviceName: String(row.service_name),
-            departmentName: String(row.department_name),
-            documentTitle: `وثيقة إتمام معاملة — ${String(row.service_name)}`,
-            issuedBy: session.actor,
-            issuedAt: timestamp,
-            details: serviceRequestDocumentDetails(row),
-          })
+          const source = {
+            ...requestDocumentSource(row, session.actor, timestamp),
+            decisionNote: decision.decisionNote || null,
+          }
+          if (decision.status === 'REJECTED')
+            rejectionDocument = await createEventDocument(source, 'REJECTION', `SR:${String(row.reference)}:REJECTION`)
+          else
+            issuedDocument = await createIssuedDocument({
+              ...source,
+              // printed appointment: the slot set by this decision, else the one already confirmed
+              appointment: slot
+                ? { date: slot.date, time: slot.time, place: slot.note }
+                : existingAppointment && String(existingAppointment.status) === 'CONFIRMED'
+                  ? {
+                      date: String(existingAppointment.preferred_date),
+                      time: String(existingAppointment.preferred_time),
+                      place: existingAppointment.confirmation_note
+                        ? String(existingAppointment.confirmation_note)
+                        : null,
+                    }
+                  : null,
+            })
+        } catch (error) {
+          // e.g. an appointment notice without an appointment: nothing was written, the employee can fix and retry
+          if (error instanceof DocumentIssueError)
+            return res.status(400).json({ message: error.message, code: error.code })
+          throw error
         } finally {
           approvalsInFlight.delete(String(row.reference))
         }
       }
+      const decisionDocument = issuedDocument || rejectionDocument
       const requiredList = [...rejectedDocs, ...missingDocs].map(item =>
         item.note ? `${item.label} (${item.note})` : item.label
       )
@@ -1366,7 +1457,9 @@ export function registerServiceRequestsRoutes(app: express.Express) {
       const currentAction = decision.currentAction || defaultAction
       const finalAction = issuedDocument
         ? `${currentAction} صدرت الوثيقة الرقمية ${issuedDocument.documentNumber} وهي محفوظة في الأرشيف.`
-        : currentAction
+        : rejectionDocument
+          ? `${currentAction} صدر قرار الرفض المسبّب ${rejectionDocument.documentNumber} وهو محفوظ في وثائقك.`
+          : currentAction
       const decided = decision.status === 'APPROVED' || decision.status === 'REJECTED'
       // sending it back to the citizen pauses the SLA; pulling it back into review resumes it (deadline pushed)
       const clock = nextSlaClock({ ...row, status: String(row.status) }, decision.status, timestamp)
@@ -1421,9 +1514,9 @@ export function registerServiceRequestsRoutes(app: express.Express) {
         citizenId: Number(row.citizen_id),
         type: 'SERVICE_REQUEST_UPDATED',
         title,
-        message: `${String(row.reference)} — ${finalAction}${decision.decisionNote && decision.status !== 'REJECTED' ? ` • ${decision.decisionNote}` : ''}${issuedDocument ? ' اضغط لتنزيل الوثيقة.' : ''}`,
+        message: `${String(row.reference)} — ${finalAction}${decision.decisionNote && decision.status !== 'REJECTED' ? ` • ${decision.decisionNote}` : ''}${decisionDocument ? ' اضغط لتنزيل الوثيقة.' : ''}`,
         link: citizenRequestLink(String(row.reference)),
-        pushLink: issuedDocument ? `/api/citizen/issued-documents/${issuedDocument.id}/pdf` : undefined,
+        pushLink: decisionDocument ? `/api/citizen/issued-documents/${decisionDocument.id}/pdf` : undefined,
       })
       publishRequest(row, 'UPDATED')
       addAudit({
@@ -1437,9 +1530,9 @@ export function registerServiceRequestsRoutes(app: express.Express) {
           status: decision.status,
           currentAction: finalAction,
           requiredDocument: requiredList.join('، ') || null,
-          documentNumber: issuedDocument?.documentNumber || null,
-          verificationId: issuedDocument?.verificationId || null,
-          documentIssued: Boolean(issuedDocument),
+          documentNumber: decisionDocument?.documentNumber || null,
+          verificationId: decisionDocument?.verificationId || null,
+          documentIssued: Boolean(decisionDocument),
           appointment: slot,
         },
       })
@@ -1455,7 +1548,7 @@ export function registerServiceRequestsRoutes(app: express.Express) {
   app.post(
     '/api/employee/service-requests/:reference/record-office-payment',
     requireSession('EMPLOYEE', 'SUPER_ADMIN'),
-    (req, res) => {
+    async (req, res) => {
       const session = currentSession(res)
       const row = loadRequest(param(req, 'reference'))
       if (!row) return res.status(404).json({ message: 'طلب الخدمة غير موجود.' })
@@ -1555,12 +1648,29 @@ export function registerServiceRequestsRoutes(app: express.Express) {
           superseded: owed.map(item => item.reference),
         },
       })
+      // the platform's «وصل استلام» of this payment (QR-verifiable). The fee is recorded either way: a rendering
+      // failure is logged and audited, and issuing it again later is idempotent (one receipt per payment)
+      const receiptDocument = await issueFeeReceipt(String(row.reference), receipt.id, session.actor).catch(
+        (error: unknown) => {
+          console.error('[documents] fee receipt not issued', String(row.reference), error)
+          addAudit({
+            actor: session.actor,
+            role: session.role,
+            action: 'DOCUMENT_ISSUE_FAILED',
+            entityType: 'ServiceRequest',
+            entityId: String(row.reference),
+            metadata: { event: 'RECEIPT', payment: receipt.reference },
+          })
+          return null
+        }
+      )
       notifyCitizen({
         citizenId: Number(row.citizen_id),
         type: 'PAYMENT_CONFIRMED',
         title: 'تم تسجيل دفع الرسم في الدائرة',
-        message: `سُجّل وصل القبض ${receiptNumber} (${parsed.data.amountIqd.toLocaleString('en-US')} د.ع) على الطلب ${String(row.reference)}.${owed.length ? ' لا يلزمك الدفع الإلكتروني لهذا الرسم.' : ''}`,
+        message: `سُجّل وصل القبض ${receiptNumber} (${parsed.data.amountIqd.toLocaleString('en-US')} د.ع) على الطلب ${String(row.reference)}.${owed.length ? ' لا يلزمك الدفع الإلكتروني لهذا الرسم.' : ''}${receiptDocument ? ` صدر وصل الاستلام الإلكتروني ${receiptDocument.documentNumber}.` : ''}`,
         link: citizenRequestLink(String(row.reference)),
+        pushLink: receiptDocument ? `/api/citizen/issued-documents/${receiptDocument.id}/pdf` : undefined,
       })
       publishRequest(row, 'UPDATED')
       res.json(serializeServiceRequestForEmployee(loadRequest(String(row.reference))!))
@@ -1841,7 +1951,7 @@ export function registerServiceRequestsRoutes(app: express.Express) {
   app.post(
     '/api/employee/service-requests/:reference/transfer',
     requireSession('EMPLOYEE', 'SUPER_ADMIN'),
-    (req, res) => {
+    async (req, res) => {
       const session = currentSession(res)
       const row = loadRequest(param(req, 'reference'))
       if (!row) return res.status(404).json({ message: 'طلب الخدمة غير موجود.' })
@@ -1876,6 +1986,7 @@ export function registerServiceRequestsRoutes(app: express.Express) {
         })
       const timestamp = new Date().toISOString()
       const currentAction = `أُحيل الطلب إلى ${target.name} لأنها الجهة المختصة، وسيُستكمل تدقيقه هناك.`
+      const transferId = `trf_${randomUUID().replaceAll('-', '')}`
       db.exec('BEGIN')
       try {
         const moved = db
@@ -1900,15 +2011,7 @@ export function registerServiceRequestsRoutes(app: express.Express) {
         db.prepare(
           `INSERT INTO service_request_transfers (id, service_request_id, from_department_id, to_department_id, reason, requested_by, created_at)
            VALUES (?, ?, ?, ?, ?, ?, ?)`
-        ).run(
-          `trf_${randomUUID().replaceAll('-', '')}`,
-          Number(row.id),
-          fromDepartmentId,
-          target.id,
-          payload.data.reason,
-          session.actor,
-          timestamp
-        )
+        ).run(transferId, Number(row.id), fromDepartmentId, target.id, payload.data.reason, session.actor, timestamp)
         // an unconfirmed appointment request now belongs to the new department's calendar
         db.prepare(
           `UPDATE appointments SET department = ?, updated_at = ? WHERE service_request_id = ? AND status = 'REQUESTED'`
@@ -1918,12 +2021,33 @@ export function registerServiceRequestsRoutes(app: express.Express) {
         db.exec('ROLLBACK')
         throw error
       }
+      // «كتاب إحالة» from the sending department (`row` is still its view of the request) addressed to the receiving
+      // one: one letter per referral. The referral stands either way; a rendering failure is logged and audited.
+      let referralLetter: Awaited<ReturnType<typeof createEventDocument>> | null = null
+      if (serviceIssuesDocument(getCatalogService(String(row.service_id))))
+        referralLetter = await createEventDocument(
+          { ...requestDocumentSource(row, session.actor, timestamp), referralTo: target.name },
+          'REFERRAL',
+          `SR:${String(row.reference)}:REFERRAL:${transferId}`
+        ).catch((error: unknown) => {
+          console.error('[documents] referral letter not issued', String(row.reference), error)
+          addAudit({
+            actor: session.actor,
+            role: session.role,
+            action: 'DOCUMENT_ISSUE_FAILED',
+            entityType: 'ServiceRequest',
+            entityId: String(row.reference),
+            metadata: { event: 'REFERRAL', transfer: transferId },
+          })
+          return null
+        })
       notifyCitizen({
         citizenId: Number(row.citizen_id),
         type: 'SERVICE_REQUEST_TRANSFERRED',
         title: 'أُحيل طلبك إلى الدائرة المختصة',
-        message: `${String(row.reference)} — أُحيل طلبك إلى ${target.name} لاستكمال معالجته. يبقى رقم المعاملة نفسه وتصلك التحديثات كالمعتاد.`,
+        message: `${String(row.reference)} — أُحيل طلبك إلى ${target.name} لاستكمال معالجته. يبقى رقم المعاملة نفسه وتصلك التحديثات كالمعتاد.${referralLetter ? ` صدر كتاب الإحالة ${referralLetter.documentNumber}.` : ''}`,
         link: citizenRequestLink(String(row.reference)),
+        pushLink: referralLetter ? `/api/citizen/issued-documents/${referralLetter.id}/pdf` : undefined,
       })
       addAudit({
         actor: session.actor,
@@ -1935,7 +2059,11 @@ export function registerServiceRequestsRoutes(app: express.Express) {
           departmentId: fromDepartmentId,
           assignedStaffId: row.assigned_staff_id ? String(row.assigned_staff_id) : null,
         },
-        newValue: { departmentId: target.id, reason: payload.data.reason },
+        newValue: {
+          departmentId: target.id,
+          reason: payload.data.reason,
+          referralLetter: referralLetter?.documentNumber || null,
+        },
       })
       // both queues change: it leaves the old department and arrives in the new one
       publishRequest(row, 'TRANSFERRED', fromDepartmentId)

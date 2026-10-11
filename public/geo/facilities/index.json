@@ -1,0 +1,402 @@
+{
+ "attribution": "© OpenStreetMap contributors, ODbL 1.0",
+ "generated": "2026-10-10",
+ "note": "OpenStreetMap coverage in Dhi Qar is incomplete; counts are what is mapped, not official totals.",
+ "totals": {
+  "police": 110,
+  "school": 502,
+  "hospital": 102,
+  "clinic": 120,
+  "kindergarten": 23,
+  "post": 23,
+  "court": 22,
+  "government": 177,
+  "community": 20,
+  "library": 22,
+  "university": 8,
+  "sports": 16,
+  "college": 28,
+  "fire": 16,
+  "utility": 2,
+  "townhall": 1
+ },
+ "districts": {
+  "الناصرية": {
+   "file": "nasiriyah.geojson",
+   "bytes": 282293,
+   "total": 599,
+   "counts": {
+    "school": 246,
+    "hospital": 52,
+    "police": 45,
+    "post": 5,
+    "court": 5,
+    "government": 85,
+    "clinic": 83,
+    "library": 10,
+    "university": 7,
+    "community": 10,
+    "college": 17,
+    "kindergarten": 17,
+    "fire": 8,
+    "utility": 1,
+    "sports": 7,
+    "townhall": 1
+   },
+   "subdistricts": [
+    {
+     "name": "مركز قضاء الناصرية",
+     "centre": true,
+     "osm": "relation/11044702"
+    },
+    {
+     "name": "اور",
+     "centre": false,
+     "osm": "relation/11044704"
+    }
+   ]
+  },
+  "الشطرة": {
+   "file": "shatrah.geojson",
+   "bytes": 32969,
+   "total": 78,
+   "counts": {
+    "school": 24,
+    "hospital": 11,
+    "community": 4,
+    "government": 12,
+    "clinic": 10,
+    "college": 3,
+    "sports": 2,
+    "fire": 1,
+    "police": 3,
+    "kindergarten": 1,
+    "court": 3,
+    "post": 1,
+    "library": 2,
+    "university": 1
+   },
+   "subdistricts": [
+    {
+     "name": "مركز قضاء الشطرة",
+     "centre": true,
+     "osm": "relation/11044708"
+    }
+   ]
+  },
+  "سوق الشيوخ": {
+   "file": "suq-al-shuyukh.geojson",
+   "bytes": 55123,
+   "total": 110,
+   "counts": {
+    "police": 14,
+    "clinic": 7,
+    "school": 51,
+    "government": 17,
+    "hospital": 9,
+    "library": 2,
+    "post": 2,
+    "fire": 2,
+    "sports": 3,
+    "kindergarten": 1,
+    "court": 1,
+    "college": 1
+   },
+   "subdistricts": [
+    {
+     "name": "مركز قضاء سوق الشيوخ",
+     "centre": true,
+     "osm": "relation/11044700"
+    },
+    {
+     "name": "الطار",
+     "centre": false,
+     "osm": "relation/11044693"
+    },
+    {
+     "name": "العكيكة",
+     "centre": false,
+     "osm": "relation/11044699"
+    },
+    {
+     "name": "الفضلية",
+     "centre": false,
+     "osm": "relation/11044701"
+    }
+   ]
+  },
+  "الرفاعي": {
+   "file": "rifai.geojson",
+   "bytes": 38324,
+   "total": 94,
+   "counts": {
+    "school": 42,
+    "government": 17,
+    "community": 1,
+    "police": 7,
+    "court": 5,
+    "library": 3,
+    "kindergarten": 1,
+    "college": 5,
+    "hospital": 3,
+    "post": 2,
+    "clinic": 6,
+    "fire": 1,
+    "sports": 1
+   },
+   "subdistricts": [
+    {
+     "name": "مركز قضاء الرفاعي",
+     "centre": true,
+     "osm": "relation/11044711"
+    }
+   ]
+  },
+  "الغراف": {
+   "file": "gharraf.geojson",
+   "bytes": 17399,
+   "total": 39,
+   "counts": {
+    "police": 4,
+    "school": 23,
+    "hospital": 2,
+    "community": 1,
+    "government": 4,
+    "clinic": 1,
+    "post": 1,
+    "court": 1,
+    "sports": 2
+   },
+   "subdistricts": [
+    {
+     "name": "مركز قضاء الغراف",
+     "centre": true,
+     "osm": "relation/11044706"
+    }
+   ]
+  },
+  "قلعة سكر": {
+   "file": "qalat-sukkar.geojson",
+   "bytes": 23362,
+   "total": 48,
+   "counts": {
+    "police": 6,
+    "kindergarten": 2,
+    "hospital": 1,
+    "school": 24,
+    "government": 4,
+    "sports": 1,
+    "fire": 1,
+    "clinic": 3,
+    "post": 2,
+    "community": 1,
+    "court": 2,
+    "library": 1
+   },
+   "subdistricts": [
+    {
+     "name": "مركز قضاء قلعة سكر",
+     "centre": true,
+     "osm": "relation/11044714"
+    }
+   ]
+  },
+  "الدواية": {
+   "file": "dawaya.geojson",
+   "bytes": 7919,
+   "total": 17,
+   "counts": {
+    "school": 10,
+    "college": 1,
+    "hospital": 1,
+    "post": 1,
+    "government": 3,
+    "fire": 1
+   },
+   "subdistricts": [
+    {
+     "name": "مركز قضاء الدواية",
+     "centre": true,
+     "osm": "relation/11044698"
+    }
+   ]
+  },
+  "الفجر": {
+   "file": "fajr.geojson",
+   "bytes": 22246,
+   "total": 42,
+   "counts": {
+    "hospital": 5,
+    "school": 16,
+    "police": 7,
+    "clinic": 2,
+    "post": 2,
+    "government": 7,
+    "court": 1,
+    "library": 1,
+    "fire": 1
+   },
+   "subdistricts": [
+    {
+     "name": "مركز قضاء الفجر",
+     "centre": true,
+     "osm": "relation/11044716"
+    },
+    {
+     "name": "ميسلون",
+     "centre": false,
+     "osm": "relation/11044717"
+    }
+   ]
+  },
+  "سيد دخيل": {
+   "file": "sayyid-dakhil.geojson",
+   "bytes": 5778,
+   "total": 14,
+   "counts": {
+    "police": 2,
+    "school": 7,
+    "government": 4,
+    "library": 1
+   },
+   "subdistricts": [
+    {
+     "name": "مركز قضاء سيد دخيل",
+     "centre": true,
+     "osm": "relation/11044696"
+    }
+   ]
+  },
+  "الجبايش": {
+   "file": "chibayish.geojson",
+   "bytes": 5431,
+   "total": 13,
+   "counts": {
+    "police": 3,
+    "hospital": 2,
+    "post": 1,
+    "government": 2,
+    "community": 1,
+    "school": 3,
+    "library": 1
+   },
+   "subdistricts": [
+    {
+     "name": "مركز قضاء الجبايش",
+     "centre": true,
+     "osm": "relation/11044686"
+    },
+    {
+     "name": "المنار",
+     "centre": false,
+     "osm": "relation/11044687"
+    }
+   ]
+  },
+  "الفهود": {
+   "file": "fuhud.geojson",
+   "bytes": 6997,
+   "total": 14,
+   "counts": {
+    "post": 2,
+    "government": 4,
+    "court": 1,
+    "police": 2,
+    "hospital": 3,
+    "school": 1,
+    "fire": 1
+   },
+   "subdistricts": [
+    {
+     "name": "مركز قضاء الفهود",
+     "centre": true,
+     "osm": "relation/11044690"
+    }
+   ]
+  },
+  "الإصلاح": {
+   "file": "islah.geojson",
+   "bytes": 21478,
+   "total": 47,
+   "counts": {
+    "police": 4,
+    "government": 9,
+    "school": 21,
+    "court": 1,
+    "clinic": 3,
+    "hospital": 5,
+    "post": 1,
+    "library": 1,
+    "community": 1,
+    "utility": 1
+   },
+   "subdistricts": [
+    {
+     "name": "مركز قضاء الاصلاح",
+     "centre": true,
+     "osm": "relation/11044689"
+    }
+   ]
+  },
+  "النصر": {
+   "file": "nasr.geojson",
+   "bytes": 11452,
+   "total": 27,
+   "counts": {
+    "police": 4,
+    "government": 2,
+    "school": 13,
+    "clinic": 4,
+    "kindergarten": 1,
+    "college": 1,
+    "community": 1,
+    "post": 1
+   },
+   "subdistricts": [
+    {
+     "name": "النصر",
+     "centre": false,
+     "osm": "relation/11044710"
+    }
+   ]
+  },
+  "البطحاء": {
+   "file": "batha.geojson",
+   "bytes": 16326,
+   "total": 34,
+   "counts": {
+    "government": 7,
+    "police": 9,
+    "court": 2,
+    "school": 13,
+    "post": 1,
+    "hospital": 2
+   },
+   "subdistricts": [
+    {
+     "name": "البطحاء",
+     "centre": false,
+     "osm": "relation/11044712"
+    }
+   ]
+  },
+  "كرمة بني سعد": {
+   "file": "karmat-bani-saad.geojson",
+   "bytes": 8166,
+   "total": 16,
+   "counts": {
+    "school": 8,
+    "hospital": 6,
+    "clinic": 1,
+    "post": 1
+   },
+   "subdistricts": [
+    {
+     "name": "كرمة بني سعد",
+     "centre": false,
+     "osm": "relation/11044694"
+    }
+   ]
+  }
+ }
+}

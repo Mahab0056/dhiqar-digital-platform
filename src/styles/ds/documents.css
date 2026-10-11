@@ -1,0 +1,811 @@
+/* Official document templates: gallery, per-service assignment, issued register, pre-issue preview. */
+
+.docs-panel {
+  display: grid;
+  gap: 18px;
+}
+
+.docs-panel-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 22px;
+  border: 1px solid var(--neutral-200);
+  border-radius: 14px;
+  background:
+    radial-gradient(circle at 12% 20%, rgb(23 132 93 / 10%), transparent 42%),
+    linear-gradient(135deg, var(--green-25), var(--neutral-0));
+}
+
+.docs-panel-head h2 {
+  margin: 4px 0 6px;
+  font-size: 1.45rem;
+  color: var(--green-800);
+}
+
+.docs-panel-head p {
+  margin: 0;
+  max-width: 62ch;
+  color: var(--neutral-600);
+  line-height: 1.8;
+}
+
+.docs-switch {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 999px;
+  background: var(--neutral-100);
+}
+
+.docs-switch button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 38px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--neutral-700);
+  font: inherit;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.docs-switch button svg {
+  width: 16px;
+  height: 16px;
+}
+
+.docs-switch button.active {
+  background: var(--neutral-0);
+  color: var(--green-800);
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 12%);
+}
+
+.docs-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.docs-chips button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--neutral-200);
+  border-radius: 999px;
+  background: var(--neutral-0);
+  color: var(--neutral-700);
+  font: inherit;
+  font-size: 0.8125rem;
+  cursor: pointer;
+}
+
+.docs-chips button b {
+  min-width: 22px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--neutral-100);
+  font-size: 0.75rem;
+  text-align: center;
+}
+
+.docs-chips button.active {
+  border-color: var(--green-600);
+  background: var(--green-600);
+  color: var(--neutral-0);
+}
+
+.docs-chips button.active b {
+  background: rgb(255 255 255 / 22%);
+}
+
+.docs-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 16px;
+  margin-top: 14px;
+}
+
+.docs-card {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  overflow: hidden;
+  border: 1px solid var(--neutral-200);
+  border-radius: 12px;
+  background: var(--neutral-0);
+  transition:
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
+}
+
+.docs-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px rgb(5 59 44 / 10%);
+}
+
+.docs-thumb {
+  position: relative;
+  display: grid;
+  /* a definite track, so the image's max-height: 100% resolves (an auto track let the A4 thumbnail overflow
+     the 230px frame and cover the card title) */
+  grid-template: minmax(0, 1fr) / minmax(0, 1fr);
+  place-items: center;
+  height: 230px;
+  padding: 12px;
+  border: 0;
+  border-bottom: 1px solid var(--neutral-100);
+  background: linear-gradient(180deg, var(--neutral-50), var(--neutral-100));
+  cursor: zoom-in;
+}
+
+.docs-thumb img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  box-shadow: 0 4px 14px rgb(0 0 0 / 14%);
+  background: var(--neutral-0);
+}
+
+.docs-thumb-hover {
+  position: absolute;
+  inset-inline: 12px;
+  bottom: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px;
+  border-radius: 8px;
+  background: rgb(5 59 44 / 85%);
+  color: var(--neutral-0);
+  font-size: 0.8125rem;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.docs-thumb-hover svg {
+  width: 15px;
+  height: 15px;
+}
+
+.docs-thumb:hover .docs-thumb-hover,
+.docs-thumb:focus-visible .docs-thumb-hover {
+  opacity: 1;
+}
+
+.docs-card-body {
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  padding: 12px 14px 14px;
+}
+
+.docs-card-body h3 {
+  margin: 4px 0 0;
+  font-size: 1.02rem;
+  color: var(--green-800);
+}
+
+.docs-card-body small {
+  color: var(--ds-primary-text);
+  font-size: 0.6875rem;
+  letter-spacing: 0.08em;
+}
+
+.docs-card-body .docs-card-note {
+  color: var(--neutral-600);
+  letter-spacing: 0;
+  line-height: 1.6;
+}
+
+.docs-card-body p {
+  margin: 4px 0;
+  color: var(--neutral-600);
+  font-size: 0.8125rem;
+  line-height: 1.7;
+}
+
+.docs-tag {
+  justify-self: start;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: var(--green-50);
+  color: var(--green-700);
+  font-size: 0.75rem;
+}
+
+.docs-family {
+  color: var(--neutral-500);
+  font-size: 0.75rem;
+}
+
+.docs-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgb(11 17 14 / 55%);
+}
+
+.docs-dialog {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  width: min(1100px, 100%);
+  max-height: calc(100vh - 32px);
+  overflow: hidden;
+  border-radius: 14px;
+  background: var(--neutral-0);
+  box-shadow: 0 24px 60px rgb(0 0 0 / 30%);
+}
+
+.docs-dialog > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--neutral-200);
+}
+
+.docs-dialog > header h3 {
+  margin: 4px 0 0;
+  color: var(--green-800);
+}
+
+.docs-dialog-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 16px;
+  padding: 16px;
+  overflow: auto;
+}
+
+.docs-dialog-body aside {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  font-size: 0.875rem;
+}
+
+.docs-dialog-body dl {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+}
+
+.docs-dialog-body dl div {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px dashed var(--neutral-200);
+}
+
+.docs-dialog-body dt {
+  color: var(--neutral-500);
+}
+
+.docs-dialog-body dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+.docs-dialog-body h4 {
+  margin: 6px 0 0;
+}
+
+.docs-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.docs-fields li {
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: var(--neutral-100);
+  font-size: 0.75rem;
+}
+
+.docs-pdf {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+}
+
+.docs-pdf iframe {
+  width: 100%;
+  height: min(72vh, 860px);
+  border: 1px solid var(--neutral-200);
+  border-radius: 10px;
+  background: var(--neutral-100);
+}
+
+.docs-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.docs-select {
+  display: grid;
+  gap: 4px;
+  font-size: 0.8125rem;
+}
+
+.docs-select select {
+  min-width: 260px;
+  min-height: 40px;
+}
+
+.docs-search {
+  display: inline-flex;
+  flex: 1 1 240px;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--neutral-300);
+  border-radius: 10px;
+  background: var(--neutral-0);
+}
+
+.docs-search svg {
+  width: 16px;
+  height: 16px;
+  color: var(--neutral-500);
+}
+
+.docs-search input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font: inherit;
+}
+
+.docs-assign {
+  display: grid;
+  gap: 14px;
+}
+
+.docs-assign-layout {
+  display: grid;
+  grid-template-columns: minmax(260px, 360px) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.docs-service-list {
+  display: grid;
+  gap: 6px;
+  max-height: 78vh;
+  margin: 0;
+  padding: 0;
+  overflow: auto;
+  list-style: none;
+}
+
+.docs-service-list button {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--neutral-200);
+  border-radius: 10px;
+  background: var(--neutral-0);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.docs-service-list button strong {
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+
+.docs-service-list button span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--green-700);
+  font-size: 0.78rem;
+}
+
+.docs-service-list button span svg {
+  width: 14px;
+  height: 14px;
+}
+
+.docs-service-list button em {
+  padding: 0 6px;
+  border-radius: 4px;
+  background: var(--ds-primary-soft);
+  color: var(--ds-primary-text);
+  font-style: normal;
+  font-size: 0.6875rem;
+}
+
+.docs-service-list button small {
+  color: var(--neutral-500);
+}
+
+.docs-service-list button.selected {
+  border-color: var(--green-600);
+  background: var(--green-25);
+  box-shadow: inset -3px 0 0 var(--green-600);
+}
+
+.docs-editor {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--neutral-200);
+  border-radius: 12px;
+  background: var(--neutral-0);
+}
+
+.docs-editor h3 {
+  margin: 0;
+  color: var(--green-800);
+}
+
+.docs-editor fieldset {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.docs-editor label {
+  display: grid;
+  gap: 6px;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.docs-editor label small {
+  color: var(--neutral-500);
+  font-weight: 400;
+}
+
+.docs-editor input,
+.docs-editor select,
+.docs-editor textarea {
+  min-height: 40px;
+  font: inherit;
+  font-weight: 400;
+}
+
+.docs-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.docs-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.docs-ok {
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: var(--green-50);
+  color: var(--green-800);
+}
+
+.docs-empty {
+  padding: 18px;
+  border: 1px dashed var(--neutral-300);
+  border-radius: 10px;
+  color: var(--neutral-500);
+  text-align: center;
+}
+
+.docs-issued-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.docs-issued-list > li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--neutral-200);
+  border-radius: 10px;
+  background: var(--neutral-0);
+}
+
+.docs-issued-main {
+  display: grid;
+  gap: 2px;
+}
+
+.docs-issued-main span {
+  justify-self: start;
+  color: var(--green-700);
+  font-family: var(--ds-font-mono);
+  font-size: 0.8125rem;
+}
+
+.docs-issued-main small {
+  color: var(--neutral-500);
+}
+
+.docs-revoked {
+  color: var(--red-700) !important;
+}
+
+.docs-issued-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.docs-issued-actions .danger {
+  color: var(--red-700);
+}
+
+.docs-revoke {
+  display: flex;
+  flex-wrap: wrap;
+  grid-column: 1 / -1;
+  align-items: flex-end;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--neutral-200);
+}
+
+.docs-revoke label {
+  display: grid;
+  flex: 1 1 260px;
+  gap: 4px;
+  font-size: 0.8125rem;
+}
+
+.docs-issue-note {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--green-200);
+  border-radius: 10px;
+  background: var(--green-25);
+}
+
+.docs-issue-note > svg {
+  width: 22px;
+  height: 22px;
+  color: var(--green-600);
+}
+
+.docs-issue-note strong {
+  display: block;
+  color: var(--green-800);
+  font-size: 0.875rem;
+}
+
+.docs-issue-note small {
+  display: block;
+  color: var(--neutral-600);
+  font-size: 0.75rem;
+}
+
+.docs-issue-note small.docs-issue-warning {
+  color: var(--amber-700);
+  font-weight: 600;
+}
+
+.docs-issue-preview {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 860px) {
+  .docs-assign-layout,
+  .docs-dialog-body {
+    grid-template-columns: 1fr;
+  }
+
+  .docs-issued-list > li {
+    grid-template-columns: 1fr;
+  }
+
+  .docs-row {
+    grid-template-columns: 1fr;
+  }
+
+  .docs-pdf iframe {
+    height: 70vh;
+  }
+}
+
+/* public verification additions */
+.verify-result.is-expired .verify-result-banner {
+  background: var(--amber-50);
+  color: var(--amber-700);
+}
+
+.docs-verify-id {
+  color: var(--neutral-500);
+  font-family: var(--ds-font-mono);
+  font-size: 0.8125rem;
+}
+
+.docs-verify-pdf iframe {
+  height: min(70vh, 780px);
+}
+
+.docs-hash {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px dashed var(--neutral-300);
+  border-radius: 10px;
+  background: var(--neutral-25);
+}
+
+.docs-hash > svg {
+  width: 22px;
+  height: 22px;
+  color: var(--green-600);
+}
+
+.docs-hash > div {
+  display: grid;
+  gap: 6px;
+  justify-items: start;
+}
+
+.docs-hash small {
+  color: var(--neutral-600);
+  line-height: 1.7;
+}
+
+/* Night mode. The portal's global dark rules repaint headings, paragraphs, list items and <strong>/<b> with the
+   light --p-text, so every light ground above gets the matching dark surface here (and explicit inks where the
+   light theme hard-codes a dark one). The dialog is portalled to <body>, outside those global rules. */
+:root[data-gov-theme='dark'] :is(.docs-panel, .docs-dialog, .docs-issue-note) {
+  color: var(--p-text);
+}
+
+:root[data-gov-theme='dark'] .docs-panel-head {
+  border-color: var(--p-line);
+  background: var(--p-surface);
+}
+
+:root[data-gov-theme='dark']
+  :is(
+    .docs-card,
+    .docs-dialog,
+    .docs-editor,
+    .docs-issued-list > li,
+    .docs-service-list button,
+    .docs-chips button,
+    .docs-search,
+    .docs-switch button.active
+  ) {
+  border-color: var(--p-line);
+  background: var(--p-surface);
+  color: var(--p-text);
+}
+
+:root[data-gov-theme='dark'] :is(.docs-switch, .docs-chips button b, .docs-fields li, .docs-thumb, .docs-pdf iframe) {
+  border-color: var(--p-line);
+  background: var(--p-surface-2);
+  color: var(--p-text);
+}
+
+:root[data-gov-theme='dark'] .docs-switch button {
+  color: var(--p-text);
+}
+
+:root[data-gov-theme='dark'] .docs-chips button.active {
+  border-color: var(--green-600);
+  background: var(--green-600);
+  color: #fff;
+}
+
+:root[data-gov-theme='dark'] .docs-chips button.active b {
+  background: rgb(255 255 255 / 22%);
+  color: #fff;
+}
+
+:root[data-gov-theme='dark']
+  :is(
+    .docs-panel-head h2,
+    .docs-switch button.active,
+    .docs-card-body h3,
+    .docs-dialog > header h3,
+    .docs-editor h3,
+    .docs-issue-note strong,
+    .docs-issued-main span,
+    .docs-service-list button span
+  ) {
+  color: var(--ds-success, #6fd8ab);
+}
+
+:root[data-gov-theme='dark']
+  :is(
+    .docs-panel-head p,
+    .docs-card-body p,
+    .docs-card-body .docs-card-note,
+    .docs-family,
+    .docs-dialog-body dt,
+    .docs-editor label small,
+    .docs-search svg,
+    .docs-service-list button small,
+    .docs-issued-main small,
+    .docs-issue-note small,
+    .docs-empty
+  ) {
+  color: var(--p-muted);
+}
+
+:root[data-gov-theme='dark'] .docs-card-body small {
+  color: var(--ds-primary-text, #6fd8ab);
+}
+
+:root[data-gov-theme='dark'] .docs-tag {
+  background: rgb(111 216 171 / 14%);
+  color: var(--ds-success, #6fd8ab);
+}
+
+:root[data-gov-theme='dark'] :is(.docs-dialog > header, .docs-dialog-body dl div, .docs-revoke) {
+  border-color: var(--p-line);
+}
+
+:root[data-gov-theme='dark'] .docs-service-list button.selected {
+  border-color: var(--green-500);
+  background: rgb(111 216 171 / 10%);
+}
+
+:root[data-gov-theme='dark'] :is(.docs-ok, .docs-issue-note) {
+  border-color: var(--p-line);
+  background: rgb(111 216 171 / 9%);
+  color: var(--p-text);
+}
+
+:root[data-gov-theme='dark'] .docs-issue-note small.docs-issue-warning {
+  color: var(--ds-warning, #f2bd66);
+}
+
+:root[data-gov-theme='dark'] :is(.docs-revoked, .docs-issued-actions .danger) {
+  color: var(--ds-danger, #ff9196) !important;
+}
+
+:root[data-gov-theme='dark'] :is(.docs-panel, .docs-dialog, .docs-issue-note) .button:is(.outline, .ghost) {
+  border-color: var(--p-line);
+  background: var(--p-surface-2);
+  color: var(--p-text);
+}
+
+:root[data-gov-theme='dark'] :is(.docs-panel, .docs-dialog, .docs-issue-note) .button:is(.outline, .ghost) * {
+  color: inherit;
+}

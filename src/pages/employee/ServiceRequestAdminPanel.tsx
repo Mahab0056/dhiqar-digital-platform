@@ -21,6 +21,7 @@ import {
 } from 'lucide-react'
 import { api, type EmployeeServiceRequest } from '../../api'
 import { AiReviewPanel } from '../../components/assistant/AiReviewPanel'
+import { IssuancePreviewNote } from '../../components/documents/IssuancePreviewNote'
 import { useSession } from '../../lib/session'
 import type { ChecklistItem, CitizenServiceRequest } from '../../types'
 
@@ -1123,6 +1124,9 @@ export function ServiceRequestAdminPanel({
                       <Info aria-hidden="true" /> الدفع الإلكتروني غير مفعّل حالياً، لذلك لا يظهر خيار «طلب سداد رسم».
                       إن ترتب رسم على المعاملة فاطلب من المواطن سداده في صندوق الدائرة ثم سجّل وصل القبض على الطلب.
                     </p>
+                  )}
+                  {status === 'APPROVED' && detail?.issuesDocument !== false && (
+                    <IssuancePreviewNote reference={selected.reference} />
                   )}
                   {status === 'APPROVED' && detail?.issuesDocument === false && (
                     <p className="gov-muted">

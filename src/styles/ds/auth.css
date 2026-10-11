@@ -6,7 +6,7 @@
   flex-direction: column;
   min-height: 100vh;
   background:
-    radial-gradient(60% 50% at 100% 0%, color-mix(in srgb, var(--brass-200) 18%, transparent), transparent 70%),
+    radial-gradient(60% 50% at 100% 0%, color-mix(in srgb, var(--green-200) 18%, transparent), transparent 70%),
     var(--ds-bg);
   color: var(--ds-text);
 }
@@ -189,7 +189,7 @@
   line-height: 1.5;
 }
 .auth-choice.is-primary .auth-choice-text small {
-  color: color-mix(in srgb, var(--ds-primary-fg) 78%, transparent);
+  color: color-mix(in srgb, var(--ds-primary-fg) 92%, transparent); /* 78% fell to 3.9:1 on the green */
 }
 .auth-choice-arrow {
   flex: none;
@@ -239,7 +239,7 @@
   z-index: -1;
   background:
     linear-gradient(180deg, rgba(3, 35, 26, 0.94) 0%, rgba(3, 35, 26, 0.78) 55%, rgba(3, 35, 26, 0.95) 100%),
-    radial-gradient(70% 50% at 0% 100%, rgba(201, 154, 66, 0.25), transparent 70%);
+    radial-gradient(70% 50% at 0% 100%, rgba(70, 160, 122, 0.25), transparent 70%);
 }
 .auth-aside-inner {
   display: flex;
@@ -249,7 +249,7 @@
   padding: clamp(28px, 4vw, 44px);
 }
 .auth-aside-kicker {
-  color: var(--brass-200);
+  color: var(--green-200);
   font-size: var(--ds-text-sm);
   font-weight: 600;
 }
@@ -278,7 +278,7 @@
   width: 18px;
   height: 18px;
   margin-top: 4px;
-  color: var(--brass-300);
+  color: var(--green-300);
 }
 .auth-aside-seals {
   display: flex;

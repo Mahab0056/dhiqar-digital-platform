@@ -12,9 +12,7 @@ import {
   type MapLayerMouseEvent,
 } from 'maplibre-gl'
 import type { Feature, FeatureCollection, MultiPolygon, Point, Polygon, Position } from 'geojson'
-import { ArrowRight, Building2, MapPin, ShieldAlert, Users, X } from 'lucide-react'
-import { api } from '../../api'
-import type { DashboardStats } from '../../types'
+import { ArrowRight, ExternalLink, MapPin, ShieldAlert, X } from 'lucide-react'
 import {
   brandStyle,
   DARK,
@@ -24,16 +22,52 @@ import {
   hexagon,
   LIGHT,
   MAP_LOCALE,
+  mix,
   prefersReducedMotion,
   skyFor,
   themePaint,
   type Palette,
   type StyleLayer,
 } from './maplibre-base'
-import { DISTRICT_FACTS, districtKey, GOVERNORATE_POPULATION_2024 } from './dhiqar-district-facts'
+import { DISTRICT_FACTS, districtKey } from './dhiqar-district-facts'
+import {
+  DRILL_COLUMN_INSET,
+  DRILL_SHEET_MAX_WIDTH,
+  drillColumnWidth,
+  openWork,
+  summarizeDistricts,
+  type DistrictProps,
+  type DistrictSummary,
+  type OpsDepartment,
+  type OpsState,
+} from './district-data'
+import {
+  addBuildingLayers,
+  addFacadeImages,
+  addFacilityLayers,
+  setFacadeTheme,
+  addLandmarkLayers,
+  badgeExpression,
+  FACILITY_INTERACTIVE_LAYERS,
+  FACILITY_TYPES,
+  facadeOf,
+  groupColor,
+  hideBasemapBuildings,
+  iconForCategory,
+  installBadgeFactory,
+  landmarkKeys,
+  loadDepartmentFootprints,
+  OSM_ATTRIBUTION,
+  osmUrl,
+  standInSquare,
+  type DepartmentFootprints,
+  type FacilityInfo,
+  type FacilityLayerHandle,
+} from './realistic-buildings'
+import { departmentShape } from './building-shape'
+import { ShapeNote } from './ShapeNote'
 
-export type OpsDepartment = DashboardStats['departments'][number]
-export type OpsState = 'idle' | 'busy' | 'alert'
+export type { OpsDepartment, OpsState }
 export type Basemap = 'dark' | 'light' | 'satellite'
 
 /** imperative controls the GIS shell's own buttons drive */
@@ -55,14 +89,18 @@ type Props = {
   showLandmarks: boolean
   selectedId: string | null
   onSelectDepartment: (id: string | null) => void
+  /** the district drilled into: the host owns it (its toolbar picker and profile panel drive the map) */
+  drill: string | null
+  onDrillChange: (name: string | null) => void
   /** operations room: workload and staffing; governor: performance KPIs */
   variant: 'operations' | 'governor'
   onReady?: (api: DrillMapApi) => void
   onCursor?: (point: { lat: number; lng: number } | null) => void
   onUnavailable: () => void
+  /** the host's district profile is folded to its title bar: a drill frames the district over the whole map */
+  panelCollapsed?: boolean
 }
 
-type DistrictProps = { kind: 'district' | 'governorate'; name: string; areaKm2?: number; formerParent?: string }
 type DistrictFeature = Feature<Polygon | MultiPolygon, DistrictProps>
 
 const GEO_URL = '/geo/dhiqar-districts.geojson'
@@ -78,9 +116,15 @@ const SLAB = 3500
 const LIFT = 9000
 const HOVER = 2600
 const STATE_COLORS: Record<OpsState, string> = { idle: '#2fc489', busy: '#f2b24c', alert: '#ff5d6c' }
+/** from here in, real buildings replace the department pillars */
+const BUILDING_MIN_ZOOM = 12.6
+const PILLAR_MAX_ZOOM = 13.2
+const FACILITY_MIN_ZOOM = 13.2
+const BUILDING_SCALE = 1.2
+/** at or below this map width the cards are a bottom sheet (CSS: map3d-drill.css, @container drillmap) */
+const CARD_SHEET_MAX_WIDTH = 640
 
 const fmt = (value: number) => value.toLocaleString('en-US')
-const openWork = (department: OpsDepartment) => department.underReview + department.actionRequired
 
 function ringsOf(geometry: Polygon | MultiPolygon): Position[][] {
   return geometry.type === 'Polygon' ? [geometry.coordinates[0]] : geometry.coordinates.map(polygon => polygon[0])
@@ -123,19 +167,10 @@ function labelPoint(geometry: Polygon | MultiPolygon): [number, number] {
   return inside(...centre) ? centre : [ring[0][0], ring[0][1]]
 }
 
-type DistrictRow = {
-  name: string
+type DistrictRow = DistrictSummary & {
   feature: DistrictFeature
   bounds: [[number, number], [number, number]]
   label: [number, number]
-  departments: OpsDepartment[]
-  mapped: number
-  open: number
-  overdue: number
-  feedback: number
-  completed: number
-  transactions: number
-  alerts: number
 }
 
 type Tween = { from: number; to: number; start: number; duration: number; ease: (t: number) => number }
@@ -182,16 +217,21 @@ const standing = (height: ExpressionSpecification): ExpressionSpecification => [
 ]
 
 export default function DistrictDrillMap(props: Props) {
-  const { departments, visibleIds, stateOf, basemap, showDistricts, showLandmarks, selectedId, variant } = props
+  const { departments, visibleIds, stateOf, basemap, showDistricts, showLandmarks, selectedId, drill, variant } = props
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<MapLibreMap | null>(null)
   const [geo, setGeo] = useState<DistrictFeature[] | null>(null)
   const [ready, setReady] = useState(false)
-  const [drill, setDrill] = useState<string | null>(null)
   const [hover, setHover] = useState<{ x: number; y: number; name: string } | null>(null)
   const [pillarTip, setPillarTip] = useState<{ x: number; y: number; id: string } | null>(null)
-  const [services, setServices] = useState<Map<string, number>>(new Map())
   const [reduced] = useState(prefersReducedMotion)
+  const [facility, setFacility] = useState<FacilityInfo | null>(null)
+  const [facilityTip, setFacilityTip] = useState<{ x: number; y: number; info: FacilityInfo } | null>(null)
+  const facilitiesRef = useRef<FacilityLayerHandle | null>(null)
+  const printsRef = useRef<DepartmentFootprints | null>(null)
+  /** the same footprints, for the department card's «real outline or approximate shape» line */
+  const [prints, setPrints] = useState<DepartmentFootprints | null | undefined>(undefined)
+  const cardRef = useRef<HTMLElement>(null)
 
   const latest = useRef(props)
   useLayoutEffect(() => {
@@ -205,13 +245,8 @@ export default function DistrictDrillMap(props: Props) {
     loaded: false,
   })
 
-  // services listed per department (public registry) — for the district panel
-  useEffect(() => {
-    api
-      .listDepartments()
-      .then(data => setServices(new Map(data.items.map(item => [item.id, item.services.length]))))
-      .catch(() => undefined)
-  }, [])
+  /** the host owns the drill-down (picker, profile panel); the map asks it to change */
+  const setDrill = useCallback((name: string | null) => latest.current.onDrillChange(name), [])
 
   const byId = useMemo(() => new Map(departments.map(item => [String(item.id), item])), [departments])
   const byIdRef = useRef(byId)
@@ -219,29 +254,17 @@ export default function DistrictDrillMap(props: Props) {
     byIdRef.current = byId
   })
 
-  const districts = useMemo(() => {
-    if (!geo) return [] as DistrictRow[]
-    return geo
-      .filter(feature => feature.properties.kind === 'district')
-      .map(feature => {
-        const own = departments.filter(item => districtKey(item.district) === feature.properties.name)
-        return {
-          name: feature.properties.name,
-          feature,
-          bounds: boundsOf(feature.geometry),
-          label: labelPoint(feature.geometry),
-          departments: own,
-          mapped: own.filter(item => typeof item.lat === 'number').length,
-          open: own.reduce((sum, item) => sum + openWork(item), 0),
-          overdue: own.reduce((sum, item) => sum + (item.overdue || 0), 0),
-          feedback: own.reduce((sum, item) => sum + item.openFeedback, 0),
-          completed: own.reduce((sum, item) => sum + item.completed, 0),
-          transactions: own.reduce((sum, item) => sum + item.transactions, 0),
-          alerts: own.filter(item => stateOf(item) === 'alert').length,
-        }
-      })
-      .sort((a, b) => (DISTRICT_FACTS[b.name]?.population || 0) - (DISTRICT_FACTS[a.name]?.population || 0))
-  }, [geo, departments, stateOf])
+  const districts = useMemo(
+    (): DistrictRow[] =>
+      geo
+        ? summarizeDistricts(geo, departments, stateOf).map(row => ({
+            ...row,
+            bounds: boundsOf(row.feature.geometry),
+            label: labelPoint(row.feature.geometry),
+          }))
+        : [],
+    [geo, departments, stateOf]
+  )
   const districtsRef = useRef(districts)
   useLayoutEffect(() => {
     districtsRef.current = districts
@@ -293,11 +316,12 @@ export default function DistrictDrillMap(props: Props) {
     const start = async () => {
       let raw
       try {
-        raw = await fetchBaseStyle(abort.signal)
+        ;[raw, printsRef.current] = await Promise.all([fetchBaseStyle(abort.signal), loadDepartmentFootprints()])
       } catch {
         return fail()
       }
       if (cancelled) return
+      setPrints(printsRef.current)
       const palette = paletteFor(latest.current.basemap)
       try {
         map = new MapLibreMap({
@@ -320,10 +344,12 @@ export default function DistrictDrillMap(props: Props) {
         return fail()
       }
       mapRef.current = map
+      const removeBadges = installBadgeFactory(map)
+      map.once('remove', removeBadges)
       map.addControl(
         new AttributionControl({
           compact: false,
-          customAttribution: 'حدود الأقضية © OpenStreetMap contributors (ODbL) · السكان: تعداد 2024',
+          customAttribution: `حدود الأقضية © OpenStreetMap contributors (ODbL) · ${OSM_ATTRIBUTION} · السكان: تعداد 2024`,
         }),
         'bottom-right'
       )
@@ -334,12 +360,35 @@ export default function DistrictDrillMap(props: Props) {
         if (cancelled || !map) return
         window.clearTimeout(loadTimer)
         addLayers(map, geo, palette)
+        addRealBuildings(map, printsRef.current)
+        hideBasemapBuildings(map, landmarkKeys(printsRef.current), 'landmarks')
+        facilitiesRef.current = addFacilityLayers(map, {
+          minzoom: FACILITY_MIN_ZOOM,
+          beforeId: 'dq-ob-shadow',
+          badgesBeforeId: 'dq-obadges',
+          auto: true,
+          districtBounds: new Map(
+            geo
+              .filter(feature => feature.properties.kind === 'district')
+              .map(feature => [feature.properties.name, boundsOf(feature.geometry)])
+          ),
+        })
+        recolorBuildings(map, latest.current.basemap)
         m.loaded = true
         setReady(true)
         latest.current.onReady?.({
           zoomIn: () => map?.zoomIn(),
           zoomOut: () => map?.zoomOut(),
-          fitGovernorate: () => setDrill(null),
+          // out of a district: the drill-down effect frames the governorate; already out: re-frame it now
+          fitGovernorate: () =>
+            latest.current.drill
+              ? setDrill(null)
+              : map?.fitBounds(GOVERNORATE, {
+                  padding: 40,
+                  pitch: HOME.pitch,
+                  bearing: HOME.bearing,
+                  duration: reduced ? 0 : 1400,
+                }),
           focusDepartment: id => latest.current.onSelectDepartment(id),
         })
         // districts rise one after another while the camera tilts in
@@ -384,11 +433,13 @@ export default function DistrictDrillMap(props: Props) {
       abort.abort()
       window.clearTimeout(loadTimer)
       cancelAnimationFrame(raf)
+      facilitiesRef.current?.remove()
+      facilitiesRef.current = null
       map?.remove()
       mapRef.current = null
       m.loaded = false
     }
-  }, [geo, animate, reduced])
+  }, [geo, animate, reduced, setDrill])
 
   // ---- data: towers per district, pillars per department ----------------------------------------
   useEffect(() => {
@@ -449,6 +500,46 @@ export default function DistrictDrillMap(props: Props) {
         },
       })),
     })
+    // real buildings (zoomed in): the department's OSM footprint, roof tinted by its state
+    const prints = printsRef.current
+    const realProps = (item: (typeof located)[number]) => {
+      const id = String(item.id)
+      const color = STATE_COLORS[stateOf(item)]
+      const footprint = prints?.byId.get(id)
+      const { facade, roof } = facadeOf(id)
+      return {
+        id,
+        color,
+        facade,
+        roof: mix(roof, color, 0.5),
+        h: (footprint?.height ?? 12) * BUILDING_SCALE,
+        g: footprint && !footprint.generic ? 0 : 1,
+        icon: iconForCategory(item.type),
+        name: item.name,
+      }
+    }
+    ;(map.getSource('dq-obuild') as GeoJSONSource | undefined)?.setData({
+      type: 'FeatureCollection',
+      features: located.map(item => ({
+        type: 'Feature',
+        geometry: prints?.byId.get(String(item.id))?.ring ?? standInSquare(item.lng, item.lat),
+        properties: realProps(item),
+      })),
+    })
+    // the basemap's generic copy of each building drawn here stays out of the way
+    hideBasemapBuildings(
+      map,
+      located.map(item => prints?.byId.get(String(item.id))?.osm),
+      'departments'
+    )
+    ;(map.getSource('dq-opoints') as GeoJSONSource | undefined)?.setData({
+      type: 'FeatureCollection',
+      features: located.map(item => ({
+        type: 'Feature',
+        geometry: { type: 'Point', coordinates: [item.lng, item.lat] },
+        properties: realProps(item),
+      })),
+    })
     // newly drawn pillars start on their district's current slab
     const m = motion.current
     for (const item of located) {
@@ -471,6 +562,7 @@ export default function DistrictDrillMap(props: Props) {
     for (const id of ['dq-slabs', 'dq-labels-layer'])
       map.setLayoutProperty(id, 'visibility', showDistricts ? 'visible' : 'none')
     map.setPaintProperty('dq-mask', 'fill-opacity', basemap === 'light' ? 0.34 : 0.55)
+    recolorBuildings(map, basemap)
   }, [ready, basemap, showDistricts])
 
   useEffect(() => {
@@ -499,7 +591,8 @@ export default function DistrictDrillMap(props: Props) {
     // towers summarise a district; inside a drill the individual pillars take over
     map.setFilter('dq-towers-layer', drill ? ['==', ['get', 'id'], '__none__'] : null)
     map.setFilter('dq-pillars-layer', drill ? ['==', ['get', 'district'], drill] : null)
-    map.setLayerZoomRange('dq-pillars-layer', drill ? 0 : 9.4, 24)
+    map.setLayerZoomRange('dq-pillars-layer', drill ? 0 : 9.4, PILLAR_MAX_ZOOM)
+    if (drill) void facilitiesRef.current?.loadDistricts([drill])
     map.setLayerZoomRange('dq-towers-layer', 0, drill ? 24 : 9.4)
     // data refreshes re-run this effect; only a new drill target moves the camera
     if (flownRef.current === drill) return
@@ -508,10 +601,18 @@ export default function DistrictDrillMap(props: Props) {
     const picked = latest.current.selectedId ? byIdRef.current.get(latest.current.selectedId) : undefined
     if (picked && districtKey(picked.district) !== drill) latest.current.onSelectDepartment(null)
     const row = districts.find(item => item.name === drill)
-    const wide = (containerRef.current?.clientWidth || 1000) > 640
+    // the profile panel is a side column on the inline-start (right) edge, or a bottom sheet on a narrow map;
+    // folded to its title bar it leaves the whole map to the district
+    const container = containerRef.current
+    const width = container?.clientWidth || 1000
+    const wide = width > DRILL_SHEET_MAX_WIDTH
     if (row) {
       const camera = map.cameraForBounds(row.bounds, {
-        padding: wide ? { top: 70, bottom: 50, left: 50, right: 380 } : { top: 60, bottom: 260, left: 24, right: 24 },
+        padding: latest.current.panelCollapsed
+          ? { top: 70, bottom: 50, left: 50, right: 50 }
+          : wide
+            ? { top: 70, bottom: 50, left: 50, right: drillColumnWidth(width) + DRILL_COLUMN_INSET + 26 }
+            : { top: 60, bottom: Math.round((container?.clientHeight || 480) * 0.5), left: 24, right: 24 },
         bearing: -24,
       })
       if (camera)
@@ -556,8 +657,9 @@ export default function DistrictDrillMap(props: Props) {
       setHover(null)
     }
     const onSlabClick = (event: MapLayerMouseEvent) => {
-      // a click on a pillar is handled by the pillar layer
-      if (map.queryRenderedFeatures(event.point, { layers: ['dq-pillars-layer'] }).length) return
+      // a click on a pillar, a building or a facility is handled by its own layer
+      const own = ['dq-pillars-layer', 'dq-ob-walls', 'dq-ob-roof', 'dq-obadges', ...FACILITY_INTERACTIVE_LAYERS]
+      if (map.queryRenderedFeatures(event.point, { layers: own.filter(id => map.getLayer(id)) }).length) return
       const name = event.features?.[0]?.properties?.name as string | undefined
       if (name) setDrill(name)
     }
@@ -575,6 +677,37 @@ export default function DistrictDrillMap(props: Props) {
       const id = event.features?.[0]?.properties?.id as string | undefined
       if (id) setDrill(id)
     }
+    const buildingLayers = ['dq-ob-walls', 'dq-ob-roof', 'dq-obadges']
+    const onBuildingClick = (event: MapLayerMouseEvent) => {
+      const id = event.features?.[0]?.properties?.id as string | undefined
+      if (!id) return
+      setFacility(null)
+      latest.current.onSelectDepartment(id)
+    }
+    const onFacilityMove = (event: MapLayerMouseEvent) => {
+      if (map.queryRenderedFeatures(event.point, { layers: buildingLayers }).length) return
+      const info = facilitiesRef.current?.info(event.features?.[0]?.properties ?? {}) ?? null
+      map.getCanvas().style.cursor = info ? 'pointer' : ''
+      setFacilityTip(info ? { x: event.point.x, y: event.point.y, info } : null)
+    }
+    const onFacilityLeave = () => setFacilityTip(null)
+    const onFacilityClick = (event: MapLayerMouseEvent) => {
+      if (map.queryRenderedFeatures(event.point, { layers: buildingLayers }).length) return
+      const info = facilitiesRef.current?.info(event.features?.[0]?.properties ?? {}) ?? null
+      if (!info) return
+      latest.current.onSelectDepartment(null)
+      setFacility(info)
+    }
+    for (const layer of buildingLayers) {
+      map.on('mousemove', layer, onPillarMove)
+      map.on('mouseleave', layer, onPillarLeave)
+      map.on('click', layer, onBuildingClick)
+    }
+    for (const layer of FACILITY_INTERACTIVE_LAYERS) {
+      map.on('mousemove', layer, onFacilityMove)
+      map.on('mouseleave', layer, onFacilityLeave)
+      map.on('click', layer, onFacilityClick)
+    }
     map.on('mousemove', 'dq-slabs', onSlabMove)
     map.on('mouseleave', 'dq-slabs', onSlabLeave)
     map.on('click', 'dq-slabs', onSlabClick)
@@ -583,6 +716,16 @@ export default function DistrictDrillMap(props: Props) {
     map.on('click', 'dq-pillars-layer', onPillarClick)
     map.on('click', 'dq-towers-layer', onTowerClick)
     return () => {
+      for (const layer of buildingLayers) {
+        map.off('mousemove', layer, onPillarMove)
+        map.off('mouseleave', layer, onPillarLeave)
+        map.off('click', layer, onBuildingClick)
+      }
+      for (const layer of FACILITY_INTERACTIVE_LAYERS) {
+        map.off('mousemove', layer, onFacilityMove)
+        map.off('mouseleave', layer, onFacilityLeave)
+        map.off('click', layer, onFacilityClick)
+      }
       map.off('mousemove', 'dq-slabs', onSlabMove)
       map.off('mouseleave', 'dq-slabs', onSlabLeave)
       map.off('click', 'dq-slabs', onSlabClick)
@@ -591,44 +734,86 @@ export default function DistrictDrillMap(props: Props) {
       map.off('click', 'dq-pillars-layer', onPillarClick)
       map.off('click', 'dq-towers-layer', onTowerClick)
     }
-  }, [ready, animate])
+  }, [ready, animate, setDrill])
 
   // selected department: highlight + fly (drilling into its district first)
   const selectedRef = useRef<string | null>(null)
+  /** the department the camera already flew to (a data refresh must not fly there again) */
+  const flownToRef = useRef<string | null>(null)
   useEffect(() => {
     const map = mapRef.current
     if (!ready || !map) return
     map.setFilter('dq-selected', ['==', ['get', 'id'], selectedId ?? ''])
-    if (selectedRef.current) map.setFeatureState({ source: 'dq-pillars', id: selectedRef.current }, { selected: false })
+    if (selectedRef.current) {
+      map.setFeatureState({ source: 'dq-pillars', id: selectedRef.current }, { selected: false })
+      map.setFeatureState({ source: 'dq-obuild', id: selectedRef.current }, { selected: false })
+    }
     selectedRef.current = selectedId
-    if (selectedId) map.setFeatureState({ source: 'dq-pillars', id: selectedId }, { selected: true })
+    if (selectedId) {
+      map.setFeatureState({ source: 'dq-pillars', id: selectedId }, { selected: true })
+      map.setFeatureState({ source: 'dq-obuild', id: selectedId }, { selected: true })
+    }
+    if (flownToRef.current !== selectedId) flownToRef.current = null
     const item = selectedId ? byId.get(selectedId) : undefined
     if (!item || typeof item.lat !== 'number' || typeof item.lng !== 'number') return
+    if (flownToRef.current === selectedId) return
     const district = districtKey(item.district)
     if (districtsRef.current.some(row => row.name === district)) setDrill(district)
     const { lng, lat } = { lng: item.lng, lat: item.lat }
-    window.setTimeout(
-      () =>
+    // the street-level flight waits for the district framing; a new selection, a deselection ("back to
+    // the governorate", closing the card) or unmounting cancels it, so it never hijacks the camera later
+    const timer = window.setTimeout(
+      () => {
+        if (latest.current.selectedId !== selectedId) return
+        flownToRef.current = selectedId
+        // the card takes the side column on a wide map (the building lands in the middle of what is left of it),
+        // or the lower part of a narrow one
+        const width = containerRef.current?.clientWidth || 1000
         mapRef.current?.flyTo({
           center: [lng, lat],
-          zoom: 11.9,
-          pitch: 58,
+          zoom: 16.2,
+          pitch: 60,
           duration: reduced ? 0 : 1600,
           essential: true,
-          offset: (containerRef.current?.clientWidth || 1000) > 640 ? [-170, 60] : [0, -80],
-        }),
+          offset:
+            width > CARD_SHEET_MAX_WIDTH
+              ? [-Math.round((drillColumnWidth(width) + DRILL_COLUMN_INSET) / 2), -20]
+              : [0, -120],
+        })
+      },
       reduced ? 0 : 2050
     )
-  }, [ready, selectedId, byId, reduced])
+    return () => window.clearTimeout(timer)
+  }, [ready, selectedId, byId, reduced, setDrill])
 
-  const current = districts.find(row => row.name === drill)
-  const fact = current ? DISTRICT_FACTS[current.name] : undefined
+  // a department picked in the profile's list: its card replaces the profile (map3d-drill.css), so keyboard focus
+  // moves from the now hidden list to the card
+  useEffect(() => {
+    const active = document.activeElement
+    if (!selectedId || !(active instanceof HTMLElement) || !active.closest('.drill-panel')) return
+    const card = cardRef.current
+    const target =
+      card?.querySelector<HTMLElement>('.map3d-card-back') ?? card?.querySelector<HTMLElement>('.map3d-card-close')
+    target?.focus()
+  }, [selectedId])
+  /** back from a department card to the district profile it replaced, with focus on that department's row */
+  const backToProfile = (id: string) => {
+    latest.current.onSelectDepartment(null)
+    requestAnimationFrame(() =>
+      containerRef.current
+        ?.closest('.gis-stage')
+        ?.querySelector<HTMLElement>(`.drill-panel [data-department="${CSS.escape(id)}"]`)
+        ?.focus()
+    )
+  }
+
   const selected = selectedId ? byId.get(selectedId) : undefined
   const tipDepartment = pillarTip ? byId.get(pillarTip.id) : undefined
   const hoverRow = hover ? districts.find(row => row.name === hover.name) : undefined
-  const listedServices = current
-    ? current.departments.reduce((sum, item) => sum + (services.get(String(item.id)) || 0), 0)
-    : 0
+  // a facility card gives way to a selected department, and to a drill into another district
+  const facilityMeta =
+    facility && !selected && (!drill || facility.district === drill) ? FACILITY_TYPES[facility.type] : null
+  const linkedDepartment = facility?.department ? byId.get(facility.department) : undefined
 
   return (
     <div className={`map3d-shell is-ops${ready ? ' is-ready' : ''}`} data-basemap={basemap}>
@@ -638,24 +823,6 @@ export default function DistrictDrillMap(props: Props) {
           <span className="map3d-loading-ring" aria-hidden="true" />
           جارٍ تجهيز الخريطة ثلاثية الأبعاد…
         </div>
-      )}
-
-      {ready && (
-        <label className="drill-picker">
-          <span className="sr-only">اختر قضاءً لعرض تفاصيله</span>
-          <select
-            value={drill ?? ''}
-            onChange={event => setDrill(event.target.value || null)}
-            aria-label="اختر قضاءً لعرض تفاصيله"
-          >
-            <option value="">كل المحافظة ({fmt(districts.length)} قضاءً)</option>
-            {districts.map(row => (
-              <option key={row.name} value={row.name}>
-                قضاء {row.name}
-              </option>
-            ))}
-          </select>
-        </label>
       )}
 
       {hover && hoverRow && !drill && (
@@ -677,143 +844,72 @@ export default function DistrictDrillMap(props: Props) {
         </div>
       )}
 
-      {current && (
-        <aside className="drill-panel" aria-label={`تفاصيل قضاء ${current.name}`} key={current.name}>
-          <button type="button" className="drill-back" onClick={() => setDrill(null)}>
-            <ArrowRight aria-hidden="true" /> رجوع للمحافظة
+      {facilityTip && !pillarTip && (
+        <div className="map3d-tooltip" style={{ left: facilityTip.x, top: facilityTip.y }} role="tooltip">
+          <strong>{facilityTip.info.name ?? FACILITY_TYPES[facilityTip.info.type].label}</strong>
+          <span>{FACILITY_TYPES[facilityTip.info.type].label} · OpenStreetMap</span>
+        </div>
+      )}
+
+      {facility && facilityMeta && (
+        <aside
+          className="map3d-card drill-card is-facility"
+          aria-label={`بطاقة ${facility.name ?? facilityMeta.label}`}
+          style={{ '--sector': groupColor(facilityMeta.group) } as CSSProperties}
+        >
+          <button
+            type="button"
+            className="map3d-card-close"
+            onClick={() => setFacility(null)}
+            aria-label="إغلاق البطاقة"
+          >
+            <X aria-hidden="true" />
           </button>
-          <header>
-            <small>قضاء</small>
-            <h3>{current.name}</h3>
-            {current.feature.properties.formerParent && (
-              <p>كان ناحيةً ضمن قضاء {current.feature.properties.formerParent} في بيانات الحدود القديمة</p>
-            )}
-          </header>
-          <dl className="drill-facts">
-            <div>
-              <dt>
-                <Users aria-hidden="true" /> السكان
-              </dt>
-              <dd>{fact ? fmt(fact.population) : 'غير متوفر'}</dd>
-              {fact && (
-                <small>
-                  تعداد {fact.year} ·{' '}
-                  {((fact.population / GOVERNORATE_POPULATION_2024) * 100).toFixed(1).replace(/\.0$/, '')}% من المحافظة
-                  ·{' '}
-                  <a href={fact.sourceUrl} target="_blank" rel="noopener noreferrer" title={fact.source}>
-                    المصدر
-                  </a>
-                </small>
-              )}
+          {drill && (
+            <button type="button" className="map3d-card-back" onClick={() => setFacility(null)}>
+              <ArrowRight aria-hidden="true" /> ملف قضاء {drill}
+            </button>
+          )}
+          <span className="map3d-card-sector">{facilityMeta.label}</span>
+          <h3>{facility.name ?? `${facilityMeta.label} (بلا اسم في الخريطة)`}</h3>
+          <p>
+            <MapPin aria-hidden="true" /> قضاء {facility.district}
+          </p>
+          <p className="map3d-card-source">
+            المصدر: OpenStreetMap ·{' '}
+            <a href={osmUrl(facility.osm)} target="_blank" rel="noopener noreferrer">
+              عرض العنصر <ExternalLink aria-hidden="true" />
+            </a>
+          </p>
+          {facility.shape && <ShapeNote shape={facility.shape} />}
+          {linkedDepartment && (
+            <div className="map3d-card-actions">
+              <Link
+                href={`/departments/${encodeURIComponent(String(linkedDepartment.id))}`}
+                className="button primary small"
+              >
+                دائرة على المنصة
+              </Link>
             </div>
-            <div>
-              <dt>
-                <MapPin aria-hidden="true" /> المساحة
-              </dt>
-              <dd>
-                {current.feature.properties.areaKm2 ? `${fmt(current.feature.properties.areaKm2)} كم²` : 'غير متوفر'}
-              </dd>
-              <small>مساحة تقريبية محسوبة من الحدود</small>
-            </div>
-          </dl>
-          <dl className="drill-kpis">
-            <div>
-              <dt>جهات حكومية</dt>
-              <dd>{fmt(current.departments.length)}</dd>
-            </div>
-            <div>
-              <dt>خدمات مدرجة</dt>
-              <dd>{fmt(listedServices)}</dd>
-            </div>
-            {variant === 'governor' ? (
-              <>
-                <div>
-                  <dt>طلبات مسجلة</dt>
-                  <dd>{fmt(current.transactions)}</dd>
-                </div>
-                <div>
-                  <dt>نسبة الإنجاز</dt>
-                  <dd>
-                    {current.transactions ? `${Math.round((current.completed / current.transactions) * 100)}%` : '—'}
-                  </dd>
-                </div>
-                <div className={current.overdue ? 'is-alert' : ''}>
-                  <dt>متأخرة عن موعدها</dt>
-                  <dd>{fmt(current.overdue)}</dd>
-                </div>
-                <div>
-                  <dt>شكاوى مفتوحة</dt>
-                  <dd>{fmt(current.feedback)}</dd>
-                </div>
-              </>
-            ) : (
-              <>
-                <div className={current.open ? 'is-busy' : ''}>
-                  <dt>طلبات مفتوحة</dt>
-                  <dd>{fmt(current.open)}</dd>
-                </div>
-                <div className={current.overdue ? 'is-alert' : ''}>
-                  <dt>متأخرة (SLA)</dt>
-                  <dd>{fmt(current.overdue)}</dd>
-                </div>
-                <div className={current.alerts ? 'is-alert' : ''}>
-                  <dt>بلا موظف مفعّل</dt>
-                  <dd>{fmt(current.alerts)}</dd>
-                </div>
-                <div>
-                  <dt>شكاوى مفتوحة</dt>
-                  <dd>{fmt(current.feedback)}</dd>
-                </div>
-              </>
-            )}
-          </dl>
-          <h4>
-            <Building2 aria-hidden="true" /> الجهات في القضاء
-            {current.mapped < current.departments.length && <small> ({fmt(current.mapped)} على الخريطة)</small>}
-          </h4>
-          {current.departments.length === 0 ? (
-            <p className="drill-empty">لا توجد جهة مسجلة في هذا القضاء بعد.</p>
-          ) : (
-            <ul className="drill-list">
-              {current.departments.map((item, index) => {
-                const state = stateOf(item)
-                const located = typeof item.lat === 'number'
-                return (
-                  <li key={item.id} style={{ '--i': Math.min(index, 20) } as CSSProperties}>
-                    <button
-                      type="button"
-                      onClick={() => located && latest.current.onSelectDepartment(String(item.id))}
-                      disabled={!located}
-                      title={located ? 'إظهار على الخريطة' : 'بانتظار إحداثيات رسمية'}
-                      className={String(item.id) === selectedId ? 'is-selected' : ''}
-                    >
-                      <i className={`gis-dot is-${state}`} aria-hidden="true" />
-                      <span>{item.name}</span>
-                      {variant === 'governor'
-                        ? item.transactions > 0 && <em>{fmt(item.transactions)}</em>
-                        : openWork(item) > 0 && <em>{fmt(openWork(item))}</em>}
-                    </button>
-                    <Link href={`/departments/${encodeURIComponent(String(item.id))}`} aria-label={`صفحة ${item.name}`}>
-                      ←
-                    </Link>
-                  </li>
-                )
-              })}
-            </ul>
           )}
         </aside>
       )}
 
       {selected && typeof selected.lat === 'number' && typeof selected.lng === 'number' && (
-        <aside className="map3d-card drill-card" aria-label={`بطاقة ${selected.name}`}>
+        <aside className="map3d-card drill-card" aria-label={`بطاقة ${selected.name}`} ref={cardRef}>
           <button
             type="button"
             className="map3d-card-close"
-            onClick={() => latest.current.onSelectDepartment(null)}
+            onClick={() => backToProfile(String(selected.id))}
             aria-label="إغلاق البطاقة"
           >
             <X aria-hidden="true" />
           </button>
+          {drill && (
+            <button type="button" className="map3d-card-back" onClick={() => backToProfile(String(selected.id))}>
+              <ArrowRight aria-hidden="true" /> ملف قضاء {drill}
+            </button>
+          )}
           <span className="map3d-card-sector">{selected.type}</span>
           <h3>{selected.name}</h3>
           <p>
@@ -842,6 +938,8 @@ export default function DistrictDrillMap(props: Props) {
               <dd>{fmt(selected.openFeedback)}</dd>
             </div>
           </dl>
+          {/* said once the footprints are in (a failed file leaves every department a generated stand-in) */}
+          {prints !== undefined && <ShapeNote shape={departmentShape(prints?.byId.get(String(selected.id)))} />}
           <div className="map3d-card-actions">
             <Link href={`/departments/${encodeURIComponent(String(selected.id))}`} className="button primary small">
               صفحة الدائرة
@@ -865,9 +963,10 @@ export default function DistrictDrillMap(props: Props) {
 
 const paletteFor = (basemap: Basemap): Palette => (basemap === 'light' ? LIGHT : DARK)
 
-// population choropleth: quiet green for the smallest districts, Sumerian gold for the largest
-const POP_RAMP_DARK = ['#123b2c', '#1b5a41', '#2b7a55', '#5c9a5a', '#b39a4e', '#d6ad58']
-const POP_RAMP_LIGHT = ['#cfe3d6', '#a9d0b8', '#7dbda0', '#4f9f7d', '#c9a45f', '#b07d3c']
+// population choropleth: one green-to-teal ramp, quiet for the smallest districts and brightest for the largest
+// (no gold or brown: the platform's palette stays green)
+const POP_RAMP_DARK = ['#123b2c', '#17523f', '#1f6b52', '#268468', '#2f9f80', '#3dbb98']
+const POP_RAMP_LIGHT = ['#d4e8dc', '#b3d8c3', '#8cc6a9', '#5fae8c', '#3a9473', '#1f7a5c']
 
 function slabColor(palette: Palette): ExpressionSpecification {
   const ramp = palette === LIGHT ? POP_RAMP_LIGHT : POP_RAMP_DARK
@@ -876,7 +975,7 @@ function slabColor(palette: Palette): ExpressionSpecification {
     ['linear'],
     ['coalesce', ['get', 'population'], 0],
     0,
-    palette === LIGHT ? '#d9d3c4' : '#1a2621',
+    palette === LIGHT ? '#d3dbd5' : '#1a2621',
     50_000,
     ramp[0],
     90_000,
@@ -895,9 +994,9 @@ function slabColor(palette: Palette): ExpressionSpecification {
     ['linear'],
     S('sink'),
     0,
-    ['interpolate', ['linear'], S('hover'), 0, base, 1, palette === LIGHT ? '#f0c869' : '#f3d58c'],
+    ['interpolate', ['linear'], S('hover'), 0, base, 1, palette === LIGHT ? '#9fe0c0' : '#8fe3c4'],
     1,
-    palette === LIGHT ? '#c9c2b2' : '#0d1713',
+    palette === LIGHT ? '#c4ccc6' : '#0d1713',
   ]
 }
 
@@ -950,13 +1049,13 @@ function addLayers(map: MapLibreMap, features: DistrictFeature[], palette: Palet
       id: 'dq-border-glow',
       type: 'line',
       source: 'dq-border',
-      paint: { 'line-color': '#e2c57f', 'line-width': 9, 'line-blur': 8, 'line-opacity': 0.45 },
+      paint: { 'line-color': '#7fdcb4', 'line-width': 9, 'line-blur': 8, 'line-opacity': 0.45 },
     })
     map.addLayer({
       id: 'dq-border',
       type: 'line',
       source: 'dq-border',
-      paint: { 'line-color': '#e2c57f', 'line-width': 2.2, 'line-opacity': 0.95 },
+      paint: { 'line-color': '#7fdcb4', 'line-width': 2.2, 'line-opacity': 0.95 },
     })
   }
 
@@ -973,7 +1072,7 @@ function addLayers(map: MapLibreMap, features: DistrictFeature[], palette: Palet
       'fill-extrusion-color': slabColor(palette),
       'fill-extrusion-base': zScaled(SLAB_BASE),
       'fill-extrusion-height': zScaled(SLAB_TOP),
-      'fill-extrusion-opacity': ['interpolate', ['linear'], ['zoom'], 8, 0.86, 11, 0.6, 13, 0.32],
+      'fill-extrusion-opacity': ['interpolate', ['linear'], ['zoom'], 8, 0.86, 11, 0.6, 12.4, 0.22, 13.2, 0],
       'fill-extrusion-vertical-gradient': true,
     },
   })
@@ -1050,4 +1149,70 @@ function recolorBase(map: MapLibreMap, palette: Palette) {
     'text-halo-color',
     palette === LIGHT ? 'rgba(255,255,255,0.9)' : 'rgba(3,12,8,0.9)'
   )
+}
+
+// ---- real buildings (street level) -------------------------------------------------------------------
+
+const SELECTED: ExpressionSpecification = ['boolean', ['feature-state', 'selected'], false]
+
+function addRealBuildings(map: MapLibreMap, prints: DepartmentFootprints | null) {
+  const empty: FeatureCollection = { type: 'FeatureCollection', features: [] }
+  addFacadeImages(map)
+  map.addSource('dq-obuild', { type: 'geojson', data: empty, promoteId: 'id' })
+  map.addSource('dq-opoints', { type: 'geojson', data: empty, promoteId: 'id' })
+  const firstSymbol = map.getStyle().layers.find(layer => layer.type === 'symbol' && !layer.id.startsWith('dq-'))?.id
+  addBuildingLayers(map, {
+    source: 'dq-obuild',
+    prefix: 'dq-ob',
+    minzoom: BUILDING_MIN_ZOOM,
+    beforeId: firstSymbol,
+    height: extra => [
+      'interpolate',
+      ['linear'],
+      ['zoom'],
+      BUILDING_MIN_ZOOM,
+      0,
+      BUILDING_MIN_ZOOM + 0.8,
+      ['+', ['get', 'h'], extra],
+    ],
+    roof: ['case', SELECTED, '#ffe08a', ['get', 'roof']],
+    glow: ['case', SELECTED, '#ffe08a', ['get', 'color']],
+  })
+  if (prints?.landmarks.features.length) addLandmarkLayers(map, prints.landmarks)
+  map.addLayer({
+    id: 'dq-obadges',
+    type: 'symbol',
+    source: 'dq-opoints',
+    minzoom: BUILDING_MIN_ZOOM - 0.4,
+    layout: {
+      'icon-image': badgeExpression('dept'),
+      'icon-size': ['interpolate', ['linear'], ['zoom'], BUILDING_MIN_ZOOM - 0.4, 0.6, 16, 0.95],
+      'icon-anchor': 'bottom',
+      'icon-allow-overlap': true,
+      'text-field': ['get', 'name'],
+      'text-font': ['Noto Sans Bold'],
+      'text-size': 12,
+      'text-anchor': 'bottom',
+      'text-offset': [0, -3.7],
+      'text-max-width': 11,
+      'text-optional': true,
+    },
+    paint: {
+      'text-opacity': ['interpolate', ['linear'], ['zoom'], 14.2, 0, 14.6, 1],
+      'text-color': '#ffffff',
+      'text-halo-color': 'rgba(4,14,10,0.9)',
+      'text-halo-width': 1.6,
+    },
+  })
+}
+
+/** label colours that stay legible on the chosen basemap */
+function recolorBuildings(map: MapLibreMap, basemap: Basemap) {
+  const light = basemap === 'light'
+  setFacadeTheme(map, basemap === 'dark')
+  for (const id of ['dq-obadges', 'dq-fac-badges']) {
+    if (!map.getLayer(id)) continue
+    map.setPaintProperty(id, 'text-color', light ? '#22301f' : '#ffffff')
+    map.setPaintProperty(id, 'text-halo-color', light ? 'rgba(255,255,255,0.92)' : 'rgba(4,14,10,0.9)')
+  }
 }

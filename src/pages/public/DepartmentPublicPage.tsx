@@ -5,7 +5,6 @@ import {
   ChevronLeft,
   ExternalLink,
   Gauge,
-  Info,
   Landmark,
   LayoutGrid,
   MapPin,
@@ -14,6 +13,8 @@ import {
   ShieldCheck,
 } from 'lucide-react'
 import { CircleMarker, MapContainer, TileLayer } from 'react-leaflet'
+import { plainLeafletPrefix } from '../../components/maps/leaflet-attribution'
+import { OSM_TILE_ATTRIBUTION, OSM_TILE_MAX_ZOOM, OSM_TILE_URL } from '../../components/maps/osm-tiles'
 import { documentCount } from '../../lib/arabic-count'
 import { api } from '../../api'
 import type { CatalogService, DepartmentSummary } from '../../types'
@@ -80,8 +81,6 @@ export function DepartmentPublicPage({ id }: { id: string }) {
       </div>
     )
 
-  const hasLocation = typeof item.lat === 'number' && typeof item.lng === 'number'
-
   return (
     <div className="tq-page">
       <PublicHeader />
@@ -128,152 +127,159 @@ export function DepartmentPublicPage({ id }: { id: string }) {
           }
         />
 
-        <section className="tq-content">
-          <div className="tq-container tq-layout">
-            <div className="tq-stack">
-              {digitalServices.length > 0 ? (
-                <article className="tq-panel">
-                  <div className="tq-panel-head">
-                    <div>
-                      <h2>
-                        <LayoutGrid /> خدمات الجهة على المنصة
-                      </h2>
-                      <p>{digitalServices.length.toLocaleString('en-US')} خدمة بمستمسكاتها وطريقة تقديمها</p>
-                    </div>
-                  </div>
-                  <ul className="dept-services">
-                    {digitalServices.map(service => (
-                      <li key={service.key}>
-                        <Link href={`/service/${service.key}`}>
-                          <span className="dept-service-text">
-                            <strong>{service.title}</strong>
-                            <small>
-                              {service.channel === 'ONLINE_SUBMISSION'
-                                ? 'تقديم إلكتروني'
-                                : service.channel === 'APPOINTMENT_REQUIRED'
-                                  ? 'تقديم إلكتروني ثم حضور'
-                                  : 'خدمة معلوماتية'}
-                              {service.requiredDocuments.length
-                                ? ` • ${documentCount(service.requiredDocuments.filter(doc => doc.required).length)} مطلوب`
-                                : ''}
-                            </small>
-                          </span>
-                          <ChevronLeft aria-hidden="true" />
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                </article>
-              ) : (
-                <article className="tq-panel">
-                  <h2>
-                    <LayoutGrid /> الخدمات التي تقدمها الجهة
-                  </h2>
-                  {item.services.length ? (
-                    <ul className="dept-plain-services">
-                      {item.services.map(service => (
-                        <li key={service}>{service}</li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p>لم تُسجل خدمات لهذه الجهة بعد.</p>
-                  )}
-                </article>
-              )}
-              {item.notes && (
-                <p className="tq-note is-info">
-                  <Info aria-hidden="true" />
-                  <span>{item.notes}</span>
-                </p>
-              )}
-            </div>
-            <aside className="tq-stack tq-sticky">
-              <article className="tq-panel">
-                <h2>
-                  <Phone /> معلومات الاتصال
-                </h2>
-                <dl className="tq-dl is-stacked">
-                  <div>
-                    <dt>العنوان</dt>
-                    <dd>{item.address || 'غير مسجل بعد'}</dd>
-                  </div>
-                  <div>
-                    <dt>الهاتف</dt>
-                    <dd dir="ltr" className="dept-ltr">
-                      {item.phone || '—'}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt>الموقع الرسمي</dt>
-                    <dd>
-                      {item.website ? (
-                        <a href={item.website} target="_blank" rel="noreferrer" dir="ltr" className="gov-link">
-                          {item.website.replace(/^https?:\/\//, '')} <ExternalLink size={13} />
-                        </a>
-                      ) : (
-                        '—'
-                      )}
-                    </dd>
-                  </div>
-                  {item.facebook && (
-                    <div>
-                      <dt>فيسبوك</dt>
-                      <dd>
-                        <a href={item.facebook} target="_blank" rel="noreferrer" className="gov-link">
-                          الصفحة الرسمية <ExternalLink size={13} />
-                        </a>
-                      </dd>
-                    </div>
-                  )}
-                  <div>
-                    <dt>مصدر البيانات</dt>
-                    <dd>
-                      <a href={item.sourceUrl} target="_blank" rel="noreferrer" dir="ltr" className="gov-link dept-source">
-                        {item.sourceUrl.replace(/^https?:\/\//, '').slice(0, 40)} <ExternalLink size={13} />
-                      </a>
-                    </dd>
-                  </div>
-                </dl>
-              </article>
-              <article className="tq-panel">
-                <h2>
-                  <MapPin /> الموقع
-                </h2>
-                {hasLocation ? (
-                  <>
-                    <div className="dept-map">
-                      <MapContainer
-                        center={[item.lat as number, item.lng as number]}
-                        zoom={15}
-                        scrollWheelZoom={false}
-                        className="dept-leaflet"
-                      >
-                        <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-                        <CircleMarker
-                          center={[item.lat as number, item.lng as number]}
-                          radius={10}
-                          pathOptions={{ color: '#ffffff', weight: 2, fillColor: '#075e45', fillOpacity: 1 }}
-                        />
-                      </MapContainer>
-                    </div>
-                    <a
-                      href={`https://www.openstreetmap.org/directions?to=${item.lat}%2C${item.lng}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="button outline full"
-                    >
-                      <Navigation /> الاتجاهات إلى الجهة
-                    </a>
-                  </>
-                ) : (
-                  <p>لم تُسجل إحداثيات رسمية لهذه الجهة بعد.</p>
-                )}
-              </article>
-            </aside>
-          </div>
-        </section>
+        <DepartmentDetails item={item} digitalServices={digitalServices} />
       </main>
       <Footer />
     </div>
+  )
+}
+
+/**
+ * What a visitor reads about a department: its services, contact details and location. Only clean public data —
+ * the registry's research notes and raw source links are for staff, never shown here.
+ */
+export function DepartmentDetails({
+  item,
+  digitalServices,
+}: {
+  item: DepartmentSummary
+  digitalServices: CatalogService[]
+}) {
+  const hasLocation = typeof item.lat === 'number' && typeof item.lng === 'number'
+  return (
+    <section className="tq-content">
+      <div className="tq-container tq-layout">
+        <div className="tq-stack">
+          {digitalServices.length > 0 ? (
+            <article className="tq-panel">
+              <div className="tq-panel-head">
+                <div>
+                  <h2>
+                    <LayoutGrid /> خدمات الجهة على المنصة
+                  </h2>
+                  <p>{digitalServices.length.toLocaleString('en-US')} خدمة بمستمسكاتها وطريقة تقديمها</p>
+                </div>
+              </div>
+              <ul className="dept-services">
+                {digitalServices.map(service => (
+                  <li key={service.key}>
+                    <Link href={`/service/${service.key}`}>
+                      <span className="dept-service-text">
+                        <strong>{service.title}</strong>
+                        <small>
+                          {service.channel === 'ONLINE_SUBMISSION'
+                            ? 'تقديم إلكتروني'
+                            : service.channel === 'APPOINTMENT_REQUIRED'
+                              ? 'تقديم إلكتروني ثم حضور'
+                              : 'خدمة معلوماتية'}
+                          {service.requiredDocuments.length
+                            ? ` • ${documentCount(service.requiredDocuments.filter(doc => doc.required).length)} مطلوب`
+                            : ''}
+                        </small>
+                      </span>
+                      <ChevronLeft aria-hidden="true" />
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </article>
+          ) : (
+            <article className="tq-panel">
+              <h2>
+                <LayoutGrid /> الخدمات التي تقدمها الجهة
+              </h2>
+              {item.services.length ? (
+                <ul className="dept-plain-services">
+                  {item.services.map(service => (
+                    <li key={service}>{service}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p>لم تُسجل خدمات لهذه الجهة بعد.</p>
+              )}
+            </article>
+          )}
+        </div>
+        <aside className="tq-stack tq-sticky">
+          <article className="tq-panel">
+            <h2>
+              <Phone /> معلومات الاتصال
+            </h2>
+            <dl className="tq-dl is-stacked">
+              <div>
+                <dt>العنوان</dt>
+                <dd>{item.address || 'غير مسجل بعد'}</dd>
+              </div>
+              <div>
+                <dt>الهاتف</dt>
+                <dd dir="ltr" className="dept-ltr">
+                  {item.phone || '—'}
+                </dd>
+              </div>
+              <div>
+                <dt>الموقع الرسمي</dt>
+                <dd>
+                  {item.website ? (
+                    <a href={item.website} target="_blank" rel="noreferrer" dir="ltr" className="gov-link">
+                      {item.website.replace(/^https?:\/\//, '')} <ExternalLink size={13} />
+                    </a>
+                  ) : (
+                    '—'
+                  )}
+                </dd>
+              </div>
+              {item.facebook && (
+                <div>
+                  <dt>فيسبوك</dt>
+                  <dd>
+                    <a href={item.facebook} target="_blank" rel="noreferrer" className="gov-link">
+                      الصفحة الرسمية <ExternalLink size={13} />
+                    </a>
+                  </dd>
+                </div>
+              )}
+            </dl>
+          </article>
+          <article className="tq-panel">
+            <h2>
+              <MapPin /> الموقع
+            </h2>
+            {hasLocation ? (
+              <>
+                <div className="dept-map">
+                  <MapContainer
+                    ref={plainLeafletPrefix}
+                    center={[item.lat as number, item.lng as number]}
+                    zoom={15}
+                    scrollWheelZoom={false}
+                    className="dept-leaflet"
+                  >
+                    <TileLayer attribution={OSM_TILE_ATTRIBUTION} url={OSM_TILE_URL} maxZoom={OSM_TILE_MAX_ZOOM} />
+                    <CircleMarker
+                      center={[item.lat as number, item.lng as number]}
+                      radius={10}
+                      pathOptions={{ color: '#ffffff', weight: 2, fillColor: '#075e45', fillOpacity: 1 }}
+                    />
+                  </MapContainer>
+                </div>
+                <p>
+                  <small>مصدر الموقع: OpenStreetMap</small>
+                </p>
+                <a
+                  href={`https://www.openstreetmap.org/directions?to=${item.lat}%2C${item.lng}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="button outline full"
+                >
+                  <Navigation /> الاتجاهات إلى الجهة
+                </a>
+              </>
+            ) : (
+              <p>لم تُسجل إحداثيات رسمية لهذه الجهة بعد.</p>
+            )}
+          </article>
+        </aside>
+      </div>
+    </section>
   )
 }

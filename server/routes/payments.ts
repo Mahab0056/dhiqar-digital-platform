@@ -6,7 +6,14 @@ import { requireSession, currentCitizen } from '../auth/session.js'
 import { addAudit, db } from '../db.js'
 import { productionOrigin as publicBaseUrl } from '../config.js'
 import { paymentProvider, sandboxAllowed } from '../payments/providers.js'
-import { getPaymentIntent, getPaymentIntentById, settlePayment, supersededByOffice } from '../payments/intents.js'
+import {
+  getPaymentIntent,
+  getPaymentIntentById,
+  settlePayment,
+  supersededByOffice,
+  type PaymentIntentView,
+} from '../payments/intents.js'
+import { issueFeeReceipt } from './service-requests.js'
 
 /** A rejected or approved request owes nothing more: its fee can no longer be paid. */
 const requestClosed = (reference: string | null) =>
@@ -17,6 +24,33 @@ const requestClosed = (reference: string | null) =>
         { status?: string } | undefined
     )?.status?.match(/^(APPROVED|REJECTED)$/)
   )
+
+/** Who issues the «وصل استلام» of a fee the gateway settled: the platform on the gateway's confirmation. */
+const GATEWAY_ACTOR = 'payment-gateway'
+
+/**
+ * «وصل استلام» of a fee the gateway settled as PAID — the same QR-verifiable receipt the office counter issues.
+ * Idempotent (one receipt per payment), so a repeated callback, or a retry after a rendering failure, never issues
+ * a second one. The payment stands either way: a failure is logged and audited, and the next settlement call of the
+ * same intent issues it.
+ */
+async function issueOnlineFeeReceipt(intent: PaymentIntentView | null, actor: string) {
+  const reference = intent?.serviceRequestReference
+  if (!intent || intent.status !== 'PAID' || !reference) return null
+  return issueFeeReceipt(reference, intent.id, actor).catch((error: unknown) => {
+    console.error('[documents] online fee receipt not issued', reference, error)
+    addAudit({
+      actor,
+      role: 'SYSTEM',
+      action: 'DOCUMENT_ISSUE_FAILED',
+      entityType: 'ServiceRequest',
+      entityId: reference,
+      metadata: { event: 'RECEIPT', payment: intent.reference },
+    })
+    return null
+  })
+}
+
 export function registerPaymentRoutes(app: express.Express) {
   /** Public: which gateway is active (the UI labels sandbox/test modes honestly). */
   app.get('/api/payments/config', (_req, res) => {
@@ -78,7 +112,7 @@ export function registerPaymentRoutes(app: express.Express) {
   })
 
   /** Sandbox confirmation — the citizen "pays" on an internal page. Never moves money. */
-  app.post('/api/citizen/payments/:reference/sandbox-confirm', requireSession('CITIZEN'), (req, res) => {
+  app.post('/api/citizen/payments/:reference/sandbox-confirm', requireSession('CITIZEN'), async (req, res) => {
     const citizen = currentCitizen(res)
     if (!citizen) return
     const provider = paymentProvider()
@@ -98,11 +132,12 @@ export function registerPaymentRoutes(app: express.Express) {
       status: result.status,
       actor: citizen.fullName,
     })
+    await issueOnlineFeeReceipt(settled, GATEWAY_ACTOR)
     res.json(settled)
   })
 
   /** Provider return URL (browser redirect after paying). Verifies the signed token, settles, redirects to the app. */
-  app.get('/api/payments/return/:provider', (req, res) => {
+  app.get('/api/payments/return/:provider', async (req, res) => {
     const provider = paymentProvider()
     const name = param(req, 'provider')
     if (!provider || provider.name !== name) return res.redirect('/citizen?payment=unavailable')
@@ -131,12 +166,13 @@ export function registerPaymentRoutes(app: express.Express) {
       })
       return res.redirect(`/citizen/pay/${encodeURIComponent(intent.reference)}?result=invalid`)
     }
-    settlePayment({
+    const settled = settlePayment({
       intentId: intent.id,
       providerReference: result.providerReference,
       status: result.status,
-      actor: 'payment-gateway',
+      actor: GATEWAY_ACTOR,
     })
+    await issueOnlineFeeReceipt(settled, GATEWAY_ACTOR)
     res.redirect(`/citizen/pay/${encodeURIComponent(intent.reference)}?result=${result.status.toLowerCase()}`)
   })
 }

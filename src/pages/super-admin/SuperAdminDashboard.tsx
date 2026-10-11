@@ -34,6 +34,7 @@ import { SystemHealthPanel } from './SystemHealthPanel'
 import { AssistantStatusCard } from '../../components/assistant/AssistantStatusCard'
 import { NewsModerationPanel } from './NewsModerationPanel'
 import { TendersAdminPanel } from '../../components/shared/TendersAdminPanel'
+import { DocumentTemplatesPanel } from '../../components/documents/DocumentTemplatesPanel'
 import { logoutAndRedirect, useSession } from '../../lib/session'
 
 export function SuperAdminDashboard() {
@@ -225,7 +226,12 @@ export function SuperAdminDashboard() {
                         <RefreshCw className="spin" /> جاري تحميل سجل التدقيق...
                       </div>
                     ) : overview?.recentAudit.length ? (
-                      <div className="super-admin-audit-list">
+                      <div
+                        className="super-admin-audit-list"
+                        tabIndex={0}
+                        role="region"
+                        aria-label="آخر عمليات التدقيق"
+                      >
                         {overview.recentAudit.map((entry, index) => (
                           <div key={`${entry.entityId}-${index}`}>
                             <span className={`audit-role ${entry.role.toLowerCase()}`}>{entry.role}</span>
@@ -256,6 +262,7 @@ export function SuperAdminDashboard() {
           { id: 'departments', label: 'الدوائر والخدمات', icon: Building2, content: <DepartmentManagementPanel /> },
           { id: 'coverage', label: 'تغطية الدوائر', icon: ShieldAlert, content: <DepartmentCoveragePanel /> },
           { id: 'national', label: 'الخدمات الوطنية', icon: Landmark, content: <GovernmentServiceAdminPanel /> },
+          { id: 'documents', label: 'نماذج الوثائق', icon: FileCheck2, content: <DocumentTemplatesPanel /> },
           {
             id: 'tenders',
             label: 'المناقصات والمزادات',

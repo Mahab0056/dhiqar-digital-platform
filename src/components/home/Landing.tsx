@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
+import { preload } from 'react-dom'
 import { Link } from 'wouter'
 import { motion, useScroll, useTransform } from 'framer-motion'
 import {
@@ -25,6 +26,8 @@ import { SmartSearch } from '../public/SmartSearch'
 import { useNightMode } from '../public/CivicUtilityBar'
 import { useSession } from '../../lib/session'
 import { staffHomeForRole } from '../../pages/auth/StaffLoginPage'
+import { CountUp, ScrollProgress } from '../../lib/ambient-motion'
+import { OFFICIAL_DISTRICT_COUNT } from '../maps/dhiqar-district-facts'
 
 const css = (vars: Record<string, string | number>) => vars as CSSProperties
 
@@ -59,12 +62,13 @@ export function LandingHeader() {
   }, [])
 
   // the mobile menu closes with Escape and when the window grows back to the desktop layout
+  // (1280px: the fold point of .ld-nav / .ld-menu-btn in landing.css)
   useEffect(() => {
     if (!open) return
     const onKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') setOpen(false)
     }
-    const wide = window.matchMedia('(min-width: 1101px)')
+    const wide = window.matchMedia('(min-width: 1280px)')
     const onWide = () => wide.matches && setOpen(false)
     window.addEventListener('keydown', onKey)
     wide.addEventListener('change', onWide)
@@ -143,6 +147,7 @@ export function LandingHeader() {
           </button>
         </div>
       </div>
+      <ScrollProgress />
       <div id="ld-mobile-menu" className="ld-mobile-menu" hidden={!open}>
         <nav className="ld-wrap" aria-label="القائمة">
           {NAV.map(item =>
@@ -185,24 +190,64 @@ const QUICK = [
   { label: 'تقديم شكوى', href: '/citizen/feedback', icon: MessageSquareWarning },
 ]
 const EXAMPLES = ['اريد اطلع جواز', 'بطاقة سكن', 'شكوى ماء', 'إجازة بناء']
+const HERO_PHOTO = '/brand/home/hero-night.webp'
+
+/** Headline words rise one after another; spaces stay real text so Arabic shaping and copy/paste are intact. */
+function splitWords(text: string, offset: number) {
+  return text.split(' ').map((word, index) => (
+    <span key={word + index}>
+      {index > 0 && ' '}
+      <span className="ld-word" style={css({ '--w': index + offset })}>
+        {word}
+      </span>
+    </span>
+  ))
+}
+
+/** The hero headline. The space between its halves is real text: on phones the green half runs inline after the
+    first (landing.css), and copy/paste and search snippets need the space at every width. */
+export function HeroHeadline() {
+  return (
+    <h1 id="ld-hero-title" className="ld-hero-title">
+      {splitWords('خدماتك الحكومية،', 0)} <em>{splitWords('من مكان واحد.', 2)}</em>
+    </h1>
+  )
+}
 
 export type HeroStats = { services: number | null; departments: number | null; districts: number | null }
 
 export function LandingHero({ stats, ticker }: { stats: HeroStats; ticker?: ReactNode }) {
+  // the hero photo is the homepage's largest paint: fetch it at high priority, from here rather than index.html
+  // so the other routes (verify, login, staff) never download it
+  preload(HERO_PHOTO, { as: 'image', type: 'image/webp', fetchPriority: 'high' })
   const ref = useRef<HTMLElement>(null)
   const tile = useRef<HTMLDivElement>(null)
+  const art = useRef<HTMLDivElement>(null)
+  const visual = useRef<HTMLDivElement>(null)
+  const spot = useRef<HTMLDivElement>(null)
   const [query, setQuery] = useState('')
   const { still } = useMotionPref()
   const { scrollYProgress } = useScroll({ target: ref, offset: ['start start', 'end start'] })
   const bgY = useTransform(scrollYProgress, [0, 1], still ? ['0%', '0%'] : ['0%', '12%'])
   const visualY = useTransform(scrollYProgress, [0, 1], still ? ['0%', '0%'] : ['0%', '-10%'])
 
-  // the logo tile leans gently toward the pointer
+  // the logo tile leans toward the pointer, the scene drifts in depth (photo far, emblem near) and a soft
+  // green light follows the cursor — fine pointers only, rAF-throttled, transforms only
   useEffect(() => {
     const hero = ref.current
-    if (!hero || still || !window.matchMedia('(hover: hover)').matches) {
+    // vars go on the photo and the emblem only, never on the shared art layer (restyling it restarted the dust loop)
+    const layers = [art.current?.querySelector<HTMLElement>('.ld-hero-bg img') ?? null, visual.current]
+    const clear = () => {
       tile.current?.style.removeProperty('--rx')
       tile.current?.style.removeProperty('--ry')
+      for (const layer of layers) {
+        layer?.style.removeProperty('--px')
+        layer?.style.removeProperty('--py')
+      }
+      hero?.classList.remove('is-pointer')
+    }
+    if (!hero || still || !window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
+      clear()
       return
     }
     let frame = 0
@@ -214,12 +259,23 @@ export function LandingHero({ stats, ticker }: { stats: HeroStats; ticker?: Reac
         const py = (event.clientY - box.top) / box.height - 0.5
         tile.current?.style.setProperty('--ry', `${(-12 + px * 14).toFixed(2)}deg`)
         tile.current?.style.setProperty('--rx', `${(7 - py * 9).toFixed(2)}deg`)
+        for (const layer of layers) {
+          layer?.style.setProperty('--px', px.toFixed(3))
+          layer?.style.setProperty('--py', py.toFixed(3))
+        }
+        if (spot.current)
+          spot.current.style.transform = `translate3d(${(event.clientX - box.left).toFixed(0)}px, ${(event.clientY - box.top).toFixed(0)}px, 0)`
+        hero.classList.add('is-pointer')
       })
     }
+    const onLeave = () => hero.classList.remove('is-pointer')
     hero.addEventListener('pointermove', onMove)
+    hero.addEventListener('pointerleave', onLeave)
     return () => {
       cancelAnimationFrame(frame)
       hero.removeEventListener('pointermove', onMove)
+      hero.removeEventListener('pointerleave', onLeave)
+      clear()
     }
   }, [still])
 
@@ -232,20 +288,29 @@ export function LandingHero({ stats, ticker }: { stats: HeroStats; ticker?: Reac
   const counters = [
     { value: stats.services, label: 'خدمة حكومية' },
     { value: stats.departments, label: 'دائرة حكومية' },
-    { value: stats.districts, label: 'قضاء ضمن المنصة' },
+    // the governorate's 15 districts; how many of them have departments on the platform is said as such
+    {
+      value: OFFICIAL_DISTRICT_COUNT,
+      label: stats.districts === null ? 'قضاءً في المحافظة' : `قضاءً · ${stats.districts} بها دوائر على المنصة`,
+    },
   ]
 
   return (
     <section className="ld-hero" id="top" ref={ref} aria-labelledby="ld-hero-title">
       {/* night grade of the Ziggurat of Ur artwork (public/brand/home/hero-night); clipped here so the
           search results can still drop below the hero */}
-      <div className="ld-hero-art" aria-hidden="true">
+      <div className="ld-hero-art" aria-hidden="true" ref={art}>
+        <div className="ld-sky" />
         <motion.picture className="ld-hero-bg" style={{ y: bgY }}>
-          <source srcSet="/brand/home/hero-night.webp" type="image/webp" />
+          <source srcSet={HERO_PHOTO} type="image/webp" />
           <img src="/brand/home/hero-night.jpg" alt="" fetchPriority="high" />
         </motion.picture>
         <div className="ld-hero-shade" />
+        <div className="ld-rays" />
+        <div className="ld-haze" />
+        <div className="ld-dust" />
         <div className="ld-water" />
+        <div className="ld-spot" ref={spot} />
       </div>
 
       {ticker && <div className="ld-wrap ld-ticker-wrap">{ticker}</div>}
@@ -258,10 +323,7 @@ export function LandingHero({ stats, ticker }: { stats: HeroStats; ticker?: Reac
               البوابة الرسمية للخدمات الحكومية<span className="ld-hide-sm"> · محافظة ذي قار</span>
             </span>
           </p>
-          <h1 id="ld-hero-title" className="ld-in" style={css({ '--i': 1 })}>
-            خدماتك الحكومية،
-            <em>من مكان واحد.</em>
-          </h1>
+          <HeroHeadline />
           <p className="ld-hero-lead ld-in" style={css({ '--i': 2 })}>
             ابحث عن الخدمة التي تحتاجها، قدّم طلبك إلكترونياً، وتابعه حتى تستلم وثيقتك.
           </p>
@@ -299,16 +361,16 @@ export function LandingHero({ stats, ticker }: { stats: HeroStats; ticker?: Reac
           </nav>
 
           <dl className="ld-counters ld-in" style={css({ '--i': 5 })}>
-            {counters.map(counter => (
-              <div key={counter.label}>
+            {counters.map((counter, index) => (
+              <div key={index}>
                 <dt>{counter.label}</dt>
-                <dd>{counter.value === null ? '—' : counter.value.toLocaleString('en-US')}</dd>
+                <dd>{counter.value === null ? '—' : <CountUp value={counter.value} />}</dd>
               </div>
             ))}
           </dl>
         </div>
 
-        <motion.div className="ld-hero-visual" style={{ y: visualY }} aria-hidden="true">
+        <motion.div className="ld-hero-visual" style={{ y: visualY }} aria-hidden="true" ref={visual}>
           <svg className="ld-net" viewBox="0 0 600 540">
             <defs>
               <filter id="ld-glow" x="-50%" y="-50%" width="200%" height="200%">
@@ -347,6 +409,7 @@ export function LandingHero({ stats, ticker }: { stats: HeroStats; ticker?: Reac
             </span>
           ))}
           <div className="ld-hub" style={{ left: `${(HUB.x / 600) * 100}%`, top: `${(HUB.y / 540) * 100}%` }}>
+            <span className="ld-hub-halo" />
             <div className="ld-tile" ref={tile}>
               <TQLogoMotion speed={0.6} play={!still} />
             </div>

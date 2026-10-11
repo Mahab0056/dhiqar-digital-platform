@@ -10,7 +10,6 @@ import {
   CheckCircle2,
   ChevronLeft,
   FileArchive,
-  FileCheck2,
   FileText,
   MessageSquareWarning,
   Plus,
@@ -29,7 +28,8 @@ import type {
   GovernmentApplication,
   IssuedDocument,
 } from '../../types'
-import { CitizenPdfActions } from '../../components/citizen/CitizenPdfActions'
+import { CitizenDocumentArchive } from '../../components/citizen/CitizenDocumentArchive'
+import { groupCitizenDocuments } from '../../components/citizen/citizen-documents'
 import { PortalLayout } from '../../components/citizen/PortalLayout'
 import { GuideVideo } from '../../components/guides/GuideVideo'
 import { describeAppointment, isOpenRequest, mergeCitizenRequests, summarizeCitizenRequests } from './my-requests'
@@ -40,6 +40,10 @@ export function CitizenDashboard() {
   const [applications, setApplications] = useState<GovernmentApplication[]>([])
   const [serviceRequests, setServiceRequests] = useState<CitizenServiceRequest[]>([])
   const [issuedDocuments, setIssuedDocuments] = useState<IssuedDocument[]>([])
+  // only an approval document in force is «معتمدة»: rejection decisions, referral letters and receipts are listed
+  // apart («قرارات ومراسلات»), a revoked document is never presented (or counted) as certified. The stat and the
+  // archive read the same groups, so the count always matches the list.
+  const documentGroups = useMemo(() => groupCitizenDocuments(issuedDocuments), [issuedDocuments])
   const [notifications, setNotifications] = useState<CitizenNotification[]>([])
   const [unreadNotifications, setUnreadNotifications] = useState(0)
   const applyNotifications = (payload: { unread: number; items: CitizenNotification[] }) => {
@@ -66,6 +70,11 @@ export function CitizenDashboard() {
       void api
         .listCitizenApplications()
         .then(setApplications)
+        .catch(() => {})
+      // issuance and revocation are announced the same way
+      void api
+        .listIssuedDocuments()
+        .then(setIssuedDocuments)
         .catch(() => {})
     }
     window.addEventListener('citizen-notifications-updated', receive)
@@ -96,7 +105,7 @@ export function CitizenDashboard() {
   // the appointment the citizen should know about first: confirmed ones, then the earliest still waiting
   const upcomingAppointment = serviceRequests
     .flatMap(item =>
-      item.appointment && !['APPROVED', 'REJECTED'].includes(item.status)
+      item.appointment && !['APPROVED', 'REJECTED', 'CANCELLED'].includes(item.status)
         ? [{ request: item, appointment: item.appointment }]
         : []
     )
@@ -229,8 +238,8 @@ export function CitizenDashboard() {
               <dd>{requestSummary.open.toLocaleString('en-US')}</dd>
             </div>
             <div>
-              <dt>وثائق مؤرشفة</dt>
-              <dd>{issuedDocuments.length.toLocaleString('en-US')}</dd>
+              <dt>وثائق معتمدة</dt>
+              <dd>{documentGroups.approvals.length.toLocaleString('en-US')}</dd>
             </div>
             <div>
               <dt>إشعارات جديدة</dt>
@@ -259,7 +268,7 @@ export function CitizenDashboard() {
               <FileArchive />
             </span>
             <strong>وثائقي</strong>
-            <small>ملفات PDF المعتمدة</small>
+            <small>الوثائق والقرارات الصادرة لك</small>
           </Link>
           <Link href="/citizen/feedback">
             <span>
@@ -551,45 +560,7 @@ export function CitizenDashboard() {
             </div>
           )}
         </section>
-        <section className="citizen-issued-documents" id="issued-documents">
-          <header className="citizen-section-heading compact">
-            <div>
-              <span className="section-kicker">الأرشيف الرقمي</span>
-              <h2>وثائقي المعتمدة</h2>
-              <p>هذه هي ملفات PDF الأصلية المحفوظة في الأرشيف بعد اعتماد الدائرة.</p>
-            </div>
-            <FileArchive />
-          </header>
-          {issuedDocuments.length === 0 ? (
-            <div className="citizen-empty compact">
-              <FileCheck2 />
-              <div>
-                <strong>لا توجد وثائق PDF مؤرشفة بعد</strong>
-                <span>تظهر الوثيقة هنا تلقائياً عند اعتماد الطلب وإصدارها.</span>
-              </div>
-            </div>
-          ) : (
-            <div className="citizen-issued-document-list">
-              {issuedDocuments.map(document => (
-                <article key={document.id}>
-                  <span>
-                    <FileCheck2 />
-                  </span>
-                  <div>
-                    <small>
-                      {document.documentNumber} • {new Date(document.issuedAt).toLocaleString('en-GB')}
-                    </small>
-                    <h3>{document.documentTitle}</h3>
-                    <p>
-                      {document.departmentName} • {document.serviceName}
-                    </p>
-                  </div>
-                  <CitizenPdfActions document={document} compact />
-                </article>
-              ))}
-            </div>
-          )}
-        </section>
+        <CitizenDocumentArchive groups={documentGroups} />
         {upcomingAppointment && (
           <section className="citizen-v2-reminder" id="appointments">
             <span>

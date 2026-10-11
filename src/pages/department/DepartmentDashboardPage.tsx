@@ -21,6 +21,7 @@ import { statusLabels } from '../../data'
 import { auditActionLabel } from '../../audit-labels'
 import type { DepartmentDashboard } from '../../types'
 import { ServiceRequestAdminPanel } from '../employee/ServiceRequestAdminPanel'
+import { DocumentTemplatesPanel } from '../../components/documents/DocumentTemplatesPanel'
 import { PortalLayout } from '../../components/citizen/PortalLayout'
 import { useSession } from '../../lib/session'
 
@@ -308,7 +309,7 @@ export function DepartmentDashboardPage({ id }: { id: string }) {
                     </div>
                     <AlertTriangle />
                   </header>
-                  <ul className="department-activity">
+                  <ul className="department-activity" tabIndex={0} aria-label="الطلبات المتأخرة عن المهلة">
                     {data.management.overdue.map(item => (
                       <li key={item.reference}>
                         <strong>
@@ -497,7 +498,7 @@ export function DepartmentDashboardPage({ id }: { id: string }) {
                 </div>
                 <Activity />
               </header>
-              <ul className="department-activity">
+              <ul className="department-activity" tabIndex={0} aria-label="سجل إجراءات الفريق">
                 {data.recentActivity.map((entry, index) => (
                   <li key={`${entry.createdAt}-${index}`}>
                     <strong>{auditActionLabel(entry.action)}</strong>
@@ -531,6 +532,9 @@ export function DepartmentDashboardPage({ id }: { id: string }) {
           <section className="department-review" id="department-review">
             <ServiceRequestAdminPanel departmentId={id} focusReference={focusReference} />
           </section>
+          {(session?.role === 'SUPER_ADMIN' || (session?.isDepartmentManager && session.departmentId === id)) && (
+            <DocumentTemplatesPanel departmentId={id} />
+          )}
         </>
       )}
     </PortalLayout>

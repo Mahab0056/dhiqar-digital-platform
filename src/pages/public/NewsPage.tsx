@@ -8,7 +8,8 @@ import { EmptyState, LoadingBlock, PageHeader } from '../../components/public/Pa
 import { NewsCard } from '../../components/news/NewsParts'
 import { relativeTime } from '../../lib/news-format'
 
-const PAGE = 18
+/** page size: 24 fills the news grid evenly at 1, 2, 3 and 4 columns (news.css), so pages never end ragged */
+const PAGE = 24
 
 /** All aggregated Dhi Qar news: search, filter by publisher or kind, and load more. */
 export function NewsPage() {

@@ -171,6 +171,10 @@ export type OrbVoice = {
   burst(len: number): void
   /** Let the voice fade out now. */
   stop(): void
+  /** Live level 0..1 (the citizen's microphone): drives the rings directly, frame by frame. */
+  live(level: number): void
+  /** Leave live mode (inline styles cleared, rings fade). */
+  endLive(): void
   destroy(): void
   readonly speaking: boolean
 }
@@ -223,6 +227,25 @@ export function createOrbVoice(orb: HTMLElement, opts: { onSpeaking?: (on: boole
     return list
   }
 
+  let liveAngle = 0
+  let liveLevel = 0
+  let liveOn = false
+  const liveTargets = () => ({
+    ringA: orb.querySelector<HTMLElement | SVGElement>('.gr-orb__voice--a'),
+    ringB: orb.querySelector<HTMLElement | SVGElement>('.gr-orb__voice--b'),
+    halo: orb.querySelector<HTMLElement>('.gr-orb__halo'),
+    mark: orb.querySelector<HTMLElement>('.gr-orb__mark'),
+  })
+  const clearLive = () => {
+    const { ringA, ringB, halo, mark } = liveTargets()
+    for (const el of [ringA, ringB, halo, mark]) {
+      if (!el) continue
+      el.style.removeProperty('opacity')
+      el.style.removeProperty('scale')
+      el.style.removeProperty('rotate')
+    }
+  }
+
   const levelNow = (): number => {
     if (!speaking || !samples.length) return 0
     const i = Math.floor((now() - startedAt) / STEP)
@@ -230,6 +253,11 @@ export function createOrbVoice(orb: HTMLElement, opts: { onSpeaking?: (on: boole
   }
 
   const play = (next: number[]) => {
+    if (liveOn) {
+      liveOn = false
+      liveLevel = 0
+      clearLive()
+    }
     anims.forEach(a => a.cancel())
     samples = next
     startedAt = now()
@@ -273,6 +301,43 @@ export function createOrbVoice(orb: HTMLElement, opts: { onSpeaking?: (on: boole
       if (speaking && samples.length > 40) return
       play(envelope(burstSchedule(len), levelNow()))
     },
+    live(level) {
+      if (motionStill()) return
+      if (!liveOn) {
+        liveOn = true
+        token++
+        anims.forEach(a => a.cancel())
+        anims = []
+        samples = []
+      }
+      // meter-like smoothing: fast attack, slower release
+      const target = Math.max(0, Math.min(1, level))
+      liveLevel += (target - liveLevel) * (target > liveLevel ? 0.55 : 0.18)
+      liveAngle = (liveAngle + 0.6 + liveLevel * 3) % 360
+      const a = liveLevel
+      const { ringA, ringB, halo, mark } = liveTargets()
+      if (ringA) {
+        ringA.style.opacity = String(Math.min(1, 0.25 + a * 1.6))
+        ringA.style.scale = String(1 + a * 0.12)
+        ringA.style.rotate = `${liveAngle}deg`
+      }
+      if (ringB) {
+        ringB.style.opacity = String(Math.min(1, 0.15 + a * 1.1))
+        ringB.style.scale = String(1 + a * 0.09)
+        ringB.style.rotate = `${-liveAngle * 1.5}deg`
+      }
+      if (halo) {
+        halo.style.opacity = String(0.45 + a * 0.5)
+        halo.style.scale = String(1 + a * 0.2)
+      }
+      if (mark) mark.style.scale = `${1 + a * 0.05} ${1 + a * 0.08}`
+    },
+    endLive() {
+      if (!liveOn) return
+      liveOn = false
+      liveLevel = 0
+      clearLive()
+    },
     stop() {
       if (!speaking) return
       const from = levelNow()
@@ -280,6 +345,7 @@ export function createOrbVoice(orb: HTMLElement, opts: { onSpeaking?: (on: boole
     },
     destroy() {
       document.removeEventListener('visibilitychange', onVisibility)
+      clearLive()
       token++
       anims.forEach(a => a.cancel())
       anims = []

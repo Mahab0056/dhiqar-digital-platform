@@ -671,7 +671,20 @@ await check(
     const verify = await anon.get(`/api/verify/${doc.verificationId}`)
     const original = await anon.get(`/api/verify/${doc.verificationId}/original-pdf`)
     writeFileSync(`${outDir}/issued-${doc.documentNumber}.pdf`, Buffer.from(file.body))
-    const leaks = JSON.stringify(verify.body).match(/national|phone|07701|lat|lng|address/i)
+    // whole keys, not substrings («templateId: "allocation-decision"» is not a latitude), plus the seeded phone value
+    const keys = []
+    const walk = value => {
+      if (!value || typeof value !== 'object') return
+      for (const [key, child] of Object.entries(value)) {
+        if (!Array.isArray(value)) keys.push(key)
+        walk(child)
+      }
+    }
+    walk(verify.body)
+    const leaks =
+      keys.find(key => /national|phone|address|^(lat|lng|latitude|longitude)$/i.test(key)) ||
+      JSON.stringify(verify.body).match(/07701/)?.[0] ||
+      null
     return expect(
       file.status === 200 &&
         head === '%PDF-' &&
@@ -679,7 +692,7 @@ await check(
         verify.body.status === 'APPROVED' &&
         original.status === 200 &&
         !leaks,
-      `pdf ${file.status} ${head} (${file.body.length} bytes), verify ${verify.status} ${verify.body.status}, original ${original.status}, PII keys in verify=${leaks ? leaks[0] : 'none'}`
+      `pdf ${file.status} ${head} (${file.body.length} bytes), verify ${verify.status} ${verify.body.status}, original ${original.status}, PII keys in verify=${leaks || 'none'}`
     )
   }
 )

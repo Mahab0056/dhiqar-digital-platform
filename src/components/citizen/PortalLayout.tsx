@@ -283,6 +283,7 @@ export function PortalLayout({
 
   return (
     <AppShell
+      wide={role !== 'citizen'}
       portalLabel={role === 'citizen' ? 'بوابة المواطن' : 'بوابة الموظف'}
       portalIcon={role === 'citizen' ? UserRound : Building2}
       nav={items}

@@ -311,7 +311,7 @@
   .gr-orb[data-state='attention'] .gr-orb__ring--b {
     animation-delay: 0.45s;
   }
-  .afd-launcher.is-arriving .afd-launcher__label {
+  .afd-launcher.is-arriving[data-label] .afd-launcher__label {
     animation: gr-label-in 0.45s var(--afd-ease) 0.5s both;
   }
 }
@@ -570,8 +570,15 @@
   }
 }
 
-/* ---- launcher: the orb + «أفندي» pill (overrides the old green pill of assistant.css) --------------------- */
+/* ---- launcher: the orb + «أفندي» pill (overrides the old green pill of assistant.css) ---------------------
+   The button is a fixed box the size of the orb, always in the orb's normal corner (useLauncherPlacement measures
+   that spot); it takes no hits itself. What moves is its body: tucked into the corner (data-place="mini"), docked in
+   the portal sidebar ("dock"), stepped aside ("hidden" — Tab still reaches it, and focus brings it back) or not yet
+   placed ("pending", the first moment of a visit). The label is out of the flow: folded, it covers nothing. */
 .dqa-launcher.afd-launcher {
+  display: block;
+  width: var(--afd-orb);
+  height: var(--afd-orb);
   gap: 0;
   min-height: 0;
   padding: 0;
@@ -580,6 +587,8 @@
   background: none;
   box-shadow: none;
   animation: none;
+  transition: none;
+  pointer-events: none;
   -webkit-tap-highlight-color: transparent;
 }
 .dqa-launcher.afd-launcher:hover {
@@ -589,8 +598,33 @@
 .dqa-launcher.afd-launcher:focus-visible {
   outline: none;
 }
+.afd-launcher__body {
+  position: relative;
+  display: block;
+  width: var(--afd-orb);
+  height: var(--afd-orb);
+  pointer-events: auto;
+  transform-origin: 0 0;
+  transform: translate(var(--afd-dx, 0px), var(--afd-dy, 0px)) scale(var(--afd-s, 1));
+  transition:
+    transform 0.4s var(--afd-ease),
+    opacity 0.25s;
+}
+.afd-launcher:is([data-place='pending'], [data-place='hidden']) .afd-launcher__body {
+  opacity: 0;
+  pointer-events: none;
+}
+.afd-launcher[data-place='hidden'] .afd-launcher__body {
+  transform: translate(0, 10px) scale(0.85);
+}
+/* keyboard focus brings a stepped-aside orb back to its corner */
+.afd-launcher:is([data-place='pending'], [data-place='hidden']):focus-visible .afd-launcher__body {
+  opacity: 1;
+  pointer-events: auto;
+  transform: none;
+}
 .afd-launcher:focus-visible .afd-launcher__disc {
-  outline: 3px solid #c69a42;
+  outline: 3px solid var(--ds-focus-color, #0b7a55);
   outline-offset: 4px;
 }
 .afd-launcher__disc {
@@ -610,13 +644,15 @@
   transform: scale(0.95);
 }
 .afd-launcher__label {
-  position: relative;
+  position: absolute;
   z-index: 0;
+  top: 50%;
+  inset-inline-start: calc(var(--afd-orb) - 20px);
   display: grid;
   align-content: center;
   gap: 1px;
   height: 48px;
-  margin-inline-start: -20px;
+  margin-top: -24px;
   padding-inline: 36px 18px;
   border: 1px solid rgba(62, 235, 192, 0.32);
   border-inline-start: 0;
@@ -629,10 +665,42 @@
   box-shadow: 0 12px 28px -12px rgba(0, 0, 0, 0.55);
   -webkit-backdrop-filter: blur(12px) saturate(150%);
   backdrop-filter: blur(12px) saturate(150%);
+  /* folded by default: «icon only» — it unfolds at the top of a page where it covers nothing, beside a docked orb,
+     and on hover / keyboard focus */
+  visibility: hidden;
+  opacity: 0;
+  transform: translateX(12px);
+  pointer-events: none;
   transition:
     opacity 0.2s,
     transform 0.3s var(--afd-ease),
-    border-color 0.2s;
+    border-color 0.2s,
+    visibility 0s linear 0.3s;
+}
+.afd-launcher:not(.is-greeting)[data-label] .afd-launcher__label,
+.afd-launcher:not(.is-greeting):is([data-place='normal'], [data-place='dock']):focus-visible .afd-launcher__label {
+  visibility: visible;
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+  transition:
+    opacity 0.2s,
+    transform 0.3s var(--afd-ease),
+    border-color 0.2s,
+    visibility 0s;
+}
+@media (hover: hover) {
+  .afd-launcher:not(.is-greeting):is([data-place='normal'], [data-place='dock']):hover .afd-launcher__label {
+    visibility: visible;
+    opacity: 1;
+    transform: none;
+    pointer-events: auto;
+    transition:
+      opacity 0.2s,
+      transform 0.3s var(--afd-ease),
+      border-color 0.2s,
+      visibility 0s;
+  }
 }
 .afd-launcher__label strong {
   font-family: var(--ds-font-display);
@@ -646,11 +714,14 @@
 .afd-launcher:hover .afd-launcher__label {
   border-color: rgba(62, 235, 192, 0.6);
 }
-/* the greeting bubble replaces the label while it is up */
-.afd-launcher.is-greeting .afd-launcher__label {
-  opacity: 0;
-  transform: translateX(12px);
-  pointer-events: none;
+@media (prefers-reduced-motion: reduce) {
+  .afd-launcher__body,
+  .afd-launcher[data-place='hidden'] .afd-launcher__body {
+    transition: opacity 0.2s;
+  }
+  .afd-launcher[data-place='hidden'] .afd-launcher__body {
+    transform: translate(var(--afd-dx, 0px), var(--afd-dy, 0px)) scale(var(--afd-s, 1));
+  }
 }
 @media (max-width: 640px) {
   .dqa-launcher.afd-launcher {
@@ -658,6 +729,27 @@
   }
   .afd-launcher__label {
     display: none;
+  }
+  /* the orb floats over the bottom corner of a full-width page: the end of every page layout gets room for it, so
+     the last control (the footer's «الخصوصية», a request's «راسل الدعم», the last card) scrolls clear of it */
+  body:has(.afd-launcher) :is(.auth-foot, .tq-footer, .portal-content) {
+    padding-bottom: calc(54px + 28px + env(safe-area-inset-bottom));
+  }
+}
+@media (min-width: 641px) {
+  /* a short sign-in page ends in its footer row, right in the orb's corner: the row keeps that corner free (its
+     «© محافظة ذي قار» moves in), so the orb never has to step aside at the end of the page */
+  body:has(.afd-launcher) .auth-foot-row {
+    padding-inline-start: calc(60px + 28px);
+  }
+}
+/* keyboard focus and in-page jumps never park a control under the orb's corner */
+html:has(.afd-launcher) {
+  scroll-padding-bottom: calc(60px + 40px);
+}
+@media (max-width: 720px) {
+  html:has(.app-bottom-nav):has(.afd-launcher) {
+    scroll-padding-bottom: calc(78px + 54px + 24px + env(safe-area-inset-bottom));
   }
 }
 
@@ -919,7 +1011,7 @@ body:has(.app-bottom-nav) .afd-greet {
   color: #cfe9e1;
 }
 .dqa-panel .dqa-head .dqa-icon-button[aria-pressed='true'] {
-  color: #f5b942;
+  color: #3eebc0;
 }
 
 /* WhatsApp-style tails (ChatBits): the assistant sits on the right (RTL start) with its tail top-right */
@@ -983,4 +1075,368 @@ body:has(.app-bottom-nav) .afd-greet {
 }
 .dqa-typing > span {
   background: #3aa98a;
+}
+
+/* ---- app shell (citizen portal) on desktop: the inline-start corner is the sidebar's account card, so the orb,
+   its greeting and the chat panel step over the 272px sidebar instead of covering «تسجيل الخروج» ----------- */
+@media (min-width: 1025px) {
+  body:has(.app-shell .app-sidebar) :is(.dqa-launcher, .dqa-panel, .afd-greet) {
+    inset-inline-start: calc(272px + 20px);
+  }
+}
+
+/* ---- «تكلم مع أفندي»: the voice stage (VoiceStage.tsx) ------------------------------------------------- */
+.afd-voice {
+  --afd-level: 0;
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  padding: 14px 16px 10px;
+  border-top: 1px solid rgba(62, 235, 192, 0.22);
+  background:
+    radial-gradient(120% 90% at 50% 0%, rgba(62, 235, 192, 0.14), transparent 60%),
+    radial-gradient(90% 120% at 0% 100%, rgba(139, 108, 255, 0.14), transparent 60%),
+    linear-gradient(180deg, #0a1a33 0%, #061024 100%);
+  color: #e9fff8;
+}
+.afd-voice-orb {
+  position: relative;
+  width: 76px;
+  height: 76px;
+  margin: 4px 0 2px;
+}
+.afd-voice-orb .gr-orb__halo {
+  inset: -22px;
+}
+.afd-voice-status {
+  margin: 0;
+  font-family: var(--ds-font-display, inherit);
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #e9fff8;
+  text-align: center;
+}
+.afd-voice-transcript {
+  width: 100%;
+  min-height: 2.9em;
+  max-height: 5.8em;
+  margin: 0;
+  overflow-y: auto;
+  padding: 6px 10px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #ffffff;
+  font-size: 0.92rem;
+  line-height: 1.55;
+  text-align: center;
+}
+.afd-voice-transcript.is-empty {
+  color: #9fb0cc;
+  font-size: 0.8rem;
+}
+/* no Arabic voice on this device: said up front, the answers appear as text */
+.afd-voice-note {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  margin: 0;
+  padding: 6px 10px;
+  border: 1px solid rgba(127, 220, 180, 0.4);
+  border-radius: 10px;
+  background: rgba(62, 235, 192, 0.12);
+  color: #cdf3e4;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  text-align: center;
+}
+.afd-voice-note svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+}
+.afd-voice-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 22px;
+  margin-top: 4px;
+}
+.afd-voice-side {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  min-width: 56px;
+  min-height: 48px;
+  padding: 6px 4px;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  color: #cfe9e1;
+  font: inherit;
+  font-size: 0.72rem;
+  cursor: pointer;
+}
+.afd-voice-side svg {
+  width: 20px;
+  height: 20px;
+}
+.afd-voice-side:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.08);
+}
+.afd-voice-side:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.afd-voice-mic {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  border: 0;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #3eebc0, #1aa985 60%, #0b7a62);
+  color: #04261d;
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  box-shadow:
+    0 10px 26px -8px rgba(62, 235, 192, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  transition:
+    transform 0.15s,
+    background 0.2s;
+}
+.afd-voice-mic svg {
+  position: relative;
+  width: 30px;
+  height: 30px;
+}
+.afd-voice-mic:active:not(:disabled) {
+  transform: scale(0.96);
+}
+.afd-voice-mic.is-on {
+  background: linear-gradient(145deg, #ff8a8a, #e0364f 60%, #b4182f);
+  color: #fff;
+}
+.afd-voice-mic:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.afd-voice-mic:focus-visible,
+.afd-voice-side:focus-visible {
+  outline: 3px solid #3eebc0;
+  outline-offset: 3px;
+}
+/* the ring follows the microphone level (a CSS variable set per frame, no re-render) */
+.afd-voice-mic-ring {
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 138, 138, 0.75);
+  opacity: 0;
+  pointer-events: none;
+}
+/* reduced motion / the site's motion pause ([data-motion='still']): the level shows as opacity only, never as scale */
+.afd-voice-mic.is-on .afd-voice-mic-ring {
+  opacity: calc(0.35 + var(--afd-level) * 0.65);
+}
+.afd-voice[data-phase='thinking'] .afd-voice-mic,
+.afd-voice[data-phase='transcribing'] .afd-voice-mic {
+  background: linear-gradient(145deg, #6c7d99, #3d4b66);
+  color: #e9fff8;
+}
+.afd-voice-switch {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 4px 8px;
+  margin-top: 2px;
+  color: #cfe9e1;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+.afd-voice-switch small {
+  flex-basis: 100%;
+  text-align: center;
+  color: #8ea0bd;
+  font-size: 0.7rem;
+}
+.afd-voice-switch input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+}
+.afd-voice-switch span {
+  position: relative;
+  width: 34px;
+  height: 20px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.2);
+  transition: background 0.2s;
+}
+.afd-voice-switch span::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  inset-inline-start: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  transition: inset-inline-start 0.2s;
+}
+.afd-voice-switch input:checked + span {
+  background: #1aa985;
+}
+.afd-voice-switch input:checked + span::after {
+  inset-inline-start: 16px;
+}
+.afd-voice-switch input:focus-visible + span {
+  outline: 3px solid #3eebc0;
+  outline-offset: 2px;
+}
+.afd-voice-sheet {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  align-content: center;
+  gap: 8px;
+  padding: 16px 18px;
+  background: rgba(6, 16, 36, 0.97);
+  color: #e9fff8;
+  overflow-y: auto;
+}
+.afd-voice-sheet > svg {
+  width: 26px;
+  height: 26px;
+  color: #3eebc0;
+}
+.afd-voice-sheet strong {
+  font-family: var(--ds-font-display, inherit);
+  font-size: 1rem;
+}
+.afd-voice-sheet ul {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding-inline-start: 18px;
+  color: #cfe0f2;
+  font-size: 0.8rem;
+  line-height: 1.6;
+}
+/* while the sheet is up it takes the stage's place in the flow: the stage grows to fit it (an overlay clipped the
+   actions once the sheet said everything it must say) */
+.afd-voice[data-phase='consent'] > :not(.afd-voice-sheet) {
+  display: none;
+}
+.afd-voice[data-phase='consent'] .afd-voice-sheet {
+  position: relative;
+  inset: auto;
+  justify-self: stretch;
+  align-content: start;
+  max-height: min(72vh, 480px);
+  padding: 2px 2px 4px;
+  background: transparent;
+}
+.afd-voice-switch.is-in-sheet {
+  justify-content: flex-start;
+  margin-top: 0;
+}
+.afd-voice-switch.is-in-sheet small {
+  text-align: start;
+}
+.afd-voice-sheet-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+.afd-voice-sheet-actions .dqa-btn:not(.is-primary) {
+  background: transparent;
+  color: #e9fff8;
+  border-color: rgba(255, 255, 255, 0.3);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .afd-voice-mic-ring {
+    transition:
+      opacity 0.08s linear,
+      transform 0.08s linear;
+  }
+  .afd-voice:not([data-motion='still']) .afd-voice-mic.is-on .afd-voice-mic-ring {
+    transform: scale(calc(1 + var(--afd-level) * 0.35));
+  }
+  .afd-voice[data-phase='thinking'] .afd-voice-status,
+  .afd-voice[data-phase='transcribing'] .afd-voice-status {
+    animation: afd-voice-breathe 1.4s ease-in-out infinite;
+  }
+}
+@keyframes afd-voice-breathe {
+  50% {
+    opacity: 0.55;
+  }
+}
+@media (max-width: 640px) {
+  .afd-voice {
+    padding-bottom: 12px;
+  }
+  .afd-voice-orb {
+    width: 104px;
+    height: 104px;
+  }
+  .afd-voice-mic {
+    width: 80px;
+    height: 80px;
+  }
+}
+@media (max-height: 620px) and (min-width: 641px) {
+  .afd-voice-orb {
+    width: 64px;
+    height: 64px;
+    margin: 0;
+  }
+}
+
+/* the citizen's spoken question carries a small mic mark */
+.dqa-voice-mark {
+  width: 13px;
+  height: 13px;
+  margin-inline-end: 5px;
+  vertical-align: -2px;
+  opacity: 0.7;
+}
+
+/* a clarifying question's quick replies */
+.dqa-clarify {
+  padding-top: 6px;
+}
+.dqa-clarify button {
+  border-color: color-mix(in srgb, var(--dqa-green, #0b7a55) 45%, transparent);
+  font-weight: 700;
+}
+
+/* the answer's single primary next step */
+.dqa-action {
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  border-color: color-mix(in srgb, var(--dqa-green, #0b7a55) 35%, transparent);
+  background: color-mix(in srgb, var(--dqa-green, #0b7a55) 6%, var(--ds-surface, #fff));
+}
+.dqa-action > small {
+  color: var(--ds-text-muted, #66726c);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+.dqa-action > .dqa-btn {
+  grid-column: 1 / -1;
+  justify-content: center;
+  min-height: 44px;
+  font-size: 0.92rem;
 }

@@ -7,7 +7,8 @@
 .dqa-panel {
   --dqa-green: var(--ds-primary, #0b7a55);
   --dqa-green-deep: #064c38;
-  --dqa-brass: #c69a42;
+  /* focus ring, typing caret and draft rule: the marsh-green accent (was brass) */
+  --dqa-accent: var(--ds-accent, #128a72);
   --dqa-offset: 20px;
   font-family: var(--ds-font-ui);
 }
@@ -45,7 +46,7 @@
     0 2px 6px rgba(6, 76, 56, 0.2);
 }
 .dqa-launcher:focus-visible {
-  outline: 3px solid var(--dqa-brass);
+  outline: 3px solid var(--dqa-accent);
   outline-offset: 3px;
 }
 .dqa-launcher-icon {
@@ -55,8 +56,8 @@
   width: 42px;
   height: 42px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #e8cf95, #c69a42);
-  color: #3d2a0c;
+  background: linear-gradient(135deg, #c9f0dc, #7fdcb4);
+  color: #03231a;
   flex: none;
 }
 .dqa-launcher-icon::after {
@@ -64,7 +65,7 @@
   position: absolute;
   inset: -4px;
   border-radius: 50%;
-  border: 2px solid rgba(232, 207, 149, 0.55);
+  border: 2px solid rgba(201, 240, 220, 0.55);
   animation: dqa-ring 2.6s ease-out infinite;
 }
 .dqa-launcher-icon svg {
@@ -133,7 +134,7 @@
   gap: 10px;
   padding: 14px 14px 14px 10px;
   background:
-    radial-gradient(120% 140% at 100% 0%, rgba(232, 207, 149, 0.22), transparent 55%),
+    radial-gradient(120% 140% at 100% 0%, rgba(127, 220, 180, 0.22), transparent 55%),
     linear-gradient(135deg, #0b6e4d 0%, #053b2c 100%);
   color: #fff;
 }
@@ -143,8 +144,8 @@
   width: 40px;
   height: 40px;
   border-radius: 14px;
-  background: linear-gradient(135deg, #e8cf95, #c69a42);
-  color: #3d2a0c;
+  background: linear-gradient(135deg, #c9f0dc, #7fdcb4);
+  color: #03231a;
   flex: none;
 }
 .dqa-avatar svg {
@@ -284,7 +285,7 @@
   margin-inline-start: 2px;
   vertical-align: -2px;
   border-radius: 2px;
-  background: var(--dqa-brass);
+  background: var(--dqa-accent);
   animation: dqa-blink 0.9s steps(2) infinite;
 }
 .dqa-typing {
@@ -436,8 +437,8 @@
   color: var(--ds-success, #0a6f4e);
 }
 .dqa-tag.is-appointment_required {
-  background: var(--ds-accent-soft, #fbf4e8);
-  color: var(--ds-accent-text, #8a5a2b);
+  background: var(--ds-accent-soft, #e2f4f0);
+  color: var(--ds-accent-text, #0b5c4c);
 }
 .dqa-tag.is-information_only {
   background: var(--ds-info-soft, #eff5ff);
@@ -552,17 +553,17 @@
   grid-column: 1 / -1;
 }
 .dqa-draft {
-  border-color: color-mix(in srgb, var(--dqa-brass) 55%, transparent);
+  border-color: color-mix(in srgb, var(--dqa-accent) 55%, transparent);
   background:
-    linear-gradient(180deg, var(--ds-accent-soft, #fbf4e8), transparent 70%) padding-box,
+    linear-gradient(180deg, var(--ds-accent-soft, #e2f4f0), transparent 70%) padding-box,
     var(--ds-surface, #fff);
 }
 .dqa-draft-flag {
   justify-self: start;
   padding: 3px 10px;
   border-radius: 999px;
-  background: var(--ds-accent-soft, #fbf4e8);
-  color: var(--ds-accent-text, #8a5a2b);
+  background: var(--ds-accent-soft, #e2f4f0);
+  color: var(--ds-accent-text, #0b5c4c);
   font-size: 0.72rem;
   font-weight: 700;
 }
@@ -770,10 +771,10 @@
   display: grid;
   gap: 10px;
   padding: 14px;
-  border: 1px solid color-mix(in srgb, var(--ds-accent, #b07d3c) 35%, var(--ds-border, #e6e9e6));
+  border: 1px solid color-mix(in srgb, var(--ds-accent, #128a72) 35%, var(--ds-border, #e6e9e6));
   border-radius: var(--ds-radius-md, 16px);
   background:
-    linear-gradient(180deg, var(--ds-accent-soft, #fbf4e8), transparent 60%) padding-box,
+    linear-gradient(180deg, var(--ds-accent-soft, #e2f4f0), transparent 60%) padding-box,
     var(--ds-surface, #fff);
 }
 .ai-review-head {
@@ -792,7 +793,7 @@
 .ai-review-head h4 svg {
   width: 18px;
   height: 18px;
-  color: var(--ds-accent-text, #8a5a2b);
+  color: var(--ds-accent-text, #0b5c4c);
 }
 .ai-review-verdict {
   display: inline-flex;

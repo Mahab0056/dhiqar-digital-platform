@@ -133,20 +133,22 @@ describe('MFA (TOTP)', () => {
     const setup = await request(app).post('/api/auth/staff/mfa/setup').set('Cookie', cookie)
     expect(setup.status).toBe(200)
     const secret = setup.body.secret as string
+    const enrolled = totpCode(secret)
     const confirm = await request(app)
       .post('/api/auth/staff/mfa/confirm')
       .set('Cookie', cookie)
-      .send({ code: totpCode(secret) })
+      .send({ code: enrolled })
     expect(confirm.status).toBe(200)
 
     const login = await request(app)
       .post('/api/auth/staff/login')
       .send({ username: 'ops.one', password: 'Rotated-ops.one-2026!' })
     expect(login.body.mfaRequired).toBe(true)
-    // same time-step code was consumed during enrollment -> replay rejected
+    // the code consumed during enrollment -> replay rejected (the exact same code, so a 30 s step boundary
+    // crossed between the two requests cannot turn the replay into a fresh, valid code)
     const replay = await request(app)
       .post('/api/auth/staff/mfa')
-      .send({ challengeToken: login.body.challengeToken, code: totpCode(secret) })
+      .send({ challengeToken: login.body.challengeToken, code: enrolled })
     expect(replay.status).toBe(401)
     const future = await request(app)
       .post('/api/auth/staff/mfa')
@@ -691,14 +693,15 @@ describe('push notifications', () => {
 describe('public verification exposes only what a verifier needs', () => {
   it('never returns the citizen address, coordinates or attachment ids', async () => {
     const { db } = await import('../server/db.ts')
-    const row = db.prepare(`SELECT verification_id FROM issued_documents LIMIT 1`).get() as
-      { verification_id: string } | undefined
+    const row = db.prepare(`SELECT verification_id, issue_event FROM issued_documents LIMIT 1`).get() as
+      { verification_id: string; issue_event: string | null } | undefined
     if (!row) return
     const response = await request(app).get(`/api/verify/${row.verification_id}`)
     expect(response.status).toBe(200)
     for (const field of ['address', 'coordinates', 'citizenId', 'attachments', 'events', 'lat', 'lng'])
       expect(response.body).not.toHaveProperty(field)
-    expect(response.body.status).toBe('APPROVED')
+    // «APPROVED» is for approval documents only: a fee receipt / referral / rejection decision verifies as «ISSUED»
+    expect(response.body.status).toBe(row.issue_event ? 'ISSUED' : 'APPROVED')
   })
 })
 

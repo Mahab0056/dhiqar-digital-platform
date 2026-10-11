@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { MapContainer, Marker, TileLayer, useMap, useMapEvents } from 'react-leaflet'
 import L from 'leaflet'
 import { Crosshair, LocateFixed, Search, X } from 'lucide-react'
+import { plainLeafletPrefix } from './leaflet-attribution'
+import { OSM_TILE_ATTRIBUTION, OSM_TILE_MAX_ZOOM, OSM_TILE_URL } from './osm-tiles'
 
 export type PickedLocation = { lat: number; lng: number; address?: string | null; accuracyM?: number | null }
 
@@ -175,15 +177,13 @@ export function LocationPicker({
       </div>
       <div className="gov-location-map" style={{ height }}>
         <MapContainer
+          ref={plainLeafletPrefix}
           center={value ? [value.lat, value.lng] : DEFAULT_CENTER}
           zoom={value ? 16 : 12}
           scrollWheelZoom
           className="real-gis-map"
         >
-          <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          />
+          <TileLayer attribution={OSM_TILE_ATTRIBUTION} url={OSM_TILE_URL} maxZoom={OSM_TILE_MAX_ZOOM} />
           <ClickToPlace onPick={(lat, lng) => void place(lat, lng)} />
           <Recenter target={target} />
           {value && (

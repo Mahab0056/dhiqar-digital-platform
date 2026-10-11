@@ -3,6 +3,24 @@
  * fact about this platform (its pages and flows), written once and reviewed — the model quotes it instead of guessing.
  * Links are internal paths only.
  */
+import { voiceConfig } from './speech.js'
+
+/**
+ * What happens to the citizen's voice when he talks to أفندي (the same facts as the consent sheet in the panel):
+ * who turns speech into text on this deployment, and that «محادثة متواصلة» reopens the microphone by itself.
+ */
+export function voicePrivacyFacts() {
+  const voice = voiceConfig()
+  const provider = voice.provider || 'مزوّد خارجي'
+  return [
+    voice.transcribe
+      ? `الكلام مع أفندي بالصوت: بأغلب المتصفحات يحوّل المتصفح نفسه كلامك لنص (عند Google أو Apple أو Microsoft)؛ والمتصفحات اللي ما تدعم هذا (مثل Firefox) تسجّل مقطع كلامك وترسله عبر خادم المنصة إلى ${provider} حتى يتحول لنص. المنصة ما تحفظ المقطع، و${provider} يعالجه حسب شروطه.`
+      : 'الكلام مع أفندي بالصوت: المتصفح نفسه يحوّل كلامك لنص (عند Google أو Apple أو Microsoft)، وصوتك ما يوصل لخادم المنصة ولا يُحفظ.',
+    'الميكروفون يشتغل من تضغط على المايك ويطفى لمن تسكت. إذا «محادثة متواصلة» مفعّلة يرجع يشتغل وحده بعد كل جواب، ويسمع أثناء كلام أفندي حتى تكدر تقاطعه؛ تكدر تطفيها من شاشة الصوت.',
+    ...(voice.serverTts ? [`صوت أفندي يتولّد عند ${provider}: يُرسل له نص الجواب فقط.`] : []),
+  ]
+}
+
 /** The real onboarding flow (OnboardingPage), in the order the citizen meets it. */
 export const registrationSteps = [
   'ادخل رقم هاتفك العراقي واطلب رمز التحقق (OTP) ثم اكتبه في المنصة — لا تعطِ الرمز لأي شخص، حتى لو قال إنه موظف أو المساعد.',
@@ -173,6 +191,7 @@ export function platformHelp(topic: PlatformHelpTopic, options: { onlinePayment:
         facts: [
           'صور البطاقة وفيديو الوجه تُستعمل للتوثيق فقط وتُحفظ مشفرة، ولا يطلع عليها إلا الموظف المختص.',
           'المساعد أفندي ما يشوف بيانات غيرك، ولا يطلب رمزاً أو كلمة مرور.',
+          ...voicePrivacyFacts(),
         ],
         links: [
           { label: 'سياسة الخصوصية', path: '/privacy' },

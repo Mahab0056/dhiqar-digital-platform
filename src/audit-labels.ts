@@ -23,6 +23,7 @@ export const auditActionLabels: Record<string, string> = {
   ISSUED_DOCUMENT_OPENED: 'فتح وثيقة صادرة',
   ISSUED_DOCUMENT_ORIGINAL_OPENED: 'فتح أصل وثيقة صادرة',
   ISSUED_DOCUMENT_VERIFIED: 'التحقق من وثيقة صادرة',
+  REVOKED_DOCUMENT_PDF_REFUSED: 'رفض فتح ملف وثيقة ملغاة',
   LOCAL_TEST_DATA_RESET: 'إعادة تعيين بيانات الاختبار',
   MISSING_DOCUMENT_UPLOADED: 'رفع مستند ناقص',
   NOTIFICATIONS_MARKED_READ: 'تعليم الإشعارات كمقروءة',

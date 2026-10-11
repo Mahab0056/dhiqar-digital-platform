@@ -63,6 +63,7 @@ import type { LucideIcon } from 'lucide-react'
 import type { CatalogService, CatalogSummary, DepartmentDirectoryResponse, ServiceChannel } from '../../types'
 import { useSession } from '../../lib/session'
 import { departmentCount, serviceCount } from '../../lib/arabic-count'
+import { districtsWithDepartments, OFFICIAL_DISTRICT_COUNT } from '../maps/dhiqar-district-facts'
 
 /* ============================================================================================
    Shared bits
@@ -854,7 +855,7 @@ export function PortalDepartments({
           title="دوائر المحافظة في كل الأقضية"
           lead={
             departments
-              ? `${departmentCount(departments.summary.total)} في ${departments.districts.length} قضاءً، بعناوينها ومواقعها وخدماتها.`
+              ? `${departmentCount(departments.summary.total)} في ${districtsWithDepartments(departments.items)} من أقضية المحافظة الـ${OFFICIAL_DISTRICT_COUNT}، بعناوينها ومواقعها وخدماتها.`
               : 'دوائر المحافظة بعناوينها ومواقعها وخدماتها.'
           }
           action={{ label: 'دليل الدوائر والخريطة', href: '/departments' }}

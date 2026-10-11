@@ -1,8 +1,9 @@
-/* operations room / governor dashboard: 3D district drill-down (DistrictDrillMap) */
+/* operations room / governor dashboard: the district drill-down — the 3D map (DistrictDrillMap), and the district
+   picker + profile panel the GIS host (DhiQarMap) shows over the 3D map and over its flat 2D fallback alike */
 
 .map3d-shell.is-ops {
   --map3d-glass: rgba(6, 20, 14, 0.84);
-  --map3d-glass-border: rgba(226, 197, 127, 0.18);
+  --map3d-glass-border: rgba(127, 220, 180, 0.18);
   position: absolute;
   inset: 0;
   height: auto;
@@ -16,7 +17,7 @@
   background: #dfe7e2;
   color: #17201c;
 }
-.map3d-shell.is-ops:not([data-basemap='light']) :is(.map3d-tooltip, .map3d-card, .drill-panel) {
+.map3d-shell.is-ops:not([data-basemap='light']) :is(.map3d-tooltip, .map3d-card) {
   --ds-text: #eaf4ee;
   --ds-text-muted: #93b0a1;
   --ds-text-2: #c9dbd1;
@@ -25,59 +26,187 @@
   color: #93b0a1;
 }
 .map3d-shell.is-ops .maplibregl-ctrl-scale {
-  border-color: #e2c57f;
+  border-color: #7fdcb4;
   background: rgba(6, 20, 14, 0.7) !important;
   color: #eaf4ee;
 }
 
+/* ---- district picker: a toolbar item, so it wraps with the toolbar instead of overlapping its toggles ---- */
 .drill-picker {
-  position: absolute;
-  z-index: 4;
-  top: 64px;
-  inset-inline-start: 14px;
+  display: flex;
+  min-width: 0;
+  max-width: 100%;
 }
 .drill-picker select {
-  min-height: 38px;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 39px;
   padding: 0 12px;
-  border: 1px solid var(--map3d-glass-border);
-  border-radius: 12px;
-  background: var(--map3d-glass);
-  color: inherit;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--ds-radius-sm);
+  background: rgba(6, 20, 14, 0.82);
+  box-shadow: 0 10px 30px -12px rgba(0, 0, 0, 0.7);
+  color: #eaf4ee;
   font: inherit;
-  font-size: var(--ds-text-sm);
+  font-size: var(--ds-text-xs);
   font-weight: 600;
-  backdrop-filter: blur(12px);
+  text-overflow: ellipsis;
+  backdrop-filter: blur(10px);
   cursor: pointer;
 }
 .drill-picker select:focus-visible {
-  outline: 2px solid #e2c57f;
+  outline: 2px solid var(--gis-gold, #7fdcb4);
   outline-offset: 2px;
 }
 .drill-picker option {
   background: #0b1f16;
   color: #eaf4ee;
 }
+/* wide map: the toolbar wraps before it reaches the zoom column on the other side */
+@container (min-width: 861px) {
+  .gis-toolbar {
+    max-width: calc(100% - 81px);
+  }
+}
+/* narrow map: the zoom column (and the toolbar's last row) start below however many rows the toolbar wrapped to;
+   DhiQarMap measures the toolbar into --gis-toolbar-bottom */
+@container (max-width: 860px) {
+  .gis-zoom {
+    top: calc(var(--gis-toolbar-bottom, 53px) + 10px);
+  }
+}
 
-.drill-panel {
+/* «أقضية» counter: the official count, and how many of those districts have departments on the platform */
+.gis-counters small {
+  display: block;
+  margin-top: 2px;
+  color: var(--gis-muted);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+/* ---- district profile panel ------------------------------------------------------------------------------
+   It lives in .drill-layer, a click-through overlay as large as the map stage, so it is the same over the 3D map
+   and the Leaflet fallback, sits above both (Leaflet panes are z-index 400 and its scale/attribution corners 1000;
+   the toolbar is 500) and can query the stage's own width. Its colours follow the basemap, not the page theme. */
+.drill-layer {
   position: absolute;
-  z-index: 5;
-  top: 112px;
-  bottom: 48px;
+  z-index: 1001;
+  inset: 0;
+  pointer-events: none;
+  container: drill-layer / inline-size;
+}
+.drill-layer > * {
+  pointer-events: auto;
+}
+.drill-panel {
+  --drill-glass: rgba(6, 20, 14, 0.88);
+  --drill-border: rgba(127, 220, 180, 0.18);
+  --drill-accent: var(--gis-gold, #7fdcb4);
+  --drill-busy: #f2b24c;
+  --drill-alert: #ff7a86;
+  --ds-text: #eaf4ee;
+  --ds-text-2: #c9dbd1;
+  --ds-text-muted: #93b0a1;
+  position: absolute;
+  /* below the toolbar and above the bottom-right controls — attribution, scale bar, compass (DhiQarMap measures
+     both); the legend gives way (below) */
+  top: calc(var(--gis-toolbar-bottom, 53px) + 10px);
+  bottom: max(44px, var(--gis-attrib-clear, 0px));
   inset-inline-start: 14px;
   display: flex;
   flex-direction: column;
   gap: 12px;
-  width: min(340px, calc(100% - 28px));
+  /* 38% of the map, 288–340px: a 1440px desktop's ~800px operations map keeps over half of its width in view
+     (district-data.ts drillColumnWidth() keeps the cameras clear of it) */
+  width: min(clamp(288px, 38%, 340px), calc(100% - 28px));
   overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 16px;
-  border: 1px solid var(--map3d-glass-border);
+  border: 1px solid var(--drill-border);
   border-radius: 18px;
-  background: var(--map3d-glass);
+  background: var(--drill-glass);
   box-shadow: 0 24px 60px -20px rgba(0, 0, 0, 0.7);
   color: var(--ds-text);
   backdrop-filter: blur(16px) saturate(1.3);
   animation: drill-in 520ms cubic-bezier(0.2, 0.9, 0.3, 1.1) both;
   scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--drill-accent) 45%, transparent) transparent;
+}
+/* light basemap: white glass with brand green-ink accents */
+.gis-shell.is-light .drill-panel {
+  --drill-glass: rgba(255, 255, 255, 0.94);
+  --drill-border: rgba(23, 32, 28, 0.12);
+  --drill-accent: var(--green-700);
+  --drill-busy: var(--amber-700);
+  --drill-alert: var(--red-700);
+  --ds-text: var(--neutral-900);
+  --ds-text-2: var(--neutral-700);
+  --ds-text-muted: var(--neutral-600);
+  box-shadow: 0 24px 60px -24px rgba(6, 30, 20, 0.35);
+}
+.drill-panel > *,
+.drill-body > * {
+  flex-shrink: 0;
+}
+/* title bar: back to the governorate, and the handle that folds the profile away (the host keeps the choice) */
+.drill-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.drill-bar-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-size: var(--ds-text-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.drill-toggle {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  margin-inline-start: auto;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--drill-accent) 45%, transparent);
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--drill-accent) 12%, transparent);
+  color: var(--drill-accent);
+  cursor: pointer;
+}
+.drill-toggle svg {
+  width: 18px;
+  height: 18px;
+}
+.drill-toggle:hover {
+  background: color-mix(in srgb, var(--drill-accent) 22%, transparent);
+}
+/* phones: every button is a 44px touch target (App.css) — the round handle grows with it */
+@media (max-width: 600px) {
+  .drill-toggle {
+    width: 44px;
+    height: 44px;
+  }
+}
+.drill-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.drill-body[hidden] {
+  display: none;
+}
+/* folded: only the title bar is left, at the top of the column — the map behind it is free */
+.drill-panel.is-collapsed {
+  bottom: auto;
+  width: auto;
+  max-width: min(340px, calc(100% - 28px));
+  padding: 8px 10px;
+  border-radius: 999px;
 }
 @keyframes drill-in {
   from {
@@ -85,33 +214,34 @@
     transform: translateX(40px);
   }
 }
+/* an open district: the map legend would sit over the panel's lower sections — it collapses (its key is repeated
+   inside the panel, above the department list) */
+.gis-stage:has(.drill-panel) .gis-legend {
+  display: none;
+}
 .drill-back {
+  flex: none;
   align-self: flex-start;
   display: inline-flex;
   align-items: center;
   gap: 6px;
   min-height: 34px;
   padding: 0 12px;
-  border: 1px solid rgba(226, 197, 127, 0.45);
+  border: 1px solid color-mix(in srgb, var(--drill-accent) 45%, transparent);
   border-radius: 999px;
-  background: rgba(226, 197, 127, 0.12);
-  color: #e2c57f;
+  background: color-mix(in srgb, var(--drill-accent) 12%, transparent);
+  color: var(--drill-accent);
   font: inherit;
   font-size: var(--ds-text-sm);
   font-weight: 700;
   cursor: pointer;
 }
-.map3d-shell.is-ops[data-basemap='light'] .drill-back {
-  color: #8a5a2b;
-}
 .drill-back svg {
   width: 16px;
   height: 16px;
 }
-.drill-back:focus-visible,
-.drill-list button:focus-visible,
-.drill-list a:focus-visible {
-  outline: 2px solid #e2c57f;
+.drill-panel :focus-visible {
+  outline: 2px solid var(--drill-accent);
   outline-offset: 2px;
 }
 .drill-panel header small {
@@ -128,6 +258,10 @@
   color: var(--ds-text-muted);
   font-size: var(--ds-text-xs);
 }
+/* the portal's global heading / definition colours are tuned for light pages — keep the glass legible */
+.drill-panel :is(h3, h4, dd, strong) {
+  color: var(--ds-text);
+}
 .drill-facts,
 .drill-kpis {
   display: grid;
@@ -138,11 +272,12 @@
 .drill-facts div,
 .drill-kpis div {
   display: grid;
+  align-content: start;
   gap: 2px;
   padding: 10px;
-  border: 1px solid var(--map3d-glass-border);
+  border: 1px solid var(--drill-border);
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.03);
+  background: color-mix(in srgb, var(--ds-text) 3%, transparent);
 }
 .drill-facts dt,
 .drill-kpis dt {
@@ -151,11 +286,6 @@
   gap: 5px;
   color: var(--ds-text-muted);
   font-size: var(--ds-text-xs);
-}
-.drill-facts dt svg {
-  width: 14px;
-  height: 14px;
-  color: #e2c57f;
 }
 .drill-facts dd,
 .drill-kpis dd {
@@ -169,26 +299,27 @@
   font-size: 10.5px;
   line-height: 1.5;
 }
-.drill-facts a {
-  color: #e2c57f;
+.drill-panel :is(.drill-facts, .drill-note) a {
+  color: var(--drill-accent);
 }
 .drill-kpis .is-busy dd {
-  color: #f2b24c;
+  color: var(--drill-busy);
 }
 .drill-kpis .is-alert dd {
-  color: #ff7a86;
+  color: var(--drill-alert);
 }
 .drill-panel h4 {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 6px;
-  margin: 4px 0 0;
+  margin: 0;
   font-size: var(--ds-text-sm);
 }
 .drill-panel h4 svg {
   width: 16px;
   height: 16px;
-  color: #e2c57f;
+  color: var(--drill-accent);
 }
 .drill-panel h4 small {
   color: var(--ds-text-muted);
@@ -199,8 +330,26 @@
   color: var(--ds-text-muted);
   font-size: var(--ds-text-sm);
 }
+.drill-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin: 0;
+  color: var(--ds-text-muted);
+  font-size: var(--ds-text-xs);
+}
+.drill-legend span:not(.sr-only) {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  /* the staff shell paints bare spans in the page's text colour, which is dark ink on this dark glass */
+  color: var(--ds-text-muted);
+}
 .drill-list {
   display: grid;
+  /* minmax(0, …) and min-width: 0 below: a long department name ellipsizes instead of widening the row and pushing
+     its «←» link out of the panel */
+  grid-template-columns: minmax(0, 1fr);
   gap: 4px;
   margin: 0;
   padding: 0;
@@ -209,6 +358,7 @@
 .drill-list li {
   display: flex;
   align-items: stretch;
+  min-width: 0;
   gap: 4px;
   animation: drill-row 420ms both;
   animation-delay: calc(var(--i, 0) * 30ms);
@@ -229,8 +379,8 @@
   padding: 4px 10px;
   border: 1px solid transparent;
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.03);
-  color: inherit;
+  background: color-mix(in srgb, var(--ds-text) 3%, transparent);
+  color: var(--ds-text);
   font: inherit;
   font-size: var(--ds-text-sm);
   text-align: start;
@@ -238,8 +388,8 @@
 }
 .drill-list button:hover:not(:disabled),
 .drill-list button.is-selected {
-  border-color: rgba(226, 197, 127, 0.4);
-  background: rgba(226, 197, 127, 0.1);
+  border-color: color-mix(in srgb, var(--drill-accent) 40%, transparent);
+  background: color-mix(in srgb, var(--drill-accent) 10%, transparent);
 }
 .drill-list button:disabled {
   opacity: 0.6;
@@ -248,14 +398,15 @@
 .drill-list button span {
   flex: 1;
   overflow: hidden;
+  color: var(--ds-text);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .drill-list em {
   padding: 1px 8px;
   border-radius: 999px;
-  background: rgba(242, 178, 76, 0.18);
-  color: #f2b24c;
+  background: color-mix(in srgb, var(--drill-busy) 18%, transparent);
+  color: var(--drill-busy);
   font-size: var(--ds-text-xs);
   font-style: normal;
   font-weight: 700;
@@ -265,16 +416,223 @@
   place-items: center;
   width: 34px;
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.05);
-  color: #e2c57f;
+  background: color-mix(in srgb, var(--ds-text) 5%, transparent);
+  color: var(--drill-accent);
   text-decoration: none;
 }
+
+/* ---- district profile: sections, administrative units, facility bars, landmarks ---- */
+.drill-section {
+  display: grid;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--drill-border);
+}
+.drill-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.drill-chips li {
+  padding: 3px 10px;
+  border: 1px solid var(--drill-border);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ds-text) 4%, transparent);
+  color: var(--ds-text);
+  font-size: var(--ds-text-xs);
+  font-weight: 600;
+}
+.drill-chips li.is-centre {
+  border-color: color-mix(in srgb, var(--drill-accent) 55%, transparent);
+  background: color-mix(in srgb, var(--drill-accent) 14%, transparent);
+  color: var(--drill-accent);
+}
+.drill-bars {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.drill-bars li {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 3px 8px;
+  align-items: center;
+  font-size: var(--ds-text-xs);
+}
+.drill-bars span {
+  color: var(--ds-text-2, var(--ds-text));
+}
+.drill-bars b {
+  font-variant-numeric: tabular-nums;
+  color: var(--ds-text);
+}
+.drill-bars i {
+  grid-column: 1 / -1;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(127, 140, 133, 0.18);
+  overflow: hidden;
+}
+.drill-bars i::before {
+  content: '';
+  display: block;
+  width: var(--w, 0%);
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--bar) 70%, #fff), var(--bar));
+  box-shadow: 0 0 10px color-mix(in srgb, var(--bar) 55%, transparent);
+  animation: drill-bar 700ms 120ms cubic-bezier(0.2, 0.9, 0.3, 1) both;
+  transform-origin: right;
+}
+@keyframes drill-bar {
+  from {
+    transform: scaleX(0);
+  }
+}
+.drill-note {
+  margin: 0;
+  color: var(--ds-text-muted);
+  font-size: 10.5px;
+  line-height: 1.6;
+}
+.drill-landmarks {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.drill-landmarks li {
+  display: grid;
+  gap: 3px;
+  padding: 10px;
+  border: 1px solid color-mix(in srgb, var(--drill-accent) 28%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--drill-accent) 7%, transparent);
+  font-size: var(--ds-text-xs);
+  line-height: 1.6;
+}
+.drill-landmarks strong {
+  font-size: var(--ds-text-sm);
+}
+.drill-landmarks span {
+  color: var(--ds-text-muted);
+}
+.drill-landmarks a {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--drill-accent);
+}
+.drill-landmarks svg {
+  width: 12px;
+  height: 12px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .drill-panel,
+  .drill-list li,
+  .drill-bars i::before {
+    animation: none;
+  }
+}
+
+/* narrow map (phone, or a half-width host card): the profile is a bottom sheet over the lower half of the map */
+@container drill-layer (max-width: 700px) {
+  .drill-panel {
+    top: auto;
+    inset-inline: 8px;
+    width: auto;
+    max-height: min(52%, calc(100% - var(--gis-toolbar-bottom, 53px) - 64px));
+    border-radius: 18px 18px 14px 14px;
+    animation-name: drill-sheet-in;
+  }
+  /* a folded sheet is a bar along the bottom edge */
+  .drill-panel.is-collapsed {
+    bottom: max(44px, var(--gis-attrib-clear, 0px));
+    max-width: none;
+    border-radius: 14px;
+  }
+}
+@keyframes drill-sheet-in {
+  from {
+    opacity: 0;
+    transform: translateY(32px);
+  }
+}
+/* while the profile is a bottom sheet, a department or facility card (3D) or a department popup (2D) replaces it
+   until it is closed — both sit where the sheet is */
+@container drill-layer (max-width: 700px) {
+  .gis-stage:has(.drill-card, .leaflet-popup) .drill-panel {
+    display: none;
+  }
+}
+/* phones: an open district sheet (or card) takes the lower half of the map; the zoom column would cover it, so
+   it gives way until the sheet closes (the legend already does, above), and so do the 3D map's scale bar and
+   compass, which would otherwise lift the sheet above them (only the attribution stays below it) */
+@container (max-width: 640px) {
+  .gis-stage:has(.drill-panel, .drill-card) :is(.gis-zoom, .gis-legend) {
+    display: none;
+  }
+  .gis-stage:has(.drill-panel, .drill-card)
+    .maplibregl-ctrl-bottom-right
+    :is(.maplibregl-ctrl-scale, .maplibregl-ctrl-group) {
+    display: none;
+  }
+}
+/* wide map: a department or facility card takes the profile's column instead of stacking a second panel over the
+   map — the profile hides (keeping its scroll position) until the card is closed */
+.gis-stage:has(.drill-card) .drill-panel {
+  visibility: hidden;
+}
+
+/* ---- 3D map: department / facility cards, attribution ----
+   On a wide map a card sits in the profile's column (same width, below the toolbar, above the bottom-right
+   controls) and scrolls inside it; on a narrow map it is a bottom sheet. */
 .map3d-card.drill-card {
-  --sector: #e2c57f;
-  inset-block-start: auto;
-  bottom: 48px;
-  inset-inline-start: auto;
-  inset-inline-end: 14px;
+  --sector: #7fdcb4;
+  inset-block-start: calc(var(--gis-toolbar-bottom, 53px) + 10px);
+  bottom: auto;
+  inset-inline-start: 14px;
+  inset-inline-end: auto;
+  width: min(clamp(288px, 38%, 340px), calc(100% - 28px));
+  max-height: calc(100% - var(--gis-toolbar-bottom, 53px) - 10px - max(44px, var(--gis-attrib-clear, 0px)));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+/* back to the district profile the card replaced */
+.map3d-card-back {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  margin-inline-end: 36px;
+  padding: 0 12px;
+  border: 1px solid color-mix(in srgb, var(--ds-text) 22%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ds-text) 6%, transparent);
+  color: var(--ds-text);
+  font: inherit;
+  font-size: var(--ds-text-xs);
+  font-weight: 700;
+  cursor: pointer;
+}
+.map3d-card-back svg {
+  width: 14px;
+  height: 14px;
+}
+.map3d-card-back:hover {
+  background: color-mix(in srgb, var(--ds-text) 12%, transparent);
+}
+.map3d-card :is(.map3d-card-back, .map3d-card-close):focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
 }
 .drill-card dl {
   grid-template-columns: repeat(4, 1fr);
@@ -285,52 +643,59 @@
 .map3d-card p.drill-alert {
   color: #ff8a94;
 }
-
 @container drillmap (max-width: 640px) {
-  .drill-panel {
-    top: auto;
-    bottom: 44px;
-    max-height: 46%;
-    inset-inline: 8px;
-    width: auto;
-  }
-  .drill-picker {
-    top: 70px;
-    inset-inline-start: 8px;
-  }
   .map3d-card.drill-card {
+    inset-block-start: auto;
     inset-inline: 8px;
-    bottom: 44px;
+    bottom: max(44px, var(--gis-attrib-clear, 0px));
+    width: auto;
+    max-height: min(60%, calc(100% - var(--gis-toolbar-bottom, 53px) - 64px));
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  .drill-panel,
-  .drill-list li {
-    animation: none;
-  }
-}
-
-/* the portal's global heading / definition colours are tuned for light pages — keep the glass legible */
-.map3d-shell.is-ops :is(.drill-panel, .map3d-card, .map3d-tooltip) :is(h3, h4, dd, strong) {
+.map3d-shell.is-ops :is(.map3d-card, .map3d-tooltip) :is(h3, h4, dd, strong) {
   color: var(--ds-text);
-}
-.map3d-shell.is-ops .drill-picker select {
-  color: var(--ds-text, #eaf4ee);
 }
 .map3d-shell.is-ops:not([data-basemap='light']) {
   --ds-text: #eaf4ee;
   --ds-text-muted: #93b0a1;
-}
-
-.drill-list button,
-.drill-list button span {
-  color: var(--ds-text);
 }
 .map3d-shell.is-ops:not([data-basemap='light']) .map3d-card .button.outline {
   border-color: rgba(234, 244, 238, 0.28);
   background: transparent;
   color: #eaf4ee;
 }
+/* MapLibre's attribution / scale / compass sit above the legend (DhiQarMap measures it into --gis-legend-clear).
+   maplibre-gl.css is unlayered and pins them to bottom: 0, which beats any layered rule — hence !important. With a
+   district open the legend is gone and they return to the bottom edge, below the panel. */
 .map3d-shell.is-ops :is(.maplibregl-ctrl-bottom-right, .maplibregl-ctrl-bottom-left) {
-  bottom: 52px;
+  bottom: var(--gis-legend-clear, 52px) !important;
+}
+.map3d-shell.is-ops .map3d-card-source a {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: #7fdcb4;
+}
+.map3d-shell.is-ops[data-basemap='light'] .map3d-card-source a {
+  color: var(--green-700);
+}
+.map3d-shell.is-ops .map3d-card.is-facility {
+  --sector: #7fdcb4;
+}
+
+/* ---- governor dashboard: the map takes a full-width row on desktop, so an open district profile (a 340px
+   column) covers well under half of it; the chart and the ranking share the next row, the alerts the last ---- */
+@media (min-width: 1200px) {
+  .governor-grid > .governor-map-card,
+  .governor-grid > .executive-alerts {
+    grid-column: 1 / -1;
+  }
+  .governor-grid > .governor-chart-card {
+    grid-column: 1;
+    grid-row: 2;
+  }
+  .governor-grid > .ranking-card {
+    grid-column: 2;
+    grid-row: 2;
+  }
 }

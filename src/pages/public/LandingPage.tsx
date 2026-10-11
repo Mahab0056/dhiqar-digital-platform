@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { api } from '../../api'
 import type { CatalogService, CatalogSummary, DepartmentDirectoryResponse } from '../../types'
 import { useRevealOnScroll } from '../../lib/reveal'
+import { usePointerFx } from '../../lib/ambient-motion'
 import { LandingFooter, LandingHeader, LandingHero } from '../../components/home/Landing'
 import {
   PortalCategories,
@@ -24,6 +25,7 @@ import { IntroSplash } from '../../components/home/IntroSplash'
  */
 export function LandingPage() {
   useRevealOnScroll()
+  usePointerFx()
   const motionPref = useMotionPrefState()
   const [summary, setSummary] = useState<CatalogSummary | null>(null)
   const [services, setServices] = useState<CatalogService[] | null>(null)

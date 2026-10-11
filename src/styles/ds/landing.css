@@ -12,7 +12,7 @@
   --ld-hair: rgba(220, 238, 227, 0.14);
   --ld-on-dark: #f1f5f2;
   --ld-on-dark-2: #a8b9b0;
-  --ld-green: #017b3d;
+  --ld-green: #016e37;
   --ld-green-2: #0b8f4a;
   --ld-lit: #35d07a;
   --ld-red: #cc1f2f;
@@ -20,14 +20,14 @@
   --ld-card: #ffffff;
   --ld-ink: #0d1411;
   --ld-ink-2: #39443f;
-  --ld-muted: #6a756f;
+  --ld-muted: #5a645f; /* 4.9:1 on the tinted sections (was 3.96) */
   --ld-line: #e3e2da;
   --ld-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
   --ld-tint: #ebeae3;
   --ld-line-strong: #d3d1c6;
-  --ld-accent: #017b3d;
+  --ld-accent: #016e37; /* 5.3:1 on --ld-tint (was 4.46) */
   --ld-accent-line: rgba(1, 123, 61, 0.45);
-  --ld-focus: #017b3d;
+  --ld-focus: #016e37;
   --ld-soft: #e4f2ea;
   --ld-soft-2: #cfe8da;
   --ld-amber: #8a5300;
@@ -64,7 +64,8 @@
   --ld-shadow-hover: 0 22px 44px -22px rgba(0, 0, 0, 0.7);
 }
 .ld-wrap {
-  width: min(1240px, 100% - 48px);
+  /* same frame as .tq-container so the homepage edges line up with every inner page */
+  width: min(var(--ds-container), 100% - 2 * var(--ds-gutter));
   margin-inline: auto;
 }
 
@@ -925,8 +926,8 @@
   color: var(--ld-accent);
 }
 .ld-badge.is-visit {
-  background: var(--ld-amber-soft);
-  color: var(--ld-amber);
+  background: var(--ds-accent-soft);
+  color: var(--ds-accent-text);
 }
 .ld-badge.is-info {
   background: var(--ld-gray-soft);
@@ -1251,8 +1252,8 @@
   line-height: 1.75;
 }
 .ld-panel-icon.is-gold {
-  background: var(--ld-amber-soft);
-  color: var(--ld-amber);
+  background: var(--ld-soft);
+  color: var(--ld-accent);
 }
 .ld-panel label {
   margin-bottom: 8px;
@@ -1352,10 +1353,10 @@
   position: absolute;
   top: 16px;
   inset-inline-end: 18px;
-  color: var(--ld-line-strong);
+  color: var(--ld-accent); /* step numbers are content: was --ld-line-strong at 1.5:1 */
   font-family: var(--ds-font-display);
-  font-size: 2.2rem;
-  font-weight: 800;
+  font-size: 2rem;
+  font-weight: 700;
   line-height: 1;
 }
 .ld-steps strong {
@@ -1969,7 +1970,11 @@
 /* =============================================================================================
    Responsive
    ============================================================================================= */
-@media (max-width: 1240px) {
+/* header row (brand · 7 links · theme · two entry buttons) inside the fluid .ld-wrap frame: measured in Edge it
+   needs ~1365px of viewport at full size and ~1245px compressed. It compresses below 1400 and folds into the
+   menu button below 1280, so nothing is pushed past the left edge (RTL overflow there cannot be scrolled to).
+   LandingHeader's matchMedia mirrors the fold point. */
+@media (max-width: 1399px) {
   .ld-nav {
     gap: 16px;
   }
@@ -1980,7 +1985,7 @@
     padding: 0 14px;
   }
 }
-@media (max-width: 1100px) {
+@media (max-width: 1279px) {
   .ld-nav,
   .ld-entries {
     display: none;
@@ -1988,6 +1993,8 @@
   .ld-menu-btn {
     display: inline-grid;
   }
+}
+@media (max-width: 1100px) {
   .ld-services,
   .ld-life {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2202,6 +2209,452 @@
     opacity: 0.85;
   }
   .ld-motion-toggle span {
+    display: none;
+  }
+}
+
+/* wide screens: the frame grows with the display, so grids gain columns instead of stretching cards */
+@media (min-width: 1900px) {
+  .ld-cats {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+@media (min-width: 1680px) {
+  .ld-depts {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* =============================================================================================
+   Hero — cinematic layer (2026-10 polish)
+   Depth: night sky → ziggurat photo → light rays → haze → dust → river, with the emblem nearest.
+   On fine pointers the layers drift by depth (--px/--py set by LandingHero) and a soft green light follows
+   the cursor. Everything here animates transform/opacity only (the search ring animates a registered angle).
+   ============================================================================================= */
+@property --ld-ang {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+.ld-sky {
+  position: absolute;
+  inset: 0 0 35% 0;
+  background:
+    radial-gradient(1.2px 1.2px at 12% 18%, rgba(255, 255, 255, 0.75), transparent 60%),
+    radial-gradient(1px 1px at 27% 9%, rgba(255, 255, 255, 0.6), transparent 60%),
+    radial-gradient(1.4px 1.4px at 41% 26%, rgba(214, 255, 232, 0.7), transparent 60%),
+    radial-gradient(1px 1px at 58% 12%, rgba(255, 255, 255, 0.55), transparent 60%),
+    radial-gradient(1.3px 1.3px at 71% 31%, rgba(255, 255, 255, 0.65), transparent 60%),
+    radial-gradient(1px 1px at 83% 7%, rgba(255, 255, 255, 0.5), transparent 60%),
+    radial-gradient(1.2px 1.2px at 92% 22%, rgba(214, 255, 232, 0.6), transparent 60%),
+    radial-gradient(1px 1px at 66% 44%, rgba(255, 255, 255, 0.4), transparent 60%),
+    radial-gradient(1px 1px at 35% 40%, rgba(255, 255, 255, 0.35), transparent 60%),
+    radial-gradient(60% 80% at 75% 0%, rgba(22, 74, 66, 0.55), transparent 70%);
+  -webkit-mask-image: linear-gradient(180deg, #000 40%, transparent);
+  mask-image: linear-gradient(180deg, #000 40%, transparent);
+  animation: ld-twinkle 6s ease-in-out infinite alternate;
+}
+@keyframes ld-twinkle {
+  to {
+    opacity: 0.55;
+  }
+}
+.ld-hero-bg img {
+  scale: 1.05;
+  translate: calc(var(--px, 0) * -18px) calc(var(--py, 0) * -10px);
+  transition: translate 0.9s var(--ld-ease);
+}
+.ld-rays {
+  position: absolute;
+  top: -20%;
+  left: -5%;
+  width: 70%;
+  height: 130%;
+  background:
+    linear-gradient(112deg, transparent 32%, rgba(200, 255, 225, 0.075) 38%, transparent 45%),
+    linear-gradient(104deg, transparent 47%, rgba(53, 208, 122, 0.07) 53%, transparent 60%),
+    linear-gradient(118deg, transparent 58%, rgba(235, 255, 245, 0.05) 62%, transparent 68%);
+  transform-origin: 0 0;
+  mix-blend-mode: screen;
+  pointer-events: none;
+  animation: ld-rays 16s ease-in-out infinite alternate;
+}
+@keyframes ld-rays {
+  from {
+    transform: rotate(-2.5deg);
+    opacity: 0.7;
+  }
+  to {
+    transform: rotate(2.5deg);
+    opacity: 1;
+  }
+}
+.ld-haze {
+  position: absolute;
+  inset: auto -10% 0 -10%;
+  height: 55%;
+  background:
+    radial-gradient(45% 55% at 30% 90%, rgba(53, 208, 122, 0.16), transparent 70%),
+    radial-gradient(40% 45% at 60% 100%, rgba(127, 220, 180, 0.1), transparent 70%);
+  pointer-events: none;
+  animation: ld-haze 11s ease-in-out infinite alternate;
+}
+@keyframes ld-haze {
+  to {
+    opacity: 0.6;
+    transform: translateX(3%);
+  }
+}
+.ld-dust {
+  /* one tall layer drifting up and left; the hero art clips it. A single element (not ::before/::after),
+     so the drift stays a pure compositor transform and never registers as a layout shift. */
+  position: absolute;
+  inset: 0 0 -100% 0;
+  background-image:
+    radial-gradient(1.6px 1.6px at 20px 40px, rgba(220, 255, 236, 0.55), transparent 70%),
+    radial-gradient(1.2px 1.2px at 140px 120px, rgba(200, 255, 225, 0.45), transparent 70%),
+    radial-gradient(2px 2px at 220px 210px, rgba(220, 255, 236, 0.35), transparent 70%),
+    radial-gradient(1.2px 1.2px at 90px 260px, rgba(255, 255, 255, 0.4), transparent 70%),
+    radial-gradient(1.4px 1.4px at 300px 330px, rgba(220, 255, 236, 0.3), transparent 70%);
+  background-size:
+    280px 300px,
+    280px 300px,
+    280px 300px,
+    280px 300px,
+    380px 420px;
+  -webkit-mask-image: linear-gradient(90deg, #000 0%, #000 55%, transparent 80%);
+  mask-image: linear-gradient(90deg, #000 0%, #000 55%, transparent 80%);
+  pointer-events: none;
+  will-change: transform;
+  animation: ld-dust 52s linear infinite;
+}
+@keyframes ld-dust {
+  to {
+    transform: translate3d(-60px, -50%, 0);
+  }
+}
+.ld-spot {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 720px;
+  height: 720px;
+  margin: -360px 0 0 -360px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(53, 208, 122, 0.17), rgba(53, 208, 122, 0.05) 40%, transparent 68%);
+  mix-blend-mode: screen;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.6s var(--ld-ease);
+  will-change: transform;
+}
+.ld-hero.is-pointer .ld-spot {
+  opacity: 1;
+}
+
+/* the emblem: nearest layer, drifts most */
+.ld-net {
+  translate: calc(var(--px, 0) * -10px) calc(var(--py, 0) * -8px);
+  transition: translate 0.7s var(--ld-ease);
+}
+.ld-hub {
+  translate: calc(var(--px, 0) * 16px) calc(var(--py, 0) * 12px);
+  transition: translate 0.6s var(--ld-ease);
+}
+.ld-node {
+  --d: 24px;
+  transform: translate(calc(-50% + var(--px, 0) * var(--d)), calc(-50% + var(--py, 0) * var(--d))) perspective(600px)
+    rotateY(var(--tilt, 0deg));
+  transition:
+    transform 0.6s var(--ld-ease),
+    border-color 0.3s var(--ld-ease),
+    box-shadow 0.3s var(--ld-ease);
+}
+.ld-node:nth-of-type(even) {
+  --d: 14px;
+}
+.ld-hub-halo {
+  position: absolute;
+  inset: -38%;
+  z-index: -1;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(53, 208, 122, 0.34), rgba(53, 208, 122, 0.08) 45%, transparent 68%);
+  animation: ld-halo 5.5s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes ld-halo {
+  50% {
+    opacity: 0.65;
+    transform: scale(0.92);
+  }
+}
+.ld-tile {
+  position: relative;
+  overflow: hidden;
+}
+.ld-tile::after {
+  content: '';
+  position: absolute;
+  inset: -20% -60%;
+  background: linear-gradient(105deg, transparent 40%, rgba(255, 255, 255, 0.75) 50%, transparent 60%);
+  transform: translateX(-120%);
+  animation: ld-sheen-sweep 7s var(--ld-ease) 2.2s infinite;
+  pointer-events: none;
+}
+@keyframes ld-sheen-sweep {
+  0% {
+    transform: translateX(-120%);
+  }
+  22%,
+  100% {
+    transform: translateX(120%);
+  }
+}
+
+/* headline: words rise in sequence; the green phrase carries a slow light sheen */
+.ld-hero-title {
+  text-wrap: balance;
+}
+.ld-word {
+  display: inline-block;
+  animation: ld-word 0.9s var(--ld-ease) both;
+  animation-delay: calc(0.2s + var(--w, 0) * 0.09s);
+}
+@keyframes ld-word {
+  from {
+    opacity: 0;
+    transform: translateY(0.4em) scale(0.96);
+  }
+}
+@supports ((-webkit-background-clip: text) or (background-clip: text)) {
+  .ld-hero h1 em .ld-word {
+    background: linear-gradient(100deg, #35d07a 0%, #35d07a 35%, #b9f7d8 48%, #35d07a 60%, #2fc493 100%);
+    background-size: 250% 100%;
+    background-position: 100% 0;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation:
+      ld-word 0.9s var(--ld-ease) both,
+      ld-text-sheen 6.5s ease-in-out infinite;
+    animation-delay: calc(0.2s + var(--w, 0) * 0.09s), calc(1.6s + var(--w, 0) * 0.12s);
+  }
+}
+@keyframes ld-text-sheen {
+  0% {
+    background-position: 100% 0;
+  }
+  45%,
+  100% {
+    background-position: 0% 0;
+  }
+}
+
+/* search: glass field with a slow light running round its border; quicker while focused */
+.ld-hero-search .tq-search {
+  isolation: isolate;
+  border-color: rgba(255, 255, 255, 0.4);
+}
+.ld-hero-search .tq-search::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  z-index: -1;
+  padding: 2px;
+  border-radius: calc(var(--ds-radius-md) + 2px);
+  background: conic-gradient(
+    from var(--ld-ang),
+    transparent 0deg,
+    #35d07a 40deg,
+    #b9f3d6 80deg,
+    transparent 130deg,
+    transparent 220deg,
+    rgba(53, 208, 122, 0.8) 290deg,
+    transparent 340deg
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box exclude,
+    linear-gradient(#000 0 0);
+  animation: ld-ring-spin 7s linear infinite;
+  pointer-events: none;
+}
+.ld-hero-search .tq-search:focus-within::before {
+  animation-duration: 2.6s;
+}
+@keyframes ld-ring-spin {
+  to {
+    --ld-ang: 360deg;
+  }
+}
+.ld-hero-search .tq-search-submit {
+  box-shadow: 0 10px 24px -10px rgba(1, 110, 55, 0.9);
+}
+
+/* quick actions: glass pills with an icon chip and a light sweep on hover */
+.ld-quick a {
+  position: relative;
+  overflow: hidden;
+  padding-inline: 8px 18px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  transition:
+    background 0.2s var(--ld-ease),
+    border-color 0.2s var(--ld-ease),
+    transform 0.25s var(--ld-ease);
+}
+.ld-quick a svg {
+  box-sizing: content-box;
+  padding: 7px;
+  border-radius: 50%;
+  background: rgba(53, 208, 122, 0.16);
+}
+.ld-quick a::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, 0.16) 50%, transparent 65%);
+  transform: translateX(-110%);
+  transition: transform 0.6s var(--ld-ease);
+  pointer-events: none;
+}
+.ld-quick a:hover {
+  transform: translateY(-2px);
+}
+.ld-quick a:hover::after {
+  transform: translateX(110%);
+}
+
+/* counters: one quiet glass strip */
+.ld-counters {
+  display: inline-flex;
+  padding: 14px 22px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02));
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+
+/* ticker: lighter glass rail that belongs to the scene; its slot is reserved so the hero does not jump
+   when the headlines arrive */
+.ld-ticker-wrap {
+  min-height: 60px;
+}
+.ld-ticker {
+  border-color: rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  background: rgba(5, 13, 10, 0.5);
+}
+.ld-ticker-label {
+  margin: 5px;
+  border-radius: 999px;
+}
+
+/* ---- phone: emblem on top, centred composition, search above the fold ------------------------- */
+@media (max-width: 760px) {
+  .ld-hero-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    padding-block: 6px 40px;
+    text-align: center;
+  }
+  .ld-hero-visual {
+    order: -1;
+    width: 228px;
+    margin: 0 auto -8px;
+  }
+  .ld-node {
+    width: 46px;
+    gap: 0;
+    padding: 0;
+    border-radius: 12px;
+    font-size: 0;
+  }
+  .ld-node svg {
+    width: 21px;
+    height: 21px;
+  }
+  .ld-hub {
+    width: 40%;
+  }
+  .ld-tile {
+    border-radius: 16px;
+  }
+  .ld-hero-kicker {
+    margin-bottom: 12px;
+    padding: 4px 12px 4px 10px;
+  }
+  .ld-hero h1 {
+    margin-bottom: 10px;
+    font-size: clamp(1.9rem, 8.6vw, 2.4rem);
+  }
+  .ld-hero h1 em {
+    display: inline;
+  }
+  .ld-hero-lead {
+    margin-inline: auto;
+    font-size: 0.98rem;
+    line-height: 1.7;
+  }
+  .ld-hero-search {
+    margin-top: 18px;
+    text-align: start;
+  }
+  .ld-examples {
+    justify-content: center;
+  }
+  .ld-quick {
+    gap: 10px;
+  }
+  .ld-quick a {
+    flex-direction: column;
+    gap: 6px;
+    min-height: 82px;
+    padding: 12px 8px;
+    border-radius: 18px;
+    font-size: 0.9rem;
+  }
+  .ld-counters {
+    display: grid;
+    width: 100%;
+    margin-top: 20px;
+    padding: 12px 6px;
+    text-align: center;
+  }
+  .ld-counters > div,
+  .ld-counters > div + div,
+  .ld-counters > div:first-child {
+    align-items: center;
+    padding-inline: 6px;
+  }
+  .ld-ticker-wrap {
+    min-height: 56px;
+    padding-top: 10px;
+  }
+  .ld-sky {
+    inset: 0;
+  }
+}
+
+/* paused or reduced motion: no loops, no drift; the headline is simply there */
+.ld[data-motion='still'] :is(.ld-sky, .ld-rays, .ld-haze, .ld-hub-halo, .ld-word),
+.ld[data-motion='still'] .ld-hero h1 em .ld-word,
+.ld[data-motion='still'] .ld-dust,
+.ld[data-motion='still'] .ld-hero-search .tq-search::before,
+.ld[data-motion='still'] .ld-tile::after {
+  animation: none !important;
+}
+.ld[data-motion='still'] .ld-spot {
+  display: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ld-dust,
+  .ld-spot,
+  .ld-tile::after {
     display: none;
   }
 }

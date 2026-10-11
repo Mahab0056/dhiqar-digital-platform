@@ -19,7 +19,12 @@ import { createOtpChallenge, processOtpDeliveryWebhook, verifyOtpChallenge } fro
 import { readDecryptedMedia, storeEncryptedMedia } from '../media.js'
 import { screenIdentitySubmission } from '../identity-screening.js'
 import { analyzeIdentityDocument } from '../identity-document-analysis.js'
-import { runIdentityVerification } from '../identity-verification.js'
+import {
+  cardForManualApproval,
+  registerCard,
+  runIdentityVerification,
+  verifiedCardHolder,
+} from '../identity-verification.js'
 import { plausiblePersonName } from '../person-name.js'
 import {
   consumeLivenessChallenge,
@@ -28,7 +33,7 @@ import {
   type LivenessTimelineEntry,
 } from '../active-liveness.js'
 import { embedLargestFace, faceMatchAvailable } from '../face-match.js'
-import { readMrzLocally } from '../local-identity-ocr.js'
+import { MAX_CARD_PHOTO_PIXELS, readMrzLocally, type MrzRead } from '../local-identity-ocr.js'
 import { iraqiCardProblems } from '../mrz.js'
 
 const parseJson = (value: unknown) => {
@@ -106,6 +111,126 @@ const allowCardCheck = (key: string, limit = 40, windowMs = 10 * 60_000) => {
   recent.push(now)
   cardCheckLog.set(key, recent)
   return true
+}
+
+/** How long the instant check may spend reading the back; the full checks on submission may look longer. */
+const CARD_CHECK_MRZ_BUDGET_MS = 3_000
+
+/** The card camera names its photos card-<side>-<time>-s<sharpness>-<source>.jpg (see IdentityCamera.tsx). */
+const cameraTag = (name: string | undefined) => {
+  const match = /-s(\d{1,6})-(still|video|shutter)\.jpe?g$/i.exec(name || '')
+  return match ? { sharpness: Number(match[1]), source: match[2].toLowerCase() } : null
+}
+
+/**
+ * The portrait on the card's front: looked for in the photo, then in each side of it (a small portrait in a loose
+ * frame is found more easily cropped). 'unavailable' when no face engine runs here or it failed.
+ */
+async function findCardPortrait(image: Buffer): Promise<'found' | 'missing' | 'unavailable'> {
+  if (!faceMatchAvailable()) return 'unavailable'
+  try {
+    // decoded once, upright and no larger than a face detector needs; an absurdly large picture is refused unread
+    const sharp = (await import('sharp')).default
+    const upright = await sharp(image, { failOn: 'none', limitInputPixels: MAX_CARD_PHOTO_PIXELS })
+      .rotate()
+      .resize({ width: 2000, height: 2000, fit: 'inside', withoutEnlargement: true })
+      .jpeg({ quality: 92 })
+      .toBuffer()
+    if (await embedLargestFace(upright)) return 'found'
+    const { width = 0, height = 0 } = await sharp(upright).metadata()
+    const part = Math.round(width * 0.6)
+    if (part < 64 || height < 64) return 'missing'
+    for (const left of [0, width - part]) {
+      const crop = await sharp(upright).extract({ left, top: 0, width: part, height }).toBuffer()
+      if (await embedLargestFace(crop)) return 'found'
+    }
+    return 'missing'
+  } catch (error) {
+    console.warn('[card-check] portrait check failed', error)
+    return 'unavailable'
+  }
+}
+
+/**
+ * The front is 'bad' only when no portrait shows at all (most often the back photographed by mistake); anything
+ * the engine cannot judge is 'ok' and checked again on submission.
+ */
+function frontCardCheck(portrait: Awaited<ReturnType<typeof findCardPortrait>>) {
+  const status = portrait === 'missing' ? ('bad' as const) : ('ok' as const)
+  return {
+    side: 'front' as const,
+    status,
+    ok: status === 'ok',
+    // nothing in the instant check refuses a submission: the full checks run on it
+    canContinue: true,
+    retakeSuggested: status === 'bad',
+    faceFound: portrait === 'found',
+    message:
+      portrait === 'found'
+        ? 'ظهرت صورة الوجه في البطاقة بوضوح.'
+        : portrait === 'missing'
+          ? 'لم تظهر صورة الوجه في البطاقة. صوّر وجه البطاقة الذي فيه الصورة، وأمِلها قليلاً إن كان عليها لمعان.'
+          : 'سيُتحقق من صورة البطاقة بعد الإرسال.',
+  }
+}
+
+const UNCONFIRMED_LABELS = { documentNumber: 'رقم البطاقة', birthDate: 'تاريخ الميلاد', expiryDate: 'تاريخ النفاذ' }
+
+/**
+ * The back in four states: 'ok' (every check digit holds), 'partial' (the zone was read but not all of it is
+ * proved: the data is shown with a note), 'unreadable' (no zone found) and 'unavailable' (the OCR engine could not
+ * look at the photo — nothing is said about the photo then). None of them is a hard error — the citizen carries on,
+ * and the full verification on submission reads the photo again (and harder) and decides.
+ */
+function backCardCheck({ td1, status, engine }: MrzRead) {
+  // the OCR engine could not look at the photo at all: nothing is known about it, so no retake is suggested
+  if (engine === 'unavailable' && !td1)
+    return {
+      side: 'back' as const,
+      status: 'unavailable' as const,
+      ok: false,
+      canContinue: true,
+      retakeSuggested: false,
+      problems: [],
+      card: null,
+      message: 'سيُتحقق من الصورة بعد الإرسال.',
+    }
+  const problems = status === 'ok' ? iraqiCardProblems(td1) : []
+  // a zone put together from several readings that no second reading confirmed: the number is not settled yet
+  const unconfirmed = td1
+    ? (['documentNumber', 'birthDate', 'expiryDate'] as const).filter(
+        f => !td1.checks[f] || (f === 'documentNumber' && td1.unconfirmed)
+      )
+    : []
+  const message =
+    status === 'ok'
+      ? problems.length
+        ? `قُرئت البطاقة: ${problems.join('، ')}.`
+        : 'قُرئت بيانات البطاقة بنجاح.'
+      : status === 'partial'
+        ? `قُرئت بيانات البطاقة${unconfirmed.length ? `، ولم نتأكد بعد من ${unconfirmed.map(f => UNCONFIRMED_LABELS[f]).join(' و')}` : ''}. راجعها في الخطوة التالية وتابع — سنتحقق منها مرة أخرى عند الإرسال.`
+        : 'لم تتضح الأسطر الإنگليزية أسفل ظهر البطاقة في هذه الصورة. يمكنك المتابعة وسنقرؤها عند الإرسال، أو أعد التصوير إن شئت.'
+  return {
+    side: 'back' as const,
+    status,
+    ok: status === 'ok',
+    canContinue: true,
+    retakeSuggested: status !== 'ok' || problems.length > 0,
+    problems,
+    card: td1
+      ? {
+          name: `${td1.givenNames} ${td1.surname}`.trim(),
+          documentLast4: td1.documentNumber.slice(-4),
+          birthDate: td1.birthDate,
+          expiryDate: td1.expiryDate,
+          sex: td1.sex === 'M' ? 'ذكر' : td1.sex === 'F' ? 'أنثى' : null,
+          nationality: td1.nationality,
+          valid: td1.valid,
+          unconfirmed,
+        }
+      : null,
+    message,
+  }
 }
 
 export function registerOnboardingRoutes(app: express.Express) {
@@ -234,8 +359,10 @@ export function registerOnboardingRoutes(app: express.Express) {
   })
 
   /**
-   * Instant feedback right after each card photo, before anything is stored: the front must show the portrait, the
-   * back's machine-readable zone must read. Nothing is saved; the real checks run again on submission.
+   * Instant feedback right after each card photo, before anything is stored. Forgiving on purpose: the front is
+   * only 'bad' when no portrait shows at all, and the back is 'ok', 'partial', 'unreadable' or 'unavailable' — never
+   * a hard error.
+   * Nothing is saved; the real checks (face match, liveness, the zone's check digits, duplicates) run on submission.
    */
   app.post('/api/onboarding/card-check', requireSession('CITIZEN'), upload.single('image'), async (req, res) => {
     const citizen = currentCitizen(res)
@@ -249,42 +376,17 @@ export function registerOnboardingRoutes(app: express.Express) {
     } catch {
       return res.status(400).json({ message: 'الصورة غير صالحة. أعد التصوير.' })
     }
-    if (side.data === 'front') {
-      const face = faceMatchAvailable() ? await embedLargestFace(req.file.buffer).catch(() => null) : null
-      return res.json({
-        side: 'front',
-        ok: Boolean(face) || !faceMatchAvailable(),
-        faceFound: Boolean(face),
-        message: face
-          ? 'ظهرت صورة الوجه في البطاقة بوضوح.'
-          : faceMatchAvailable()
-            ? 'لم تظهر صورة الوجه في البطاقة بوضوح. أعد التصوير بلا انعكاس ضوء.'
-            : 'سيُتحقق من صورة البطاقة بعد الإرسال.',
-      })
-    }
-    const { td1 } = await readMrzLocally(req.file.buffer)
-    const problems = iraqiCardProblems(td1)
-    res.json({
-      side: 'back',
-      ok: Boolean(td1?.valid),
-      problems,
-      card: td1
-        ? {
-            name: `${td1.givenNames} ${td1.surname}`.trim(),
-            documentLast4: td1.documentNumber.slice(-4),
-            birthDate: td1.birthDate,
-            expiryDate: td1.expiryDate,
-            sex: td1.sex === 'M' ? 'ذكر' : td1.sex === 'F' ? 'أنثى' : null,
-            nationality: td1.nationality,
-            valid: td1.valid,
-          }
-        : null,
-      message: td1?.valid
-        ? 'قُرئت بيانات البطاقة بنجاح.'
-        : td1
-          ? 'قُرئت الأسطر جزئياً. أعد التصوير بإضاءة أفضل ودون ميلان.'
-          : 'لم تُقرأ الأسطر الثلاثة أسفل ظهر البطاقة. قرّب الهاتف واجعلها واضحة.',
-    })
+    if (side.data === 'front') return res.json(frontCardCheck(await findCardPortrait(req.file.buffer)))
+    const started = Date.now()
+    const read = await readMrzLocally(req.file.buffer, { budgetMs: CARD_CHECK_MRZ_BUDGET_MS })
+    // what the camera measured on the frame it sent, next to what the OCR made of it: the capture thresholds are
+    // tuned from these lines (no personal data in them)
+    const capture = cameraTag(req.file.originalname)
+    console.info(
+      `[card-check] back status=${read.status} engine=${read.engine} views=${read.attempts} ms=${Date.now() - started}` +
+        (capture ? ` sharpness=${capture.sharpness} source=${capture.source}` : '')
+    )
+    res.json(backCardCheck(read))
   })
 
   app.post(
@@ -726,7 +828,7 @@ export function registerOnboardingRoutes(app: express.Express) {
     '/api/admin/identity-reviews/:id/decision',
     requireSession('EMPLOYEE', 'IDENTITY_REVIEWER', 'SUPER_ADMIN'),
     requireReviewAccess,
-    (req, res) => {
+    async (req, res) => {
       const session = currentSession(res)
       try {
         const payload = z
@@ -740,18 +842,49 @@ export function registerOnboardingRoutes(app: express.Express) {
         if (!review) return res.status(404).json({ message: 'طلب المراجعة غير موجود.' })
         if (review.status !== 'PENDING_REVIEW')
           return res.status(409).json({ message: 'تم اتخاذ قرار سابق لهذا الطلب.' })
+        const citizenId = Number(review.citizen_id)
+        // a reviewer's approval registers the card (keyed hashes) like the automatic one, so the same card can never be
+        // confirmed on a second account — whichever path confirmed the first
+        const card = payload.decision === 'APPROVED' ? await cardForManualApproval(review) : null
+        // from here to COMMIT nothing awaits: the duplicate check and the write below cannot be interleaved
+        const holder = card ? verifiedCardHolder(card.hashes, citizenId) : null
+        if (card && holder) {
+          addAudit({
+            actor: session.actor,
+            role: session.role,
+            action: 'IDENTITY_APPROVAL_BLOCKED_DUPLICATE_CARD',
+            entityType: 'IdentityReview',
+            entityId: param(req, 'id'),
+            metadata: { duplicateCard: holder, documentLast4: card.last4 },
+          })
+          return res.status(409).json({
+            message:
+              holder === 'EXACT'
+                ? 'لا يمكن اعتماد الهوية: هذه البطاقة موثقة مسبقاً على حساب مواطن آخر، ولا تُوثَّق البطاقة الواحدة على حسابين. ارفض الطلب أو اطلب إعادة التقديم، وأحِل الحالة إلى المشرف لمراجعة الحساب الآخر.'
+                : 'لا يمكن اعتماد الهوية: رقم البطاقة المقروء يطابق بطاقة موثقة على حساب مواطن آخر (احتمال تكرار البطاقة بسبب اختلاف قراءة بعض الحروف). ارفض الطلب أو اطلب إعادة التقديم، وأحِل الحالة إلى المشرف لمراجعة الحساب الآخر.',
+            duplicateCard: holder,
+          })
+        }
         const timestamp = new Date().toISOString()
         db.exec('BEGIN')
         try {
-          db.prepare(
-            `UPDATE identity_reviews SET status = ?, reviewed_at = ?, reviewed_by = ?, review_notes = ?, updated_at = ? WHERE id = ?`
-          ).run(payload.decision, timestamp, session.actor, payload.notes, timestamp, param(req, 'id'))
+          // claimed only while still pending: another reviewer (or the automatic step) may have decided meanwhile
+          const claimed = db
+            .prepare(
+              `UPDATE identity_reviews SET status = ?, reviewed_at = ?, reviewed_by = ?, review_notes = ?, updated_at = ? WHERE id = ? AND status = 'PENDING_REVIEW'`
+            )
+            .run(payload.decision, timestamp, session.actor, payload.notes, timestamp, param(req, 'id'))
+          if (!claimed.changes) {
+            db.exec('ROLLBACK')
+            return res.status(409).json({ message: 'تم اتخاذ قرار سابق لهذا الطلب.' })
+          }
           const citizenStatus = payload.decision === 'APPROVED' ? 'VERIFIED_MANUAL' : payload.decision
           db.prepare('UPDATE citizens SET verification_status = ?, updated_at = ? WHERE id = ?').run(
             citizenStatus,
             timestamp,
-            review.citizen_id as number
+            citizenId
           )
+          if (card) registerCard(citizenId, card, timestamp)
           notifyCitizen({
             citizenId: Number(review.citizen_id),
             type: 'IDENTITY_DECISION',
@@ -776,7 +909,11 @@ export function registerOnboardingRoutes(app: express.Express) {
             entityId: param(req, 'id'),
             previousValue: { status: review.status },
             newValue: { status: payload.decision },
-            metadata: { notesLength: payload.notes.length },
+            metadata: {
+              notesLength: payload.notes.length,
+              cardRegistered: Boolean(card),
+              ...(card ? { documentLast4: card.last4 } : {}),
+            },
           })
           db.exec('COMMIT')
         } catch (error) {

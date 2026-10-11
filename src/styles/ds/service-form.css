@@ -539,3 +539,22 @@
   text-decoration: underline;
   cursor: pointer;
 }
+
+/* map hint chip over the location pickers: follow the theme (it rendered muted grey text on a light chip in dark) */
+.gov-location-hint {
+  border-color: var(--ds-border);
+  background: color-mix(in srgb, var(--ds-surface) 94%, transparent);
+  color: var(--ds-text-2);
+}
+.gov-location-hint svg {
+  color: var(--ds-primary-text);
+}
+
+/* map zoom buttons: 30px by default — too small for a thumb */
+@media (pointer: coarse) {
+  .leaflet-touch .leaflet-bar a {
+    width: 40px;
+    height: 40px;
+    line-height: 40px;
+  }
+}

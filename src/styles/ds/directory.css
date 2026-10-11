@@ -64,7 +64,7 @@
   padding: 1px 7px;
   border-radius: var(--ds-radius-pill);
   background: var(--ds-surface-sunken);
-  color: var(--ds-text-muted);
+  color: var(--ds-text-2);
   font-size: var(--ds-text-xs);
   font-weight: 600;
   text-align: center;

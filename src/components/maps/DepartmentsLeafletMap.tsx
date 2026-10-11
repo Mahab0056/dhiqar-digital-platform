@@ -1,15 +1,20 @@
 import { Link } from 'wouter'
 import { CircleMarker, MapContainer, Popup, TileLayer, Tooltip as LeafletTooltip } from 'react-leaflet'
 import { sectorOf, type LocatedDepartment } from './departments-map-model'
+import { plainLeafletPrefix } from './leaflet-attribution'
+import { OSM_TILE_ATTRIBUTION, OSM_TILE_MAX_ZOOM, OSM_TILE_URL } from './osm-tiles'
 
 /** Flat 2D fallback — used when WebGL is unavailable or the 3D map's style/tiles fail to load. */
 export function DepartmentsLeafletMap({ departments }: { departments: LocatedDepartment[] }) {
   return (
-    <MapContainer center={[31.05, 46.25]} zoom={11} scrollWheelZoom={false} className="depts-leaflet">
-      <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-      />
+    <MapContainer
+      ref={plainLeafletPrefix}
+      center={[31.05, 46.25]}
+      zoom={11}
+      scrollWheelZoom={false}
+      className="depts-leaflet"
+    >
+      <TileLayer attribution={OSM_TILE_ATTRIBUTION} url={OSM_TILE_URL} maxZoom={OSM_TILE_MAX_ZOOM} />
       {departments.map(item => (
         <CircleMarker
           key={item.id}

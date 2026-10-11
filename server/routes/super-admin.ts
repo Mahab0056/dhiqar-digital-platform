@@ -424,17 +424,28 @@ export function registerSuperAdminRoutes(app: express.Express) {
         total: number
       }
     ).total
-    const openApplications = (
+    // «طلبات مفتوحة»: every request still awaiting a final decision — the legacy shop-permit applications and the
+    // catalogue service requests (where nearly all traffic is). Anything not approved, rejected or cancelled is open.
+    const openLegacyApplications = (
       db
         .prepare(
           `SELECT COUNT(*) AS total FROM applications WHERE status IN ('SUBMITTED', 'UNDER_REVIEW', 'ACTION_REQUIRED', 'PAYMENT_REQUIRED')`
         )
         .get() as { total: number }
     ).total
+    const openServiceRequests = (
+      db
+        .prepare(
+          `SELECT COUNT(*) AS total FROM service_requests WHERE status NOT IN ('APPROVED', 'REJECTED', 'CANCELLED')`
+        )
+        .get() as { total: number }
+    ).total
     res.json({
       system: {
         pendingIdentity,
-        openApplications,
+        openApplications: Number(openLegacyApplications) + Number(openServiceRequests),
+        openServiceRequests: Number(openServiceRequests),
+        openLegacyApplications: Number(openLegacyApplications),
         verifiedDepartments: registrySummary.verified,
         gisLocations: registrySummary.gisComplete,
       },

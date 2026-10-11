@@ -155,7 +155,7 @@
 .ld-ticker-list a svg {
   width: 15px;
   height: 15px;
-  color: #f2c46d;
+  color: var(--ld-lit, #35d07a);
 }
 .ld-ticker-list small {
   color: var(--ld-on-dark-2);
@@ -331,8 +331,9 @@
   gap: 5px;
   padding: 3px 9px;
   border-radius: 999px;
-  background: var(--nw-amber-soft);
-  color: var(--nw-amber);
+  /* «إعلان» is a kind tag, not a warning: brand green (amber stays for «يغلق قريباً» and the source caveat) */
+  background: var(--nw-soft);
+  color: var(--nw-accent);
   font-size: 0.74rem;
   font-weight: 700;
 }
@@ -1025,5 +1026,14 @@
 @media (max-width: 760px) {
   .staff-create-form.tender-form {
     grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* wide screens: the frame is fluid, so the news list gains a column instead of stretching (NewsPage loads
+   24 per page, which fills 1, 2, 3 and 4 columns evenly). The homepage tenders block keeps 3 columns: it shows
+   6 cards and 3 loading skeletons, which a 4th column would leave ragged. */
+@media (min-width: 1800px) {
+  .nwp-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }

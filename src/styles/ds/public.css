@@ -13,14 +13,14 @@
   font-size: var(--ds-text-xs);
 }
 .tq-utility::after {
-  /* brass hairline: the platform's signature accent */
+  /* green hairline: the platform's signature accent (the brass one is retired) */
   display: none;
   content: '';
   position: absolute;
   inset-inline: 0;
   bottom: 0;
   height: 2px;
-  background: linear-gradient(90deg, var(--brass-400), var(--brass-200) 50%, var(--brass-400));
+  background: linear-gradient(90deg, var(--green-400), var(--green-200) 50%, var(--green-400));
   opacity: 0.85;
 }
 .tq-utility-row {
@@ -84,7 +84,7 @@
   cursor: default !important;
 }
 .tq-utility-lang small {
-  opacity: 0.7;
+  font-weight: 400;
 }
 .tq-utility-lang.is-active {
   color: var(--ds-text);
@@ -97,9 +97,26 @@
 @media (max-width: 720px) {
   .tq-utility-identity span,
   .tq-utility-identity i,
-  .tq-utility-links a span,
   .tq-utility-lang:not(.is-active) {
     display: none;
+  }
+  .tq-utility-identity strong {
+    white-space: nowrap;
+  }
+  /* icon-only on phones; the label stays for screen readers (the theme button was wrapping onto 2 lines) */
+  .tq-utility-links :is(a, button) span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  /* icon-only on phones: keep a comfortable tap target */
+  .tq-utility-links :is(a, button, .tq-utility-lang) {
+    min-width: 40px;
+    min-height: 40px;
+    justify-content: center;
   }
 }
 
@@ -331,21 +348,25 @@
 .tq-footer-trust svg {
   width: 15px;
   height: 15px;
-  color: var(--brass-300);
+  color: var(--green-300);
 }
 .tq-footer-col {
   display: grid;
   align-content: start;
-  gap: 12px;
+  gap: 2px;
 }
 .tq-footer-col strong {
-  margin-bottom: 4px;
+  margin-bottom: 8px;
   color: #fff;
   font-size: var(--ds-text-base);
   font-weight: 700;
 }
 .tq-footer-col a {
+  /* 34px rows: same rhythm as before, but each link is a comfortable tap target */
+  display: inline-flex;
+  align-items: center;
   width: fit-content;
+  min-height: 34px;
   color: var(--ds-chrome-muted);
   text-decoration: none;
   transition: color var(--ds-fast) var(--ds-ease);
@@ -647,7 +668,7 @@
   padding-block: clamp(40px, 6vw, 88px) clamp(56px, 7vw, 104px);
   background:
     radial-gradient(55% 80% at 100% 0%, #e3f3ea 0%, transparent 60%),
-    radial-gradient(45% 60% at 0% 100%, #fbf1e1 0%, transparent 65%), linear-gradient(180deg, #f6fbf8 0%, #ffffff 100%);
+    radial-gradient(45% 60% at 0% 100%, #e3f3ea 0%, transparent 65%), linear-gradient(180deg, #f6fbf8 0%, #ffffff 100%);
 }
 .home-hero::after {
   /* faint circuit lines, like u.ae's hero illustration */
@@ -820,8 +841,8 @@
   width: 44px;
   height: 44px;
   border-radius: 14px;
-  background: #fbf1e1;
-  color: #b07d3c;
+  background: var(--ds-accent-soft);
+  color: var(--ds-accent-text);
 }
 .home-float-icon.is-green {
   background: var(--ds-primary-soft);
@@ -907,8 +928,8 @@
   color: #1d63c9;
 }
 .home-action-icon.is-amber {
-  background: #fdf3e2;
-  color: #b9741a;
+  background: #e2f4f0;
+  color: #0b5c4c;
 }
 .home-action-icon.is-rose {
   background: #fdebee;
@@ -1135,7 +1156,7 @@
   padding: clamp(28px, 4vw, 52px);
   border-radius: 28px;
   background:
-    radial-gradient(60% 120% at 100% 0%, #e2f2e9 0%, transparent 60%), linear-gradient(135deg, #f3faf6 0%, #fdf8ef 100%);
+    radial-gradient(60% 120% at 100% 0%, #e2f2e9 0%, transparent 60%), linear-gradient(135deg, #f3faf6 0%, #f6fbf8 100%);
 }
 .home-verify h2 {
   margin: 0;
@@ -1359,4 +1380,119 @@
   padding: 3px;
   border-radius: 12px;
   background: #fff;
+}
+
+/* =============================================================================================
+   Ambient motion (src/lib/ambient-motion.tsx) — progressive enhancement, transform/opacity only
+   ============================================================================================= */
+/* scroll progress: a hairline of brand green along the bottom edge of the header */
+.tq-scroll-progress {
+  position: absolute;
+  inset-inline: 0;
+  bottom: -1px;
+  height: 2px;
+  background: linear-gradient(90deg, #35d07a, var(--ds-primary) 60%, #0d8a60);
+  transform: scaleX(0);
+  transform-origin: right center; /* RTL: grows from the start (right) edge */
+  pointer-events: none;
+}
+:root[data-gov-theme='dark'] .tq-scroll-progress {
+  background: linear-gradient(90deg, #6fd8ab, #35d07a);
+}
+
+/* count-up numbers keep the final width from the first frame (no layout shift) */
+.tq-count {
+  display: inline-grid;
+  font-variant-numeric: tabular-nums;
+}
+.tq-count > .tq-count-ghost,
+.tq-count > .tq-count-live {
+  grid-area: 1 / 1;
+}
+.tq-count > .tq-count-ghost {
+  visibility: hidden;
+}
+
+/* cards under a fine pointer: soft spotlight that follows the cursor + a slight tilt */
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  :is(.ld-service, .ld-life-card, .ld-cat, .ld-dept, .ld-panel, .nw-card-link, .dept-card, .official-card) {
+    transition:
+      transform 0.35s var(--ds-ease),
+      box-shadow 0.35s var(--ds-ease),
+      border-color 0.2s var(--ds-ease),
+      background-color 0.2s var(--ds-ease);
+  }
+  :is(.ld-service, .ld-life-card, .ld-cat, .ld-dept, .nw-card-link, .dept-card, .official-card).fx-lit {
+    transform: perspective(900px) rotateX(var(--fx-rx, 0deg)) rotateY(var(--fx-ry, 0deg)) translateY(-3px);
+  }
+  :is(
+    .ld-service,
+    .ld-life-card,
+    .ld-cat,
+    .ld-dept,
+    .ld-panel,
+    .nw-card-link,
+    .dept-card,
+    .official-card,
+    .dir-row,
+    .ld-staff-features li,
+    .ld-steps li
+  ).fx-lit {
+    background-image: radial-gradient(
+      420px circle at var(--fx-x, 50%) var(--fx-y, 50%),
+      color-mix(in srgb, var(--ds-primary) 9%, transparent),
+      transparent 60%
+    );
+  }
+  :root[data-gov-theme='dark']
+    :is(
+      .ld-service,
+      .ld-life-card,
+      .ld-cat,
+      .ld-dept,
+      .ld-panel,
+      .nw-card-link,
+      .dept-card,
+      .official-card,
+      .dir-row,
+      .ld-staff-features li,
+      .ld-steps li
+    ).fx-lit {
+    background-image: radial-gradient(
+      420px circle at var(--fx-x, 50%) var(--fx-y, 50%),
+      rgba(111, 216, 171, 0.1),
+      transparent 60%
+    );
+  }
+  :is(.ld-btn.is-green, .ld-hero-search .tq-search-submit, .tq-page-actions .button.primary) {
+    transition:
+      translate 0.25s var(--ds-ease),
+      background-color 0.2s var(--ds-ease),
+      box-shadow 0.2s var(--ds-ease);
+  }
+}
+
+/* inner public pages: panels and cards rise in lightly as they scroll into view (CSS scroll-driven; browsers
+   without support simply show them). The range is a fixed 120px of travel, not a percentage of the element:
+   a percentage of a tall panel (privacy, terms, a department page) left it faded at load — muted text under
+   AA contrast — until the reader scrolled. Now anything whose top is 120px or more above the bottom edge of
+   the viewport at load is fully visible. */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .tq-page
+      main
+      :is(.tq-panel, .dept-card, .nw-card, .official-card, .dir-row, .tq-section-head, .depts-group > h2):not(
+        .tq-sticky
+      ) {
+      animation: tq-rise linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 120px;
+    }
+  }
+}
+@keyframes tq-rise {
+  from {
+    opacity: 0;
+    transform: translateY(22px) scale(0.985);
+  }
 }

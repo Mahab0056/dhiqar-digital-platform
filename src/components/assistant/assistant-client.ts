@@ -40,6 +40,8 @@ export type AssistantUiPayload =
   | { kind: 'requests'; items: AssistantRequestSummary[] }
   | { kind: 'draft'; draft: AssistantDraft }
   | { kind: 'registration' }
+  /** one short clarifying question; each option is a chip sent as the citizen's reply */
+  | { kind: 'clarify'; question: string; options: string[] }
 
 export type AssistantEvent =
   | { type: 'meta'; mode: 'ai' | 'fallback'; signedIn: boolean }
@@ -55,23 +57,79 @@ export type AssistantEvent =
 
 export type AssistantTurn = { role: 'user' | 'assistant'; text: string }
 
+export type AssistantChannel = 'text' | 'voice'
+export type AssistantVoiceConfig = {
+  transcribe: boolean
+  serverTts: boolean
+  /** the external service that receives the clip (recorder engine) or the answer text (server voice) */
+  provider?: string | null
+}
+export type AssistantConfig = { mode: 'ai' | 'fallback'; signedIn: boolean; voice?: AssistantVoiceConfig }
+
 export async function getAssistantConfig() {
   const response = await fetch('/api/assistant/config', { credentials: 'include' })
   if (!response.ok) throw new Error('config unavailable')
-  return (await response.json()) as { mode: 'ai' | 'fallback'; signedIn: boolean }
+  return (await response.json()) as AssistantConfig
+}
+
+/** Error of the voice endpoints, with the HTTP status (501 = no provider on this server). */
+export class VoiceRequestError extends Error {
+  readonly status: number
+  constructor(status: number, message: string) {
+    super(message)
+    this.status = status
+  }
+}
+
+/** Fallback speech-to-text (browsers without SpeechRecognition): the clip goes to the server once, never stored. */
+export async function transcribeAudio(audio: Blob, durationMs: number, signal?: AbortSignal) {
+  const form = new FormData()
+  form.append('durationMs', String(Math.round(durationMs)))
+  const extension = /mp4|aac|m4a/.test(audio.type) ? 'mp4' : /ogg/.test(audio.type) ? 'ogg' : 'webm'
+  form.append('audio', audio, `speech.${extension}`)
+  const response = await fetch('/api/assistant/transcribe', {
+    method: 'POST',
+    credentials: 'include',
+    body: form,
+    signal,
+  })
+  const payload = (await response.json().catch(() => ({}))) as { text?: string; message?: string }
+  if (!response.ok)
+    throw new VoiceRequestError(
+      response.status,
+      payload.message ||
+        (response.status === 501
+          ? 'الكتابة متاحة؛ الصوت غير مدعوم في هذا المتصفح.'
+          : 'تعذر تحويل الكلام إلى نص. حاول مرة ثانية أو اكتب سؤالك.')
+    )
+  return String(payload.text || '').trim()
+}
+
+/** Optional server voice (only when /api/assistant/config says voice.serverTts). Resolves with an mp3 blob. */
+export async function fetchServerSpeech(text: string, signal?: AbortSignal) {
+  const response = await fetch('/api/assistant/speak', {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text }),
+    signal,
+  })
+  if (!response.ok) throw new VoiceRequestError(response.status, 'server voice unavailable')
+  return response.blob()
 }
 
 /** POSTs the conversation and calls `onEvent` for every SSE event until the stream ends. */
 export async function streamAssistantChat(
   messages: AssistantTurn[],
   onEvent: (event: AssistantEvent) => void,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  channel: AssistantChannel = 'text'
 ) {
   const response = await fetch('/api/assistant/chat', {
     method: 'POST',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
-    body: JSON.stringify({ messages }),
+    body: JSON.stringify({ messages, channel }),
     signal,
   })
   if (!response.ok || !response.body) {
@@ -178,6 +236,7 @@ export type AssistantStatus = {
     byRoute: Array<AssistantUsage & { route: string }>
     days: Array<AssistantUsage & { day: string }>
   }
+  voice?: AssistantVoiceConfig
 }
 
 export const getAssistantStatus = () =>

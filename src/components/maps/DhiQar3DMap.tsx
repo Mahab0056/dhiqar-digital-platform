@@ -11,8 +11,22 @@ import {
   type MapLayerMouseEvent,
   type StyleSpecification,
 } from 'maplibre-gl'
-import { Box, Compass, Layers, MapPin, Navigation, Pause, Play, RotateCcw, X } from 'lucide-react'
-import type { FeatureCollection, Point, Polygon } from 'geojson'
+import {
+  Box,
+  Building2,
+  Compass,
+  ExternalLink,
+  Layers,
+  Map as MapIcon,
+  MapPin,
+  Navigation,
+  Pause,
+  Play,
+  RotateCcw,
+  Satellite,
+  X,
+} from 'lucide-react'
+import type { FeatureCollection, MultiPolygon, Point, Polygon } from 'geojson'
 import {
   directionsUrl,
   NASIRIYAH,
@@ -27,7 +41,6 @@ import {
   easeInCubic,
   easeOutBack,
   fetchBaseStyle,
-  hexagon as hexagonOf,
   isDarkTheme,
   LIGHT,
   MAP_LOCALE,
@@ -38,55 +51,108 @@ import {
   type Palette,
   type StyleLayer,
 } from './maplibre-base'
+import {
+  addBuildingLayers,
+  addFacadeImages,
+  addFacilityLayers,
+  setFacadeTheme,
+  addLandmarkLayers,
+  addSatelliteLayer,
+  badgeExpression,
+  FACILITY_GROUPS,
+  FACILITY_INTERACTIVE_LAYERS,
+  FACILITY_TYPES,
+  facadeOf,
+  groupColor,
+  groupCounts,
+  hideBasemapBuildings,
+  iconForCategory,
+  installBadgeFactory,
+  landmarkKeys,
+  loadDepartmentFootprints,
+  loadFacilityIndex,
+  OSM_ATTRIBUTION,
+  osmUrl,
+  standInSquare,
+  type DepartmentFootprints,
+  type FacilityGroup,
+  type FacilityInfo,
+  type FacilityLayerHandle,
+} from './realistic-buildings'
+import { departmentShape } from './building-shape'
+import { ShapeNote } from './ShapeNote'
 
 const OVERVIEW = { center: [46.33, 31.24] as [number, number], zoom: 8.1, pitch: 25, bearing: 0 }
-const HOME = { center: NASIRIYAH, zoom: 13.35, pitch: 58, bearing: -28 }
+/** the government quarter on the Euphrates' north bank: diwan, council, qaimaqamiya and the directorates */
+const HOME = { center: [46.2424, 31.0512] as [number, number], zoom: 15.1, pitch: 62, bearing: -28 }
 
 /** narrow screens see less of the city: pull the camera back a little */
 const fitZoom = (zoom: number, width: number) => zoom + Math.max(-1, Math.min(0, Math.log2(width / 1320) / 2))
-const PILLAR_MIN_ZOOM = 10.3
+const BUILDING_MIN_ZOOM = 12.6
 const CLUSTER_MAX_ZOOM = 10.8
+const FACILITY_MIN_ZOOM = 13.2
 const IDLE_RESUME_MS = 10_000
 const ORBIT_DEG_PER_MS = 0.0022 // ≈ 2.2° a second
+/** buildings are drawn a touch taller than life so a three-storey directorate still reads at street zoom */
+const HEIGHT_SCALE = 1.2
+
+export type Basemap = 'real' | 'map'
 
 // ---- department geometry -------------------------------------------------------------------------
 
-const HEX_RADIUS_M = 92
-const hexagon = (lng: number, lat: number) => hexagonOf(lng, lat, HEX_RADIUS_M)
+type DeptProps = {
+  id: string
+  color: string
+  sector: SectorKey
+  icon: string
+  name: string
+  /** roof colour while hovered */
+  lit: string
+  h: number
+  facade: number
+  roof: string
+  g: number
+}
 
-const weightOf = (item: LocatedDepartment) => item.services.length + (item.digitalServices ?? 0)
-/** pillar height in metres: taller for departments that offer more services */
-const heightOf = (item: LocatedDepartment) => 220 + Math.min(weightOf(item), 12) * 62
-
-type DeptProps = { id: string; color: string; lit: string; cap: string; h: number; sector: SectorKey }
-
-function featureProps(item: LocatedDepartment): DeptProps {
+function featureProps(item: LocatedDepartment, footprints: DepartmentFootprints | null): DeptProps {
   const sector = sectorOf(item.category)
+  const footprint = footprints?.byId.get(item.id)
+  const { facade, roof } = facadeOf(item.id)
   return {
     id: item.id,
-    lit: mix(sector.color, '#ffffff', 0.3),
     color: sector.color,
-    cap: mix(sector.color, '#ffffff', 0.55),
-    h: heightOf(item),
     sector: sector.key,
+    icon: iconForCategory(item.category),
+    name: item.name,
+    lit: mix(roof, sector.color, 0.55),
+    h: (footprint?.height ?? 12) * HEIGHT_SCALE,
+    facade,
+    roof,
+    g: footprint?.generic || !footprint ? 1 : 0,
   }
 }
 
-const pillarsOf = (items: LocatedDepartment[]): FeatureCollection<Polygon, DeptProps> => ({
+const buildingsOf = (
+  items: LocatedDepartment[],
+  footprints: DepartmentFootprints | null
+): FeatureCollection<Polygon | MultiPolygon, DeptProps> => ({
   type: 'FeatureCollection',
   features: items.map(item => ({
     type: 'Feature',
-    geometry: hexagon(item.lng, item.lat),
-    properties: featureProps(item),
+    geometry: footprints?.byId.get(item.id)?.ring ?? standInSquare(item.lng, item.lat),
+    properties: featureProps(item, footprints),
   })),
 })
 
-const pointsOf = (items: LocatedDepartment[]): FeatureCollection<Point, DeptProps> => ({
+const pointsOf = (
+  items: LocatedDepartment[],
+  footprints: DepartmentFootprints | null
+): FeatureCollection<Point, DeptProps> => ({
   type: 'FeatureCollection',
   features: items.map(item => ({
     type: 'Feature',
     geometry: { type: 'Point', coordinates: [item.lng, item.lat] },
-    properties: featureProps(item),
+    properties: featureProps(item, footprints),
   })),
 })
 
@@ -96,18 +162,33 @@ function denseCentre(items: LocatedDepartment[]): [number, number] {
   const hub = items.reduce((best, item) =>
     items.filter(other => km(item, other) < 2).length > items.filter(other => km(best, other) < 2).length ? item : best
   )
-  const near = items.filter(item => km(hub, item) < 3)
+  const near = items.filter(item => km(hub, item) < 1.2)
   return [near.reduce((sum, i) => sum + i.lng, 0) / near.length, near.reduce((sum, i) => sum + i.lat, 0) / near.length]
 }
 
 const GROW: ExpressionSpecification = ['coalesce', ['feature-state', 'grow'], 0]
 const PULSE: ExpressionSpecification = ['coalesce', ['feature-state', 'pulse'], 0]
+const SELECTED: ExpressionSpecification = ['boolean', ['feature-state', 'selected'], false]
+const HOVERED: ExpressionSpecification = ['boolean', ['feature-state', 'hover'], false]
 
-/** Pillar heights shrink as the camera gets close so they never swallow the street view. */
-const pillarHeight = (extra = 0): ExpressionSpecification => {
-  const at = (scale: number): ExpressionSpecification => ['*', GROW, ['+', ['*', ['get', 'h'], scale], extra]]
-  return ['interpolate', ['linear'], ['zoom'], 11.5, at(1), 13.4, at(0.7), 15, at(0.42), 17, at(0.22)]
-}
+/** the building rises out of the ground as the camera descends (and when a filter brings it back) */
+const buildingHeight = (extra: number): ExpressionSpecification => [
+  'interpolate',
+  ['linear'],
+  ['zoom'],
+  BUILDING_MIN_ZOOM,
+  0,
+  BUILDING_MIN_ZOOM + 0.9,
+  ['*', GROW, ['+', ['get', 'h'], extra]],
+]
+const ROOF_COLOR: ExpressionSpecification = [
+  'case',
+  SELECTED,
+  ['get', 'color'],
+  HOVERED,
+  ['get', 'lit'],
+  ['get', 'roof'],
+]
 
 type Tween = { from: number; to: number; start: number; duration: number; ease: (t: number) => number }
 
@@ -120,20 +201,62 @@ type Props = {
   onUnavailable: () => void
 }
 
+/** district boxes for lazy facility loading */
+type DistrictBounds = Map<string, [[number, number], [number, number]]>
+async function loadDistrictBounds(): Promise<DistrictBounds> {
+  const out: DistrictBounds = new Map()
+  try {
+    const response = await fetch('/geo/dhiqar-districts.geojson')
+    const data = (await response.json()) as FeatureCollection<Polygon | MultiPolygon, { kind: string; name: string }>
+    for (const feature of data.features) {
+      if (feature.properties.kind !== 'district') continue
+      const rings =
+        feature.geometry.type === 'Polygon'
+          ? [feature.geometry.coordinates[0]]
+          : feature.geometry.coordinates.map(p => p[0])
+      let [x0, y0, x1, y1] = [180, 90, -180, -90]
+      for (const ring of rings)
+        for (const [x, y] of ring) {
+          x0 = Math.min(x0, x)
+          y0 = Math.min(y0, y)
+          x1 = Math.max(x1, x)
+          y1 = Math.max(y1, y)
+        }
+      out.set(feature.properties.name, [
+        [x0, y0],
+        [x1, y1],
+      ])
+    }
+  } catch {
+    // no districts → facilities simply never load
+  }
+  return out
+}
+
 export default function DhiQar3DMap({ departments, visibleIds, onUnavailable }: Props) {
   const shellRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<MapLibreMap | null>(null)
+  const facilitiesRef = useRef<FacilityLayerHandle | null>(null)
   const [ready, setReady] = useState(false)
   const [is3D, setIs3D] = useState(true)
+  const [basemap, setBasemap] = useState<Basemap>('real')
   const [touring, setTouring] = useState(false)
   const [tourCaption, setTourCaption] = useState('')
   const [reducedMotion] = useState(prefersReducedMotion)
   const [orbitOn, setOrbitOn] = useState(() => !prefersReducedMotion())
   const [hiddenSectors, setHiddenSectors] = useState<ReadonlySet<SectorKey>>(new Set())
+  const [shownGroups, setShownGroups] = useState<ReadonlySet<FacilityGroup>>(
+    () => new Set(FACILITY_GROUPS.map(g => g.key))
+  )
+  const [facilityTotals, setFacilityTotals] = useState<Map<FacilityGroup, number>>(new Map())
   const [tooltip, setTooltip] = useState<Tooltip | null>(null)
+  const [facilityTip, setFacilityTip] = useState<{ x: number; y: number; info: FacilityInfo } | null>(null)
   const [selected, setSelected] = useState<LocatedDepartment | null>(null)
+  const [facility, setFacility] = useState<FacilityInfo | null>(null)
   const [legendOpen, setLegendOpen] = useState(() => window.innerWidth > 640)
+  const [facilitiesOpen, setFacilitiesOpen] = useState(false)
+  const [footprints, setFootprints] = useState<DepartmentFootprints | null>(null)
 
   const byId = useMemo(() => new Map(departments.map(item => [item.id, item])), [departments])
   const shown = useMemo(
@@ -147,6 +270,10 @@ export default function DhiQar3DMap({ departments, visibleIds, onUnavailable }: 
         counts.set(sectorOf(item.category).key, (counts.get(sectorOf(item.category).key) || 0) + 1)
     return counts
   }, [departments, visibleIds])
+  const realFootprints = useMemo(
+    () => (footprints ? departments.filter(item => footprints.byId.get(item.id)?.generic === false).length : 0),
+    [departments, footprints]
+  )
 
   // mutable animation state shared by the render loop and the handlers
   const motion = useRef({
@@ -155,6 +282,7 @@ export default function DhiQar3DMap({ departments, visibleIds, onUnavailable }: 
     flying: false,
     orbit: !prefersReducedMotion(),
     is3D: true,
+    basemap: 'real' as Basemap,
     inView: true,
     risen: false,
     loaded: false,
@@ -162,31 +290,52 @@ export default function DhiQar3DMap({ departments, visibleIds, onUnavailable }: 
     tweens: new Map<string, Tween>(),
     targets: new Map<string, number>(),
     hovered: null as string | null,
+    hoveredFacility: null as string | null,
     selected: null as string | null,
     tourToken: 0,
   })
   const onUnavailableRef = useRef(onUnavailable)
   const shownRef = useRef(shown)
   const departmentsRef = useRef(departments)
+  const footprintsRef = useRef(footprints)
   // latest props for the long-lived map callbacks (written before the data effects below run)
   useLayoutEffect(() => {
     onUnavailableRef.current = onUnavailable
     shownRef.current = shown
     departmentsRef.current = departments
+    footprintsRef.current = footprints
   })
 
-  /** only standing (or moving) pillars stay in the source — a zero-height extrusion still draws its roof */
-  const syncPillars = useCallback(() => {
+  useEffect(() => {
+    let alive = true
+    void loadDepartmentFootprints().then(data => alive && setFootprints(data))
+    void loadFacilityIndex().then(index => {
+      if (!alive || !index) return
+      setFacilityTotals(groupCounts(index.totals))
+    })
+    return () => {
+      alive = false
+    }
+  }, [])
+
+  /** only standing (or moving) buildings stay in the source — a zero-height extrusion still draws its roof */
+  const syncBuildings = useCallback(() => {
     const map = mapRef.current
     const m = motion.current
     if (!map || !m.loaded) return
     const standing = departmentsRef.current.filter(
       item => m.targets.get(item.id) === 1 || m.tweens.has(item.id) || (!m.risen && shownRef.current.includes(item))
     )
-    ;(map.getSource('dq-pillars') as GeoJSONSource).setData(pillarsOf(standing))
+    ;(map.getSource('dq-buildings') as GeoJSONSource).setData(buildingsOf(standing, footprintsRef.current))
+    // while our building stands, the basemap's generic copy of it stays out of the way
+    hideBasemapBuildings(
+      map,
+      standing.map(item => footprintsRef.current?.byId.get(item.id)?.osm),
+      'departments'
+    )
   }, [])
 
-  /** animate every pillar toward its target height (staggered rise, quick fall) */
+  /** animate every building toward its target height (staggered rise, quick fall) */
   const retarget = useCallback(
     (visible: LocatedDepartment[], stagger = 32) => {
       const m = motion.current
@@ -221,9 +370,9 @@ export default function DhiQar3DMap({ departments, visibleIds, onUnavailable }: 
           ease: easeInCubic,
         })
       }
-      syncPillars()
+      syncBuildings()
     },
-    [syncPillars]
+    [syncBuildings]
   )
 
   const flyTo = useCallback((options: Parameters<MapLibreMap['flyTo']>[0]) => {
@@ -250,6 +399,7 @@ export default function DhiQar3DMap({ departments, visibleIds, onUnavailable }: 
     let cancelled = false
     let map: MapLibreMap | null = null
     let raf = 0
+    let removeBadges = () => {}
     const abort = new AbortController()
     const fail = () => {
       if (!cancelled) onUnavailableRef.current()
@@ -258,12 +408,19 @@ export default function DhiQar3DMap({ departments, visibleIds, onUnavailable }: 
 
     const start = async () => {
       let raw: StyleSpecification
+      let bounds: DistrictBounds
+      let prints: DepartmentFootprints | null
       try {
-        raw = await fetchBaseStyle(abort.signal)
+        ;[raw, bounds, prints] = await Promise.all([
+          fetchBaseStyle(abort.signal),
+          loadDistrictBounds(),
+          loadDepartmentFootprints(),
+        ])
       } catch {
         return fail()
       }
       if (cancelled) return
+      footprintsRef.current = prints
       const width = container.clientWidth || 1320
       const start = m.reduced
         ? { ...HOME, zoom: fitZoom(HOME.zoom, width) }
@@ -278,6 +435,7 @@ export default function DhiQar3DMap({ departments, visibleIds, onUnavailable }: 
           bearing: start.bearing,
           maxPitch: 75,
           minZoom: 6.5,
+          maxZoom: 18.6,
           maxBounds: [
             [43.8, 29.4],
             [48.8, 33.2],
@@ -294,11 +452,12 @@ export default function DhiQar3DMap({ departments, visibleIds, onUnavailable }: 
         return fail()
       }
       mapRef.current = map
-      // pillars grow upward, so sit the focal point a little below the middle
+      removeBadges = installBadgeFactory(map)
+      // buildings grow upward, so sit the focal point a little below the middle
       map.setPadding({ top: width < 640 ? 110 : 70, bottom: 0, left: 0, right: 0 })
       map.addControl(new NavigationControl({ visualizePitch: true }), 'top-left')
       map.addControl(new FullscreenControl({ container: shellRef.current ?? undefined }), 'top-left')
-      map.addControl(new AttributionControl({ compact: false }), 'bottom-left')
+      map.addControl(new AttributionControl({ compact: false, customAttribution: OSM_ATTRIBUTION }), 'bottom-left')
 
       map.on('error', event => {
         // a broken style before first paint means no usable map; later tile hiccups are ignored
@@ -308,7 +467,16 @@ export default function DhiQar3DMap({ departments, visibleIds, onUnavailable }: 
       map.once('load', () => {
         if (cancelled || !map) return
         window.clearTimeout(loadTimer)
-        addDepartmentLayers(map)
+        addDepartmentLayers(map, prints)
+        hideBasemapBuildings(map, landmarkKeys(prints), 'landmarks')
+        facilitiesRef.current = addFacilityLayers(map, {
+          minzoom: FACILITY_MIN_ZOOM,
+          beforeId: 'dq-b-shadow',
+          badgesBeforeId: 'dq-badges',
+          auto: true,
+          districtBounds: bounds,
+        })
+        applyBasemap(map, m.basemap)
         m.loaded = true
         setReady(true)
         if (m.reduced) {
@@ -317,20 +485,20 @@ export default function DhiQar3DMap({ departments, visibleIds, onUnavailable }: 
         } else {
           window.setTimeout(() => {
             if (cancelled) return
-            flyTo({ ...HOME, zoom: fitZoom(HOME.zoom, width), duration: 6800, curve: 1.3 })
+            flyTo({ ...HOME, zoom: fitZoom(HOME.zoom, width), duration: 7600, curve: 1.42 })
           }, 650)
         }
       })
 
-      // pillars rise once the camera is close enough to see them
+      // buildings rise once the camera is close enough to see them
       map.on('zoom', () => {
-        if (!m.risen && map && map.getZoom() >= PILLAR_MIN_ZOOM) {
+        if (!m.risen && map && map.getZoom() >= CLUSTER_MAX_ZOOM) {
           m.risen = true
           retarget(shownRef.current)
         }
       })
 
-      // ---- render loop: tweens, halo pulse, cluster ripple and idle orbit ----------------------
+      // ---- render loop: tweens, beacon pulse, cluster ripple and idle orbit ----------------------
       let last = performance.now()
       const tick = (now: number) => {
         raf = requestAnimationFrame(tick)
@@ -343,21 +511,23 @@ export default function DhiQar3DMap({ departments, visibleIds, onUnavailable }: 
           const t = tween.duration ? Math.min(1, Math.max(0, (now - tween.start) / tween.duration)) : 1
           const value = tween.from + (tween.to - tween.from) * tween.ease(t)
           m.grow.set(id, value)
-          map.setFeatureState({ source: 'dq-pillars', id }, { grow: Math.max(0, value) })
+          map.setFeatureState({ source: 'dq-buildings', id }, { grow: Math.max(0, value) })
           if (t >= 1) {
             m.tweens.delete(id)
             if (tween.to === 0) fallen = true
           }
         }
-        if (fallen) syncPillars()
+        if (fallen) syncBuildings()
 
         const zoom = map.getZoom()
         if (!m.reduced) {
-          if (zoom >= PILLAR_MIN_ZOOM) {
-            let i = 0
-            for (const [id, value] of m.grow) {
-              const pulse = (now / 2200 + i++ * 0.137) % 1
-              map.setFeatureState({ source: 'dq-points', id }, { grow: Math.min(1, Math.max(0, value)), pulse })
+          if (zoom >= CLUSTER_MAX_ZOOM) {
+            if (zoom < 14.5) {
+              let i = 0
+              for (const [id, value] of m.grow) {
+                const pulse = (now / 2400 + i++ * 0.137) % 1
+                map.setFeatureState({ source: 'dq-points', id }, { grow: Math.min(1, Math.max(0, value)), pulse })
+              }
             }
           } else {
             const p = (now / 1800) % 1
@@ -397,14 +567,7 @@ export default function DhiQar3DMap({ departments, visibleIds, onUnavailable }: 
     const themeObserver = new MutationObserver(() => {
       const current = mapRef.current
       if (!current?.isStyleLoaded()) return
-      const palette = isDarkTheme() ? DARK : LIGHT
-      for (const layer of current.getStyle().layers as StyleLayer[]) {
-        if (layer.id.startsWith('dq-')) continue
-        for (const [prop, value] of Object.entries(themePaint(layer, palette)))
-          current.setPaintProperty(layer.id, prop as 'fill-color', value as string)
-      }
-      current.setSky(skyFor(palette))
-      applyDepartmentTheme(current, palette)
+      applyBasemap(current, m.basemap)
     })
     themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-gov-theme'] })
 
@@ -418,27 +581,40 @@ export default function DhiQar3DMap({ departments, visibleIds, onUnavailable }: 
       themeObserver.disconnect()
       for (const name of events) container.removeEventListener(name, touch)
       m.tourToken = 0
+      removeBadges()
+      facilitiesRef.current?.remove()
+      facilitiesRef.current = null
       map?.remove()
       mapRef.current = null
     }
     // the map is created once; data changes flow through the effects below
-  }, [flyTo, retarget, syncPillars])
+  }, [flyTo, retarget, syncBuildings])
 
   // ---- department data ----------------------------------------------------------------------------
   useEffect(() => {
     const map = mapRef.current
     if (!ready || !map) return
-    syncPillars()
-    ;(map.getSource('dq-points') as GeoJSONSource).setData(pointsOf(departments))
-  }, [ready, departments, syncPillars])
+    syncBuildings()
+  }, [ready, departments, footprints, syncBuildings])
 
   useEffect(() => {
     const map = mapRef.current
     if (!ready || !map) return
-    ;(map.getSource('dq-clusters') as GeoJSONSource).setData(pointsOf(shown))
+    ;(map.getSource('dq-clusters') as GeoJSONSource).setData(pointsOf(shown, footprints))
+    ;(map.getSource('dq-points') as GeoJSONSource).setData(pointsOf(shown, footprints))
     if (motion.current.risen) retarget(shown, 22)
     setSelected(current => (current && !shown.some(item => item.id === current.id) ? null : current))
-  }, [ready, shown, retarget])
+  }, [ready, shown, footprints, retarget])
+
+  useEffect(() => {
+    if (ready) facilitiesRef.current?.setGroups(shownGroups)
+  }, [ready, shownGroups])
+
+  useEffect(() => {
+    const map = mapRef.current
+    motion.current.basemap = basemap
+    if (ready && map) applyBasemap(map, basemap)
+  }, [ready, basemap])
 
   // ---- hover tooltip, selection and cluster zoom ------------------------------------------------
   useEffect(() => {
@@ -447,14 +623,20 @@ export default function DhiQar3DMap({ departments, visibleIds, onUnavailable }: 
     const m = motion.current
     const setHover = (id: string | null) => {
       if (m.hovered === id) return
-      if (m.hovered) map.setFeatureState({ source: 'dq-pillars', id: m.hovered }, { hover: false })
+      if (m.hovered) map.setFeatureState({ source: 'dq-buildings', id: m.hovered }, { hover: false })
       m.hovered = id
-      if (id) map.setFeatureState({ source: 'dq-pillars', id }, { hover: true })
+      if (id) map.setFeatureState({ source: 'dq-buildings', id }, { hover: true })
+    }
+    const setFacilityHover = (id: string | null) => {
+      if (m.hoveredFacility === id) return
+      if (m.hoveredFacility) map.setFeatureState({ source: 'dq-fac', id: m.hoveredFacility }, { hover: false })
+      m.hoveredFacility = id
+      if (id) map.setFeatureState({ source: 'dq-fac', id }, { hover: true })
     }
     const pick = (features?: MapGeoJSONFeature[]) => {
       const id = features?.[0]?.properties?.id as string | undefined
       const item = id ? byId.get(id) : undefined
-      return item && (m.grow.get(item.id) ?? 0) > 0.2 ? item : undefined
+      return item && ((m.grow.get(item.id) ?? 0) > 0.2 || map.getZoom() < BUILDING_MIN_ZOOM) ? item : undefined
     }
     const onMove = (event: MapLayerMouseEvent) => {
       const item = pick(event.features)
@@ -469,7 +651,10 @@ export default function DhiQar3DMap({ departments, visibleIds, onUnavailable }: 
     }
     const onClick = (event: MapLayerMouseEvent) => {
       const item = pick(event.features)
-      if (item) setSelected(item)
+      if (item) {
+        setFacility(null)
+        setSelected(item)
+      }
     }
     const onCluster = async (event: MapLayerMouseEvent) => {
       const feature = event.features?.[0]
@@ -480,16 +665,40 @@ export default function DhiQar3DMap({ departments, visibleIds, onUnavailable }: 
       const [lng, lat] = (feature.geometry as Point).coordinates
       flyTo({
         center: [lng, lat],
-        zoom: Math.max(zoom + 0.6, PILLAR_MIN_ZOOM + 1.6),
+        zoom: Math.max(zoom + 0.6, CLUSTER_MAX_ZOOM + 1.6),
         pitch: m.is3D ? 55 : 0,
         duration: 1800,
       })
     }
-    const interactive = ['dq-pillars', 'dq-single'] as const
+    // public facilities (OpenStreetMap)
+    const onFacilityMove = (event: MapLayerMouseEvent) => {
+      if (map.queryRenderedFeatures(event.point, { layers: interactive as unknown as string[] }).length) return
+      const info = facilitiesRef.current?.info(event.features?.[0]?.properties ?? {}) ?? null
+      map.getCanvas().style.cursor = info ? 'pointer' : ''
+      setFacilityHover(info?.id ?? null)
+      setFacilityTip(info ? { x: event.point.x, y: event.point.y, info } : null)
+    }
+    const onFacilityLeave = () => {
+      setFacilityHover(null)
+      setFacilityTip(null)
+    }
+    const onFacilityClick = (event: MapLayerMouseEvent) => {
+      if (map.queryRenderedFeatures(event.point, { layers: interactive as unknown as string[] }).length) return
+      const info = facilitiesRef.current?.info(event.features?.[0]?.properties ?? {}) ?? null
+      if (!info) return
+      setSelected(null)
+      setFacility(info)
+    }
+    const interactive = ['dq-b-walls', 'dq-b-roof', 'dq-badges', 'dq-single'] as const
     for (const layer of interactive) {
       map.on('mousemove', layer, onMove)
       map.on('mouseleave', layer, onLeave)
       map.on('click', layer, onClick)
+    }
+    for (const layer of FACILITY_INTERACTIVE_LAYERS) {
+      map.on('mousemove', layer, onFacilityMove)
+      map.on('mouseleave', layer, onFacilityLeave)
+      map.on('click', layer, onFacilityClick)
     }
     map.on('click', 'dq-cluster', onCluster)
     return () => {
@@ -498,29 +707,34 @@ export default function DhiQar3DMap({ departments, visibleIds, onUnavailable }: 
         map.off('mouseleave', layer, onLeave)
         map.off('click', layer, onClick)
       }
+      for (const layer of FACILITY_INTERACTIVE_LAYERS) {
+        map.off('mousemove', layer, onFacilityMove)
+        map.off('mouseleave', layer, onFacilityLeave)
+        map.off('click', layer, onFacilityClick)
+      }
       map.off('click', 'dq-cluster', onCluster)
     }
   }, [ready, byId, flyTo])
 
-  // fly to whatever gets selected and highlight its pillar
+  // fly to whatever gets selected and light up its building
   useEffect(() => {
     const map = mapRef.current
     if (!ready || !map) return
     const m = motion.current
-    if (m.selected) map.setFeatureState({ source: 'dq-pillars', id: m.selected }, { selected: false })
+    if (m.selected) map.setFeatureState({ source: 'dq-buildings', id: m.selected }, { selected: false })
     m.selected = selected?.id ?? null
-    map.setFilter('dq-selected', ['==', ['get', 'id'], selected?.id ?? ''])
+    map.setFilter('dq-badge-selected', ['==', ['get', 'id'], selected?.id ?? ''])
     if (!selected) return
-    map.setFeatureState({ source: 'dq-pillars', id: selected.id }, { selected: true })
+    map.setFeatureState({ source: 'dq-buildings', id: selected.id }, { selected: true })
     m.lastInteraction = performance.now()
     flyTo({
       center: [selected.lng, selected.lat],
-      zoom: Math.max(map.getZoom(), fitZoom(14.3, map.getContainer().clientWidth)),
-      // keep the pillar clear of the card (beside it on wide screens, above it on phones)
-      offset: map.getContainer().clientWidth < 640 ? [0, -120] : [-150, 20],
-      pitch: m.is3D ? 62 : 0,
+      zoom: Math.max(map.getZoom(), fitZoom(16.7, map.getContainer().clientWidth)),
+      // keep the building clear of the card (beside it on wide screens, above it on phones)
+      offset: map.getContainer().clientWidth < 640 ? [0, -120] : [-150, 40],
+      pitch: m.is3D ? 64 : 0,
       bearing: map.getBearing() - 25,
-      duration: 2000,
+      duration: 2200,
     })
   }, [ready, selected, flyTo])
 
@@ -532,7 +746,7 @@ export default function DhiQar3DMap({ departments, visibleIds, onUnavailable }: 
     const map = mapRef.current
     if (!map) return
     map.easeTo({
-      pitch: next ? 58 : 0,
+      pitch: next ? 60 : 0,
       bearing: next ? map.getBearing() - 20 : 0,
       duration: motion.current.reduced ? 0 : 1200,
     })
@@ -549,6 +763,7 @@ export default function DhiQar3DMap({ departments, visibleIds, onUnavailable }: 
 
   const resetView = () => {
     setSelected(null)
+    setFacility(null)
     motion.current.lastInteraction = 0
     flyTo({ ...homeFor(), pitch: motion.current.is3D ? HOME.pitch : 0, duration: 2600 })
   }
@@ -579,6 +794,7 @@ export default function DhiQar3DMap({ departments, visibleIds, onUnavailable }: 
     m.tourToken = token
     setTouring(true)
     setSelected(null)
+    setFacility(null)
     const wait = (ms: number) => new Promise(resolve => window.setTimeout(resolve, ms))
     let bearing = map.getBearing()
     for (const stop of tourStops) {
@@ -589,19 +805,19 @@ export default function DhiQar3DMap({ departments, visibleIds, onUnavailable }: 
       )
       const view = {
         center: stop.center,
-        zoom: fitZoom(stop.count > 10 ? 13.2 : 13.9, map.getContainer().clientWidth),
-        pitch: m.is3D ? 60 : 0,
+        zoom: fitZoom(stop.count > 10 ? 15 : 15.8, map.getContainer().clientWidth),
+        pitch: m.is3D ? 62 : 0,
         bearing,
       }
       m.flying = true
       await new Promise<void>(resolve => {
         map.once('moveend', () => resolve())
         if (m.reduced) map.jumpTo(view)
-        else map.flyTo({ ...view, duration: 4200, curve: 1.5, essential: true })
+        else map.flyTo({ ...view, duration: 4600, curve: 1.5, essential: true })
       })
       m.flying = false
       m.lastInteraction = 0 // orbit gently while the stop is on screen
-      await wait(3200)
+      await wait(3400)
     }
     if (m.tourToken !== token) return
     m.tourToken = 0
@@ -617,13 +833,24 @@ export default function DhiQar3DMap({ departments, visibleIds, onUnavailable }: 
       else next.add(key)
       return next
     })
+  const toggleGroup = (key: FacilityGroup) =>
+    setShownGroups(current => {
+      const next = new Set(current)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
 
   const selectedSector = selected ? sectorOf(selected.category) : null
+  const facilityMeta = facility ? FACILITY_TYPES[facility.type] : null
+  const linkedDepartment = facility?.department ? byId.get(facility.department) : undefined
+  const selectedPrint = selected ? footprints?.byId.get(selected.id) : undefined
 
   return (
     <div
       ref={shellRef}
-      className={`map3d-shell${ready ? ' is-ready' : ''}${selected ? ' has-card' : ''}`}
+      className={`map3d-shell${ready ? ' is-ready' : ''}${selected || facility ? ' has-card' : ''}`}
+      data-basemap={basemap}
       role="region"
       aria-label="خريطة ثلاثية الأبعاد لدوائر محافظة ذي قار"
     >
@@ -636,6 +863,15 @@ export default function DhiQar3DMap({ departments, visibleIds, onUnavailable }: 
       )}
 
       <div className="map3d-toolbar" role="toolbar" aria-label="أدوات الخريطة">
+        <button
+          type="button"
+          onClick={() => setBasemap(current => (current === 'real' ? 'map' : 'real'))}
+          aria-pressed={basemap === 'real'}
+          title="التبديل بين الصورة الفضائية الواقعية والخريطة"
+        >
+          {basemap === 'real' ? <Satellite aria-hidden="true" /> : <MapIcon aria-hidden="true" />}{' '}
+          {basemap === 'real' ? 'واقعي' : 'خريطة'}
+        </button>
         <button type="button" onClick={toggle3D} aria-pressed={is3D} title="التبديل بين العرض المسطح والمجسم">
           <Box aria-hidden="true" /> {is3D ? '3D' : '2D'}
         </button>
@@ -674,31 +910,74 @@ export default function DhiQar3DMap({ departments, visibleIds, onUnavailable }: 
           aria-expanded={legendOpen}
           onClick={() => setLegendOpen(open => !open)}
         >
-          <Layers aria-hidden="true" /> القطاعات
+          <Layers aria-hidden="true" /> الطبقات
         </button>
         {legendOpen && (
-          <ul>
-            {SECTOR_FAMILIES.map(family => {
-              const off = hiddenSectors.has(family.key)
-              const count = sectorCounts.get(family.key) || 0
-              return (
-                <li key={family.key}>
-                  <button
-                    type="button"
-                    aria-pressed={!off}
-                    onClick={() => toggleSector(family.key)}
-                    style={{ '--sector': family.color } as CSSProperties}
-                    disabled={count === 0}
-                  >
-                    <i aria-hidden="true" />
-                    <span>{family.label}</span>
-                    <b>{count.toLocaleString('en-US')}</b>
-                  </button>
-                </li>
-              )
-            })}
-            <li className="map3d-legend-note">ارتفاع العمود = عدد الخدمات</li>
-          </ul>
+          <div className="map3d-legend-body">
+            <p className="map3d-legend-title">
+              <i className="map3d-legend-pin" aria-hidden="true" /> دوائر على المنصة
+            </p>
+            <ul>
+              {SECTOR_FAMILIES.map(family => {
+                const off = hiddenSectors.has(family.key)
+                const count = sectorCounts.get(family.key) || 0
+                return (
+                  <li key={family.key}>
+                    <button
+                      type="button"
+                      aria-pressed={!off}
+                      onClick={() => toggleSector(family.key)}
+                      style={{ '--sector': family.color } as CSSProperties}
+                      disabled={count === 0}
+                    >
+                      <i aria-hidden="true" />
+                      <span>{family.label}</span>
+                      <b>{count.toLocaleString('en-US')}</b>
+                    </button>
+                  </li>
+                )
+              })}
+            </ul>
+            {facilityTotals.size > 0 && (
+              <>
+                <button
+                  type="button"
+                  className="map3d-legend-title is-toggle"
+                  aria-expanded={facilitiesOpen}
+                  onClick={() => setFacilitiesOpen(open => !open)}
+                >
+                  <Building2 aria-hidden="true" /> مرافق عامة (OSM)
+                  <b>{[...facilityTotals.values()].reduce((sum, n) => sum + n, 0).toLocaleString('en-US')}</b>
+                </button>
+                <ul className="map3d-legend-facilities" hidden={!facilitiesOpen}>
+                  {FACILITY_GROUPS.map(group => {
+                    const count = facilityTotals.get(group.key) || 0
+                    return (
+                      <li key={group.key}>
+                        <button
+                          type="button"
+                          aria-pressed={shownGroups.has(group.key)}
+                          onClick={() => toggleGroup(group.key)}
+                          style={{ '--sector': group.color } as CSSProperties}
+                          disabled={count === 0}
+                        >
+                          <i aria-hidden="true" />
+                          <span>{group.label}</span>
+                          <b>{count.toLocaleString('en-US')}</b>
+                        </button>
+                      </li>
+                    )
+                  })}
+                </ul>
+              </>
+            )}
+            <p className="map3d-legend-note">
+              {footprints
+                ? `مخططات المباني من OpenStreetMap: ${realFootprints.toLocaleString('en-US')} من ${departments.length.toLocaleString('en-US')} دائرة بمخطط حقيقي، والباقي مبنى تقريبي.`
+                : 'المباني من OpenStreetMap.'}{' '}
+              تغطية المرافق غير مكتملة.
+            </p>
+          </div>
         )}
       </div>
 
@@ -706,7 +985,15 @@ export default function DhiQar3DMap({ departments, visibleIds, onUnavailable }: 
         <div className="map3d-tooltip" style={{ left: tooltip.x, top: tooltip.y }} role="tooltip">
           <strong>{tooltip.item.name}</strong>
           <span>
-            {tooltip.item.district} · {tooltip.item.services.length.toLocaleString('en-US')} خدمة
+            {tooltip.item.district} · {tooltip.item.services.length.toLocaleString('en-US')} خدمة · على المنصة
+          </span>
+        </div>
+      )}
+      {facilityTip && !tooltip && !facility && (
+        <div className="map3d-tooltip" style={{ left: facilityTip.x, top: facilityTip.y }} role="tooltip">
+          <strong>{facilityTip.info.name ?? FACILITY_TYPES[facilityTip.info.type].label}</strong>
+          <span>
+            {FACILITY_TYPES[facilityTip.info.type].label} · {facilityTip.info.district}
           </span>
         </div>
       )}
@@ -741,6 +1028,7 @@ export default function DhiQar3DMap({ departments, visibleIds, onUnavailable }: 
               <dd>{(selected.digitalServices ?? 0).toLocaleString('en-US')}</dd>
             </div>
           </dl>
+          <ShapeNote shape={departmentShape(selectedPrint)} />
           <div className="map3d-card-actions">
             <Link href={`/departments/${selected.id}`} className="button primary small">
               صفحة الدائرة
@@ -756,44 +1044,80 @@ export default function DhiQar3DMap({ departments, visibleIds, onUnavailable }: 
           </div>
         </aside>
       )}
+
+      {facility && facilityMeta && (
+        <aside
+          className="map3d-card is-facility"
+          aria-label={`بطاقة ${facility.name ?? facilityMeta.label}`}
+          style={{ '--sector': groupColor(facilityMeta.group) } as CSSProperties}
+        >
+          <button
+            type="button"
+            className="map3d-card-close"
+            onClick={() => setFacility(null)}
+            aria-label="إغلاق البطاقة"
+          >
+            <X aria-hidden="true" />
+          </button>
+          <span className="map3d-card-sector">{facilityMeta.label}</span>
+          <h3>{facility.name ?? `${facilityMeta.label} (بلا اسم في الخريطة)`}</h3>
+          <p>
+            <MapPin aria-hidden="true" /> قضاء {facility.district}
+          </p>
+          <p className="map3d-card-source">
+            المصدر: OpenStreetMap ·{' '}
+            <a href={osmUrl(facility.osm)} target="_blank" rel="noopener noreferrer">
+              عرض العنصر <ExternalLink aria-hidden="true" />
+            </a>
+          </p>
+          {facility.shape && <ShapeNote shape={facility.shape} />}
+          {linkedDepartment && (
+            <div className="map3d-card-actions">
+              <Link href={`/departments/${linkedDepartment.id}`} className="button primary small">
+                دائرة على المنصة
+              </Link>
+            </div>
+          )}
+        </aside>
+      )}
     </div>
   )
 }
 
 // ---- department layers ------------------------------------------------------------------------------
 
-function addDepartmentLayers(map: MapLibreMap) {
+function addDepartmentLayers(map: MapLibreMap, prints: DepartmentFootprints | null) {
   const palette = isDarkTheme() ? DARK : LIGHT
   const empty: FeatureCollection = { type: 'FeatureCollection', features: [] }
-  map.addSource('dq-pillars', { type: 'geojson', data: empty, promoteId: 'id' })
+  addFacadeImages(map)
+  map.addSource('dq-buildings', { type: 'geojson', data: empty, promoteId: 'id' })
   map.addSource('dq-points', { type: 'geojson', data: empty, promoteId: 'id' })
+  map.addSource('dq-sites', { type: 'geojson', data: prints?.sites ?? empty })
   map.addSource('dq-clusters', { type: 'geojson', data: empty, cluster: true, clusterRadius: 46, clusterMaxZoom: 10 })
 
-  // keep place names above the pillars' ground glow, but under the pillars themselves
+  // imagery and plots sit under the place names
   const firstSymbol = map.getStyle().layers.find(layer => layer.type === 'symbol')?.id
+  addSatelliteLayer(map, firstSymbol, false)
 
+  // the compound each office stands in: a faint tinted plot
   map.addLayer(
     {
-      id: 'dq-glow',
-      type: 'circle',
-      source: 'dq-points',
-      minzoom: PILLAR_MIN_ZOOM,
-      paint: {
-        'circle-pitch-alignment': 'map',
-        'circle-radius': ['interpolate', ['exponential', 2], ['zoom'], 11, 14, 16, 170],
-        'circle-color': ['get', 'color'],
-        'circle-blur': 1,
-        'circle-opacity': ['*', 0.62, ['min', 1, GROW]],
-      },
+      id: 'dq-sites',
+      type: 'fill',
+      source: 'dq-sites',
+      minzoom: 14,
+      paint: { 'fill-color': '#7fdcb4', 'fill-opacity': 0.14, 'fill-outline-color': 'rgba(127,220,180,0.7)' },
     },
     firstSymbol
   )
+  // mid zoom: a soft beacon ripple where each department stands
   map.addLayer(
     {
       id: 'dq-pulse',
       type: 'circle',
       source: 'dq-points',
-      minzoom: PILLAR_MIN_ZOOM,
+      minzoom: CLUSTER_MAX_ZOOM,
+      maxzoom: 14.6,
       paint: {
         'circle-pitch-alignment': 'map',
         'circle-radius': [
@@ -801,69 +1125,71 @@ function addDepartmentLayers(map: MapLibreMap) {
           ['exponential', 2],
           ['zoom'],
           11,
-          ['+', 5, ['*', 16, PULSE]],
-          16,
-          ['+', 60, ['*', 190, PULSE]],
+          ['+', 4, ['*', 14, PULSE]],
+          14.6,
+          ['+', 20, ['*', 90, PULSE]],
         ],
         'circle-opacity': 0,
         'circle-stroke-width': 2,
         'circle-stroke-color': ['get', 'color'],
-        'circle-stroke-opacity': ['*', ['min', 1, GROW], ['-', 1, PULSE]],
+        'circle-stroke-opacity': ['*', ['min', 1, GROW], ['-', 1, PULSE], 0.8],
       },
     },
     firstSymbol
   )
-  // a bright double ring marks the selected department on the ground
-  map.addLayer(
-    {
-      id: 'dq-selected',
-      type: 'circle',
-      source: 'dq-points',
-      minzoom: PILLAR_MIN_ZOOM,
-      filter: ['==', ['get', 'id'], ''],
-      paint: {
-        'circle-pitch-alignment': 'map',
-        'circle-radius': ['interpolate', ['exponential', 2], ['zoom'], 11, 10, 16, 140],
-        'circle-color': palette.selected,
-        'circle-opacity': 0.16,
-        'circle-stroke-width': 3,
-        'circle-stroke-color': palette.selected,
-        'circle-stroke-opacity': 0.95,
-      },
-    },
-    firstSymbol
-  )
+
+  addBuildingLayers(map, {
+    source: 'dq-buildings',
+    prefix: 'dq-b',
+    minzoom: BUILDING_MIN_ZOOM,
+    height: buildingHeight,
+    roof: ROOF_COLOR,
+    glow: ['get', 'color'],
+    beforeId: firstSymbol,
+  })
+  if (prints?.landmarks.features.length) addLandmarkLayers(map, prints.landmarks)
+
+  // the floating badge: category icon on the sector colour, mint ring = "on the platform"
   map.addLayer({
-    id: 'dq-pillars',
-    type: 'fill-extrusion',
-    source: 'dq-pillars',
-    minzoom: PILLAR_MIN_ZOOM,
+    id: 'dq-badges',
+    type: 'symbol',
+    source: 'dq-points',
+    minzoom: CLUSTER_MAX_ZOOM,
+    layout: {
+      'icon-image': badgeExpression('dept'),
+      'icon-size': ['interpolate', ['linear'], ['zoom'], CLUSTER_MAX_ZOOM, 0.62, 14, 0.85, 16.5, 1],
+      'icon-anchor': 'bottom',
+      'icon-allow-overlap': true,
+      'symbol-sort-key': ['-', 0, ['get', 'h']],
+      'text-field': ['get', 'name'],
+      'text-font': ['Noto Sans Bold'],
+      'text-size': ['interpolate', ['linear'], ['zoom'], 14, 11.5, 17, 13.5],
+      'text-anchor': 'bottom',
+      'text-offset': [0, -3.9],
+      'text-max-width': 11,
+      'text-optional': true,
+      'text-padding': 4,
+    },
     paint: {
-      'fill-extrusion-color': [
-        'case',
-        ['boolean', ['feature-state', 'selected'], false],
-        ['get', 'cap'],
-        ['boolean', ['feature-state', 'hover'], false],
-        ['get', 'lit'],
-        ['get', 'color'],
-      ],
-      'fill-extrusion-height': pillarHeight(),
-      'fill-extrusion-base': 0,
-      'fill-extrusion-opacity': 0.93,
-      'fill-extrusion-vertical-gradient': true,
+      'icon-opacity': ['interpolate', ['linear'], ['zoom'], CLUSTER_MAX_ZOOM, 0, CLUSTER_MAX_ZOOM + 0.3, 1],
+      'text-opacity': ['interpolate', ['linear'], ['zoom'], 13.6, 0, 14.1, 1],
+      'text-color': palette.text,
+      'text-halo-color': palette.halo,
+      'text-halo-width': 1.6,
     },
   })
-  // a pale crown on every pillar reads as a lit beacon from a distance
+  // a larger copy of the badge marks the selected department
   map.addLayer({
-    id: 'dq-caps',
-    type: 'fill-extrusion',
-    source: 'dq-pillars',
-    minzoom: PILLAR_MIN_ZOOM,
-    paint: {
-      'fill-extrusion-color': ['get', 'cap'],
-      'fill-extrusion-base': pillarHeight(),
-      'fill-extrusion-height': pillarHeight(28),
-      'fill-extrusion-opacity': 0.93,
+    id: 'dq-badge-selected',
+    type: 'symbol',
+    source: 'dq-points',
+    filter: ['==', ['get', 'id'], ''],
+    layout: {
+      'icon-image': badgeExpression('dept'),
+      'icon-size': 1.35,
+      'icon-anchor': 'bottom',
+      'icon-allow-overlap': true,
+      'icon-ignore-placement': true,
     },
   })
 
@@ -926,19 +1252,61 @@ function addDepartmentLayers(map: MapLibreMap) {
   })
 }
 
-function applyDepartmentTheme(map: MapLibreMap, palette: Palette) {
-  if (!map.getLayer('dq-cluster')) return
+/**
+ * Ground under the satellite imagery. The vector land, water and roads sit below the imagery, so in the
+ * realistic view they only ever show where an imagery tile has not arrived yet (right after the intro
+ * flight aborts the in-between zooms, or on a slow connection): there a dull earth tone reads as "still
+ * loading", where the cream map palette looked like a huge flat sand slab in the pitched view.
+ */
+const IMAGERY_GROUND = '#857e6d'
+
+/** the base map's own building layers, retuned for the realistic (satellite) view */
+function applyBasemap(map: MapLibreMap, basemap: Basemap) {
+  const real = basemap === 'real'
+  const dark = isDarkTheme() && !real
+  const palette: Palette = dark ? DARK : LIGHT
+  for (const layer of map.getStyle().layers as StyleLayer[]) {
+    if (layer.id.startsWith('dq-')) continue
+    const paint = themePaint(layer, palette)
+    if (real && layer.type === 'symbol') {
+      paint['text-color'] = layer['source-layer'] === 'transportation_name' ? '#f1ece0' : '#ffffff'
+      paint['text-halo-color'] = 'rgba(12,16,12,0.85)'
+      paint['text-halo-width'] = 1.6
+    }
+    if (real && layer.type === 'background') paint['background-color'] = IMAGERY_GROUND
+    for (const [prop, value] of Object.entries(paint))
+      map.setPaintProperty(layer.id, prop as 'fill-color', value as string)
+    // The generic city massing, in the platform palette on the map view. Over the imagery the real
+    // buildings take over: the basemap merges same-height blocks (whole compounds drawn as building=yes
+    // among them) into one feature, so its translucent copy cannot be masked building by building and
+    // would show as tan slabs, ghost shells and holes around the platform's own extrusions.
+    if (layer.id === 'building-3d') {
+      map.setPaintProperty(layer.id, 'fill-extrusion-color', palette.buildingTop)
+      map.setPaintProperty(layer.id, 'fill-extrusion-opacity', 0.88)
+      map.setLayoutProperty(layer.id, 'visibility', real ? 'none' : 'visible')
+    }
+    // flat land, water, roads and 2D buildings: hidden under the imagery (a missing tile shows bare ground)
+    if (layer.type === 'fill' || layer.type === 'line')
+      map.setLayoutProperty(layer.id, 'visibility', real ? 'none' : 'visible')
+  }
+  map.setSky(skyFor(real ? LIGHT : palette))
+  map.setLayoutProperty('dq-satellite', 'visibility', real ? 'visible' : 'none')
+  setFacadeTheme(map, dark)
+  // department and facility labels follow the ground they sit on
+  const text = real ? '#ffffff' : palette.text
+  const halo = real ? 'rgba(12,16,12,0.88)' : palette.halo
+  for (const id of ['dq-badges', 'dq-fac-badges']) {
+    if (!map.getLayer(id)) continue
+    map.setPaintProperty(
+      id,
+      'text-color',
+      id === 'dq-fac-badges' && !real ? mix(palette.text, palette.land, 0.15) : text
+    )
+    map.setPaintProperty(id, 'text-halo-color', halo)
+  }
   map.setPaintProperty('dq-cluster', 'circle-color', palette.cluster)
   map.setPaintProperty('dq-cluster', 'circle-stroke-color', palette.clusterStroke)
   map.setPaintProperty('dq-cluster-ring', 'circle-stroke-color', palette.cluster)
   map.setPaintProperty('dq-cluster-count', 'text-color', palette.clusterText)
   map.setPaintProperty('dq-single', 'circle-stroke-color', palette.clusterStroke)
-  map.setPaintProperty('dq-pillars', 'fill-extrusion-color', [
-    'case',
-    ['boolean', ['feature-state', 'selected'], false],
-    palette.selected,
-    ['boolean', ['feature-state', 'hover'], false],
-    ['get', 'cap'],
-    ['get', 'color'],
-  ])
 }

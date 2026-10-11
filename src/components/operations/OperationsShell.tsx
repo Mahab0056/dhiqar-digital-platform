@@ -46,6 +46,7 @@ export function OperationsShell({ children, active = 'operations' }: { children:
 
   return (
     <AppShell
+      wide
       portalLabel={active === 'super-admin' ? 'إدارة المنصة' : active === 'governor' ? 'لوحة المحافظ' : 'غرفة العمليات'}
       portalIcon={active === 'super-admin' ? ShieldCheck : MonitorCheck}
       nav={nav}

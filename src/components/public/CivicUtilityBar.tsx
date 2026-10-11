@@ -42,7 +42,7 @@ export function CivicUtilityBar() {
             {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
             <span>{theme === 'dark' ? 'الوضع النهاري' : 'الوضع الليلي'}</span>
           </button>
-          <a href="/accessibility">
+          <a href="/accessibility" aria-label="إمكانية الوصول">
             <Accessibility size={14} />
             <span>إمكانية الوصول</span>
           </a>

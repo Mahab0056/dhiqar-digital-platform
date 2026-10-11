@@ -1,0 +1,699 @@
+/* =============================================================================================
+   Staff surfaces on the design-system tokens.
+   Several staff panels still carried hard-coded legacy colours (a dark-green camera dialog, white
+   super-admin cards, grey-green captions) that only worked in one theme: dark text on the dark
+   dialog in day mode, light text on white cards in night mode. Everything here reads the semantic
+   --ds-* tokens, so each surface holds AA contrast in both themes.
+   ============================================================================================= */
+
+/* ---- one dialog style for the staff portal ---------------------------------------------------
+   markup: .staff-dialog > .staff-dialog-backdrop + article > header(span icon, div(small, h3), button)
+   + .staff-dialog-body. The camera-status dialog uses it; new staff dialogs should too. */
+:is(.staff-dialog, .camera-status-dialog) {
+  position: fixed;
+  z-index: 200;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+}
+:is(.staff-dialog-backdrop, .camera-dialog-backdrop) {
+  position: absolute;
+  inset: 0;
+  padding: 0;
+  border: 0;
+  background: rgba(6, 18, 13, 0.55);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  cursor: default;
+}
+:is(.staff-dialog, .camera-status-dialog) > article {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: min(100%, 520px);
+  max-height: calc(100dvh - 32px);
+  overflow: hidden;
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-lg);
+  background: var(--ds-surface);
+  box-shadow: var(--ds-shadow-lg);
+  color: var(--ds-text);
+  animation: staff-dialog-in 200ms var(--ds-ease);
+}
+@keyframes staff-dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  :is(.staff-dialog, .camera-status-dialog) > article {
+    animation: none;
+  }
+}
+:is(.staff-dialog, .camera-status-dialog) article > header {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--ds-border);
+  background: var(--ds-surface-muted);
+}
+:is(.staff-dialog, .camera-status-dialog) header > span {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-primary-soft);
+  color: var(--ds-primary-text);
+}
+:is(.staff-dialog, .camera-status-dialog) header > span svg {
+  width: 20px;
+  height: 20px;
+}
+:is(.staff-dialog, .camera-status-dialog) header small {
+  display: block;
+  color: var(--ds-text-muted);
+  font-family: var(--ds-font-ui);
+  font-size: var(--ds-text-xs);
+  font-weight: 600;
+  letter-spacing: 0;
+}
+:is(.staff-dialog, .camera-status-dialog) header h3 {
+  margin: 2px 0 0;
+  color: var(--ds-text);
+  font-size: var(--ds-text-md);
+  font-weight: 700;
+  line-height: 1.4;
+}
+:is(.staff-dialog, .camera-status-dialog) header > button {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-surface);
+  color: var(--ds-text-2);
+  cursor: pointer;
+  transition: background var(--ds-fast) var(--ds-ease);
+}
+:is(.staff-dialog, .camera-status-dialog) header > button:hover {
+  background: var(--ds-surface-sunken);
+  color: var(--ds-text);
+}
+:is(.staff-dialog, .camera-status-dialog) header > button svg {
+  width: 18px;
+  height: 18px;
+}
+:is(.staff-dialog-body, .camera-dialog-body) {
+  overflow-y: auto;
+  padding: 18px;
+  overscroll-behavior: contain;
+}
+:is(.staff-dialog-body, .camera-dialog-body) > strong {
+  display: block;
+  color: var(--ds-text);
+  font-size: var(--ds-text-base);
+  font-weight: 700;
+}
+/* the state line is a heading: it stays in the text colour (amber headings read as a fault and the brass
+   look is retired); the state is carried by the icon chip in front of it */
+.camera-dialog-body > .camera-dialog-state {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.camera-dialog-state > span {
+  display: grid;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-surface-sunken);
+  color: var(--ds-text-2);
+}
+.camera-dialog-state > span svg {
+  width: 17px;
+  height: 17px;
+}
+.camera-dialog-body[data-status='READY_FOR_GATEWAY'] .camera-dialog-state > span {
+  background: var(--ds-success-soft);
+  color: var(--ds-success);
+}
+:is(.staff-dialog-body, .camera-dialog-body) > p {
+  margin: 8px 0 16px;
+  color: var(--ds-text-2);
+  font-size: var(--ds-text-sm);
+  line-height: 1.8;
+}
+:is(.staff-dialog-body, .camera-dialog-body) dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+:is(.staff-dialog-body, .camera-dialog-body) dl > div {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-surface-sunken);
+}
+:is(.staff-dialog-body, .camera-dialog-body) dt {
+  color: var(--ds-text-2);
+  font-size: var(--ds-text-xs);
+  font-weight: 600;
+}
+:is(.staff-dialog-body, .camera-dialog-body) dd {
+  margin: 4px 0 0;
+  overflow-wrap: anywhere;
+  color: var(--ds-text);
+  font-size: var(--ds-text-base);
+  font-weight: 700;
+  line-height: 1.5;
+}
+@media (max-width: 480px) {
+  :is(.staff-dialog, .camera-status-dialog) {
+    align-items: end;
+    padding: 0;
+  }
+  :is(.staff-dialog, .camera-status-dialog) > article {
+    width: 100%;
+    max-height: 88dvh;
+    border-radius: var(--ds-radius-lg) var(--ds-radius-lg) 0 0;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  :is(.staff-dialog, .camera-status-dialog) article > header {
+    padding: 14px 16px;
+  }
+  :is(.staff-dialog-body, .camera-dialog-body) {
+    padding: 16px;
+  }
+}
+
+/* the button that opens the camera dialog */
+.app-shell .camera-status-button {
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--ds-border-strong);
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-surface);
+  color: var(--ds-primary-text);
+  font-family: var(--ds-font-ui);
+  font-size: var(--ds-text-xs);
+  font-weight: 700;
+}
+.app-shell .camera-status-button:hover {
+  border-color: var(--ds-primary);
+  background: var(--ds-primary-soft);
+}
+
+/* ---- shared staff bits ------------------------------------------------------------------------ */
+.app-shell .status-pill.off {
+  border: 1px solid var(--ds-border);
+  background: var(--ds-surface-sunken);
+  color: var(--ds-text-2);
+}
+.app-shell .status-pill.on {
+  background: var(--ds-success-soft);
+  color: var(--ds-success);
+}
+.app-shell :is(.muted, .gov-muted) {
+  color: var(--ds-text-muted);
+}
+/* ---- workspace tab bar: sticks just under the app top bar, never behind it ----------------------
+   It used to stick at top: 0, under the 64px sticky (translucent) top bar, so on scroll the tabs slid behind
+   the bar and showed through it as ghost tabs. It now sticks --app-topbar (the bar's height, set on .app-shell)
+   plus a small gap below it, on an opaque surface; a skirt in the page colour fills that gap so content
+   scrolling under the stuck bar never shows between the two. */
+.app-shell .workspace-tabbar {
+  --workspace-tabbar-gap: 8px;
+  position: sticky;
+  top: calc(var(--app-topbar) + var(--workspace-tabbar-gap));
+  z-index: 20;
+  background-color: var(--ds-surface);
+  box-shadow: var(--ds-shadow-sm);
+}
+.app-shell .workspace-tabbar::before {
+  content: '';
+  position: absolute;
+  inset-inline: -1px;
+  bottom: calc(100% + 1px);
+  height: var(--workspace-tabbar-gap);
+  background: var(--ds-bg);
+  pointer-events: none;
+}
+/* phones and short landscape screens: the tabs wrap into several rows (≈260px on a phone), too tall to
+   keep pinned over the content; there the bar stays in the flow (picking a tab scrolls back to it anyway) */
+@media (max-width: 720px), (max-height: 560px) {
+  .app-shell .workspace-tabbar {
+    position: relative;
+    top: auto;
+  }
+  .app-shell .workspace-tabbar::before {
+    content: none;
+  }
+}
+/* tab counter on the selected (filled) tab: invert instead of a translucent chip */
+.app-shell .workspace-tabbar button:is(.active, [aria-selected='true']) b {
+  background: var(--ds-primary-fg);
+  color: var(--ds-primary);
+}
+.app-shell .workspace-tabbar button b {
+  min-width: 20px;
+  padding: 0 6px;
+  border-radius: var(--ds-radius-pill);
+  background: var(--ds-surface-sunken);
+  color: var(--ds-text-2);
+  font-size: 11px;
+  line-height: 20px;
+  text-align: center;
+}
+/* reference links inside staff tables */
+.app-shell :is(td, .department-table) a:not(.button) {
+  color: var(--ds-primary-text);
+}
+
+/* captions and meta lines under staff headings and in queues */
+.app-shell :is(.employee-heading, .department-dashboard-heading) > div > p,
+.app-shell :is(.service-requests-admin-heading, .feedback-admin-heading) p,
+.app-shell :is(.service-request-admin-detail, .feedback-admin-detail) > header p,
+.app-shell .feedback-admin-row p,
+.app-shell :is(.empty-queue, .citizen-empty) :is(p, span),
+.app-shell .queue-toolbar span,
+.app-shell .identity-review-row time {
+  color: var(--ds-text-2);
+}
+.app-shell .employee-heading > div > span {
+  color: var(--ds-primary-text);
+}
+.app-shell .review-status.pending {
+  color: var(--ds-warning);
+}
+
+/* ---- operations room + governor -------------------------------------------------------------- */
+.app-shell .ops-kpis > div > small,
+.app-shell .super-admin-kpis > div > small,
+.app-shell .alert-item span > small,
+.app-shell .health-row b > small,
+.app-shell .registry-toolbar > small,
+.app-shell .finance-total > small,
+.app-shell .executive-score small,
+.app-shell .ranking-row small {
+  color: var(--ds-text-2);
+}
+
+/* brand-green accents instead of the retired brass/gold. The legacy operations sheet hard-codes brass on the
+   page kicker («المتابعة التنفيذية», «المتابعة التشغيلية»), panel and KPI icons, health bars, source links,
+   the collected total and the GIS map's accent. Amber stays only where it means "needs attention" (a health
+   row in warning, the missing-documents metric, an open-complaint flag). */
+.app-shell .ops-header > div:first-child > span {
+  color: var(--ds-eyebrow);
+}
+.app-shell .panel-heading > svg,
+.app-shell .ops-kpis > div > span {
+  color: var(--ds-primary-text);
+}
+.app-shell .health-row:not(.health-warn, .health-off) i {
+  background: var(--ds-success);
+}
+.app-shell :is(.registry-department-card header a, .workforce-status > a) {
+  background: var(--ds-primary-soft);
+  color: var(--ds-primary-text);
+}
+/* waiting for an attendance source is a pending state, not a fault: neutral frame, text-coloured title */
+.app-shell .workforce-status.awaiting {
+  border-color: var(--ds-border);
+  background: color-mix(in srgb, var(--ds-text) 4%, transparent);
+}
+.app-shell .workforce-status.awaiting strong {
+  color: var(--ds-text);
+}
+.app-shell .registry-feedback-flag {
+  background: var(--ds-warning-soft);
+  color: var(--ds-warning);
+}
+.app-shell .finance-total strong {
+  color: var(--ds-text);
+}
+.app-shell .new-request-dot {
+  background: var(--ds-primary);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--ds-primary) 18%, transparent);
+}
+/* the GIS command map keeps its own night palette in both themes; only its accent changes */
+.app-shell .gis-shell {
+  --gis-gold: #7fdcb4;
+}
+/* super admin: KPI and route icons, route hover, and the SUPER_ADMIN role chip (filled green, so it still
+   stands apart from the tinted chips of the other roles) */
+.app-shell .super-admin-header {
+  border-bottom-color: var(--ds-border);
+}
+.app-shell .super-admin-kpis > div > span {
+  background: var(--ds-primary-soft);
+  color: var(--ds-primary-text);
+}
+.app-shell .super-admin-action-list a > svg:first-child {
+  color: var(--ds-primary-text);
+}
+.app-shell .super-admin-action-list a:hover {
+  border-color: color-mix(in srgb, var(--ds-primary) 45%, transparent);
+  background: var(--ds-primary-soft);
+}
+.app-shell .audit-role.super_admin {
+  background: var(--ds-primary);
+  color: var(--ds-primary-fg);
+}
+
+/* ---- super admin: citizens register ------------------------------------------------------------- */
+.app-shell .admin-citizens-panel,
+.app-shell .system-health-panel {
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-md);
+  background: var(--ds-surface);
+  box-shadow: var(--ds-shadow-sm);
+  color: var(--ds-text);
+}
+.app-shell :is(.admin-citizens-panel, .system-health-panel) .panel-heading h2 {
+  color: var(--ds-heading);
+}
+.app-shell :is(.admin-citizens-panel, .system-health-panel) .panel-heading p {
+  color: var(--ds-text-muted);
+}
+.app-shell .admin-citizen-total {
+  border-color: var(--ds-border);
+  background: var(--ds-primary-soft);
+  color: var(--ds-primary-text);
+}
+.app-shell .admin-citizen-total small {
+  color: var(--ds-text-2);
+}
+.app-shell .admin-citizen-controls {
+  border-color: var(--ds-border);
+  background: var(--ds-surface-muted);
+}
+.app-shell .admin-citizen-controls > label:not(.admin-citizen-search) {
+  color: var(--ds-text-2);
+}
+.app-shell :is(.admin-citizen-controls select, .admin-citizen-search) {
+  border-color: var(--ds-border-strong);
+  background: var(--ds-surface);
+  color: var(--ds-text);
+}
+.app-shell .admin-citizen-search {
+  color: var(--ds-text-muted);
+}
+.app-shell .admin-citizen-search input {
+  color: var(--ds-text);
+}
+.app-shell .admin-citizen-search input::placeholder {
+  color: var(--ds-text-muted);
+}
+.app-shell .admin-citizen-list article {
+  border-color: var(--ds-border);
+  background: var(--ds-surface);
+  box-shadow: var(--ds-shadow-xs);
+}
+.app-shell .admin-citizen-list article > header {
+  border-bottom-color: var(--ds-border);
+  background: var(--ds-surface-muted);
+}
+.app-shell .admin-citizen-avatar {
+  background: var(--ds-primary);
+  color: var(--ds-primary-fg);
+}
+.app-shell .admin-citizen-list h3 {
+  color: var(--ds-text);
+}
+.app-shell .admin-citizen-list header small,
+.app-shell .admin-citizen-list dt,
+.app-shell .admin-citizen-list footer time {
+  color: var(--ds-text-muted);
+}
+.app-shell .admin-citizen-list dd {
+  color: var(--ds-text);
+}
+.app-shell .admin-citizen-list dl > div {
+  border-color: var(--ds-border);
+}
+.app-shell .admin-citizen-list footer {
+  background: var(--ds-surface-muted);
+  color: var(--ds-text-2);
+}
+.app-shell .admin-citizen-list footer svg {
+  color: var(--ds-primary-text);
+}
+.app-shell .admin-citizen-status {
+  background: var(--ds-surface-sunken);
+  color: var(--ds-text-2);
+}
+.app-shell
+  :is(.admin-citizen-status.verified, .admin-citizen-status.verified_manual, .admin-citizen-status.verified_ur_portal) {
+  background: var(--ds-success-soft);
+  color: var(--ds-success);
+}
+.app-shell
+  :is(.admin-citizen-status.pending_review, .admin-citizen-status.manual_review, .admin-citizen-status.phone_verified) {
+  background: var(--ds-warning-soft);
+  color: var(--ds-warning);
+}
+.app-shell :is(.admin-citizen-status.needs_resubmission, .admin-citizen-status.rejected) {
+  background: var(--ds-danger-soft);
+  color: var(--ds-danger);
+}
+.app-shell .admin-citizens-empty {
+  border-color: var(--ds-border-strong);
+  background: var(--ds-surface-muted);
+  color: var(--ds-text-2);
+}
+.app-shell .admin-citizens-empty h3 {
+  color: var(--ds-text);
+}
+
+/* ---- super admin: system health, coverage --------------------------------------------------------- */
+.app-shell .system-health-card {
+  border: 1px solid var(--ds-border);
+  background: var(--ds-surface-muted);
+  color: var(--ds-text);
+}
+.app-shell .system-health-card h3 {
+  color: var(--ds-text);
+}
+.app-shell :is(.system-tables, .system-backups) li {
+  border-bottom-color: var(--ds-border);
+}
+.app-shell :is(.system-tables, .system-backups) li > span {
+  overflow-wrap: anywhere;
+}
+.app-shell .system-backups small {
+  color: var(--ds-text-muted);
+}
+.app-shell .system-health-card small.muted {
+  overflow-wrap: anywhere;
+}
+
+/* ---- super admin: national services register --------------------------------------------------- */
+.app-shell .service-admin-filters button {
+  border-color: var(--ds-border-strong);
+  background: var(--ds-surface);
+  color: var(--ds-text-2);
+}
+.app-shell .service-admin-filters button.active {
+  border-color: var(--ds-primary);
+  background: var(--ds-primary);
+  color: var(--ds-primary-fg);
+}
+.app-shell .service-admin-list article {
+  border-color: var(--ds-border);
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-surface-muted);
+}
+.app-shell .service-admin-list h3 {
+  color: var(--ds-text);
+}
+.app-shell .service-admin-list p {
+  color: var(--ds-text-muted);
+}
+.app-shell .service-admin-list a {
+  color: var(--ds-primary-text);
+}
+.app-shell .service-publication {
+  background: var(--ds-success-soft);
+  color: var(--ds-success);
+}
+.app-shell .service-publication.needs_review {
+  background: var(--ds-warning-soft);
+  color: var(--ds-warning);
+}
+.app-shell .service-publication.disabled {
+  background: var(--ds-danger-soft);
+  color: var(--ds-danger);
+}
+
+/* ---- operations room: balanced dashboard row ------------------------------------------------------
+   The tall system-health list sat in the first column and left the pie and alerts panels as short
+   cards over a large empty block. On wide screens: flow · status · alerts in one row, health below
+   across the full width with its checks in two columns. */
+@media (min-width: 1101px) {
+  .app-shell .ops-dashboard-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .app-shell .ops-dashboard-grid > .ops-side-stack {
+    display: contents;
+  }
+  .app-shell .ops-side-stack > .dark-panel:first-child {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .app-shell .ops-dashboard-grid > .transactions-panel {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .app-shell .ops-dashboard-grid > .alerts-panel {
+    grid-column: 3;
+    grid-row: 1;
+  }
+  .app-shell .ops-side-stack > .health-panel {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 32px;
+    align-content: start;
+    min-height: 0;
+  }
+  .app-shell .health-panel > :is(.panel-heading, .health-row.muted) {
+    grid-column: 1 / -1;
+  }
+}
+
+/* ---- staff workspaces fill large monitors -------------------------------------------------------- */
+.app-shell.is-wide .app-content {
+  max-width: none;
+  padding-inline: clamp(16px, 2.2vw, 48px);
+}
+@media (min-width: 1600px) {
+  /* list + detail workspaces: the list keeps a readable width, the detail takes the rest */
+  .app-shell :is(.service-requests-admin-grid, .feedback-admin-grid) {
+    grid-template-columns: minmax(340px, 480px) minmax(0, 1fr);
+  }
+  .app-shell .identity-review-grid {
+    grid-template-columns: minmax(300px, 420px) minmax(0, 1fr);
+  }
+  .app-shell .employee-workspace {
+    grid-template-columns: minmax(360px, 460px) minmax(0, 1fr);
+  }
+  /* operations registry: department cards add columns as the screen grows */
+  .app-shell .ops-registry-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(320px, 440px);
+  }
+  .app-shell .registry-department-grid {
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    max-height: 720px;
+  }
+}
+
+/* ---- department dashboard ------------------------------------------------------------------------ */
+/* long activity lists scroll inside their card instead of stretching the whole row */
+.app-shell .department-panel .department-activity {
+  max-height: 460px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-inline-end: 4px;
+}
+.app-shell .department-grid {
+  align-items: start;
+}
+/* No `grid-auto-flow: dense`: back-filling pulled later panels up into earlier holes, so the screen no longer
+   matched DOM, reading and keyboard focus order (WCAG 1.3.2 / 2.4.3). Instead, the last single panel of a run
+   that would leave a hole before the next full-width card (chart, manager table, requests) or the end of the
+   grid widens to fill its row. A run is counted from the full-width card before it (the chart is always first);
+   runs of up to 5 panels are covered. Browsers without :has() keep the hole, never a reordering. */
+@media (max-width: 1799px) {
+  /* 2 columns: an odd run (1, 3, 5) leaves its last panel alone, so it takes the whole row */
+  .app-shell
+    .department-grid
+    > :is(
+      :is(.department-chart, .department-requests) + *,
+      :is(.department-chart, .department-requests)
+        + :not(.department-chart, .department-requests)
+        + :not(.department-chart, .department-requests)
+        + *,
+      :is(.department-chart, .department-requests)
+        + :not(.department-chart, .department-requests)
+        + :not(.department-chart, .department-requests)
+        + :not(.department-chart, .department-requests)
+        + :not(.department-chart, .department-requests)
+        + *
+    ):not(.department-chart, .department-requests):is(:last-child, :has(+ .department-chart, + .department-requests)) {
+    grid-column: 1 / -1;
+  }
+}
+/* master/detail queues: the list column is a quiet tinted rail, not a grey block */
+.app-shell :is(.service-requests-admin-list, .feedback-admin-list, .identity-review-list) {
+  background: var(--ds-surface-muted);
+}
+@media (min-width: 1800px) {
+  .app-shell .department-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .app-shell .department-grid > :is(.department-chart, .department-requests) {
+    grid-column: 1 / -1;
+  }
+  /* 3 columns: a run ending one panel into a row (1, 4) gives it the whole row; two panels into a row (2, 5)
+     let the second span the remaining two columns */
+  .app-shell
+    .department-grid
+    > :is(
+      :is(.department-chart, .department-requests) + *,
+      :is(.department-chart, .department-requests)
+        + :not(.department-chart, .department-requests)
+        + :not(.department-chart, .department-requests)
+        + :not(.department-chart, .department-requests)
+        + *
+    ):not(.department-chart, .department-requests):is(:last-child, :has(+ .department-chart, + .department-requests)) {
+    grid-column: 1 / -1;
+  }
+  .app-shell
+    .department-grid
+    > :is(
+      :is(.department-chart, .department-requests) + :not(.department-chart, .department-requests) + *,
+      :is(.department-chart, .department-requests)
+        + :not(.department-chart, .department-requests)
+        + :not(.department-chart, .department-requests)
+        + :not(.department-chart, .department-requests)
+        + :not(.department-chart, .department-requests)
+        + *
+    ):not(.department-chart, .department-requests):is(:last-child, :has(+ .department-chart, + .department-requests)) {
+    grid-column: span 2;
+  }
+}
+@media (min-width: 1600px) {
+  .app-shell .admin-citizen-list {
+    grid-template-columns: repeat(auto-fill, minmax(440px, 1fr));
+  }
+}
+
+/* ---- touch targets (WCAG 2.5.8: at least 24×24 CSS px) ------------------------------------------- */
+.app-shell .registry-department-card header a,
+.auth-foot nav a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding-inline: 6px;
+}
+.app-shell :is(td, .news-moderation-panel) > a[target='_blank'],
+.app-shell td > a[target='_blank'] {
+  display: inline-block;
+  padding-block: 4px;
+}
+.app-shell input[type='checkbox'] {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--ds-primary);
+}

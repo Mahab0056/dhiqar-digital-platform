@@ -315,6 +315,7 @@ export function StaffAccountsPanel() {
                 <td>
                   <select
                     value={item.role}
+                    aria-label={`دور ${item.fullName}`}
                     disabled={busy}
                     onChange={e =>
                       void act(() =>
@@ -332,6 +333,7 @@ export function StaffAccountsPanel() {
                 <td>
                   <select
                     value={item.departmentId || ''}
+                    aria-label={`دائرة ${item.fullName}`}
                     disabled={busy}
                     onChange={e =>
                       void act(() =>

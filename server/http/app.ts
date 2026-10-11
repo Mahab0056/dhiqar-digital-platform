@@ -36,7 +36,8 @@ export function createApp() {
             'https://tiles.openfreemap.org',
             'https://server.arcgisonline.com',
           ],
-          scriptSrc: ["'self'"],
+          // 'wasm-unsafe-eval': lets same-origin WebAssembly compile (the /verify QR/Code 128 reader); no JS eval
+          scriptSrc: ["'self'", "'wasm-unsafe-eval'"],
           // MapLibre's tile worker: a same-origin module file, with a blob: wrapper as its fallback
           workerSrc: ["'self'", 'blob:'],
           childSrc: ["'self'", 'blob:'],

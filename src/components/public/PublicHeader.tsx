@@ -3,6 +3,7 @@ import { Link, useLocation } from 'wouter'
 import { LayoutDashboard, Menu, PlusCircle, UserRound, X } from 'lucide-react'
 import { CivicUtilityBar } from './CivicUtilityBar'
 import { useSession } from '../../lib/session'
+import { ScrollProgress, usePointerFx } from '../../lib/ambient-motion'
 
 const navItems = [
   { label: 'الرئيسية', href: '/', match: (path: string) => path === '/' },
@@ -28,6 +29,7 @@ export function PublicHeader() {
   const [open, setOpen] = useState(false)
   const [location] = useLocation()
   const { session } = useSession()
+  usePointerFx()
   const portalHref =
     session?.role === 'CITIZEN'
       ? '/citizen'
@@ -145,6 +147,7 @@ export function PublicHeader() {
             </div>
           </nav>
         </div>
+        <ScrollProgress />
       </header>
     </>
   )

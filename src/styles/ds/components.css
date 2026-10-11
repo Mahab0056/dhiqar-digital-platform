@@ -75,7 +75,7 @@
 .gov-btn.primary:hover:not(:disabled) {
   box-shadow: var(--ds-shadow-sm);
 }
-/* primary actions wear the signature gradient (gold at night, green by day) */
+/* primary actions wear the brand-green gradient (light mint at night, deep green by day) */
 .button.primary,
 .gov-btn.primary {
   border-color: transparent;
@@ -95,7 +95,7 @@
   --btn-bg: var(--ds-glass);
   --btn-border: var(--ds-glass-border);
   --btn-bg-hover: var(--ds-glass-strong);
-  --btn-border-hover: rgba(232, 199, 126, 0.45);
+  --btn-border-hover: color-mix(in srgb, var(--ds-primary) 45%, transparent);
 }
 .button.outline,
 .gov-btn.outline,
@@ -195,7 +195,7 @@
   align-items: center;
   gap: 8px;
   margin: 0 0 6px;
-  color: var(--ds-accent-text);
+  color: var(--ds-eyebrow);
   font-family: var(--ds-font-ui);
   font-size: var(--ds-text-sm);
   font-weight: 600;
@@ -268,8 +268,9 @@
   font-weight: 700;
   object-fit: cover;
 }
+/* governor / super-admin badge: a deeper brand green (the brass tone went with the retired gold accents) */
 .user-avatar.gold {
-  background: var(--brass-500);
+  background: var(--ds-primary-active);
 }
 
 /* report export: date range + download */

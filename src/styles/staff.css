@@ -701,7 +701,8 @@
 }
 .workspace-tabbar {
   position: sticky;
-  top: 0;
+  /* below the sticky app top bar (--app-topbar comes from the app shell; 0 outside it), never behind it */
+  top: var(--app-topbar, 0px);
   z-index: 20;
   display: flex;
   gap: 4px;
@@ -758,7 +759,9 @@
   color: #fff;
 }
 .workspace-tabpanel {
-  animation: page-enter 0.3s ease-out both;
+  /* backwards, not both: a transform kept after the animation would make the panel the containing block of every
+     position:fixed overlay inside it (dialogs opened from a tab rendered far below the viewport) */
+  animation: page-enter 0.3s ease-out backwards;
   display: grid;
   gap: 18px;
 }

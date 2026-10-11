@@ -1,18 +1,18 @@
 /* 3D departments map (MapLibre) — overlays, legend, tooltip and the selected-department card */
 
 .map3d-shell {
-  --map3d-glass: rgba(255, 255, 255, 0.86);
+  --map3d-glass: rgba(255, 255, 255, 0.94); /* 0.86 let satellite imagery pull muted labels under 4.5:1 */
   --map3d-glass-border: rgba(23, 32, 28, 0.1);
   position: relative;
   height: 560px;
   overflow: hidden;
   isolation: isolate;
   background:
-    radial-gradient(120% 90% at 50% 0%, #dcebf2 0%, transparent 60%), linear-gradient(180deg, #eef3ef 0%, #f2ede2 100%);
+    radial-gradient(120% 90% at 50% 0%, #dcebf2 0%, transparent 60%), linear-gradient(180deg, #eef3ef 0%, #e6eee8 100%);
   font-family: var(--ds-font-ui);
 }
 :root[data-gov-theme='dark'] .map3d-shell {
-  --map3d-glass: rgba(8, 20, 15, 0.82);
+  --map3d-glass: rgba(8, 20, 15, 0.9);
   --map3d-glass-border: rgba(255, 255, 255, 0.1);
   background:
     radial-gradient(120% 90% at 50% 0%, #163024 0%, transparent 60%), linear-gradient(180deg, #06110c 0%, #0c1813 100%);
@@ -187,7 +187,7 @@
   border: 0;
   border-radius: 9px;
   background: transparent;
-  color: var(--ds-text-muted);
+  color: var(--ds-text-2);
   font: inherit;
   font-size: var(--ds-text-xs);
   font-weight: 700;
@@ -238,7 +238,7 @@
   flex: 1;
 }
 .map3d-legend li button b {
-  color: var(--ds-text-muted);
+  color: var(--ds-text-2);
   font-size: var(--ds-text-xs);
   font-variant-numeric: tabular-nums;
 }
@@ -256,7 +256,7 @@
 .map3d-legend-note {
   padding: 4px 8px 2px;
   border-top: 1px solid var(--map3d-glass-border);
-  color: var(--ds-text-muted);
+  color: var(--ds-text-2);
   font-size: var(--ds-text-xs);
 }
 
@@ -476,5 +476,121 @@
 
 /* the selected-department card takes the legend's place */
 .map3d-shell.has-card .map3d-legend {
+  display: none;
+}
+
+/* ---- realistic buildings: layered legend, facility card, satellite basemap ---- */
+.map3d-legend-body {
+  display: grid;
+  gap: 4px;
+  max-height: min(430px, 62vh);
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+.map3d-legend-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 0 0;
+  padding: 0 8px;
+  color: var(--ds-text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+.map3d-legend-title svg {
+  width: 13px;
+  height: 13px;
+}
+.map3d-legend-pin {
+  width: 11px;
+  height: 11px;
+  border: 2px solid #7fdcb4;
+  border-radius: 50%;
+  background: var(--ds-primary, #0b7a55);
+}
+.map3d-legend-facilities li button i {
+  width: 12px;
+  height: 12px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: var(--sector);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--sector) 60%, transparent);
+}
+.map3d-legend-note {
+  margin: 2px 0 0;
+  line-height: 1.6;
+}
+.map3d-card-source {
+  margin: 0;
+  color: var(--ds-text-muted);
+  font-size: var(--ds-text-xs);
+  line-height: 1.6;
+}
+.map3d-card-source a {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--ds-primary);
+}
+.map3d-card-source svg {
+  width: 12px;
+  height: 12px;
+}
+/* a generated stand-in block (no OSM building outline) is said in a framed line, not in passing */
+.map3d-card p.map3d-card-shape.is-approx {
+  align-items: flex-start;
+  padding: 6px 8px;
+  border: 1px dashed color-mix(in srgb, var(--ds-text-muted) 55%, transparent);
+  border-radius: 8px;
+  color: var(--ds-text-2, var(--ds-text));
+}
+.map3d-card p.map3d-card-shape.is-approx svg {
+  margin-top: 2px;
+  color: var(--ds-text-muted);
+}
+.map3d-shell[data-basemap='real'] {
+  background: linear-gradient(180deg, #b9d3e2 0%, #8f8a76 100%);
+}
+.map3d-legend-body li button {
+  min-height: 28px;
+}
+@media (max-width: 640px) {
+  .map3d-legend-body {
+    max-height: 300px;
+  }
+}
+button.map3d-legend-title.is-toggle {
+  width: 100%;
+  min-height: 30px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  text-align: start;
+  cursor: pointer;
+}
+button.map3d-legend-title.is-toggle:hover {
+  background: color-mix(in srgb, var(--ds-text) 6%, transparent);
+}
+button.map3d-legend-title.is-toggle b {
+  margin-inline-start: auto;
+  font-variant-numeric: tabular-nums;
+}
+button.map3d-legend-title.is-toggle::after {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-inline-end: 1.5px solid currentColor;
+  border-block-end: 1.5px solid currentColor;
+  transform: rotate(45deg);
+  transition: transform var(--ds-fast, 150ms);
+}
+button.map3d-legend-title.is-toggle[aria-expanded='true']::after {
+  transform: rotate(-135deg);
+}
+.map3d-legend-facilities[hidden] {
   display: none;
 }

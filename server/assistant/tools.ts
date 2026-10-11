@@ -56,6 +56,8 @@ export type ToolUiPayload =
   | { kind: 'requests'; items: RequestSummary[] }
   | { kind: 'draft'; draft: DraftPreview }
   | { kind: 'registration' }
+  /** one short clarifying question; the options are tappable chips (each chip is sent as the citizen's reply) */
+  | { kind: 'clarify'; question: string; options: string[] }
 
 export type ToolOutcome = { content: unknown; isError?: boolean; ui?: ToolUiPayload }
 
@@ -150,10 +152,14 @@ const FILLER = new Set(
  * Catalog search tuned for chat messages: drops question/filler words and tries the words without the attached
  * "لـ" ("لجواز" → "جواز", "لإجازة" → "إجازة") before the raw text.
  */
-export function searchForCitizen(query: string, limit = 6) {
-  const words = normalizeArabic(query)
+/** The words of a chat message that can name a service (question and filler words dropped). */
+export const meaningfulWords = (query: string) =>
+  normalizeArabic(query)
     .split(' ')
     .filter(word => word && !FILLER.has(word))
+
+export function searchForCitizen(query: string, limit = 6) {
+  const words = meaningfulWords(query)
   const unprefixed = words.map(word => (word.length >= 4 && word.startsWith('ل') ? word.slice(1) : word))
   for (const candidate of [unprefixed.join(' '), words.join(' '), query]) {
     if (!candidate.trim()) continue
@@ -178,6 +184,10 @@ const draftInput = z.object({
   answers: z.array(z.object({ field_key: z.string().trim().min(1).max(80), value: z.string().max(1000) })).max(40),
 })
 const emptyInput = z.object({}).strict()
+export const clarifyInput = z.object({
+  question: z.string().trim().min(3).max(200),
+  options: z.array(z.string().trim().min(1).max(60)).min(2).max(4),
+})
 const helpInput = z.object({ topic: z.enum(PLATFORM_HELP_TOPICS) })
 
 const objectSchema = (properties: Record<string, unknown>, required: string[]) => ({
@@ -189,6 +199,22 @@ const objectSchema = (properties: Record<string, unknown>, required: string[]) =
 
 /** Deterministic tool list (sorted by name) — identical bytes on every request, so it caches with the system prompt. */
 export const assistantTools: Anthropic.Beta.BetaTool[] = [
+  {
+    name: 'ask_clarification',
+    description:
+      'Asks the citizen ONE short clarifying question when the need is ambiguous (which service, which district, first time or renewal, individual or business…) and shows 2–4 short answer options as tappable chips. Ends your turn: the choice of the citizen comes back as his next message. Use it only when you really cannot pick the service or the right answer; never when the need is already clear or was answered earlier in the conversation.',
+    input_schema: objectSchema(
+      {
+        question: { type: 'string', description: 'The question in short Iraqi-friendly Arabic, one sentence' },
+        options: {
+          type: 'array',
+          description: '2 to 4 short answers the citizen can tap (2–5 words each), written as he would say them',
+          items: { type: 'string' },
+        },
+      },
+      ['question', 'options']
+    ),
+  },
   {
     name: 'get_my_requests',
     description:
@@ -265,9 +291,14 @@ export const assistantTools: Anthropic.Beta.BetaTool[] = [
   {
     name: 'search_services',
     description:
-      'Searches the official Dhi Qar e-services catalog (understands Iraqi dialect and synonyms, e.g. "جواز", "طابو", "اجازة بناء"). Call it first whenever the citizen mentions any service or need, then get_service_details for the best match.',
+      'Searches the official Dhi Qar e-services catalog (understands Iraqi dialect and synonyms, e.g. "جواز", "طابو", "اجازة بناء"). Call it first whenever the citizen mentions any service or need, then get_service_details for the best match. When the citizen named his district (or answered which one), put it in the query ("اجازة بناء الشطرة"): that district\'s office then comes first.',
     input_schema: objectSchema(
-      { query: { type: 'string', description: 'Short Arabic search words describing the service' } },
+      {
+        query: {
+          type: 'string',
+          description: 'Short Arabic search words describing the service, plus the district when known',
+        },
+      },
       ['query']
     ),
   },
@@ -396,6 +427,16 @@ const invalid = (issues: string) => ({ content: { error: 'INVALID_INPUT', messag
 export function executeTool(name: string, rawInput: unknown, context: ToolContext): ToolOutcome {
   try {
     switch (name) {
+      case 'ask_clarification': {
+        const input = clarifyInput.safeParse(rawInput)
+        if (!input.success) return invalid('question and 2–4 short options are required')
+        const options = [...new Set(input.data.options)]
+        if (options.length < 2) return invalid('give 2–4 different options')
+        return {
+          content: { shown: true },
+          ui: { kind: 'clarify', question: input.data.question, options },
+        }
+      }
       case 'search_services': {
         const input = searchInput.safeParse(rawInput)
         if (!input.success) return invalid('query is required')

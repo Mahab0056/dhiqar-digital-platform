@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useLocation } from 'wouter'
 import {
+  ArrowLeft,
   ArrowUp,
   Building2,
   CalendarClock,
@@ -9,8 +10,8 @@ import {
   FileText,
   Globe2,
   Info,
+  MessageSquareWarning,
   Mic,
-  MicOff,
   RotateCcw,
   Send,
   ShieldCheck,
@@ -24,15 +25,20 @@ import { useSession } from '../../lib/session'
 import { AssistantMarkdown } from './AssistantMarkdown'
 import { AfandiMark } from './afandi/AfandiMark'
 import { AfandiOrb } from './afandi/AfandiOrb'
-import { createOrbVoice, type OrbVoice } from './afandi/orbEngine'
+import { buildSchedule, createOrbVoice, splitWords, type OrbVoice } from './afandi/orbEngine'
 import { playAfandiSound, useAfandiMuted } from './afandi/sound'
-import { applyAssistantEvent } from './assistant-reducer'
+import { applyAssistantEvent, emptyReply, splitAction, type AssistantAction } from './assistant-reducer'
+import { useVoiceConversation } from './voice/useVoiceConversation'
+import { VoiceStage } from './voice/VoiceStage'
+import { browserTtsSupported, unlockServerAudio } from './voice/speaker'
 import {
   getAssistantConfig,
   handDraftToServicePage,
   streamAssistantChat,
+  type AssistantChannel,
   type AssistantDraft,
   type AssistantEvent,
+  type AssistantVoiceConfig,
   type AssistantRequestSummary,
   type AssistantServiceCard,
   type AssistantTurn,
@@ -50,6 +56,8 @@ type UiMessage = {
   streaming?: boolean
   notice?: string
   error?: string
+  /** the question came by voice (shown with a small mic mark) */
+  voice?: boolean
 }
 
 // v2: v1 conversations may hold answers stored with the repeated text of the old stream handling
@@ -74,26 +82,6 @@ function readStored(): UiMessage[] {
   }
 }
 
-type SpeechRecognitionLike = {
-  lang: string
-  interimResults: boolean
-  continuous: boolean
-  maxAlternatives: number
-  start: () => void
-  stop: () => void
-  onresult: ((event: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null
-  onend: (() => void) | null
-  onerror: ((event: { error: string }) => void) | null
-}
-const speechConstructor = (): (new () => SpeechRecognitionLike) | null => {
-  if (typeof window === 'undefined') return null
-  const scope = window as unknown as {
-    SpeechRecognition?: new () => SpeechRecognitionLike
-    webkitSpeechRecognition?: new () => SpeechRecognitionLike
-  }
-  return scope.SpeechRecognition || scope.webkitSpeechRecognition || null
-}
-
 const channelIcon = { ONLINE_SUBMISSION: Globe2, APPOINTMENT_REQUIRED: CalendarClock, INFORMATION_ONLY: Info } as const
 
 export function AssistantPanel({
@@ -114,16 +102,19 @@ export function AssistantPanel({
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
   const [mode, setMode] = useState<'ai' | 'fallback' | null>(null)
-  const [listening, setListening] = useState(false)
-  const [voiceSupported] = useState(() => Boolean(speechConstructor()))
+  const [voiceMode, setVoiceMode] = useState(false)
+  const [voiceConfig, setVoiceConfig] = useState<AssistantVoiceConfig>({ transcribe: false, serverTts: false })
   const listRef = useRef<HTMLDivElement | null>(null)
   const inputRef = useRef<HTMLTextAreaElement | null>(null)
   const abortRef = useRef<AbortController | null>(null)
-  const recognitionRef = useRef<SpeechRecognitionLike | null>(null)
   const busyRef = useRef(false)
   const promptRef = useRef<string | null>(null)
   const orbRef = useRef<HTMLSpanElement | null>(null)
   const voiceRef = useRef<OrbVoice | null>(null)
+  const stageOrbRef = useRef<HTMLSpanElement | null>(null)
+  const stageRef = useRef<HTMLDivElement | null>(null)
+  const stageVoiceRef = useRef<OrbVoice | null>(null)
+  const voiceHandlersRef = useRef<ReturnType<typeof useVoiceConversation> | null>(null)
   const [muted, setMuted] = useAfandiMuted()
 
   useEffect(() => {
@@ -137,10 +128,25 @@ export function AssistantPanel({
     }
   }, [])
 
+  // the voice stage's own orb: live microphone level while listening, أفندي's voice while he answers
+  useEffect(() => {
+    const orb = stageOrbRef.current
+    if (!voiceMode || !orb) return
+    const voice = createOrbVoice(orb)
+    stageVoiceRef.current = voice
+    return () => {
+      voice.destroy()
+      stageVoiceRef.current = null
+    }
+  }, [voiceMode])
+
   useEffect(() => {
     if (!open || mode) return
     getAssistantConfig()
-      .then(config => setMode(config.mode))
+      .then(config => {
+        setMode(config.mode)
+        if (config.voice) setVoiceConfig(config.voice)
+      })
       .catch(() => setMode('fallback'))
   }, [open, mode])
 
@@ -199,12 +205,13 @@ export function AssistantPanel({
     setMessages(current => current.map(message => (message.id === id ? change(message) : message)))
 
   const send = useCallback(
-    async (raw: string) => {
+    /** `turn`: the voice turn that asked (voice channel); it comes back with every voice handler call */
+    async (raw: string, channel: AssistantChannel = 'text', turn = 0) => {
       const text = raw.trim().slice(0, 2000)
       // a ref, not the state: a double Enter / click (or a re-run effect) in the same frame must not send twice
       if (!text || busyRef.current) return
       busyRef.current = true
-      const user: UiMessage = { id: newId(), role: 'user', text, ui: [] }
+      const user: UiMessage = { id: newId(), role: 'user', text, ui: [], voice: channel === 'voice' || undefined }
       const reply: UiMessage = { id: newId(), role: 'assistant', text: '', ui: [], streaming: true }
       const history: AssistantTurn[] = [...messages.filter(message => message.id !== GREETING.id), user]
         .filter(message => message.text.trim() && !message.error)
@@ -216,26 +223,38 @@ export function AssistantPanel({
       const controller = new AbortController()
       abortRef.current = controller
       let finalText = ''
+      let failed = false
+      // the reply is folded here (outside React state) so the voice can read it as it streams
+      let local = emptyReply()
       const onEvent = (event: AssistantEvent) => {
         if (event.type === 'meta') {
           setMode(event.mode)
           return
         }
-        update(reply.id, message => {
-          const next = applyAssistantEvent(message, event)
-          if (event.type === 'done') finalText = next.text
-          return { ...message, ...next }
-        })
+        local = applyAssistantEvent(local, event)
+        if (event.type === 'done') finalText = local.text
+        if (event.type === 'error') failed = true
+        const snapshot = local
+        update(reply.id, message => ({ ...message, ...snapshot }))
+        if (channel === 'voice') voiceHandlersRef.current?.onReplyEvent(event, local.text, turn)
       }
       try {
-        await streamAssistantChat(history, onEvent, controller.signal)
+        await streamAssistantChat(history, onEvent, controller.signal, channel)
       } catch (error) {
+        failed = true
         if (!controller.signal.aborted)
           update(reply.id, message => ({
             ...message,
             error: error instanceof Error ? error.message : 'تعذر الوصول إلى المساعد.',
           }))
       } finally {
+        if (channel === 'voice')
+          voiceHandlersRef.current?.onReplyDone({
+            text: finalText || local.text,
+            ui: local.ui,
+            failed: failed || controller.signal.aborted,
+            turn,
+          })
         update(reply.id, message => ({
           ...message,
           streaming: false,
@@ -245,7 +264,7 @@ export function AssistantPanel({
         busyRef.current = false
         setBusy(false)
         abortRef.current = null
-        if (!controller.signal.aborted && finalText) {
+        if (!controller.signal.aborted && finalText && channel === 'text') {
           voiceRef.current?.burst(finalText.length)
           playAfandiSound('notify')
         }
@@ -277,33 +296,76 @@ export function AssistantPanel({
     inputRef.current?.focus()
   }
 
-  const toggleVoice = () => {
-    if (listening) {
-      recognitionRef.current?.stop()
-      return
+  // ---- voice mode ---------------------------------------------------------------------------------------
+  const sendRef = useRef(send)
+  useLayoutEffect(() => {
+    sendRef.current = send
+  })
+  const voice = useVoiceConversation({
+    active: open && voiceMode,
+    transcribe: voiceConfig.transcribe,
+    serverTts: voiceConfig.serverTts,
+    muted,
+    send: async (text, channel, turn) => {
+      // a reply still streaming (the citizen talked over it) is stopped first; its late end carries its own turn
+      abortRef.current?.abort()
+      for (let wait = 0; wait < 60 && busyRef.current; wait++) await new Promise(resolve => setTimeout(resolve, 50))
+      // still busy (the old stream did not stop): this question was not sent — end its turn instead of «thinking»
+      if (busyRef.current) {
+        voiceHandlersRef.current?.onReplyDone({ text: '', ui: [], failed: true, turn })
+        return
+      }
+      await sendRef.current(text, channel, turn)
+    },
+    abort: () => abortRef.current?.abort(),
+    onLevel: level => {
+      stageRef.current?.style.setProperty('--afd-level', level.toFixed(3))
+      if (level > 0) stageVoiceRef.current?.live(level)
+      else stageVoiceRef.current?.endLive()
+    },
+    onSentence: text => stageVoiceRef.current?.speak(buildSchedule(splitWords(text), { lead: 0 })),
+  })
+  useLayoutEffect(() => {
+    voiceHandlersRef.current = voice
+  })
+
+  const enterVoice = useCallback(() => {
+    // iOS / Safari only let speech play after a press: a silent utterance inside this press unlocks it
+    if (browserTtsSupported())
+      try {
+        const unlock = new SpeechSynthesisUtterance(' ')
+        unlock.volume = 0
+        window.speechSynthesis.speak(unlock)
+      } catch {
+        /* no speech synthesis */
+      }
+    // the optional server voice plays on one element that must first play inside this press (iOS)
+    if (voiceConfig.serverTts) unlockServerAudio()
+    setVoiceMode(true)
+  }, [voiceConfig.serverTts])
+
+  const leaveVoice = useCallback(() => {
+    setVoiceMode(false)
+    window.setTimeout(() => inputRef.current?.focus(), 30)
+  }, [])
+
+  // Alt+M: talk to أفندي from anywhere in the panel (layout-independent: the physical M key)
+  useEffect(() => {
+    if (!open) return
+    const onKey = (event: KeyboardEvent) => {
+      if (!event.altKey || event.ctrlKey || event.metaKey || event.code !== 'KeyM') return
+      event.preventDefault()
+      if (!voiceMode) enterVoice()
+      else voiceHandlersRef.current?.toggle()
     }
-    const Speech = speechConstructor()
-    if (!Speech) return
-    const recognition = new Speech()
-    recognition.lang = 'ar-IQ'
-    recognition.interimResults = true
-    recognition.continuous = false
-    recognition.maxAlternatives = 1
-    recognition.onresult = event => {
-      const transcript = Array.from(event.results)
-        .map(result => result[0]?.transcript || '')
-        .join(' ')
-      setInput(transcript.slice(0, 2000))
-    }
-    recognition.onend = () => setListening(false)
-    recognition.onerror = () => setListening(false)
-    recognitionRef.current = recognition
-    try {
-      recognition.start()
-      setListening(true)
-    } catch {
-      setListening(false)
-    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [open, voiceMode, enterVoice])
+
+  const lastAssistantId = [...messages].reverse().find(message => message.role === 'assistant')?.id
+  const answerChip = (option: string) => {
+    if (voiceMode) voice.sendFromChip(option)
+    else void send(option)
   }
 
   const onlyGreeting = messages.length === 1 && messages[0].id === GREETING.id
@@ -357,41 +419,27 @@ export function AssistantPanel({
         {messages.map(message => (
           <article key={message.id} className={`dqa-msg is-${message.role}`}>
             {message.role === 'assistant' ? (
-              <>
-                {message.notice && <p className="dqa-notice">{message.notice}</p>}
-                {message.text ? (
-                  <div className="dqa-bubble">
-                    <AssistantMarkdown text={message.text} onNavigate={closeOnPhone} />
-                    {message.streaming && <span className="dqa-caret" aria-hidden="true" />}
-                  </div>
-                ) : message.streaming ? (
-                  <div className="dqa-bubble dqa-typing" role="status" aria-label="أفندي يكتب">
-                    <AfandiMark size={22} motion="typing" className="afd-typing-mark" />
-                    <span />
-                    <span />
-                    <span />
-                    {message.status && <em>{message.status}</em>}
-                  </div>
-                ) : null}
-                {message.status && message.text && <p className="dqa-status">{message.status}</p>}
-                {message.ui.map((payload, index) => (
-                  <UiBlock key={`${payload.kind}-${index}`} payload={payload} isCitizen={isCitizen} go={go} />
-                ))}
-                {message.error && (
-                  <p className="dqa-error" role="alert">
-                    {message.error}
-                  </p>
-                )}
-              </>
+              <AssistantReply
+                message={message}
+                isLast={message.id === lastAssistantId}
+                busy={busy}
+                isCitizen={isCitizen}
+                go={go}
+                onNavigate={closeOnPhone}
+                onChip={answerChip}
+              />
             ) : (
-              <div className="dqa-bubble">{message.text}</div>
+              <div className="dqa-bubble">
+                {message.voice && <Mic className="dqa-voice-mark" aria-label="بالصوت" />}
+                {message.text}
+              </div>
             )}
           </article>
         ))}
         {onlyGreeting && (
           <div className="dqa-chips" aria-label="اقتراحات">
             {SUGGESTIONS.map(suggestion => (
-              <button key={suggestion} type="button" onClick={() => void send(suggestion)}>
+              <button key={suggestion} type="button" onClick={() => answerChip(suggestion)}>
                 {suggestion}
               </button>
             ))}
@@ -399,58 +447,180 @@ export function AssistantPanel({
         )}
       </div>
 
-      <form
-        className="dqa-composer"
-        onSubmit={event => {
-          event.preventDefault()
-          void send(input)
-        }}
-      >
-        <textarea
-          ref={inputRef}
-          value={input}
-          rows={1}
-          maxLength={2000}
-          placeholder={listening ? 'أسمعك… تكلّم' : 'اكتب سؤالك… مثلاً: شنو مستمسكات إجازة السوق؟'}
-          aria-label="رسالتك للمساعد"
-          onChange={event => setInput(event.target.value)}
-          onKeyDown={event => {
-            if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
-              event.preventDefault()
-              void send(input)
-            }
+      {voiceMode ? (
+        <VoiceStage
+          orbRef={stageOrbRef}
+          stageRef={stageRef}
+          phase={voice.phase}
+          partial={voice.partial}
+          message={voice.message}
+          engine={voice.engine}
+          provider={voiceConfig.provider ?? null}
+          serverVoice={voiceConfig.serverTts}
+          textOnly={voice.textOnly}
+          continuous={voice.continuous}
+          onContinuous={voice.setContinuous}
+          onPressStart={voice.pressStart}
+          onPressEnd={voice.pressEnd}
+          onToggle={voice.toggle}
+          onSkip={voice.stopSpeaking}
+          onKeyboard={leaveVoice}
+          onAccept={voice.acceptConsent}
+          onDecline={() => {
+            voice.declineConsent()
+            leaveVoice()
           }}
         />
-        {voiceSupported && (
+      ) : (
+        <form
+          className="dqa-composer"
+          onSubmit={event => {
+            event.preventDefault()
+            void send(input)
+          }}
+        >
+          <textarea
+            ref={inputRef}
+            value={input}
+            rows={1}
+            maxLength={2000}
+            placeholder="اكتب سؤالك… مثلاً: شنو مستمسكات إجازة السوق؟"
+            aria-label="رسالتك للمساعد"
+            onChange={event => setInput(event.target.value)}
+            onKeyDown={event => {
+              if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
+                event.preventDefault()
+                void send(input)
+              }
+            }}
+          />
           <button
             type="button"
-            className={`dqa-icon-button dqa-mic${listening ? ' is-on' : ''}`}
-            onClick={toggleVoice}
-            aria-label={listening ? 'إيقاف الإدخال الصوتي' : 'تكلّم بدل الكتابة'}
-            aria-pressed={listening}
+            className="dqa-icon-button dqa-mic"
+            onClick={enterVoice}
+            aria-label="تكلّم مع أفندي بالصوت"
+            aria-keyshortcuts="Alt+M"
+            title="تكلّم مع أفندي (Alt+M)"
           >
-            {listening ? <MicOff /> : <Mic />}
+            <Mic />
           </button>
-        )}
-        {busy ? (
-          <button
-            type="button"
-            className="dqa-send is-stop"
-            onClick={() => abortRef.current?.abort()}
-            aria-label="إيقاف الرد"
-          >
-            <Square />
-          </button>
-        ) : (
-          <button type="submit" className="dqa-send" disabled={!input.trim()} aria-label="إرسال">
-            {input.trim() ? <ArrowUp /> : <Send />}
-          </button>
-        )}
-      </form>
+          {busy ? (
+            <button
+              type="button"
+              className="dqa-send is-stop"
+              onClick={() => abortRef.current?.abort()}
+              aria-label="إيقاف الرد"
+            >
+              <Square />
+            </button>
+          ) : (
+            <button type="submit" className="dqa-send" disabled={!input.trim()} aria-label="إرسال">
+              {input.trim() ? <ArrowUp /> : <Send />}
+            </button>
+          )}
+        </form>
+      )}
       <p className="dqa-foot">
-        <ShieldCheck aria-hidden="true" /> لا تكتب رمز التحقق أو كلمة المرور هنا. المساعد قد يخطئ؛ القرار للدائرة.
+        <ShieldCheck aria-hidden="true" />{' '}
+        {voiceMode
+          ? 'لا تقول رمز التحقق أو رقم هويتك بصوت. المساعد قد يخطئ؛ القرار للدائرة.'
+          : 'لا تكتب رمز التحقق أو كلمة المرور هنا. المساعد قد يخطئ؛ القرار للدائرة.'}
       </p>
     </section>
+  )
+}
+
+/** One answer of أفندي: the text, a clarifying question's chips, the cards, and the single primary action. */
+function AssistantReply({
+  message,
+  isLast,
+  busy,
+  isCitizen,
+  go,
+  onNavigate,
+  onChip,
+}: {
+  message: UiMessage
+  isLast: boolean
+  busy: boolean
+  isCitizen: boolean
+  go: (path: string) => void
+  onNavigate: () => void
+  onChip: (option: string) => void
+}) {
+  const { body, action } = message.streaming ? { body: message.text, action: null } : splitAction(message.text)
+  const clarify = message.ui.find(item => item.kind === 'clarify') as
+    Extract<AssistantUiPayload, { kind: 'clarify' }> | undefined
+  return (
+    <>
+      {message.notice && <p className="dqa-notice">{message.notice}</p>}
+      {body ? (
+        <div className="dqa-bubble">
+          <AssistantMarkdown text={body} onNavigate={onNavigate} />
+          {message.streaming && <span className="dqa-caret" aria-hidden="true" />}
+        </div>
+      ) : message.streaming ? (
+        <div className="dqa-bubble dqa-typing" role="status" aria-label="أفندي يكتب">
+          <AfandiMark size={22} motion="typing" className="afd-typing-mark" />
+          <span />
+          <span />
+          <span />
+          {message.status && <em>{message.status}</em>}
+        </div>
+      ) : null}
+      {message.status && message.text && <p className="dqa-status">{message.status}</p>}
+      {clarify && isLast && !busy && (
+        <div className="dqa-chips dqa-clarify" role="group" aria-label={clarify.question}>
+          {clarify.options.map(option => (
+            <button key={option} type="button" onClick={() => onChip(option)}>
+              {option}
+            </button>
+          ))}
+        </div>
+      )}
+      {action && <ActionCard action={action} go={go} />}
+      {message.ui.map((payload, index) =>
+        payload.kind === 'clarify' ? null : (
+          <UiBlock
+            key={`${payload.kind}-${index}`}
+            payload={payload}
+            isCitizen={isCitizen}
+            go={go}
+            hasAction={Boolean(action)}
+          />
+        )
+      )}
+      {message.error && (
+        <p className="dqa-error" role="alert">
+          {message.error}
+        </p>
+      )}
+    </>
+  )
+}
+
+function ActionIcon({ path }: { path: string }) {
+  if (path.startsWith('/onboarding')) return <UserPlus />
+  if (path.startsWith('/citizen/feedback')) return <MessageSquareWarning />
+  if (path.startsWith('/citizen')) return <ClipboardCheck />
+  if (path.startsWith('/service/')) return <FileText />
+  if (path.startsWith('/departments')) return <Building2 />
+  return <ExternalLink />
+}
+
+/** The answer's single primary next step, as a button card. */
+function ActionCard({ action, go }: { action: AssistantAction; go: (path: string) => void }) {
+  return (
+    <div className="dqa-card dqa-action">
+      <span className="dqa-card-icon" aria-hidden="true">
+        <ActionIcon path={action.path} />
+      </span>
+      <small>الخطوة الجاية</small>
+      <button type="button" className="dqa-btn is-primary" onClick={() => go(action.path)}>
+        {action.label}
+        <ArrowLeft aria-hidden="true" />
+      </button>
+    </div>
   )
 }
 
@@ -458,16 +628,18 @@ function UiBlock({
   payload,
   isCitizen,
   go,
+  hasAction,
 }: {
   payload: AssistantUiPayload
   isCitizen: boolean
   go: (path: string) => void
+  hasAction: boolean
 }) {
   if (payload.kind === 'services')
     return (
       <div className="dqa-cards">
         {payload.items.map(item => (
-          <ServiceCard key={item.key} item={item} isCitizen={isCitizen} go={go} />
+          <ServiceCard key={item.key} item={item} isCitizen={isCitizen} go={go} secondary={hasAction} />
         ))}
       </div>
     )
@@ -480,6 +652,7 @@ function UiBlock({
       </div>
     )
   if (payload.kind === 'draft') return <DraftCard draft={payload.draft} go={go} />
+  if (payload.kind === 'clarify') return null
   return (
     <div className="dqa-card dqa-card-cta">
       <UserPlus aria-hidden="true" />
@@ -487,9 +660,11 @@ function UiBlock({
         <strong>حساب واحد لكل خدمات ذي قار</strong>
         <small>الهاتف ← البطاقة الوطنية ← الاسم ← فيديو الوجه</small>
       </div>
-      <button type="button" className="dqa-btn is-primary" onClick={() => go('/onboarding')}>
-        ابدأ التسجيل
-      </button>
+      {!hasAction && (
+        <button type="button" className="dqa-btn is-primary" onClick={() => go('/onboarding')}>
+          ابدأ التسجيل
+        </button>
+      )}
     </div>
   )
 }
@@ -498,10 +673,13 @@ function ServiceCard({
   item,
   isCitizen,
   go,
+  secondary,
 }: {
   item: AssistantServiceCard
   isCitizen: boolean
   go: (path: string) => void
+  /** the answer already has its primary action: the card keeps only «افتح الخدمة» */
+  secondary: boolean
 }) {
   const Icon = channelIcon[item.channel] || Info
   const servicePath = `/service/${encodeURIComponent(item.key)}`
@@ -542,7 +720,7 @@ function ServiceCard({
         <button type="button" className="dqa-btn" onClick={() => go(servicePath)}>
           <ExternalLink aria-hidden="true" /> افتح الخدمة
         </button>
-        {item.channel !== 'INFORMATION_ONLY' && (
+        {item.channel !== 'INFORMATION_ONLY' && !secondary && (
           <button type="button" className="dqa-btn is-primary" onClick={() => go(startPath)}>
             ابدأ الطلب
           </button>

@@ -1,8 +1,9 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   AlertTriangle,
   Building2,
   Camera,
+  CameraOff,
   CheckCircle2,
   CircleDollarSign,
   Clock3,
@@ -30,6 +31,21 @@ export function OperationsRegistryPanel({ stats }: { stats: DashboardStats }) {
   const [cameraDepartment, setCameraDepartment] = useState<DashboardStats['departments'][number] | null>(null)
   const [query, setQuery] = useState('')
   const [showAll, setShowAll] = useState(false)
+  const closeRef = useRef<HTMLButtonElement>(null)
+  // dialog: focus the close button on open, Escape closes, focus returns to the opener
+  useEffect(() => {
+    if (!cameraDepartment) return
+    const opener = document.activeElement as HTMLElement | null
+    closeRef.current?.focus()
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setCameraDepartment(null)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      opener?.focus?.()
+    }
+  }, [cameraDepartment])
   const sorted = useMemo(
     () =>
       [...stats.departments].sort(
@@ -180,31 +196,42 @@ export function OperationsRegistryPanel({ stats }: { stats: DashboardStats }) {
       </section>
       {cameraDepartment && (
         <div
-          className="camera-status-dialog"
+          className="staff-dialog camera-status-dialog"
           role="dialog"
           aria-modal="true"
-          aria-label={`حالة كاميرات ${cameraDepartment.name}`}
+          aria-labelledby="camera-dialog-title"
         >
           <button
-            className="camera-dialog-backdrop"
+            type="button"
+            className="staff-dialog-backdrop camera-dialog-backdrop"
             onClick={() => setCameraDepartment(null)}
             aria-label="إغلاق نافذة الكاميرا"
+            tabIndex={-1}
           />
           <article>
             <header>
-              <span>
+              <span aria-hidden="true">
                 <Camera />
               </span>
               <div>
                 <small>كاميرات الدائرة</small>
-                <h3>{cameraDepartment.name}</h3>
+                <h3 id="camera-dialog-title">{cameraDepartment.name}</h3>
               </div>
-              <button onClick={() => setCameraDepartment(null)} aria-label="إغلاق">
+              <button type="button" ref={closeRef} onClick={() => setCameraDepartment(null)} aria-label="إغلاق">
                 <X />
               </button>
             </header>
-            <div className="camera-dialog-body">
-              <strong>
+            <div className="staff-dialog-body camera-dialog-body" data-status={cameraDepartment.cameras.status}>
+              <strong className="camera-dialog-state">
+                <span aria-hidden="true">
+                  {cameraDepartment.cameras.status === 'READY_FOR_GATEWAY' ? (
+                    <CheckCircle2 />
+                  ) : cameraDepartment.cameras.status === 'CONFIGURED_DISABLED' ? (
+                    <CameraOff />
+                  ) : (
+                    <Clock3 />
+                  )}
+                </span>
                 {cameraDepartment.cameras.status === 'AWAITING_AUTHORIZATION'
                   ? 'بانتظار ربط كاميرا مصرح بها'
                   : cameraDepartment.cameras.status === 'CONFIGURED_DISABLED'

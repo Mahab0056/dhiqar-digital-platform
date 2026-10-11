@@ -113,8 +113,13 @@ export interface IssuedDocument {
   verificationId: string
   status: 'ACTIVE' | 'REVOKED'
   issuedAt: string
+  expiresAt?: string | null
+  revokedAt?: string | null
+  revokedReason?: string | null
   pdfUrl: string
   pdfDownloadUrl: string
+  /** null = issued on approval; otherwise the request step that issued it (fee receipt, rejection, referral) */
+  issueEvent?: 'RECEIPT' | 'REJECTION' | 'REFERRAL' | null
 }
 
 export type ServiceChannel = 'ONLINE_SUBMISSION' | 'APPOINTMENT_REQUIRED' | 'INFORMATION_ONLY'
@@ -261,6 +266,23 @@ export interface CitizenServiceRequest {
   overdue?: boolean
   /** Waiting on the citizen (documents or fee): the department's clock is stopped. */
   slaPaused?: boolean
+  // ---- citizen detail view only ----
+  /**
+   * Documents issued by the request's steps rather than its approval — «وصل استلام» of each fee paid, «كتاب إحالة»
+   * to the competent department, «قرار رفض مسبّب» — sent for every status (GET /api/citizen/service-requests/:ref).
+   */
+  eventDocuments?: Array<{
+    id: string
+    issueEvent: 'RECEIPT' | 'REJECTION' | 'REFERRAL'
+    title: string
+    documentNumber: string
+    verificationId: string
+    status: string
+    issuedAt: string
+    revokedAt: string | null
+    revokedReason: string | null
+    pdfUrl: string
+  }>
 }
 
 export type ServiceRequestTransfer = {

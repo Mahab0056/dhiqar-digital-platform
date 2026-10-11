@@ -2504,7 +2504,7 @@ svg {
   font-size: 12px;
 }
 .support-card {
-  background: var(--brand-900) !important;
+  background: var(--ds-surface-muted, #f2f6f0);
   color: white;
 }
 .support-card > svg {
@@ -9689,8 +9689,11 @@ time {
   --limestone-deep: #e9ece3;
   --reed: #167257;
   --reed-deep: #083c2c;
-  --brass: #af8749;
-  --brass-pale: #f2e7d0;
+  /* the accent behind every "brass" marker (unread notification edge, selected queue row, side-panel bars, trust
+     icons): a lighter brand green, 3.7:1 on --limestone, a step apart from --reed in the two-tone bars. The owner
+     retired the brass/gold accents; the names stay for the existing rules. */
+  --brass: #1d8f63;
+  --brass-pale: #e3f1ea;
   --ink-government: #10271e;
   --line-government: #d6dfd8;
   --shadow-government: 0 22px 52px rgba(10, 54, 37, 0.08);
@@ -11180,7 +11183,7 @@ body {
   padding: 23px;
 }
 .support-card {
-  background: #f2f6f0 !important;
+  background: var(--ds-surface-muted, #f2f6f0); /* was !important, which also forced the pale card in dark mode */
 }
 .support-card button {
   border-radius: 4px;

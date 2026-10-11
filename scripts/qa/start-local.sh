@@ -14,6 +14,8 @@ export BACKUP_DIR="$QA_DIR/backups"
 export SESSION_SECRET="qa-local-session-secret-$(date +%s)-abcdefghijklmnop"
 export MEDIA_ENCRYPTION_KEY="qa-local-media-key-0123456789abcdef"
 export OTP_HASH_SECRET="qa-local-otp-secret"
+# fixed, so documents issued before a restart of this script keep verifying afterwards
+export DOCUMENT_SIGNING_KEY="qa-local-document-signing-key-0123456789abcdef"
 export OTP_DEV_MODE=true
 export OTP_DEV_CODE=246810
 export PAYMENT_PROVIDER=sandbox

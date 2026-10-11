@@ -1084,3 +1084,119 @@
   align-content: start;
   gap: 0;
 }
+
+/* ---- contrast fixes for citizen surfaces still styled by the legacy sheets (App.css) --------------------
+   Legacy rules hard-code greys tuned for one background; these restate them on tokens so both themes pass AA. */
+
+/* «تحتاج مساعدة؟» card on the request/application detail pages. App.css used to force a pale background with
+   !important while the text stayed white — unreadable in both themes. */
+.detail-aside .support-card,
+.support-card {
+  border: 1px solid var(--ds-border);
+  background: var(--ds-surface-muted);
+  color: var(--ds-text);
+}
+.support-card > svg {
+  color: var(--ds-primary-text);
+}
+.support-card strong {
+  color: var(--ds-text);
+}
+.support-card p {
+  color: var(--ds-text-2);
+}
+.support-card .button.outline {
+  border-color: var(--ds-border-strong);
+  background: var(--ds-surface);
+  color: var(--ds-primary-text);
+}
+
+/* dark-green hero headers of the request + feedback detail pages: the back link and reference sat in grey */
+.application-detail-header > a,
+.feedback-detail > header > a,
+.feedback-detail > header > div > small {
+  color: rgba(255, 255, 255, 0.84);
+}
+.application-detail-header > a:hover,
+.feedback-detail > header > a:hover {
+  color: #fff;
+}
+
+/* decision callout on rejected requests (pink background) */
+.current-action small {
+  color: var(--ds-text-2);
+}
+
+/* notification timestamps: unread rows sit on a tinted background */
+.citizen-notification-row time,
+.citizen-notifications-full-list .citizen-notification-row time {
+  color: var(--ds-text-muted);
+}
+.citizen-notification-row.unread time,
+.citizen-v2 .citizen-notification-row.unread time {
+  color: var(--ds-text-2);
+}
+
+/* complaints & suggestions: form hints, upload note, timeline */
+.feedback-page-head p {
+  color: var(--ds-text-2);
+}
+.feedback-form-title p,
+.feedback-location p,
+.feedback-upload span {
+  color: var(--ds-text-muted);
+}
+.feedback-event time {
+  color: var(--ds-text-muted);
+}
+.feedback-event p {
+  color: var(--ds-text-2);
+}
+
+/* revoked documents: kept in the archive, never shown as certified */
+.citizen-v2 .citizen-issued-revoked-group {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+.citizen-v2 .citizen-issued-revoked-group > h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: var(--ds-danger);
+  font-family: var(--ds-font-ui);
+  font-size: var(--ds-text-sm);
+  font-weight: 700;
+}
+.citizen-v2 .citizen-issued-revoked-group > h3 svg {
+  width: 18px;
+  height: 18px;
+}
+.citizen-v2 .citizen-issued-document-list article.is-revoked {
+  border-inline-start: 4px solid var(--ds-danger);
+}
+.citizen-v2 .citizen-issued-document-list article.is-revoked > span {
+  background: var(--ds-danger-soft);
+  color: var(--ds-danger);
+}
+.citizen-v2 .citizen-issued-document-list article.is-revoked h3 {
+  text-decoration: line-through;
+  text-decoration-color: var(--ds-danger);
+}
+.citizen-v2 .citizen-issued-revoked-badge {
+  display: inline-block;
+  margin-inline-start: 6px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--ds-danger-soft);
+  color: var(--ds-danger);
+  font-size: var(--ds-text-xs);
+  font-style: normal;
+  text-decoration: none;
+}
+.citizen-v2 .citizen-issued-document-list p.citizen-issued-revoked-reason {
+  margin-top: 6px;
+  color: var(--ds-danger);
+  font-weight: 600;
+}

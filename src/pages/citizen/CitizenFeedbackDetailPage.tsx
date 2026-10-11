@@ -81,7 +81,10 @@ export function CitizenFeedbackDetailPage({ reference }: { reference: string }) 
               <div className="feedback-event" key={event.id}>
                 <span>{index === feedback.events.length - 1 ? <Check /> : index + 1}</span>
                 <div>
-                  <strong>{event.title}</strong>
+                  <strong>
+                    {/* status-change events arrive as «تحديث الحالة: IN_REVIEW»; show the Arabic label */}
+                    {event.title.replace(/[A-Z_]{4,}/g, code => feedbackStatusLabels[code] ?? code)}
+                  </strong>
                   <time>{new Date(event.createdAt).toLocaleString('en-GB')}</time>
                   <p>{event.description}</p>
                   <small>{event.actor}</small>

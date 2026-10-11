@@ -26,6 +26,7 @@ import type { GovernmentApplication } from '../../types'
 import { PortalLayout } from '../../components/citizen/PortalLayout'
 import { WorkspaceTabs, type WorkspaceTab } from '../../components/shared/WorkspaceTabs'
 import { FeedbackAdminPanel } from './FeedbackAdminPanel'
+import { DocumentTemplatesPanel } from '../../components/documents/DocumentTemplatesPanel'
 import { IdentityReviewPanel } from './IdentityReviewPanel'
 import { ServiceRequestAdminPanel } from './ServiceRequestAdminPanel'
 import { AppointmentsDayPanel } from './AppointmentsDayPanel'
@@ -617,6 +618,12 @@ export function EmployeeDashboard() {
                     ]
                   : []),
                 { id: 'employee-feedback', label: 'الشكاوى والمقترحات', icon: Bell, content: <FeedbackAdminPanel /> },
+                {
+                  id: 'employee-documents',
+                  label: 'نماذج الوثائق',
+                  icon: FileArchive,
+                  content: <DocumentTemplatesPanel />,
+                },
                 ...(session?.isDepartmentManager
                   ? [
                       {

@@ -10,12 +10,16 @@ import {
   type BetaMessage,
   type ModelRequest,
 } from './client.js'
+import { db } from '../db.js'
+import { normalizeArabic } from '../services/catalog.js'
 import { fallbackAnswer } from './fallback.js'
 import { CITIZEN_SYSTEM_PROMPT } from './prompt.js'
 import { recordUsage, tokensUsedToday, usageOf } from './store.js'
 import { assistantTools, executeTool, type ToolContext, type ToolUiPayload } from './tools.js'
 
 export type ChatTurn = { role: 'user' | 'assistant'; text: string }
+/** how the citizen entered the latest message: a spoken question gets a short answer that is read aloud */
+export type ChatChannel = 'text' | 'voice'
 
 /** Events streamed to the browser (one SSE `data:` line each). */
 export type ChatEvent =
@@ -47,6 +51,7 @@ export const CHAT_LIMITS = {
 }
 
 const toolLabels: Record<string, string> = {
+  ask_clarification: 'يجهز سؤالاً قصيراً…',
   search_services: 'يبحث في دليل الخدمات…',
   get_service_details: 'يجلب المستمسكات والخطوات…',
   get_registration_help: 'يجهز خطوات التسجيل…',
@@ -107,13 +112,105 @@ export function chatRequest(messages: Anthropic.Beta.BetaMessageParam[]): ModelR
   }
 }
 
-const sessionNote = (context: ToolContext) =>
-  context.citizenId
-    ? 'Session: the citizen is signed in. get_my_requests, get_request_status and prepare_request_draft are available for his own data.'
-    : 'Session: visitor, not signed in. Account tools will return NOT_SIGNED_IN; invite him to sign in at /onboarding when needed.'
+/** Account statuses whose name comes from a checked national ID (before that the row holds a placeholder). */
+const VERIFIED_STATUSES = new Set(['VERIFIED', 'VERIFIED_MANUAL'])
+/** Placeholder names a new phone-only account starts with (server/db.ts getOrCreateCitizen). */
+const PLACEHOLDER_FIRST_NAMES = new Set(['مواطن', 'زائر', 'مستخدم'])
+/**
+ * Districts and subdistricts of Dhi Qar (normalized, without the article). Only a district from this list is told to
+ * the model as "do not ask again": a new account holds «غير محدد», which must not stop it from asking.
+ */
+const DHI_QAR_PLACES = new Set(
+  [
+    'ناصريه',
+    'شطره',
+    'رفاعي',
+    'سوق الشيوخ',
+    'جبايش',
+    'قلعه سكر',
+    'دوايه',
+    'اصلاح',
+    'فهود',
+    'غراف',
+    'كرمه',
+    'كرمه بني سعد',
+    'كرمه بني سعيد',
+    'بطحاء',
+    'سيد دخيل',
+    'نصر',
+    'فجر',
+    'عكيكه',
+    'طار',
+    'اور',
+    'منار',
+    'فضليه',
+  ].map(place => normalizeArabic(place))
+)
 
-function sendFallback(lastMessage: string, context: ToolContext, send: (event: ChatEvent) => void) {
-  const answer = fallbackAnswer(lastMessage, context)
+/** The account's district when it names a real place in Dhi Qar (any «قضاء/ناحية» prefix or article dropped). */
+export function knownDistrict(value: string | null | undefined) {
+  const key = normalizeArabic(String(value || ''))
+    .replace(/^(مركز قضاء|مركز ناحيه|قضاء|ناحيه|مركز|مدينه) /, '')
+    .replace(/^ال/, '')
+  return key && DHI_QAR_PLACES.has(key) ? key : null
+}
+
+/** First name and district of the signed-in citizen (used to address him and to skip asking his district). */
+function citizenProfile(citizenId: number) {
+  try {
+    const row = db
+      .prepare('SELECT full_name, district, verification_status FROM citizens WHERE id = ?')
+      .get(citizenId) as { full_name?: string; district?: string; verification_status?: string } | undefined
+    const firstName = String(row?.full_name || '')
+      .trim()
+      .split(/\s+/)[0]
+      ?.replace(/[^\p{L}]/gu, '')
+      .slice(0, 30)
+    const district = String(row?.district || '')
+      .replace(/[^\p{L}\s]/gu, '')
+      .trim()
+      .slice(0, 40)
+    // the name only once the ID was checked (a new phone account is «مواطن جديد»); the district only if it is real
+    const verified = VERIFIED_STATUSES.has(String(row?.verification_status || ''))
+    return {
+      firstName: verified && firstName && !PLACEHOLDER_FIRST_NAMES.has(firstName) ? firstName : null,
+      district: knownDistrict(district) ? district : null,
+    }
+  } catch {
+    return { firstName: null, district: null }
+  }
+}
+
+export function sessionNote(context: ToolContext, channel: ChatChannel = 'text') {
+  const parts: string[] = []
+  if (context.citizenId) {
+    const profile = citizenProfile(context.citizenId)
+    parts.push(
+      'Session: the citizen is signed in. get_my_requests, get_request_status and prepare_request_draft are available for his own data.'
+    )
+    if (profile.firstName) parts.push(`His first name (from his verified account): ${profile.firstName}.`)
+    if (profile.district) parts.push(`District on his account: ${profile.district} (do not ask for it again).`)
+  } else
+    parts.push(
+      'Session: visitor, not signed in. Account tools will return NOT_SIGNED_IN; invite him to sign in at /onboarding when needed.'
+    )
+  parts.push(
+    channel === 'voice'
+      ? 'Channel: VOICE — he spoke this question and your answer will be read aloud. Use the voice answer shape.'
+      : 'Channel: text.'
+  )
+  return parts.join(' ')
+}
+
+/** `earlier`: the turns before the last message, so a reply to a clarifying question keeps its request. */
+function sendFallback(
+  lastMessage: string,
+  context: ToolContext,
+  send: (event: ChatEvent) => void,
+  channel: ChatChannel = 'text',
+  earlier: ChatTurn[] = []
+) {
+  const answer = fallbackAnswer(lastMessage, context, channel, earlier)
   send({ type: 'text', delta: answer.text })
   for (const payload of answer.ui) send({ type: 'ui', payload })
   recordUsage('chat', { fallbackAnswers: 1 })
@@ -126,11 +223,13 @@ function sendFallback(lastMessage: string, context: ToolContext, send: (event: C
 export async function runChat(input: {
   history: ChatTurn[]
   context: ToolContext
+  channel?: ChatChannel
   client: AssistantModelClient | null
   send: (event: ChatEvent) => void
   signal?: AbortSignal
 }) {
   const { context, send, signal } = input
+  const channel = input.channel || 'text'
   const history = normalizeHistory(input.history)
   const lastMessage = history[history.length - 1]?.text || ''
   recordUsage('chat', { requests: 1 })
@@ -140,13 +239,13 @@ export async function runChat(input: {
   send({ type: 'meta', mode: client ? 'ai' : 'fallback', signedIn: Boolean(context.citizenId) })
 
   if (!client || !history.length || history[history.length - 1].role !== 'user') {
-    sendFallback(lastMessage, context, send)
+    sendFallback(lastMessage, context, send, channel, history.slice(0, -1))
     send({ type: 'done' })
     return
   }
 
   const messages: Anthropic.Beta.BetaMessageParam[] = history.map(turn => ({ role: turn.role, content: turn.text }))
-  messages.push({ role: 'system', content: sessionNote(context) })
+  messages.push({ role: 'system', content: sessionNote(context, channel) })
   /** text of the final answer streamed so far (the current model call only) */
   let answerText = ''
   let anyText = false
@@ -175,7 +274,7 @@ export async function runChat(input: {
       recordUsage('chat', { errors: 1 })
       if (!anyText) {
         send({ type: 'notice', message: `${describeModelError(error)} هذي نتائج البحث المباشر:` })
-        sendFallback(lastMessage, context, send)
+        sendFallback(lastMessage, context, send, channel, history.slice(0, -1))
       } else send({ type: 'error', message: describeModelError(error) })
       send({ type: 'done' })
       return
@@ -207,6 +306,18 @@ export async function runChat(input: {
 
     // text written before the tool calls is a progress note, never part of the answer (the answer comes after)
     if (answerText) send({ type: 'interim', note: progressNote(answerText) })
+
+    // a clarifying question ends the turn: the question is the answer, its options become chips
+    const clarification = toolUses.find(tool => tool.name === 'ask_clarification')
+    if (clarification) {
+      const outcome = executeTool(clarification.name, clarification.input, context)
+      if (outcome.ui?.kind === 'clarify') {
+        send({ type: 'text', delta: outcome.ui.question })
+        send({ type: 'ui', payload: outcome.ui })
+        send({ type: 'done' })
+        return
+      }
+    }
     messages.push({ role: 'assistant', content: echoContent(message.content) })
     const results: Anthropic.Beta.BetaToolResultBlockParam[] = []
     for (const tool of toolUses) {
@@ -223,7 +334,7 @@ export async function runChat(input: {
     messages.push({ role: 'user', content: results })
   }
   // the tool budget ran out before a final answer: answer from the catalog instead of a dead end
-  const fallback = fallbackAnswer(lastMessage, context)
+  const fallback = fallbackAnswer(lastMessage, context, channel, history.slice(0, -1))
   send({ type: 'text', delta: fallback.text })
   for (const payload of fallback.ui) send({ type: 'ui', payload })
   send({ type: 'done' })

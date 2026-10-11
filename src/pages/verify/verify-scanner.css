@@ -1,0 +1,99 @@
+/* /verify scanner: camera view with torch/zoom, photo fallback and scan notices (layout base in styles/ds/verify.css) */
+.verify-camera.vs-camera[hidden] {
+  display: none;
+}
+.vs-camera {
+  width: 100%;
+}
+.vs-camera-view {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  border-radius: var(--ds-radius-md);
+  background: var(--neutral-950);
+}
+.vs-camera-view video {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  max-height: 420px;
+  border-radius: 0;
+  object-fit: cover;
+}
+.verify-camera-frame.vs-camera-frame {
+  width: min(240px, 62%);
+  transform: translate(-50%, -50%);
+}
+.vs-camera-tool {
+  position: absolute;
+  inset-block-start: 10px;
+  inset-inline-start: 10px;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  cursor: pointer;
+}
+.vs-camera-tool[aria-pressed='true'] {
+  background: #f5c542;
+  color: #1a1a1a;
+}
+.vs-camera-tool:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 2px;
+}
+.vs-camera-tool svg {
+  width: 20px;
+  height: 20px;
+}
+.vs-zoom {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  color: var(--ds-text-2);
+}
+.vs-zoom svg {
+  flex: none;
+  width: 18px;
+  height: 18px;
+}
+.vs-zoom input {
+  flex: 1;
+  min-width: 0;
+  accent-color: var(--ds-primary);
+}
+.vs-status {
+  min-height: 1.5em;
+  margin: 0;
+  color: var(--ds-text-2);
+  font-size: var(--ds-text-sm);
+  text-align: center;
+}
+.vs-help {
+  margin-top: -8px;
+  color: var(--ds-text-muted);
+  font-size: var(--ds-text-xs);
+}
+.vs-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--ds-info) 30%, transparent);
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-info-soft);
+  color: var(--ds-info);
+  font-size: var(--ds-text-sm);
+}
+.vs-notice svg {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+}

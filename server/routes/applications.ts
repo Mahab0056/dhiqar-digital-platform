@@ -7,7 +7,7 @@ import { type SessionData, requireSession, currentCitizen, currentSession } from
 import { notifyCitizen, employeeWorkQueueRealtime } from '../realtime.js'
 import { addAudit, addEvent, db, getApplicationByReference, getApplications, nextReference } from '../db.js'
 import { storeEncryptedMedia } from '../media.js'
-import { createIssuedDocument } from '../issued-documents.js'
+import { createIssuedDocument, DocumentIssueError } from '../issued-documents.js'
 import { departmentById } from '../department-registry.js'
 import { getCatalogService } from '../services/catalog.js'
 
@@ -602,11 +602,15 @@ export function registerApplicationsRoutes(app: express.Express) {
         documentTitle: `إجازة ممارسة نشاط تجاري — ${String(item.businessName)}`,
         issuedBy: session.actor,
         issuedAt: timestamp,
-        preferredDocumentNumber: `LIC-${new Date().getFullYear()}-${String(item.id).padStart(5, '0')}`,
+        departmentId: (item.departmentId as string | null) || null,
+        serviceKey: String(item.serviceKey || ''),
+        fallbackTemplateId: 'shop-licence',
+        district: String(item.district || '') || null,
+        location: String(item.address || '') || null,
+        // the district is printed once, from `district` above
         details: [
           { label: 'اسم المحل', value: String(item.businessName || '') },
           { label: 'نوع النشاط', value: String(item.activityType || '') },
-          { label: 'القضاء', value: String(item.district || '') },
           {
             label: 'نوع الإشغال',
             value:
@@ -625,6 +629,7 @@ export function registerApplicationsRoutes(app: express.Express) {
         new Date().toISOString(),
         param(req, 'reference')
       )
+      if (error instanceof DocumentIssueError) return res.status(400).json({ message: error.message, code: error.code })
       throw error
     }
     const documentNumber = issuedDocument.documentNumber

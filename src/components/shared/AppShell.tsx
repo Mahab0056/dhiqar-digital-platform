@@ -20,6 +20,7 @@ export function AppShell({
   search,
   onLogout,
   sidebarExtra,
+  wide = false,
   children,
 }: {
   portalLabel: string
@@ -32,6 +33,8 @@ export function AppShell({
   search?: React.ReactNode
   onLogout: () => void
   sidebarExtra?: React.ReactNode
+  /** staff workspaces: let the content column use the full screen width on large monitors */
+  wide?: boolean
   children: React.ReactNode
 }) {
   const [open, setOpen] = useState(false)
@@ -71,7 +74,7 @@ export function AppShell({
   }
 
   return (
-    <div className="app-shell">
+    <div className={wide ? 'app-shell is-wide' : 'app-shell'}>
       <a className="tq-skip-link" href="#main-content">
         تخطَّ إلى المحتوى الرئيسي
       </a>

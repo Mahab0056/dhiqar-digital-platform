@@ -6,24 +6,25 @@ import {
   BadgeCheck,
   Building2,
   CalendarDays,
-  Camera,
   Clock3,
   CreditCard,
-  Download,
-  Eye,
   FileArchive,
   FileCheck2,
   FileText,
+  FileX,
+  Forward,
   Headphones,
   History,
-  QrCode,
   ReceiptText,
   RefreshCw,
   Shuffle,
 } from 'lucide-react'
 import { api, type CitizenServiceRequestDetail } from '../../api'
 import type { CatalogService } from '../../types'
+import { CitizenPdfActions } from '../../components/citizen/CitizenPdfActions'
 import { PortalLayout } from '../../components/citizen/PortalLayout'
+import { RequestAttachmentsCard, type RequestAttachment } from '../../components/citizen/RequestAttachmentsCard'
+import { isClosedRequest } from '../../components/citizen/request-attachments'
 import { describeAppointment, serviceRequestStatusLabel } from './my-requests'
 import '../../styles/ds/citizen-requests.css'
 
@@ -33,21 +34,11 @@ const formatDateTime = (value: string | null | undefined) => {
   return Number.isNaN(parsed.getTime()) ? value : parsed.toLocaleString('en-GB')
 }
 
-const documentBadge = (status: string, required: boolean) =>
-  status === 'VERIFIED'
-    ? 'مدقق'
-    : status === 'UPLOADED'
-      ? 'بانتظار التدقيق'
-      : status === 'REJECTED'
-        ? 'مرفوض — أعد الرفع'
-        : required
-          ? 'مطلوب'
-          : 'اختياري'
-
 const actorLabel = { CITIZEN: 'أنت', DEPARTMENT: 'الدائرة', SYSTEM: 'المنصة' } as const
 
-type DocumentRow = NonNullable<CitizenServiceRequestDetail['documents']>[number] & { accepts: Array<'image' | 'pdf'> }
+type DocumentRow = NonNullable<CitizenServiceRequestDetail['documents']>[number] & RequestAttachment
 type IssuedRow = NonNullable<CitizenServiceRequestDetail['issuedDocuments']>[number]
+type EventRow = NonNullable<CitizenServiceRequestDetail['eventDocuments']>[number]
 type TimelineRow = NonNullable<CitizenServiceRequestDetail['timeline']>[number]
 
 /** The friendlier `documents` view of the detail endpoint, with the accepted file kinds from the checklist. */
@@ -81,12 +72,31 @@ function feeOf(request: CitizenServiceRequestDetail) {
   return { amountIqd: request.fee?.amountIqd ?? null, owed, officeReceipt, paidOnline, payAtOffice }
 }
 
+/** What each request step issues, in the order the citizen needs them (the decision first). */
+const EVENT_DOCUMENTS = {
+  REJECTION: { label: 'قرار رفض مسبّب', tone: 'is-danger', Icon: FileX },
+  REFERRAL: { label: 'كتاب إحالة', tone: 'is-info', Icon: Forward },
+  RECEIPT: { label: 'وصل استلام', tone: 'is-success', Icon: ReceiptText },
+} as const
+const EVENT_ORDER = Object.keys(EVENT_DOCUMENTS) as Array<keyof typeof EVENT_DOCUMENTS>
+
+/** Event documents grouped by step (decision, referral, receipts), newest first within a step. */
+function eventDocumentsOf(request: CitizenServiceRequestDetail): EventRow[] {
+  const rank = (row: EventRow) => {
+    const index = EVENT_ORDER.indexOf(row.issueEvent)
+    return index < 0 ? EVENT_ORDER.length : index
+  }
+  return [...(request.eventDocuments || [])].sort(
+    (a, b) => rank(a) - rank(b) || Date.parse(b.issuedAt) - Date.parse(a.issuedAt)
+  )
+}
+
 type Step = { label: string; state: 'done' | 'current' | 'pending' | 'failed' }
 
 /** The request's path through the department, as the citizen sees it. */
 function progressSteps(request: CitizenServiceRequestDetail, fee: ReturnType<typeof feeOf>): Step[] {
   const status = request.status
-  const closed = status === 'APPROVED' || status === 'REJECTED'
+  const closed = isClosedRequest(status)
   const paid = Boolean(fee.officeReceipt) || fee.paidOnline.length > 0 || request.paymentStatus === 'PAID'
   const hasFee = paid || fee.owed.length > 0 || fee.payAtOffice || status === 'PAYMENT_PENDING'
   const steps: Step[] = [{ label: 'تقديم الطلب', state: 'done' }]
@@ -102,8 +112,15 @@ function progressSteps(request: CitizenServiceRequestDetail, fee: ReturnType<typ
       state: request.appointment.confirmed || request.appointment.status === 'CONFIRMED' || closed ? 'done' : 'pending',
     })
   steps.push({
-    label: status === 'REJECTED' ? 'مرفوض' : request.issuesDocument === false ? 'إنجاز الطلب' : 'القرار والإصدار',
-    state: status === 'APPROVED' ? 'done' : status === 'REJECTED' ? 'failed' : 'pending',
+    label:
+      status === 'REJECTED'
+        ? 'مرفوض'
+        : status === 'CANCELLED'
+          ? 'أُلغي الطلب'
+          : request.issuesDocument === false
+            ? 'إنجاز الطلب'
+            : 'القرار والإصدار',
+    state: status === 'APPROVED' ? 'done' : status === 'REJECTED' || status === 'CANCELLED' ? 'failed' : 'pending',
   })
   return steps
 }
@@ -193,7 +210,8 @@ export function ServiceRequestPage({ reference }: { reference: string }) {
         if (active)
           setFallbackIssued(
             items
-              .filter(item => item.serviceRequestReference === reference)
+              // the approval's documents only: receipts, referrals and rejections are the request's event documents
+              .filter(item => item.serviceRequestReference === reference && !item.issueEvent)
               .map(item => ({
                 id: item.id,
                 title: item.documentTitle,
@@ -249,14 +267,14 @@ export function ServiceRequestPage({ reference }: { reference: string }) {
       </PortalLayout>
     )
 
-  const closed = request.status === 'APPROVED' || request.status === 'REJECTED'
+  // approved, rejected or cancelled: nothing pending, nothing to upload or pay
+  const closed = isClosedRequest(request.status)
   const documents = documentsOf(request)
-  const needsUpload = documents.filter(doc => doc.status === 'MISSING' || doc.status === 'REJECTED')
-  const extraRequested =
-    !closed && request.status === 'ACTION_REQUIRED' && request.requiredDocument && !needsUpload.length
   const fee = feeOf(request)
   const appointment = request.appointment ? describeAppointment(request.appointment) : null
   const issued = request.issuedDocuments || fallbackIssued
+  const eventDocuments = eventDocumentsOf(request)
+  const rejectionDocument = eventDocuments.find(item => item.issueEvent === 'REJECTION' && item.status !== 'REVOKED')
   const formEntries =
     request.formEntries ||
     Object.entries(request.formData || {}).map(([key, value]) => ({ key, label: fieldLabels.get(key) || key, value }))
@@ -281,7 +299,7 @@ export function ServiceRequestPage({ reference }: { reference: string }) {
           <div>
             <div>
               <span className={`status ${request.status.toLowerCase()}`}>
-                {serviceRequestStatusLabel(request.status)}
+                {request.status === 'CANCELLED' ? 'ملغى' : serviceRequestStatusLabel(request.status)}
               </span>
               <span dir="ltr">{request.reference}</span>
             </div>
@@ -328,9 +346,11 @@ export function ServiceRequestPage({ reference }: { reference: string }) {
             <small>
               {request.status === 'REJECTED'
                 ? 'قرار الدائرة'
-                : waitingOnCitizen
-                  ? 'المطلوب منك الآن'
-                  : 'الإجراء الحالي لدى الدائرة'}
+                : request.status === 'CANCELLED'
+                  ? 'أُغلق الطلب'
+                  : waitingOnCitizen
+                    ? 'المطلوب منك الآن'
+                    : 'الإجراء الحالي لدى الدائرة'}
             </small>
             <strong>{request.currentAction}</strong>
             {request.decisionNote && (
@@ -340,6 +360,11 @@ export function ServiceRequestPage({ reference }: { reference: string }) {
               </p>
             )}
           </div>
+          {request.status === 'REJECTED' && rejectionDocument && (
+            <a className="button outline small" href="#event-documents">
+              <FileX aria-hidden="true" /> قرار الرفض المسبّب
+            </a>
+          )}
         </section>
 
         {uploadError && (
@@ -350,82 +375,13 @@ export function ServiceRequestPage({ reference }: { reference: string }) {
 
         <div className="cz-request-grid">
           <div className="cz-request-column">
-            {(documents.length > 0 || extraRequested) && (
-              <section className="app-card cz-request-card" id="documents">
-                <h2>
-                  <FileCheck2 /> المستمسكات
-                </h2>
-                <p>يدقق موظف الدائرة كل مستمسك على حدة. أعد رفع أي مستمسك مرفوض ليعود الطلب إلى التدقيق.</p>
-                {documents.length > 0 && (
-                  <ul className="citizen-checklist">
-                    {documents.map(doc => {
-                      const busy = uploading === doc.key
-                      const canUpload = !closed && (doc.status === 'MISSING' || doc.status === 'REJECTED')
-                      return (
-                        <li key={doc.key} className={`checklist-${doc.status.toLowerCase()}`}>
-                          <span className={`checklist-badge ${doc.status.toLowerCase()}`}>
-                            {documentBadge(doc.status, doc.required)}
-                          </span>
-                          <div>
-                            <strong>{doc.label}</strong>
-                            {doc.status === 'REJECTED' && doc.rejectionReason && (
-                              <small>سبب الرفض: {doc.rejectionReason}</small>
-                            )}
-                            {doc.updatedAt && doc.status !== 'MISSING' && (
-                              <small className="cz-doc-time">آخر تحديث: {formatDateTime(doc.updatedAt)}</small>
-                            )}
-                          </div>
-                          {canUpload && (
-                            <label className="button outline small">
-                              <Camera /> {busy ? 'جاري الرفع...' : doc.status === 'REJECTED' ? 'إعادة الرفع' : 'رفع'}
-                              <input
-                                hidden
-                                type="file"
-                                accept={doc.accepts.includes('pdf') ? 'image/*,application/pdf' : 'image/*'}
-                                capture="environment"
-                                disabled={busy}
-                                onChange={event => {
-                                  void upload({ documentKey: doc.key }, event.target.files?.[0] || null)
-                                  event.target.value = ''
-                                }}
-                              />
-                            </label>
-                          )}
-                        </li>
-                      )
-                    })}
-                  </ul>
-                )}
-                {extraRequested && (
-                  <div className="cz-callout is-warning">
-                    <div>
-                      <FileText />
-                      <span>
-                        <small>طلبت الدائرة منك</small>
-                        <strong>{request.requiredDocument}</strong>
-                      </span>
-                    </div>
-                    <label className="button primary">
-                      <Camera /> {uploading === 'extra' ? 'جاري الرفع...' : 'تصوير / رفع المستند'}
-                      <input
-                        hidden
-                        type="file"
-                        accept="image/*,application/pdf"
-                        capture="environment"
-                        disabled={uploading === 'extra'}
-                        onChange={event => {
-                          void upload(
-                            { documentName: request.requiredDocument || 'المستند المطلوب' },
-                            event.target.files?.[0] || null
-                          )
-                          event.target.value = ''
-                        }}
-                      />
-                    </label>
-                  </div>
-                )}
-              </section>
-            )}
+            <RequestAttachmentsCard
+              status={request.status}
+              documents={documents}
+              requiredDocument={request.requiredDocument}
+              uploading={uploading}
+              onUpload={(target, file) => void upload(target, file)}
+            />
 
             {request.status === 'APPROVED' && (issued.length > 0 || request.issuesDocument !== false) && (
               <section className="app-card cz-request-card" id="issued">
@@ -450,22 +406,58 @@ export function ServiceRequestPage({ reference }: { reference: string }) {
                           )}
                         </span>
                       </div>
-                      <div className="issued-pdf-actions compact">
-                        <a className="button primary" href={document.pdfUrl} target="_blank" rel="noreferrer">
-                          <Eye /> معاينة PDF
-                        </a>
-                        <a className="button outline" href={`${document.pdfUrl}?download=1`} download>
-                          <Download /> تنزيل PDF
-                        </a>
-                        <Link className="button outline" href={`/verify/${document.verificationId}`}>
-                          <QrCode /> تحقق
-                        </Link>
-                      </div>
+                      <CitizenPdfActions document={document} compact />
                     </div>
                   ))
                 ) : (
                   <p>اكتملت المعاملة، وتظهر الوثيقة هنا فور أرشفتها.</p>
                 )}
+              </section>
+            )}
+
+            {eventDocuments.length > 0 && (
+              <section className="app-card cz-request-card" id="event-documents">
+                <h2>
+                  <FileCheck2 /> وثائق المعاملة
+                </h2>
+                <p>وثائق رسمية أصدرتها الدائرة خلال مراحل طلبك، يمكنك معاينتها وتنزيلها والتحقق من صحتها عبر رمز QR.</p>
+                {eventDocuments.map(document => {
+                  const kind = EVENT_DOCUMENTS[document.issueEvent] || {
+                    label: 'وثيقة',
+                    tone: 'is-info',
+                    Icon: FileText,
+                  }
+                  const revoked = document.status === 'REVOKED'
+                  // the type is shown as a label only when the title does not already say it («وصل استلام»)
+                  const typeLabel = document.title.trim() !== kind.label
+                  return (
+                    <div className="cz-callout" key={document.id}>
+                      <div>
+                        <kind.Icon aria-hidden="true" />
+                        <span>
+                          <strong>{document.title}</strong>
+                          {(typeLabel || revoked) && (
+                            <span>
+                              {typeLabel && <span className={`tq-badge ${kind.tone}`}>{kind.label}</span>}
+                              {typeLabel && revoked && ' '}
+                              {revoked && <span className="tq-badge is-danger">ملغاة</span>}
+                            </span>
+                          )}
+                          <small>
+                            <span dir="ltr">{document.documentNumber}</span> • {formatDateTime(document.issuedAt)}
+                          </small>
+                          {revoked && (
+                            <small>
+                              أُلغيت الوثيقة{document.revokedAt ? ` في ${formatDateTime(document.revokedAt)}` : ''}
+                              {document.revokedReason ? `: ${document.revokedReason}` : ''}
+                            </small>
+                          )}
+                        </span>
+                      </div>
+                      <CitizenPdfActions document={document} compact />
+                    </div>
+                  )
+                })}
               </section>
             )}
 

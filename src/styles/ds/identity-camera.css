@@ -3,7 +3,9 @@
    ============================================================================================= */
 .idcam {
   --idc-green: #35d07a;
-  --idc-amber: #f5b942;
+  /* the frame is getting a good look (pale mint), then locked (full green); the torch and tap-to-focus ring use
+     the same greens — the amber of these states is retired */
+  --idc-mint: #a7f0c8;
   position: fixed;
   z-index: 1000;
   inset: 0;
@@ -81,10 +83,17 @@
 }
 .idcam-hint {
   margin: 0;
-  min-height: 1.6em;
+  /* two lines kept for every hint: a longer one must not push the card frame (and the area measured) up */
+  min-height: calc(2 * 1.5em);
+  line-height: 1.5;
   font-size: 1rem;
   font-weight: 700;
   animation: idc-fade 0.3s ease;
+}
+.idcam-card .idcam-hint {
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 @keyframes idc-fade {
   from {
@@ -151,7 +160,7 @@
   }
 }
 .idcam-card-frame.is-good i {
-  border-color: var(--idc-amber);
+  border-color: var(--idc-mint);
 }
 .idcam-card-frame.is-locked i {
   border-color: var(--idc-green);
@@ -222,32 +231,130 @@
 .idcam-meters li.ok::before {
   content: '✓ ';
 }
+/* not measured yet, or capturing: the meters keep their place so the frame above them never moves */
+.idcam-meters.is-pending {
+  visibility: hidden;
+}
+/* the shutter is always available; the ring around it fills as the camera gets a good look at the card */
+.idcam-shutter-wrap {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 96px;
+  height: 96px;
+  margin-top: 4px;
+}
+.idcam-shutter-ring {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+  overflow: visible;
+  pointer-events: none;
+}
+.idcam-shutter-ring circle {
+  fill: none;
+  stroke-width: 5;
+}
+.idcam-shutter-ring .track {
+  stroke: rgba(255, 255, 255, 0.28);
+}
+.idcam-shutter-ring .fill {
+  stroke: var(--idc-green);
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 5px rgba(53, 208, 122, 0.7));
+  transition: stroke-dashoffset 0.22s linear;
+}
 .idcam-shutter {
-  --hold: 0;
   position: relative;
   display: grid;
   place-items: center;
   width: 76px;
   height: 76px;
-  margin-top: 8px;
   border: 0;
   border-radius: 50%;
   background: #fff;
   color: #0d1411;
-  box-shadow:
-    0 0 0 6px rgba(255, 255, 255, 0.25),
-    0 0 0 calc(6px + var(--hold) * 6px) rgba(53, 208, 122, calc(var(--hold) * 0.6));
   cursor: pointer;
   transition:
     transform 0.15s ease,
-    box-shadow 0.2s ease;
+    background 0.2s ease;
 }
-.idcam-shutter:active {
+.idcam-shutter:active:not(:disabled) {
   transform: scale(0.92);
+}
+.idcam-shutter:disabled {
+  opacity: 0.75;
+  cursor: default;
+}
+.idcam-shutter:focus-visible {
+  outline: 3px solid var(--idc-green);
+  outline-offset: 10px;
 }
 .idcam-shutter svg {
   width: 30px;
   height: 30px;
+}
+.idcam-shutter-wrap.is-capturing .idcam-shutter {
+  background: var(--idc-green);
+  color: #04210f;
+  animation: idc-snap 0.5s ease;
+}
+@keyframes idc-snap {
+  40% {
+    transform: scale(0.88);
+  }
+}
+.idcam-torch {
+  position: absolute;
+  z-index: 3;
+  top: max(14px, env(safe-area-inset-top));
+  inset-inline-end: 14px;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.45);
+  color: #fff;
+  backdrop-filter: blur(8px);
+  cursor: pointer;
+}
+.idcam-torch.is-on {
+  background: var(--idc-green);
+  color: #03231a;
+}
+.idcam-torch svg {
+  width: 22px;
+  height: 22px;
+}
+/* where a tap asked the camera to focus */
+.idcam-focus {
+  position: absolute;
+  z-index: 2;
+  width: 64px;
+  height: 64px;
+  margin: -32px 0 0 -32px;
+  border: 2px solid var(--idc-mint);
+  border-radius: 50%;
+  pointer-events: none;
+  animation: idc-focus 0.9s ease-out forwards;
+}
+@keyframes idc-focus {
+  from {
+    opacity: 1;
+    transform: scale(1.5);
+  }
+  35% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1);
+  }
 }
 .idcam-auto {
   color: rgba(255, 255, 255, 0.7);
@@ -434,17 +541,12 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  padding: 16px 12px;
   overflow: hidden;
   border: 1.5px dashed var(--ds-border-strong, var(--ds-border));
   border-radius: var(--ds-radius-md);
   background: var(--ds-surface);
   color: var(--ds-text);
-  font: inherit;
   text-align: center;
-  cursor: pointer;
   transition:
     border-color 0.25s ease,
     transform 0.2s ease,
@@ -454,6 +556,26 @@
   transform: translateY(-2px);
   box-shadow: var(--ds-shadow-md);
 }
+.id-tile-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 16px 12px;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: center;
+  cursor: pointer;
+}
+.id-tile-main:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--ds-success, #0a6f4e) 55%, transparent);
+  outline-offset: -4px;
+  border-radius: var(--ds-radius-md);
+}
 .id-tile.is-ok {
   border-style: solid;
   border-color: var(--ds-success, #0a6f4e);
@@ -462,6 +584,33 @@
   border-style: solid;
   border-color: var(--ds-danger);
   animation: id-shake 0.4s ease;
+}
+/* the back photo is kept even when its lines were not read: a gentle note, not an error */
+.id-tile.is-soft {
+  border-style: solid;
+  border-color: var(--ds-warning, #b45309);
+}
+.id-tile-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 12px 14px;
+  animation: idc-fade 0.3s ease;
+}
+.id-tile-actions .button {
+  flex: 1 1 auto;
+}
+.id-tile-retake {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--ds-text-muted);
+  font-size: 0.74rem;
+}
+.id-tile-retake svg {
+  width: 13px;
+  height: 13px;
 }
 @keyframes id-shake {
   25% {
@@ -541,6 +690,10 @@
 }
 .id-tile.is-bad small {
   color: var(--ds-danger);
+  font-weight: 600;
+}
+.id-tile.is-soft small {
+  color: var(--ds-warning, #b45309);
   font-weight: 600;
 }
 .id-tile-badge {
@@ -667,6 +820,13 @@
   .id-result-anim {
     animation: none !important;
     transition: none !important;
+  }
+  /* without its fade the capture flash would be a full white screen: a soft dimmed flash instead */
+  .idcam-flash {
+    opacity: 0.3;
+  }
+  .idcam-focus {
+    opacity: 0.8;
   }
 }
 @media (max-width: 420px) {

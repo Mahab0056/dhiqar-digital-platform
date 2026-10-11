@@ -37,6 +37,30 @@ export const DISTRICT_FACTS: Record<string, DistrictFact> = {
   الإصلاح: { population: 50_596, ...LOCAL_GOV_2024 },
 }
 
+/**
+ * The governorate's 15 districts as the 2024 census counts them — the one number every page shows as «أقضية»
+ * (the boundary layer, the operations counters, the homepage). How many of them have a department on the
+ * platform is a separate figure and is always labelled as such.
+ */
+export const OFFICIAL_DISTRICTS = Object.keys(DISTRICT_FACTS)
+export const OFFICIAL_DISTRICT_COUNT = OFFICIAL_DISTRICTS.length
+
+/** official districts that have at least one registry department on the platform */
+export function districtsWithDepartments(departments: readonly { district: string | null | undefined }[]) {
+  const official = new Set(OFFICIAL_DISTRICTS)
+  return new Set(departments.map(item => districtKey(item.district)).filter(name => official.has(name))).size
+}
+
+/**
+ * The governorate's official total area. District areas on the maps are measured from simplified OSM boundaries
+ * (they add up to ~14,000 km²), so they are only ever shown as approximate, next to this figure.
+ */
+export const GOVERNORATE_AREA = {
+  km2: 12_900,
+  source: 'الموجز الإحصائي للمحافظات 2022 — ذي قار، الجهاز المركزي للإحصاء',
+  sourceUrl: 'https://cosit.gov.iq/StatisticalAbstract-2022/img/theqar.pdf',
+}
+
 /** registry spellings / sub-district names → the district polygon they sit in */
 const ALIASES: Record<string, string> = {
   أور: 'الناصرية',
@@ -48,4 +72,27 @@ const ALIASES: Record<string, string> = {
 export const districtKey = (name: string | null | undefined) => {
   const trimmed = (name || '').trim()
   return ALIASES[trimmed] || trimmed
+}
+
+/** citable landmarks per district (shown in the drill-down panel with their source) */
+export type DistrictLandmark = { title: string; detail: string; source: string; sourceUrl: string }
+const UNESCO_AHWAR = {
+  source: 'اليونسكو — الأهوار: ملاذ التنوع البيولوجي والمشهد المتبقي لمدن بلاد الرافدين (2016)',
+  sourceUrl: 'https://whc.unesco.org/en/list/1481',
+}
+export const DISTRICT_LANDMARKS: Record<string, DistrictLandmark[]> = {
+  الناصرية: [
+    {
+      title: 'مدينة أور الأثرية وزقورتها',
+      detail: 'أحد المكوّنات الثقافية الثلاثة لموقع «أهوار جنوب العراق» على قائمة التراث العالمي منذ 2016.',
+      ...UNESCO_AHWAR,
+    },
+  ],
+  الجبايش: [
+    {
+      title: 'الأهوار الوسطى',
+      detail: 'من المكوّنات الطبيعية الأربعة لموقع «أهوار جنوب العراق» على قائمة التراث العالمي منذ 2016.',
+      ...UNESCO_AHWAR,
+    },
+  ],
 }

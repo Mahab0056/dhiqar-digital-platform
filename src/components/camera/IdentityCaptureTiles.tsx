@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Camera, Check, RefreshCw, ScanFace } from 'lucide-react'
 import { api } from '../../api'
 import { IdentityCamera, type LivenessTimelineEntry } from './IdentityCamera'
@@ -24,6 +24,15 @@ const usePreview = (file: File | null) => {
   return url
 }
 
+/**
+ * idle → checking → ok. A photo the instant check finds unusable (no portrait on the front) asks once: use it anyway or
+ * retake. An unread machine-readable zone on the back never blocks: the photo is kept and the zone is read again
+ * after submission. When the check could not judge the photo at all (its OCR engine is down) nothing is asked.
+ */
+type TileStatus = 'idle' | 'checking' | 'ok' | 'soft' | 'bad'
+
+const BACK_UNREAD = 'ما قدرنا نقرأ الأسطر الإنگليزية بوضوح — تقدر تعيد التصوير أو تكمل وتُقرأ بعد الإرسال'
+
 /** One side of the unified card: opens the full-screen camera, then checks the photo instantly. */
 export function CardTile({
   side,
@@ -37,35 +46,83 @@ export function CardTile({
   onCard?: (card: CardData | null) => void
 }) {
   const [open, setOpen] = useState(false)
-  const [status, setStatus] = useState<'idle' | 'checking' | 'ok' | 'bad'>(file ? 'ok' : 'idle')
+  const [status, setStatus] = useState<TileStatus>(file ? 'ok' : 'idle')
   const [message, setMessage] = useState('')
+  const checkRef = useRef(0)
+  const mainRef = useRef<HTMLButtonElement | null>(null)
+  const actionsRef = useRef<HTMLDivElement | null>(null)
+  const tileRef = useRef<HTMLDivElement | null>(null)
   const preview = usePreview(file)
+  const title = side === 'front' ? 'وجه البطاقة' : 'ظهر البطاقة'
+
+  /** set once the camera was used here: only then does the tile move the focus */
+  const usedRef = useRef(false)
+
+  // after the camera closes: a choice to make gets the focus (its buttons are announced as one group); otherwise
+  // focus stays on — or comes back to — the tile, never left on the page itself. Focus that has moved on elsewhere
+  // (the other side's camera, a field) is left alone.
+  useEffect(() => {
+    if (open || !usedRef.current) return
+    const active = document.activeElement
+    const lost = !active || active === document.body
+    if (!lost && !tileRef.current?.contains(active)) return
+    if (status === 'soft' || status === 'bad')
+      actionsRef.current?.querySelector<HTMLButtonElement>('button')?.focus({ preventScroll: true })
+    else if (lost) mainRef.current?.focus({ preventScroll: true })
+  }, [status, open])
+
+  const openCamera = () => {
+    usedRef.current = true
+    setOpen(true)
+  }
 
   const captured = async (photo: File) => {
     setOpen(false)
     onFile(photo)
+    // a retake while an earlier check is still running: only the latest photo's answer counts
+    const check = ++checkRef.current
     setStatus('checking')
-    setMessage(side === 'front' ? 'نبحث عن صورة الوجه في البطاقة…' : 'نقرأ بيانات البطاقة…')
+    setMessage(side === 'front' ? 'نتأكد من صورة الوجه في البطاقة…' : 'نقرأ بيانات البطاقة…')
     try {
-      const result = await api.cardCheck(side, photo)
-      setStatus(result.ok ? 'ok' : 'bad')
-      setMessage(result.message || '')
+      // the check also says when nothing could be judged (its engine is down): no retake is suggested then
+      const result: Awaited<ReturnType<typeof api.cardCheck>> & { retakeSuggested?: boolean } = await api.cardCheck(
+        side,
+        photo
+      )
+      if (check !== checkRef.current) return
       if (side === 'back') onCard?.(result.card ?? null)
-      navigator.vibrate?.(result.ok ? [30, 40, 30] : 120)
+      if (result.ok || result.retakeSuggested === false) {
+        setStatus('ok')
+        setMessage(result.message || 'تم التصوير.')
+        navigator.vibrate?.([30, 40, 30])
+      } else if (side === 'back') {
+        setStatus('soft')
+        setMessage(BACK_UNREAD)
+        navigator.vibrate?.(40)
+      } else {
+        setStatus('bad')
+        setMessage(result.message || 'لم تظهر صورة الوجه في البطاقة بوضوح.')
+        navigator.vibrate?.(120)
+      }
     } catch (error) {
+      if (check !== checkRef.current) return
       // the instant check is a convenience: if it cannot run, the full checks still happen on submission
       setStatus('ok')
       setMessage((error as Error).message || 'سيُتحقق من الصورة بعد الإرسال.')
     }
   }
 
+  /** Keeps the photo as it is; the full checks run again on submission. */
+  const keep = () => {
+    setStatus('ok')
+    setMessage(side === 'back' ? 'تمام — تُقرأ الأسطر بعد الإرسال.' : 'تمام — نستخدم هذه الصورة وتُفحص مع الطلب.')
+    mainRef.current?.focus()
+  }
+
+  const shown = status === 'idle' ? '' : message || 'تم التصوير.'
   return (
-    <>
-      <button
-        type="button"
-        className={`id-tile${status === 'ok' ? ' is-ok' : status === 'bad' ? ' is-bad' : ''}`}
-        onClick={() => setOpen(true)}
-      >
+    <div ref={tileRef} className={`id-tile is-${status}`}>
+      <button ref={mainRef} type="button" className="id-tile-main" onClick={openCamera}>
         {status === 'ok' && (
           <span className="id-tile-badge" aria-hidden="true">
             <Check />
@@ -87,17 +144,40 @@ export function CardTile({
             <span className="id-art-mrz" />
           )}
         </span>
-        <strong>{side === 'front' ? 'وجه البطاقة' : 'ظهر البطاقة'}</strong>
+        <strong>{title}</strong>
         <small>
-          {status === 'idle' ? (side === 'front' ? 'اضغط لفتح الكاميرا' : 'مع الأسطر الإنگليزية في الأسفل') : message}
+          {status === 'idle' ? (side === 'front' ? 'اضغط لفتح الكاميرا' : 'مع الأسطر الإنگليزية في الأسفل') : shown}
         </small>
-        {status !== 'idle' && status !== 'checking' && (
+        {status === 'ok' && (
           <span className="id-tile-retake">
             <RefreshCw aria-hidden="true" /> إعادة التصوير
           </span>
         )}
         {status === 'idle' && <Camera aria-hidden="true" />}
       </button>
+      {status === 'soft' && (
+        <div ref={actionsRef} className="id-tile-actions" role="group" aria-label={`${title}: ${shown}`}>
+          <button type="button" className="button primary small" onClick={keep}>
+            <Check aria-hidden="true" /> أكمل بهذه الصورة
+          </button>
+          <button type="button" className="button outline small" onClick={openCamera}>
+            <RefreshCw aria-hidden="true" /> إعادة التصوير
+          </button>
+        </div>
+      )}
+      {status === 'bad' && (
+        <div ref={actionsRef} className="id-tile-actions" role="group" aria-label={`${title}: ${shown}`}>
+          <button type="button" className="button primary small" onClick={openCamera}>
+            <RefreshCw aria-hidden="true" /> إعادة
+          </button>
+          <button type="button" className="button outline small" onClick={keep}>
+            استخدم هذه الصورة
+          </button>
+        </div>
+      )}
+      <span className="sr-only" aria-live="polite">
+        {shown && `${title}: ${shown}`}
+      </span>
       {open && (
         <IdentityCamera
           mode="card"
@@ -106,7 +186,7 @@ export function CardTile({
           onClose={() => setOpen(false)}
         />
       )}
-    </>
+    </div>
   )
 }
 

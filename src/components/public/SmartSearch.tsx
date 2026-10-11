@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { Link, useLocation } from 'wouter'
 import { CalendarClock, ChevronLeft, Globe2, Info, Mic, MicOff, Search, X } from 'lucide-react'
 import { api } from '../../api'
@@ -49,6 +49,7 @@ export function SmartSearch({
   const [results, setResults] = useState<CatalogService[]>([])
   // the term the current results belong to, so "no results" never flashes for a query still in flight
   const [searchedTerm, setSearchedTerm] = useState('')
+  const listId = useId()
   const [open, setOpen] = useState(false)
   const [active, setActive] = useState(-1)
   const [listening, setListening] = useState(false)
@@ -175,9 +176,11 @@ export function SmartSearch({
         onFocus={() => searchedTerm && setOpen(true)}
         onKeyDown={onKeyDown}
         placeholder={listening ? 'أنا أسمعك… قل اسم الخدمة' : placeholder}
+        role="combobox"
         aria-label="ابحث عن خدمة"
         aria-autocomplete="list"
         aria-expanded={open}
+        aria-controls={open ? listId : undefined}
         autoComplete="off"
         autoFocus={autoFocus}
         enterKeyHint="search"
@@ -215,12 +218,18 @@ export function SmartSearch({
         </div>
       )}
       {open && results.length > 0 && (
-        <ul className="tq-search-results" role="listbox">
+        <ul className="tq-search-results" id={listId} role="listbox">
           {results.map((service, index) => {
             const Icon = channelIcon[service.channel]
             return (
-              <li key={service.key} className={index === active ? 'active' : ''} role="option" aria-selected={index === active}>
-                <Link href={`/service/${service.key}`} onClick={() => setOpen(false)}>
+              <li key={service.key} className={index === active ? 'active' : ''} role="none">
+                {/* the link itself is the option, so the listbox holds no nested interactive content */}
+                <Link
+                  href={`/service/${service.key}`}
+                  onClick={() => setOpen(false)}
+                  role="option"
+                  aria-selected={index === active}
+                >
                   <span className={`tq-channel channel-${service.channel.toLowerCase()}`}>
                     <Icon size={12} /> {channelShort[service.channel]}
                   </span>
@@ -231,8 +240,13 @@ export function SmartSearch({
               </li>
             )
           })}
-          <li className="tq-search-more">
-            <Link href={`/directory?q=${encodeURIComponent(value.trim())}`} onClick={() => setOpen(false)}>
+          <li className="tq-search-more" role="none">
+            <Link
+              href={`/directory?q=${encodeURIComponent(value.trim())}`}
+              onClick={() => setOpen(false)}
+              role="option"
+              aria-selected={false}
+            >
               عرض كل النتائج في دليل الخدمات
             </Link>
           </li>

@@ -12,3 +12,16 @@ districts (Nasiriya, Shatra, Rifai, Suq Al-Shoyokh, Chibayish), which no longer 
 department registry.
 
 areaKm2 is an approximate area computed from the simplified polygon, not an official figure.
+
+department-buildings.geojson and facilities/*.geojson (+ facilities/index.json) — building footprints, public
+facilities (schools, health, police, courts, civil defence, post, municipalities, government offices, universities,
+libraries, sports/youth centres) and admin_level=7 sub-districts in Dhi Qar.
+  © OpenStreetMap contributors, Open Database License (ODbL 1.0) — https://www.openstreetmap.org/copyright
+  Fetched 2026-10-10 via the Overpass API by scripts/geo/fetch-department-footprints.mjs and
+  scripts/geo/fetch-dhiqar-facilities.mjs (cached; re-run with --refresh). Nothing is invented: a department or
+  facility without a mapped outline gets a small generic stand-in block, flagged matchQuality "generic" / g=1.
+  Only an outline the size of one building is extruded: an office/amenity plot, or a whole walled compound drawn
+  as one building=* outline (over 10,000 m², or a plain rectangle over 2,500 m²), is drawn as the site/grounds
+  with the buildings mapped inside it. A place mapped twice in OSM (an outline and a point, or two points, of the
+  same type within 30 m and with a matching or missing name) is counted and drawn once.
+  OSM coverage in Dhi Qar is incomplete, so facility counts are "as mapped", not official totals.
